@@ -79,6 +79,10 @@ unset($request); // Break the reference
     .dataTables_filter {
       padding: 10px;
     }
+    .fc-event-multi-day {
+      border-left: 3px solid rgba(0,0,0,0.2);
+      border-right: 3px solid rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -140,7 +144,7 @@ unset($request); // Break the reference
                       <thead>
                         <tr>
                           <th>Destination</th>
-                          <th>Date & Time</th>
+                          <th>Date Range</th>
                           <th>Requester</th>
                         </tr>
                       </thead>
@@ -219,7 +223,7 @@ unset($request); // Break the reference
         "order": [[1, 'asc']],
         "columns": [
           { "data": "destination" },
-          { "data": "datetime" },
+          { "data": "daterange" },
           { "data": "requester" }
         ]
       });
@@ -242,11 +246,48 @@ unset($request); // Break the reference
       // Prepare service request data for calendar
       const serviceRequests = <?php echo json_encode($service_requests); ?>;
       const serviceRequestEvents = serviceRequests.map(request => {
+        // Parse the date_of_travel and date_of_travel_end to ensure they're in the correct format
+        const travelStartDate = moment(request.date_of_travel);
+        const travelEndDate = request.date_of_travel_end ? moment(request.date_of_travel_end) : travelStartDate;
+        
+        const departureTime = moment(request.time_departure, 'HH:mm:ss');
+        const returnTime = moment(request.time_return, 'HH:mm:ss');
+        
+        // Check if this is a multi-day event
+        const isMultiDay = travelStartDate.format('YYYY-MM-DD') !== travelEndDate.format('YYYY-MM-DD');
+        
+        // For multi-day events, we need to handle the start and end differently
+        let startDateTime, endDateTime;
+        
+        if (isMultiDay) {
+          // For multi-day events, use the full date range without specific times in the calendar
+          startDateTime = travelStartDate.format('YYYY-MM-DD');
+          endDateTime = travelEndDate.add(1, 'day').format('YYYY-MM-DD'); // Add 1 day for FullCalendar's exclusive end
+        } else {
+          // For single day events, include the specific times
+          startDateTime = travelStartDate.clone()
+            .set({
+              hour: departureTime.hour(),
+              minute: departureTime.minute(),
+              second: 0
+            })
+            .format('YYYY-MM-DDTHH:mm:ss');
+          
+          endDateTime = travelStartDate.clone()
+            .set({
+              hour: returnTime.hour(),
+              minute: returnTime.minute(),
+              second: 0
+            })
+            .format('YYYY-MM-DDTHH:mm:ss');
+        }
+        
         return {
           id: 'service_' + request.request_id,
-          title: '🚗 ' + request.destination,
-          start: request.date_of_travel + 'T' + request.time_departure,
-          end: request.date_of_travel + 'T' + request.time_return,
+          title: '🚗 ' + request.destination + (isMultiDay ? ' (' + (travelEndDate.diff(travelStartDate, 'days') + 1) + ' days)' : ''),
+          start: startDateTime,
+          end: endDateTime,
+          allDay: isMultiDay, // Make multi-day events all-day events
           extendedProps: {
             type: 'service_request',
             request_id: request.request_id,
@@ -256,11 +297,17 @@ unset($request); // Break the reference
             driver: request.driver_name || 'N/A',
             destination: request.destination,
             purpose: request.purpose,
-            passengers: request.passengers || []
+            passengers: request.passengers || [],
+            raw_date: request.date_of_travel, // Keep original for reference
+            date_of_travel_end: request.date_of_travel_end,
+            is_multi_day: isMultiDay,
+            time_departure: request.time_departure,
+            time_return: request.time_return
           },
-          backgroundColor: '#007bff',
-          borderColor: '#0056b3',
-          textColor: '#fff'
+          backgroundColor: isMultiDay ? '#28a745' : '#007bff',
+          borderColor: isMultiDay ? '#1e7e34' : '#0056b3',
+          textColor: '#fff',
+          classNames: isMultiDay ? ['fc-event-multi-day'] : []
         };
       });
       
@@ -348,11 +395,22 @@ unset($request); // Break the reference
           eventDidMount: function(info) {
               // Add tooltips to events
               if (info.event.extendedProps.type === 'service_request') {
-                  $(info.el).attr('title', 
-                    `Transport to ${info.event.extendedProps.destination}\n` +
-                    `Driver: ${info.event.extendedProps.driver}\n` +
-                    `Vehicle: ${info.event.extendedProps.vehicle}`
-                  );
+                  const props = info.event.extendedProps;
+                  let tooltipText = `Transport to ${props.destination}\n`;
+                  
+                  if (props.is_multi_day) {
+                    const startDate = moment(info.event.start);
+                    const endDate = moment(info.event.end).subtract(1, 'day');
+                    tooltipText += `Date: ${startDate.format('MMM D')} - ${endDate.format('MMM D, YYYY')}\n`;
+                  } else {
+                    tooltipText += `Date: ${moment(info.event.start).format('MMM D, YYYY')}\n`;
+                    tooltipText += `Time: ${moment(props.time_departure, 'HH:mm:ss').format('h:mm A')} - ${moment(props.time_return, 'HH:mm:ss').format('h:mm A')}\n`;
+                  }
+                  
+                  tooltipText += `Driver: ${props.driver}\n`;
+                  tooltipText += `Vehicle: ${props.vehicle}`;
+                  
+                  $(info.el).attr('title', tooltipText);
               }
           }
       });
@@ -371,6 +429,17 @@ unset($request); // Break the reference
           ? props.passengers.map(p => `<li>${p}</li>`).join('')
           : '<li class="text-muted">No passengers</li>';
       
+      // Format date range display
+      let dateRangeHtml;
+      if (props.is_multi_day) {
+          const startDate = moment(event.start);
+          const endDate = moment(event.end).subtract(1, 'day'); // Subtract 1 day because FullCalendar's end is exclusive
+          dateRangeHtml = `${startDate.format('MMM D, YYYY')} - ${endDate.format('MMM D, YYYY')}`;
+      } else {
+          dateRangeHtml = `${moment(event.start).format('MMM D, YYYY')}<br>
+                          <strong>Time:</strong> ${moment(props.time_departure, 'HH:mm:ss').format('h:mm A')} - ${moment(props.time_return, 'HH:mm:ss').format('h:mm A')}`;
+      }
+      
       const html = `
         <div class="service-request-details">
           <h4>Transport Request Details</h4>
@@ -378,12 +447,12 @@ unset($request); // Break the reference
             <div class="col-md-6">
               <p><strong>Requester:</strong> ${props.requester}</p>
               <p><strong>Destination:</strong> ${props.destination}</p>
-              <p><strong>Vehicle:</strong> ${props.vehicle}</p>
+              <p><strong>Date Range:</strong> ${dateRangeHtml}</p>
             </div>
             <div class="col-md-6">
+              <p><strong>Vehicle:</strong> ${props.vehicle}</p>
               <p><strong>Plate Number:</strong> ${props.plate_no}</p>
               <p><strong>Driver:</strong> ${props.driver}</p>
-              <p><strong>Time:</strong> ${moment(event.start).format('h:mm A')} - ${moment(event.end).format('h:mm A')}</p>
             </div>
           </div>
           <p><strong>Purpose:</strong> ${props.purpose}</p>
@@ -410,20 +479,51 @@ unset($request); // Break the reference
       const monthStart = moment().startOf('month');
       const monthEnd = moment().endOf('month');
       
-      const todayTrips = events.filter(event => 
-          event.extendedProps?.type === 'service_request' &&
-          moment(event.start).isSame(today, 'day')
-      ).length;
+      const todayTrips = events.filter(event => {
+          if (event.extendedProps?.type !== 'service_request') return false;
+          
+          if (event.extendedProps.is_multi_day) {
+              // For multi-day events, check if today is within the event range
+              const eventStart = moment(event.start);
+              const eventEnd = moment(event.end).subtract(1, 'day'); // Subtract 1 day because FullCalendar's end is exclusive
+              return today.isBetween(eventStart, eventEnd, null, '[]');
+          } else {
+              // For single day events, check if it's today
+              return moment(event.start).isSame(today, 'day');
+          }
+      }).length;
       
-      const weekTrips = events.filter(event => 
-          event.extendedProps?.type === 'service_request' &&
-          moment(event.start).isBetween(weekStart, weekEnd, null, '[]')
-      ).length;
+      const weekTrips = events.filter(event => {
+          if (event.extendedProps?.type !== 'service_request') return false;
+          
+          if (event.extendedProps.is_multi_day) {
+              // For multi-day events, check if the week overlaps with the event
+              const eventStart = moment(event.start);
+              const eventEnd = moment(event.end).subtract(1, 'day'); // Subtract 1 day because FullCalendar's end is exclusive
+              return (eventStart.isBetween(weekStart, weekEnd, null, '[]') ||
+                     eventEnd.isBetween(weekStart, weekEnd, null, '[]') ||
+                     (eventStart.isBefore(weekStart) && eventEnd.isAfter(weekEnd)));
+          } else {
+              // For single day events, check if it's within the week
+              return moment(event.start).isBetween(weekStart, weekEnd, null, '[]');
+          }
+      }).length;
       
-      const monthTrips = events.filter(event => 
-          event.extendedProps?.type === 'service_request' &&
-          moment(event.start).isBetween(monthStart, monthEnd, null, '[]')
-      ).length;
+      const monthTrips = events.filter(event => {
+          if (event.extendedProps?.type !== 'service_request') return false;
+          
+          if (event.extendedProps.is_multi_day) {
+              // For multi-day events, check if the month overlaps with the event
+              const eventStart = moment(event.start);
+              const eventEnd = moment(event.end).subtract(1, 'day'); // Subtract 1 day because FullCalendar's end is exclusive
+              return (eventStart.isBetween(monthStart, monthEnd, null, '[]') ||
+                     eventEnd.isBetween(monthStart, monthEnd, null, '[]') ||
+                     (eventStart.isBefore(monthStart) && eventEnd.isAfter(monthEnd)));
+          } else {
+              // For single day events, check if it's within the month
+              return moment(event.start).isBetween(monthStart, monthEnd, null, '[]');
+          }
+      }).length;
       
       $('#today-stats').text(`${todayTrips} trip${todayTrips !== 1 ? 's' : ''}`);
       $('#week-stats').text(`${weekTrips} trip${weekTrips !== 1 ? 's' : ''}`);
@@ -433,23 +533,44 @@ unset($request); // Break the reference
   // Function to load service requests into the DataTable
   function loadServiceRequestsTable() {
       const serviceRequests = <?php echo json_encode($service_requests); ?>;
-      const today = new Date();
+      const today = moment().startOf('day');
       const upcomingRequests = serviceRequests
-          .filter(request => new Date(request.date_of_travel) >= today)
-          .sort((a, b) => new Date(a.date_of_travel) - new Date(b.date_of_travel));
+          .filter(request => {
+              // Parse the date_of_travel using moment for consistent comparison
+              const travelDate = moment(request.date_of_travel);
+              const travelEndDate = request.date_of_travel_end ? moment(request.date_of_travel_end) : travelDate;
+              return travelEndDate.isSameOrAfter(today, 'day');
+          })
+          .sort((a, b) => {
+              // Sort by date_of_travel
+              const dateA = moment(a.date_of_travel);
+              const dateB = moment(b.date_of_travel);
+              return dateA - dateB;
+          });
       
       upcomingRequestsTable.clear();
       
       if (upcomingRequests.length > 0) {
           upcomingRequests.forEach(request => {
-              const formattedDate = moment(request.date_of_travel).format('MMM D');
-              const timeRange = moment(request.time_departure, 'HH:mm:ss').format('h:mm A') + 
-                               ' - ' + 
-                               moment(request.time_return, 'HH:mm:ss').format('h:mm A');
+              // Parse the date using moment for consistent formatting
+              const travelDate = moment(request.date_of_travel);
+              const travelEndDate = request.date_of_travel_end ? moment(request.date_of_travel_end) : travelDate;
+              
+              let dateRange;
+              if (travelDate.format('YYYY-MM-DD') === travelEndDate.format('YYYY-MM-DD')) {
+                  // Single day event
+                  dateRange = travelDate.format('MMM D') + '<br><small class="text-muted">' + 
+                            moment(request.time_departure, 'HH:mm:ss').format('h:mm A') + 
+                            ' - ' + 
+                            moment(request.time_return, 'HH:mm:ss').format('h:mm A') + '</small>';
+              } else {
+                  // Multi-day event
+                  dateRange = travelDate.format('MMM D') + ' - ' + travelEndDate.format('MMM D');
+              }
               
               upcomingRequestsTable.row.add({
                 "destination": `<strong>${request.destination}</strong>`,
-                "datetime": `${formattedDate}<br><small class="text-muted">${timeRange}</small>`,
+                "daterange": dateRange,
                 "requester": `${request.requester_name}<br><small class="text-success">${request.vehicle_model || 'No vehicle'}</small>`
               }).draw();
           });
@@ -460,10 +581,12 @@ unset($request); // Break the reference
   function focusOnRequest(requestId) {
       const event = calendar.getEventById('service_' + requestId);
       if (event) {
-          calendar.changeView('timeGridDay');
+          calendar.changeView('dayGridMonth');
           calendar.gotoDate(event.start);
           event.setProp('backgroundColor', '#dc3545');
-          setTimeout(() => event.setProp('backgroundColor', '#007bff'), 1000);
+          setTimeout(() => {
+              event.setProp('backgroundColor', event.extendedProps.is_multi_day ? '#28a745' : '#007bff');
+          }, 1000);
       }
   }
 
