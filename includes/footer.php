@@ -34,3 +34,36 @@
 <script src="../plugins/fullcalendar/main.js"></script>
 <script src="../plugins/moment/moment.min.js"></script>
 <script src="../plugins/jquery-ui/jquery-ui.min.js"></script>
+<script>
+// Handle notification clicks
+$(document).on('click', '#notificationList .dropdown-item', function(e) {
+    e.preventDefault();
+    const notificationId = $(this).data('notification-id');
+    
+    // Mark as read
+    $.post('mark_notification_read.php', {id: notificationId}, function(response) {
+        if (response.success) {
+            // Update UI
+            $(this).removeClass('font-weight-bold');
+            updateNotificationCount();
+        }
+    }.bind(this));
+});
+
+// Update notification count
+function updateNotificationCount() {
+    $.get('get_notification_count.php', function(data) {
+        const count = parseInt(data);
+        if (count > 0) {
+            $('#notificationCount').text(count);
+            $('#notificationHeader').text(count + ' Notifications');
+        } else {
+            $('#notificationCount').remove();
+            $('#notificationHeader').text('No Notifications');
+        }
+    });
+}
+
+// Periodically update notification count (every 30 seconds)
+setInterval(updateNotificationCount, 30000);
+</script>
