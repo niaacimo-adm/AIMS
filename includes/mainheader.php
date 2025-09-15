@@ -54,22 +54,22 @@
                 <i class="far fa-bell"></i>
                 <?php
                 // Get unread notification count for current admin
-                if (isset($_SESSION['emp_id'])) {
-                    $database = new Database();
-                    $db = $database->getConnection();
-                    
-                    $query = "SELECT COUNT(*) as unread_count FROM admin_notifications 
-                            WHERE admin_emp_id = ? AND is_read = 0";
-                    $stmt = $db->prepare($query);
-                    $stmt->bind_param("i", $_SESSION['emp_id']);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $count = $result->fetch_assoc()['unread_count'];
-                    
-                    if ($count > 0) {
-                        echo '<span class="badge badge-warning navbar-badge" id="notificationCount">' . $count . '</span>';
+                    if (isset($_SESSION['emp_id'])) {
+                        $database = new Database();
+                        $db = $database->getConnection();
+                        
+                        $query = "SELECT COUNT(*) as unread_count FROM admin_notifications 
+                                WHERE admin_emp_id = ? AND is_read = 0";
+                        $stmt = $db->prepare($query);
+                        $stmt->bind_param("i", $_SESSION['emp_id']);
+                        $stmt->execute();
+                        $result = $stmt->get_result();
+                        $count = $result->fetch_assoc()['unread_count'];
+                        
+                        if ($count > 0) {
+                            echo '<span class="badge badge-warning navbar-badge" id="notificationCount">' . $count . '</span>';
+                        }
                     }
-                }
                 ?>
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notificationMenu" style="max-height: 400px; overflow-y: auto; width: 350px;">
@@ -78,36 +78,39 @@
                 </span>
                 <div class="dropdown-divider"></div>
                 <div id="notificationList">
-                    <?php
-                    if (isset($_SESSION['emp_id'])) {
-                        $query = "SELECT * FROM admin_notifications 
-                                WHERE admin_emp_id = ? 
-                                ORDER BY created_at DESC 
-                                LIMIT 10";
-                        $stmt = $db->prepare($query);
-                        $stmt->bind_param("i", $_SESSION['emp_id']);
-                        $stmt->execute();
-                        $result = $stmt->get_result();
-                        
-                        if ($result->num_rows > 0) {
-                            while ($row = $result->fetch_assoc()) {
-                                $time_ago = time_elapsed_string($row['created_at']);
-                                $read_class = $row['is_read'] ? '' : 'font-weight-bold';
-                                echo '<a href="#" class="dropdown-item ' . $read_class . '" data-notification-id="' . $row['id'] . '" style="white-space: normal; line-height: 1.4;">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fas fa-key mr-2"></i>
-                                            <div class="flex-grow-1">
-                                                <div class="notification-text">' . $row['message'] . '</div>
+                     <?php
+                      if (isset($_SESSION['emp_id'])) {
+                          $query = "SELECT * FROM admin_notifications 
+                                  WHERE admin_emp_id = ? 
+                                  ORDER BY created_at DESC 
+                                  LIMIT 10";
+                          $stmt = $db->prepare($query);
+                          $stmt->bind_param("i", $_SESSION['emp_id']);
+                          $stmt->execute();
+                          $result = $stmt->get_result();
+                          
+                          if ($result->num_rows > 0) {
+                              while ($row = $result->fetch_assoc()) {
+                                  $time_ago = time_elapsed_string($row['created_at']);
+                                  $read_class = $row['is_read'] ? '' : 'font-weight-bold';
+                                  
+                                  echo '<div class="dropdown-item ' . $read_class . '" data-notification-id="' . $row['id'] . '">
+                                        <div class="d-flex">
+                                            <div class="mr-2" style="min-width: 20px;">
+                                                <i class="fas fa-key text-muted"></i>
+                                            </div>
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <div class="notification-text mb-1">' . htmlspecialchars_decode($row['message']) . '</div>
                                                 <small class="text-muted">' . $time_ago . '</small>
                                             </div>
                                         </div>
-                                      </a>
-                                      <div class="dropdown-divider"></div>';
-                            }
-                        } else {
-                            echo '<span class="dropdown-item dropdown-header">No notifications</span>';
-                        }
-                    }
+                                      </div>
+                                      <div class="dropdown-divider my-1"></div>';
+                              }
+                          } else {
+                              echo '<span class="dropdown-item dropdown-header">No notifications</span>';
+                          }
+                      }
                     ?>
                 </div>
                 <div class="dropdown-divider"></div>
@@ -127,6 +130,9 @@
         <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="#" role="button">
           <i class="fas fa-th-large"></i>
         </a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+          <a href="admin_approve_reset.php" class="nav-link"><i class="fas fa-lock"></i></a>
       </li>
     </ul>
   </nav>
@@ -169,7 +175,7 @@
                 <?php if (count($all_notifications) > 0): ?>
                   <?php foreach ($all_notifications as $notification): ?>
                     <tr class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>">
-                      <td><?= htmlspecialchars($notification['message']) ?></td>
+                      <td><?= htmlspecialchars_decode($notification['message']) ?></td>
                       <td>
                         <span class="badge badge-<?= $notification['is_read'] ? 'success' : 'warning' ?>">
                           <?= $notification['is_read'] ? 'Read' : 'Unread' ?>
@@ -211,49 +217,115 @@
     </div>
   </div>
 
-  <style>
+<style>
   /* Custom styles for notification dropdown */
-  #notificationMenu {
-    max-height: 400px;
-    overflow-y: auto;
-    width: 350px;
-  }
-  
-  .notification-text {
-    word-wrap: break-word;
-    white-space: normal;
-  }
-  
-  .dropdown-item {
-    padding: 0.5rem 1rem;
-  }
-  
-  /* Ensure proper z-index to prevent overlapping */
-  .navbar-nav > .nav-item > .dropdown-menu {
-    z-index: 1030; /* Higher than default to prevent overlapping */
-  }
-  
-  .mark-all-read-btn, .delete-all-btn {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-  }
-  
-  .notification-item.unread {
-    background-color: #f8f9fa;
-    font-weight: 500;
-  }
-  
-  .modal-body {
-    max-height: 60vh;
-    overflow-y: auto;
-  }
-  </style>
+    #notificationMenu {
+        max-height: 400px;
+        overflow-y: auto;
+        width: 350px;
+        padding: 0;
+    }
 
-  <script>
+    .notification-text {
+        word-wrap: break-word;
+        white-space: normal;
+        line-height: 1.3 !important;
+        margin-bottom: 2px;
+        font-size: 0.9rem;
+    }
+
+    .dropdown-item {
+        padding: 8px 12px !important;
+        line-height: 1.3 !important;
+        border: none !important;
+    }
+
+    .dropdown-item:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    /* Ensure proper z-index to prevent overlapping */
+    .navbar-nav > .nav-item > .dropdown-menu {
+        z-index: 1030;
+    }
+
+    .mark-all-read-btn, .delete-all-btn {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .notification-item.unread {
+        background-color: #f8f9fa;
+        font-weight: 500;
+    }
+
+    .modal-body {
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .notification-text a {
+        color: #007bff !important;
+        text-decoration: underline !important;
+        display: inline !important;
+        font-weight: 500;
+        pointer-events: auto !important; /* Ensure links are clickable */
+        z-index: 1000; /* Ensure links are above other elements */
+        position: relative; /* Ensure proper stacking context */
+    }
+
+    .notification-text a:hover {
+        color: #0056b3 !important;
+        text-decoration: none !important;
+        cursor: pointer !important;
+    }
+    .flex-grow-1 {
+        flex: 1;
+        min-width: 0; /* Prevent flex item from overflowing */
+    }
+
+    .d-flex {
+        align-items: flex-start !important;
+    }
+
+    .d-flex .fas {
+        margin-top: 2px;
+        font-size: 0.8rem;
+    }
+
+    .dropdown-divider {
+        margin: 3px 0 !important;
+    }
+
+    .dropdown-header {
+        padding: 8px 12px;
+        font-weight: 600;
+    }
+
+    /* Remove extra spacing in notification container */
+    #notificationList {
+        padding: 0;
+    }
+
+    /* Fix text overflow */
+    .notification-text {
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
+    /* Compact time display */
+    .text-muted {
+        font-size: 0.75rem;
+        margin-top: 2px;
+        display: block;
+    }
+</style>
+
+<script>
   $(document).ready(function() {
     // Get base URL for AJAX calls
     const baseUrl = window.location.origin + '/NIA-PROJECT/views/';
-    
+    console.log('Base URL:', baseUrl); // Debugging
     // Mark all notifications as read (dropdown)
     $('.mark-all-read-btn').click(function(e) {
       e.preventDefault();
@@ -421,7 +493,7 @@
             $row.find('.badge').removeClass('badge-warning').addClass('badge-success').text('Read');
             
             // Update dropdown if this notification is there
-            $('a[data-notification-id="' + notificationId + '"]').removeClass('font-weight-bold');
+            $('div[data-notification-id="' + notificationId + '"]').removeClass('font-weight-bold');
             
             // Update count
             updateNotificationCount();
@@ -439,34 +511,74 @@
     
     // Function to update notification count
     function updateNotificationCount() {
-      $.ajax({
-        url: baseUrl + 'get_notification_count.php',
-        type: 'GET',
-        success: function(response) {
-          if (response.count > 0) {
-            if ($('#notificationCount').length) {
-              $('#notificationCount').text(response.count);
+        $.ajax({
+          url: baseUrl + 'get_notification_count.php',
+          type: 'GET',
+          success: function(response) {
+            if (response.count > 0) {
+              if ($('#notificationCount').length) {
+                $('#notificationCount').text(response.count);
+              } else {
+                $('#notificationDropdown').append('<span class="badge badge-warning navbar-badge" id="notificationCount">' + response.count + '</span>');
+              }
+              $('#notificationHeader').text(response.count + ' Notifications');
             } else {
-              $('#notificationDropdown').append('<span class="badge badge-warning navbar-badge" id="notificationCount">' + response.count + '</span>');
+              $('#notificationCount').remove();
+              $('#notificationHeader').text('No Notifications');
             }
-            $('#notificationHeader').text(response.count + ' Notifications');
-          } else {
-            $('#notificationCount').remove();
-            $('#notificationHeader').text('No Notifications');
           }
-        }
+        });
+      }
+      
+      // Refresh modal content when opened
+      $('#allNotificationsModal').on('show.bs.modal', function () {
+        $.ajax({
+          url: baseUrl + 'get_all_notifications.php',
+          type: 'GET',
+          success: function(response) {
+            $('#allNotificationsModal tbody').html(response);
+          }
+        });
       });
-    }
-    
-    // Refresh modal content when opened
-    $('#allNotificationsModal').on('show.bs.modal', function () {
-      $.ajax({
-        url: baseUrl + 'get_all_notifications.php',
-        type: 'GET',
-        success: function(response) {
-          $('#allNotificationsModal tbody').html(response);
-        }
-      });
-    });
   });
-  </script>
+
+  // Handle clicks on links within notifications - FIXED
+  $(document).on('click', '.notification-text a', function(e) {
+      console.log('Link clicked:', $(this).attr('href'));
+      e.stopPropagation();
+      
+      // Allow default link behavior (navigation)
+      // Remove e.preventDefault() to allow the link to work
+      const href = $(this).attr('href');
+      
+      if (href && href !== '#') {
+          console.log('Allowing navigation to:', href);
+          // The browser will handle the navigation naturally
+          return true;
+      }
+  });
+
+  // Update the notification click handler - FIXED
+  $(document).on('click', '.dropdown-item[data-notification-id]', function(e) {
+      // If click was on a link or within a link, do nothing
+      if ($(e.target).is('a') || $(e.target).closest('a').length) {
+          return;
+      }
+      
+      // Handle notification click for marking as read
+      const notificationId = $(this).data('notification-id');
+      if (notificationId) {
+          $.ajax({
+              url: baseUrl + 'mark_notification_read.php',
+              type: 'POST',
+              data: {id: notificationId},
+              success: function(response) {
+                  if (response.success) {
+                      $(this).removeClass('font-weight-bold');
+                      updateNotificationCount();
+                  }
+              }.bind(this)
+          });
+      }
+  });
+</script>

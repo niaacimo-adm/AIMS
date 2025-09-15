@@ -1,4 +1,20 @@
 <?php
+
+function isAdmin($user_id) {
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    $query = "SELECT r.name 
+              FROM users u 
+              JOIN user_roles r ON u.role_id = r.id 
+              WHERE u.employee_id = ? AND r.id = 01";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    return $result->num_rows > 0;
+}
 function hasPermission($permissionName) {
     if (!isset($_SESSION['user_id'])) {
         return false;

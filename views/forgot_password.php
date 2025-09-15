@@ -58,19 +58,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update_stmt->bind_param("ssi", $reset_token, $expiry, $user['emp_id']);
                 
                 if ($update_stmt->execute()) {
-                    // Send email with reset link (in a real application)
-                    $reset_link = "http://" . $_SERVER['HTTP_HOST'] . "/NIA-PROJECT/views/reset_password.php?token=" . $reset_token;
+                    // Notify administrators about password reset request
+                    $notified = notifyAdministratorsAboutPasswordReset($user, $id_number, $reset_token, $expiry);
                     
-                    // In a real application, you would send an email here
-                    // For now, we'll just show the link (remove this in production)
-                    $success = "Password reset link has been generated. In a real application, this would be emailed to you.<br>";
-                    $success .= "Reset link: <a href='$reset_link'>$reset_link</a>";
+                    if ($notified) {
+                        $success = "Your password reset request has been sent to administrators for approval. You will receive an notification on your account with reset instructions once approved.";
+                    } else {
+                        $success = "Password reset request submitted. Please contact administrators for further instructions.";
+                    }
                     
-                    // For demo purposes, store the token in session
+                    // For demo purposes, store the token in session (remove in production)
                     $_SESSION['demo_reset_token'] = $reset_token;
-                    
-                    // NEW: Notify administrators about password reset request
-                    notifyAdministratorsAboutPasswordReset($user, $id_number);
                 } else {
                     $error = 'Error generating reset token. Please try again.';
                 }
@@ -84,10 +82,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // NEW: Function to notify administrators about password reset request
-function notifyAdministratorsAboutPasswordReset($user, $id_number) {
+function notifyAdministratorsAboutPasswordReset($user, $id_number, $reset_token, $expiry) {
     $database = new Database();
     $db = $database->getConnection();
     
+    // Store the reset request
+    $insert_query = "INSERT INTO password_reset_requests (emp_id, reset_token, token_expiry) VALUES (?, ?, ?)";
+    $insert_stmt = $db->prepare($insert_query);
+    $insert_stmt->bind_param("iss", $user['emp_id'], $reset_token, $expiry);
+    $insert_stmt->execute();
+    $request_id = $db->insert_id;
+
     // Get all administrators
     $query = "SELECT e.emp_id, e.email, e.first_name, e.last_name 
               FROM employee e 
@@ -124,7 +129,9 @@ function notifyAdministratorsAboutPasswordReset($user, $id_number) {
         
         // Store notification for each admin in database
         foreach ($admins as $admin) {
-            $notification_message = "Password reset requested for {$user['first_name']} {$user['last_name']} (ID: {$id_number})";
+            // In the notifyAdministratorsAboutPasswordReset function
+            // Use button-style link
+$notification_message = "Password reset requested for {$user['first_name']} {$user['last_name']} (ID: {$id_number}). <button onclick=\"window.location.href='admin_approve_reset.php'\" style='color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;'>Click to review</button>";
             $notification_type = "password_reset_request";
             $is_read = 0;
             
@@ -139,7 +146,8 @@ function notifyAdministratorsAboutPasswordReset($user, $id_number) {
         error_log("Notification error: " . $e->getMessage());
     }
     
-    return count($admins) > 0;
+    // FIX: Remove the duplicate return statement and return the request_id
+    return $request_id;
 }
 
 ?>
