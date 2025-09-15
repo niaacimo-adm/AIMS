@@ -47,8 +47,8 @@ if ($employee_id) {
 
     <!-- Sidebar -->
     <div class="sidebar">
-      <!-- Sidebar user panel (optional) -->
-      <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+        <!-- Sidebar user panel (optional) -->
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
           <img src="<?= $employee_picture ?>" class="img-circle elevation-2" alt="User Image">
         </div>
@@ -67,62 +67,37 @@ if ($employee_id) {
         </div>
       </div>
 
-      <!-- Sidebar Menu -->
-      <nav class="mt-2">
-        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-
-          <li class="nav-item">
-            <a href="service.php" class="nav-link">
-              <i class="nav-icon fas fa-home"></i>
-              <p>Dashboard</p>
-            </a>
-          </li>
-
-        <li class="nav-item">
-            <a href="service_calendar.php" class="nav-link">
-                <i class="nav-icon fas fa-calendar"></i>
-                <p>Service Calendar</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="service_vehicle.php" class="nav-link">
-                <i class="nav-icon fas fa-car"></i>
-                <p>Service Information</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="#" class="nav-link">
-                <i class="nav-icon fas fa-calendar-check"></i>
-                <p>Reservation Service</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="service_driver.php" class="nav-link">
-                <i class="nav-icon fas fa-user"></i>
-                <p>Operator/Driver</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="service_request.php" class="nav-link">
-                <i class="nav-icon fas fa-user"></i>
-                <p>Transportation Request</p>
-            </a>
-        </li>
-        <?php if (isset($_SESSION['user_id'])): ?>
-            <li class="nav-item">
-                <a href="profile.php" class="nav-link">
-                    <i class="nav-icon fas fa-user"></i>
-                    <p>My Profile</p>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="../logout.php" class="nav-link">
-                    <i class="nav-icon fas fa-sign-out-alt"></i>
-                    <p>Logout</p>
-                </a>
-            </li>
-        <?php endif; ?>
-        </ul>
-      </nav>
+        <!-- Sidebar Menu -->
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <!-- Add icons to the links using the .nav-icon class with font-awesome or any other icon font library -->
+                <li class="nav-item">
+                    <a href="dashboard.php" class="nav-link active">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="inventory.php" class="nav-link">
+                        <i class="nav-icon fas fa-box"></i>
+                        <p>Inventory</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="reports.php" class="nav-link">
+                        <i class="nav-icon fas fa-chart-bar"></i>
+                        <p>Reports</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="settings.php" class="nav-link">
+                        <i class="nav-icon fas fa-cog"></i>
+                        <p>Settings</p>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <!-- /.sidebar-menu -->
     </div>
+    <!-- /.sidebar -->
 </aside>

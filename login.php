@@ -89,48 +89,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <div class="limiter">
-		<div class="container-login100">
-			<div class="wrap-login100">
-				<div class="login100-pic js-tilt" data-tilt>
-					<img src="dist\img\nialogo.png" alt="IMG">
-          <span class="login100-form-title">
-						Albay-Catanduanes IMO
-					</span>
-				</div>
-				<form action="login.php" method="post">
-           <?php if (!empty($error)): ?>
-            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-          <?php endif; ?>
-            <br>
-					<span class="login100-form-title">
-						User Login
-					</span>
-					<div class="wrap-input100 validate-input">
-						<input class="input100" type="text" name="username" placeholder="Username" value="<?= htmlspecialchars($username) ?>" required>
-						<span class="focus-input100"></span>
-						<span class="symbol-input100">
-							<i class="fa fa-user" aria-hidden="true"></i>
-						</span>
-					</div>
+    <div class="container-login100">
+        <div class="wrap-login100">
+            <div class="login100-pic js-tilt" data-tilt>
+                <img src="dist\img\nialogo.png" alt="IMG">
+        <span class="login100-form-title">
+                    Albay-Catanduanes IMO
+                </span>
+            </div>
+            <form action="login.php" method="post">
+        <?php if (!empty($error)): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
+        <br>
+                <span class="login100-form-title">
+                    User Login
+                </span>
+                <div class="wrap-input100 validate-input">
+                    <input class="input100" type="text" name="username" placeholder="Username" value="<?= htmlspecialchars($username) ?>" required>
+                    <span class="focus-input100"></span>
+                    <span class="symbol-input100">
+                        <i class="fa fa-user" aria-hidden="true"></i>
+                    </span>
+                </div>
 
-					<div class="wrap-input100 validate-input">
-						<input class="input100" type="password" id="password" name="password" placeholder="Password" required>
-						<span class="focus-input100"></span>
-						<span class="symbol-input100">
-							<i class="fa fa-lock" aria-hidden="true"></i>
-						</span>
-					</div>
-					
-					<div class="container-login100-form-btn">
-						<button type="submit" class="login100-form-btn">
-							Login
-						</button>
-					</div>
+                <div class="wrap-input100 validate-input">
+                    <input class="input100" type="password" id="password" name="password" placeholder="Password" required>
+                    <span class="focus-input100"></span>
+                    <span class="symbol-input100">
+                        <i class="fa fa-lock" aria-hidden="true"></i>
+                    </span>
+                </div>
+                
+                <div class="container-login100-form-btn">
+                    <button type="submit" class="login100-form-btn">
+                        Login
+                    </button>
+                </div>
 
-				</form>
-			</div>
-		</div>
-	</div>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- /.login-box -->
 	<!-- <script src="plugins/sweetalert2/sweetalert2.min.js"></script> -->
 <!--===============================================================================================-->	
