@@ -42,7 +42,7 @@ if ($employee_id) {
     <!-- Brand Logo -->
     <a href="dashboard.php" class="brand-link">
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text font-weight-light">NIA-ACIMO (ADM)</span>
+      <span class="brand-text text-white"><b>NIA-ACIMO</b></span>
     </a>
 
     <!-- Sidebar -->
@@ -73,7 +73,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('view_dashboard')): ?>
           <li class="nav-item">
-            <a href="dashboard.php" class="nav-link">
+            <a href="dashboard.php" class="nav-link active">
               <i class="nav-icon fas fa-home"></i>
               <p>Dashboard</p>
             </a>

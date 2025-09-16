@@ -38,27 +38,27 @@ if ($employee_id) {
     }
 }
 ?>
-<aside class="main-sidebar sidebar-dark-primary elevation-4">
+<aside class="main-sidebar sidebar-light-info elevation-4">
     <!-- Brand Logo -->
-    <a href="dashboard.php" class="brand-link">
+    <a href="dashboard.php" class="brand-link bg-info">
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text font-weight-light">NIA-ACIMO (ADM)</span>
+      <span class="brand-text text-white"><b>NIA-ACIMO</b></span>
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar bg-info">
         <!-- Sidebar user panel (optional) -->
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
-          <img src="<?= $employee_picture ?>" class="img-circle elevation-2" alt="User Image">
+          <img src="<?= $employee_picture ?>" class="img-circle elevation-2 bg-white" alt="User Image" style="border: 2px solid #17a2b8;">
         </div>
         <div class="info">
           <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="profile.php" class="d-block"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
+            <a href="profile.php" class="d-block text-white"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
             <?php if (isset($_SESSION['role_name'])): ?>
             <span class="badge <?= 
                 $_SESSION['role_name'] === 'Administrator' ? 'badge-danger' : 
-                ($_SESSION['role_name'] === 'Employee' ? 'badge-warning' : 'badge-primary')
+                ($_SESSION['role_name'] === 'Employee' ? 'badge-warning' : 'badge-secondary')
             ?>">
                 <?= htmlspecialchars($_SESSION['role_name']) ?>
             </span>
@@ -72,32 +72,59 @@ if ($employee_id) {
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class with font-awesome or any other icon font library -->
                 <li class="nav-item">
-                    <a href="dashboard.php" class="nav-link active">
-                        <i class="nav-icon fas fa-tachometer-alt"></i>
-                        <p>Dashboard</p>
+                    <a href="inventory.php" class="nav-link active bg-light">
+                        <i class="nav-icon fas fa-home text-info"></i>
+                        <p class="text-dark">Dashboard</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="inventory.php" class="nav-link">
+                    <a href="inventory.php" class="nav-link text-white">
                         <i class="nav-icon fas fa-box"></i>
                         <p>Inventory</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="reports.php" class="nav-link">
+                    <a href="reports.php" class="nav-link text-white">
                         <i class="nav-icon fas fa-chart-bar"></i>
                         <p>Reports</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="settings.php" class="nav-link">
+                    <a href="settings.php" class="nav-link text-white">
                         <i class="nav-icon fas fa-cog"></i>
                         <p>Settings</p>
                     </a>
                 </li>
+                <?php if (isset($_SESSION['user_id'])): ?>
+            <li class="nav-item">
+                <a href="profile.php" class="nav-link text-white">
+                    <i class="nav-icon fas fa-user"></i>
+                    <p>My Profile</p>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="../logout.php" class="nav-link text-white">
+                    <i class="nav-icon fas fa-sign-out-alt"></i>
+                    <p>Logout</p>
+                </a>
+            </li>
+        <?php endif; ?>
             </ul>
         </nav>
         <!-- /.sidebar-menu -->
     </div>
     <!-- /.sidebar -->
 </aside>
+
+<style>
+.sidebar-light-info {
+    background-color: #17a2b8 !important;
+}
+.nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+.nav-sidebar .nav-item > .nav-link {
+    margin: 0.2rem 0.5rem;
+    border-radius: 5px;
+}
+</style>
