@@ -19,10 +19,13 @@ $db = $database->getConnection();
 // Get search parameters
 $category_filter = $_GET['category'] ?? '';
 
-// Build query
-$query = "SELECT i.*, c.name as category_name 
+$query = "SELECT 
+            i.*, 
+            c.name as category_name,
+            COALESCE(SUM(CASE WHEN sm.movement_type = 'in' THEN sm.quantity ELSE -sm.quantity END), 0) as current_stock
           FROM items i 
           LEFT JOIN categories c ON i.category_id = c.id 
+          LEFT JOIN stock_movements sm ON i.id = sm.item_id
           WHERE 1=1";
 
 $params = [];
@@ -34,7 +37,8 @@ if (!empty($category_filter) && $category_filter != 'all') {
     $types .= 'i';
 }
 
-$query .= " ORDER BY i.name";
+// Group by item to aggregate delivery quantities
+$query .= " GROUP BY i.id ORDER BY i.name";
 
 // Get categories for filter
 $categories = [];
@@ -99,6 +103,9 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
                         <a href="new_stock.php" class="btn btn-success">
                             <i class="fas fa-plus-circle"></i> Add New Item
                         </a>
+                        <a href="delivery_entry.php" class="btn btn-primary">
+                            <i class="fas fa-truck"></i> Delivery Entry
+                        </a>
                     </div>
                 </div>
             </div>
@@ -120,13 +127,18 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-filter"></i> Filter
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table id="activityTable" class="table table-bordered table-striped">
+                            <table id="inventoryTable" class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
                                         <th>Item Name</th>
@@ -195,20 +207,16 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
 
 <script>
     $(document).ready(function() {
-        // Initialize DataTable for activity logs
-        $('#activityTable').DataTable({
+        // Initialize DataTable for inventory
+        $('#inventoryTable').DataTable({
             "responsive": true,
-            "lengthChange": false,
+            "lengthChange": true,
             "autoWidth": false,
-            "order": [[0, "desc"]],
-        }).buttons().container().appendTo('#activityTable_wrapper .col-md-6:eq(0)');
-        
-        // Add purple button color
-        $('.btn-purple').css('background-color', '#6f42c1').css('border-color', '#6f42c1');
-        $('.btn-purple:hover').css('background-color', '#5a359c').css('border-color', '#5a359c');
-        
-        // Text color for card icons
-        $('.text-purple').css('color', '#6f42c1');
+            "order": [[0, "asc"]],
+            "buttons": ["copy", "csv", "excel", "pdf", "print"],
+            "pageLength": 25,
+            "dom": 'Bfrtip'
+        }).buttons().container().appendTo('#inventoryTable_wrapper .col-md-6:eq(0)');
     });
 </script>
 </body>

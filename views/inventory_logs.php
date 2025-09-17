@@ -21,7 +21,7 @@ $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 $action_type = $_GET['action_type'] ?? '';
 
-$query = "SELECT sm.*, i.name as item_name, sm.created_at as action_date 
+$query = "SELECT sm.*, i.name as item_name, sm.created_at as action_date, sm.unit_cost
           FROM stock_movements sm 
           JOIN items i ON sm.item_id = i.id 
           WHERE 1=1";

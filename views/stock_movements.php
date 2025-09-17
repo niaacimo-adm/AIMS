@@ -34,7 +34,7 @@ if ($item_id > 0) {
 // Get stock movements with additional details
 $movements = [];
 if ($item_id > 0) {
-    $query = "SELECT sm.*, i.name as item_name, i.unit_of_measure
+    $query = "SELECT sm.*, i.name as item_name, i.unit_of_measure, sm.unit_cost
               FROM stock_movements sm 
               JOIN items i ON sm.item_id = i.id 
               WHERE sm.item_id = ? 

@@ -27,7 +27,7 @@ $category_result = $db->query($category_query);
 if ($category_result) {
     while ($row = $category_result->fetch_assoc()) {
         $categories[$row['id']] = $row['name'];
-        $categories[$row['id']] = $row['description']; // Added description
+        // $categories[$row['id']] = $row['description']; // Added description
     }
 }
 
@@ -44,8 +44,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = "Item name is required.";
     } else {
         // Insert into database
-        $query = "INSERT INTO items (category_id, name, description, unit_of_measure, current_stock, min_stock_level) 
-                  VALUES (?, ?, ?, ?, 0, 0)";
+        $query = "INSERT INTO items (category_id, name, description, unit_of_measure) 
+                  VALUES (?, ?, ?, ?)";
         $stmt = $db->prepare($query);
         $stmt->bind_param("isss", $category_id, $name, $description, $unit_of_measure);
         

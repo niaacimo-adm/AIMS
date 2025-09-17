@@ -50,7 +50,7 @@ if ($employee_id) {
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
-          <img src="<?= $employee_picture ?>" class="img-circle elevation-2 bg-white" alt="User Image" style="border: 2px solid #ffc107;">
+          <img src="<?= $employee_picture ?>" class="img-circle elevation-2 bg-white" alt="User Image">
         </div>
         <div class="info">
           <?php if (isset($_SESSION['user_id'])): ?>
