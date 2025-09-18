@@ -56,7 +56,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $item) {
     $name = trim($_POST['name']);
     $description = trim($_POST['description']);
     $unit_of_measure = trim($_POST['unit_of_measure']);
-    $min_stock_level = intval($_POST['min_stock_level']);
     $category_id = intval($_POST['category_id']);
     
     // Stock adjustment
@@ -68,8 +67,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $item) {
     // Validate required fields
     if (empty($name)) {
         $error = "Item name is required.";
-    } elseif ($min_stock_level < 0) {
-        $error = "Minimum stock level cannot be negative.";
     } elseif ($adjustment_quantity < 0) {
         $error = "Adjustment quantity cannot be negative.";
     } else {
@@ -79,11 +76,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $item) {
         try {
             // Update item details
             $update_query = "UPDATE items SET category_id = ?, name = ?, description = ?, 
-                           unit_of_measure = ?, min_stock_level = ?, updated_at = CURRENT_TIMESTAMP 
+                           unit_of_measure = ?, updated_at = CURRENT_TIMESTAMP 
                            WHERE id = ?";
             $update_stmt = $db->prepare($update_query);
-            $update_stmt->bind_param("isssii", $category_id, $name, $description, 
-                                   $unit_of_measure, $min_stock_level, $item_id);
+            $update_stmt->bind_param("isssi", $category_id, $name, $description, 
+                                   $unit_of_measure, $item_id);
             $update_stmt->execute();
             $update_stmt->close();
             
@@ -210,10 +207,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $item) {
                                 <!-- Stock Information -->
                                 <div class="stock-info text-center">
                                     <h4>Current Stock: <span class="badge badge-<?= 
-                                        $item['current_stock'] == 0 ? 'danger' : 
-                                        ($item['current_stock'] <= $item['min_stock_level'] ? 'warning' : 'success')
+                                        $item['current_stock'] == 0 ? 'danger' : 'success'
                                     ?>"><?= $item['current_stock'] ?></span></h4>
-                                    <p class="text-muted">Minimum Stock Level: <?= $item['min_stock_level'] ?></p>
                                 </div>
 
                                 <form method="POST" action="">
@@ -247,13 +242,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $item) {
                                                 <label for="unit_of_measure">Unit of Measure</label>
                                                 <input type="text" class="form-control" id="unit_of_measure" 
                                                        name="unit_of_measure" value="<?= htmlspecialchars($item['unit_of_measure']) ?>">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label for="min_stock_level">Minimum Stock Level</label>
-                                                <input type="number" class="form-control" id="min_stock_level" 
-                                                       name="min_stock_level" value="<?= $item['min_stock_level'] ?>" min="0">
                                             </div>
                                         </div>
                                     </div>

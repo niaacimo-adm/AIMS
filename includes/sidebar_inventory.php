@@ -78,7 +78,7 @@ if ($employee_id) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="inventory.php" class="nav-link text-white">
+                    <a href="view_inventory.php" class="nav-link text-white">
                         <i class="nav-icon fas fa-box"></i>
                         <p>Inventory</p>
                     </a>

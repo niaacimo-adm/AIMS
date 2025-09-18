@@ -31,12 +31,20 @@ if ($item_id > 0) {
     $stmt->close();
 }
 
-// Get stock movements with additional details
+// Get stock movements with additional details including RIS information
 $movements = [];
 if ($item_id > 0) {
-    $query = "SELECT sm.*, i.name as item_name, i.unit_of_measure, sm.unit_cost
+    $query = "SELECT sm.*, i.name as item_name, i.unit_of_measure, sm.unit_cost,
+                     COALESCE(r.ris_number, iar.iar_number, sm.reference) as reference_display,
+                     CASE 
+                         WHEN r.ris_number IS NOT NULL THEN CONCAT('RIS: ', r.ris_number)
+                         WHEN iar.iar_number IS NOT NULL THEN CONCAT('IAR: ', iar.iar_number)
+                         ELSE sm.reference
+                     END as display_reference
               FROM stock_movements sm 
               JOIN items i ON sm.item_id = i.id 
+              LEFT JOIN ris_records r ON sm.reference = r.ris_number
+              LEFT JOIN iar_records iar ON sm.reference = iar.po_number
               WHERE sm.item_id = ? 
               ORDER BY sm.created_at DESC";
     $stmt = $db->prepare($query);
@@ -99,6 +107,22 @@ if (!empty($date_from) || !empty($date_to) || !empty($action_type)) {
     <title>Stock Movements - Inventory Management</title>
     <?php include '../includes/header.php'; ?>
     <style>
+        .modal-xl {
+            max-width: 90%;
+        }
+        .item-header {
+            background: linear-gradient(120deg, #17a2b8, #138496);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+        }
+        .item-table th {
+            background: linear-gradient(120deg, #e3f2fd, #bbdefb);
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
         .card {
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
             border: none;
@@ -108,12 +132,6 @@ if (!empty($date_from) || !empty($date_to) || !empty($action_type)) {
             background: linear-gradient(120deg, #17a2b8, #138496);
             color: white;
             border-radius: 10px 10px 0 0;
-        }
-        .item-header {
-            background: linear-gradient(120deg, #f8f9fa, #e9ecef);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
         }
         .badge-in {
             background: linear-gradient(120deg, #28a745, #20c997);
@@ -126,6 +144,14 @@ if (!empty($date_from) || !empty($date_to) || !empty($action_type)) {
         }
         .filter-form .form-control {
             margin-right: 5px;
+        }
+        .info-box {
+            cursor: default;
+            margin-bottom: 15px;
+        }
+        .stock-status {
+            font-size: 1.2rem;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -156,25 +182,71 @@ if (!empty($date_from) || !empty($date_to) || !empty($action_type)) {
             <div class="container-fluid">
                 <?php if ($item): ?>
                 <!-- Item Information -->
-                <div class="item-header">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h4><?= htmlspecialchars($item['name']) ?></h4>
-                            <p class="mb-1"><strong>Description:</strong> <?= htmlspecialchars($item['description'] ?? 'N/A') ?></p>
-                            <p class="mb-1"><strong>Unit:</strong> <?= htmlspecialchars($item['unit_of_measure'] ?? 'N/A') ?></p>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Item: <?= htmlspecialchars($item['name']) ?></h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
                         </div>
-                        <div class="col-md-6 text-right">
-                            <h4>Current Stock: <span class="badge badge-<?= 
-                                $item['current_stock'] == 0 ? 'danger' : 
-                                ($item['current_stock'] <= $item['min_stock_level'] ? 'warning' : 'success')
-                            ?>"><?= $item['current_stock'] ?></span></h4>
-                            <p class="mb-1"><strong>Minimum Level:</strong> <?= $item['min_stock_level'] ?></p>
-                            <a href="edit_item.php?id=<?= $item['id'] ?>" class="btn btn-primary btn-sm">
-                                <i class="fas fa-edit"></i> Edit Item
-                            </a>
-                            <a href="delivery_entry.php" class="btn btn-success btn-sm">
-                                <i class="fas fa-truck"></i> New Delivery
-                            </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Item Name</span>
+                                        <span class="info-box-number"><?= htmlspecialchars($item['name']) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Description</span>
+                                        <span class="info-box-number"><?= htmlspecialchars($item['description'] ?? 'N/A') ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Unit of Measure</span>
+                                        <span class="info-box-number"><?= htmlspecialchars($item['unit_of_measure'] ?? 'N/A') ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Current Stock</span>
+                                        <span class="info-box-number stock-status">
+                                            <span class="badge badge-<?= 
+                                                $item['current_stock'] == 0 ? 'danger' : 'success'
+                                            ?>"><?= $item['current_stock'] ?></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Actions</span>
+                                        <div class="info-box-number">
+                                            <a href="edit_item.php?id=<?= $item['id'] ?>" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-edit"></i> Edit Item
+                                            </a>
+                                            <a href="delivery_entry.php" class="btn btn-success btn-sm">
+                                                <i class="fas fa-truck"></i> New Delivery
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -227,8 +299,18 @@ if (!empty($date_from) || !empty($date_to) || !empty($action_type)) {
                                             <td colspan="7" class="text-center">No stock movements found</td>
                                         </tr>
                                     <?php else: ?>
-                                        <?php foreach ($movements as $movement): 
-                                            $total_cost = $movement['quantity'] * ($movement['unit_cost'] ?? 0);
+                                        <?php 
+                                        $total_in = 0;
+                                        $total_out = 0;
+                                        $total_cost = 0;
+                                        foreach ($movements as $movement): 
+                                            $item_cost = $movement['quantity'] * ($movement['unit_cost'] ?? 0);
+                                            if ($movement['movement_type'] == 'in') {
+                                                $total_in += $movement['quantity'];
+                                                $total_cost += $item_cost;
+                                            } else {
+                                                $total_out += $movement['quantity'];
+                                            }
                                         ?>
                                             <tr>
                                                 <td><?= date('Y-m-d H:i:s', strtotime($movement['created_at'])) ?></td>
@@ -238,14 +320,24 @@ if (!empty($date_from) || !empty($date_to) || !empty($action_type)) {
                                                     </span>
                                                 </td>
                                                 <td><?= $movement['quantity'] ?> <?= htmlspecialchars($movement['unit_of_measure']) ?></td>
-                                                <td><?= isset($movement['unit_cost']) ? number_format($movement['unit_cost'], 2) : 'N/A' ?></td>
-                                                <td><?= isset($movement['unit_cost']) ? number_format($total_cost, 2) : 'N/A' ?></td>
+                                                <td class="text-right"><?= isset($movement['unit_cost']) ? number_format($movement['unit_cost'], 2) : 'N/A' ?></td>
+                                                <td class="text-right"><?= isset($movement['unit_cost']) ? number_format($item_cost, 2) : 'N/A' ?></td>
                                                 <td><?= htmlspecialchars($movement['reference']) ?></td>
                                                 <td><?= htmlspecialchars($movement['notes']) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </tbody>
+                                <?php if (!empty($movements)): ?>
+                                <tfoot>
+                                    <tr class="total-row">
+                                        <td colspan="2" class="text-right"><strong>Totals:</strong></td>
+                                        <td><strong>IN: <?= number_format($total_in) ?> | OUT: <?= number_format($total_out) ?></strong></td>
+                                        <td colspan="2" class="text-right"><strong>Total Cost: ₱<?= number_format($total_cost, 2) ?></strong></td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                                <?php endif; ?>
                             </table>
                         </div>
                     </div>

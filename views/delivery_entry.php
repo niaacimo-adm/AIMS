@@ -50,7 +50,7 @@ $delivery_data = [
 
 // Get items for dropdown
 $items = [];
-$item_query = "SELECT id, name, unit_of_measure FROM items ORDER BY name";
+$item_query = "SELECT id, name, description, unit_of_measure, current_stock FROM items ORDER BY name";
 $item_result = $db->query($item_query);
 if ($item_result) {
     while ($row = $item_result->fetch_assoc()) {
@@ -69,18 +69,18 @@ if ($section_result) {
 }
 
 // Generate next IAR number
-$current_year = date('Y');
-$current_month = date('m');
-$iar_query = "SELECT iar_number FROM iar_records WHERE iar_number LIKE 'IAR-$current_year-$current_month-%' ORDER BY id DESC LIMIT 1";
-$iar_result = $db->query($iar_query);
-$next_iar_number = "IAR-$current_year-$current_month-0001";
+// $current_year = date('Y');
+// $current_month = date('m');
+// $iar_query = "SELECT iar_number FROM iar_records WHERE iar_number LIKE 'IAR-$current_year-$current_month-%' ORDER BY id DESC LIMIT 1";
+// $iar_result = $db->query($iar_query);
+// $next_iar_number = "IAR-$current_year-$current_month-0001";
 
-if ($iar_result && $iar_result->num_rows > 0) {
-    $last_iar = $iar_result->fetch_assoc();
-    $last_number = intval(substr($last_iar['iar_number'], -4));
-    $next_number = str_pad($last_number + 1, 4, '0', STR_PAD_LEFT);
-    $next_iar_number = "IAR-$current_year-$current_month-$next_number";
-}
+// if ($iar_result && $iar_result->num_rows > 0) {
+//     $last_iar = $iar_result->fetch_assoc();
+//     $last_number = intval(substr($last_iar['iar_number'], -4));
+//     $next_number = str_pad($last_number + 1, 4, '0', STR_PAD_LEFT);
+//     $next_iar_number = "IAR-$current_year-$current_month-$next_number";
+// }
 
 // Process form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -164,6 +164,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     // Handle save delivery action
     elseif (isset($_POST['save_delivery'])) {
+        $iar_number = trim($_POST['iar_number']); 
         $po_number = trim($_POST['po_number']); 
         $po_date = trim($_POST['po_date']); 
         $supplier = trim($_POST['supplier']);
@@ -191,7 +192,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $iar_query = "INSERT INTO iar_records (iar_number, po_number, po_date, supplier, requisition_office, invoice_number, invoice_date, dr_number, dr_date, delivery_date, created_by) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $iar_stmt = $db->prepare($iar_query);
-                $iar_stmt->bind_param("ssssssssssi", $next_iar_number, $po_number, $po_date, $supplier, $requisition_office, $invoice_number, $invoice_date, $dr_number, $dr_date, $delivery_date, $_SESSION['user_id']);
+                $iar_stmt->bind_param("ssssssssssi", $iar_number, $po_number, $po_date, $supplier, $requisition_office, $invoice_number, $invoice_date, $dr_number, $dr_date, $delivery_date, $_SESSION['user_id']);
                 $iar_stmt->execute();
                 $iar_id = $db->insert_id;
                 $iar_stmt->close();
@@ -250,7 +251,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $update_iar_stmt->close();
                 
                 $db->commit();
-                $success = "Delivery entry recorded successfully! IAR Number: $next_iar_number";
+                $success = "Delivery entry recorded successfully! IAR Number: $iar_number";
                 
                 // Reset form
                 $delivery_data = [
@@ -275,6 +276,118 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
+// Process RIS form submission
+if (isset($_POST['save_ris'])) {
+    $requisition_office = trim($_POST['ris_requisition_office']);
+    $purpose = trim($_POST['ris_purpose']);
+    $requested_by_id = intval($_POST['ris_requested_by']);
+    $designation = trim($_POST['ris_designation']);
+    $item_ids = $_POST['ris_item_id'] ?? [];
+    $quantities = $_POST['ris_quantity'] ?? [];
+    $iar_id = intval($_POST['ris_iar_id']);
+
+    // Get employee details
+    $employee_query = "SELECT CONCAT(first_name, ' ', last_name) as full_name 
+                      FROM employee WHERE emp_id = ?";
+    $employee_stmt = $db->prepare($employee_query);
+    $employee_stmt->bind_param("i", $requested_by_id);
+    $employee_stmt->execute();
+    $employee_result = $employee_stmt->get_result();
+    $employee = $employee_result->fetch_assoc();
+    $employee_stmt->close();
+    
+    $requested_by = $employee['full_name'] ?? '';
+
+    // Validate required fields
+    if (empty($requisition_office) || empty($purpose) || empty($requested_by)) {
+        $error = "Requisition Office, Purpose, and Requested By are required.";
+    } elseif (empty($item_ids) || empty($quantities)) {
+        $error = "At least one item is required.";
+    } else {
+        // Begin transaction
+        $db->begin_transaction();
+        
+        try {
+            // Generate RIS number (YYYY-#### format)
+            $current_year = date('Y');
+            $ris_query = "SELECT ris_number FROM ris_records WHERE ris_number LIKE '$current_year-%' ORDER BY id DESC LIMIT 1";
+            $ris_result = $db->query($ris_query);
+            $next_ris_number = "$current_year-0001";
+
+            if ($ris_result && $ris_result->num_rows > 0) {
+                $last_ris = $ris_result->fetch_assoc();
+                $last_number = intval(substr($last_ris['ris_number'], -4));
+                $next_number = str_pad($last_number + 1, 4, '0', STR_PAD_LEFT);
+                $next_ris_number = "$current_year-$next_number";
+            }
+
+            // Create RIS record
+            $ris_query = "INSERT INTO ris_records (ris_number, iar_id, requisition_office, purpose, requested_by, requested_by_id, designation, created_by) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $ris_stmt = $db->prepare($ris_query);
+            $ris_stmt->bind_param("sisssisi", $next_ris_number, $iar_id, $requisition_office, $purpose, $requested_by, $requested_by_id, $designation, $_SESSION['user_id']);
+            $ris_stmt->execute();
+            $ris_id = $db->insert_id;
+            $ris_stmt->close();
+            
+            // Process each item
+            foreach ($item_ids as $index => $item_id) {
+                $quantity = intval($quantities[$index]);
+                
+                if ($quantity > 0 && $item_id > 0) {
+                    // Check if sufficient stock is available
+                    $stock_query = "SELECT current_stock, unit_of_measure FROM items WHERE id = ?";
+                    $stock_stmt = $db->prepare($stock_query);
+                    $stock_stmt->bind_param("i", $item_id);
+                    $stock_stmt->execute();
+                    $stock_result = $stock_stmt->get_result();
+                    $item_data = $stock_result->fetch_assoc();
+                    $current_stock = $item_data['current_stock'];
+                    $unit_of_measure = $item_data['unit_of_measure'];
+                    $stock_stmt->close();
+                    
+                    if ($current_stock >= $quantity) {
+                        // Record stock movement with reference to RIS
+                        $movement_query = "INSERT INTO stock_movements (item_id, movement_type, quantity, reference, notes) 
+                                          VALUES (?, 'out', ?, ?, ?)";
+                        $movement_stmt = $db->prepare($movement_query);
+                        $notes = "RIS: $next_ris_number - $purpose";
+                        $movement_stmt->bind_param("iiss", $item_id, $quantity, $next_ris_number, $notes);
+                        $movement_stmt->execute();
+                        $movement_id = $db->insert_id;
+                        $movement_stmt->close();
+                        
+                        // Add to ris_items
+                        $item_info = $items[$item_id];
+                        $ris_item_query = "INSERT INTO ris_items (ris_id, item_id, description, unit, quantity, movement_id) 
+                                        VALUES (?, ?, ?, ?, ?, ?)";
+                        $ris_item_stmt = $db->prepare($ris_item_query);
+                        $ris_item_stmt->bind_param("iissii", $ris_id, $item_id, $item_info['name'], $unit_of_measure, $quantity, $movement_id);
+                        $ris_item_stmt->execute();
+                        $ris_item_stmt->close();
+                        
+                        // Update current stock
+                        $update_stock = "UPDATE items SET current_stock = current_stock - ? WHERE id = ?";
+                        $update_stmt = $db->prepare($update_stock);
+                        $update_stmt->bind_param("ii", $quantity, $item_id);
+                        $update_stmt->execute();
+                        $update_stmt->close();
+                    } else {
+                        throw new Exception("Insufficient stock for item: " . $items[$item_id]['name'] . ". Available: $current_stock, Requested: $quantity");
+                    }
+                }
+            }
+            
+            $db->commit();
+            $success = "RIS created successfully! RIS Number: $next_ris_number";
+            
+        } catch (Exception $e) {
+            $db->rollback();
+            $error = "Error creating RIS: " . $e->getMessage();
+        }
+    }
+}
+
 function generateIARExcel($db, $iar_id) {
     try {
         // Fetch IAR details with related information
@@ -293,7 +406,7 @@ function generateIARExcel($db, $iar_id) {
         }
         
         // Fetch IAR items
-         $items_query = "SELECT ii.*, di.item_id, i.name as item_name, i.description as item_description, i.unit_of_measure as unit 
+        $items_query = "SELECT ii.*, di.item_id, i.name as item_name, i.description as item_description, i.unit_of_measure as unit 
                FROM iar_items ii
                LEFT JOIN delivery_items di ON ii.delivery_item_id = di.id
                LEFT JOIN items i ON di.item_id = i.id
@@ -303,7 +416,7 @@ function generateIARExcel($db, $iar_id) {
         $items_stmt->execute();
         $items = $items_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         
-        // Load the IAR template (you'll need to create this template file)
+        // Load the IAR template
         $template_path = "../public/templates/IAR-2025.xlsx";
         if (file_exists($template_path)) {
             $spreadsheet = PhpOffice\PhpSpreadsheet\IOFactory::load($template_path);
@@ -336,18 +449,18 @@ function generateIARExcel($db, $iar_id) {
         
         $sheet = $spreadsheet->getActiveSheet();
         
-        // Fill in the header information
+        // Fill in the header information with null checks
         $sheet->setCellValue('C5', $iar['supplier'] ?? '');
         $sheet->setCellValue('F7', $iar['requisition_office'] ?? '');
         $sheet->setCellValue('C6', $iar['po_number'] ?? '');
-        $sheet->setCellValue('F6', $iar['po_date'] ? date('m/d/Y', strtotime($iar['po_date'])) : '');
+        $sheet->setCellValue('F6', !empty($iar['po_date']) ? date('m/d/Y', strtotime($iar['po_date'])) : '');
         $sheet->setCellValue('M5', $iar['iar_number'] ?? '');
-        $sheet->setCellValue('M6', $iar['delivery_date'] ? date('m/d/Y', strtotime($iar['delivery_date'])) : '');
-        $sheet->setCellValue('M8', $iar['invoice_date'] ? date('m/d/Y', strtotime($iar['invoice_date'])) : '');
+        $sheet->setCellValue('M6', !empty($iar['delivery_date']) ? date('m/d/Y', strtotime($iar['delivery_date'])) : '');
+        $sheet->setCellValue('M8', !empty($iar['invoice_date']) ? date('m/d/Y', strtotime($iar['invoice_date'])) : '');
         $sheet->setCellValue('M7', $iar['invoice_number'] ?? '');
         $sheet->setCellValue('M9', $iar['dr_number'] ?? '');
 
-        // FIXED: Proper DR Date handling - check if date is valid before formatting
+        // DR Date handling
         $dr_date = '';
         if (!empty($iar['dr_date']) && $iar['dr_date'] != '0000-00-00') {
             $dr_date = date('m/d/Y', strtotime($iar['dr_date']));
@@ -435,6 +548,27 @@ if ($records_result) {
         $iar_records[] = $row;
     }
 }
+
+// Get employees records for dropdown
+$employees = [];
+$employee_query = "SELECT e.emp_id, CONCAT(e.first_name, ' ', e.last_name) as full_name, 
+                  p.position_name as designation, e.section_id 
+                  FROM employee e
+                  LEFT JOIN position p ON e.position_id = p.position_id
+                  WHERE e.employment_status_id = 1 
+                  ORDER BY e.first_name, e.last_name";
+$employee_result = $db->query($employee_query);
+if ($employee_result) {
+    while ($employee = $employee_result->fetch_assoc()) {
+        $section_name = isset($sections[$employee['section_id']]) ? $sections[$employee['section_id']] : 'N/A';
+        $employees[] = [
+            'emp_id' => $employee['emp_id'],
+            'full_name' => $employee['full_name'],
+            'designation' => $employee['designation'] ?? '',
+            'section_name' => $section_name
+        ];
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -477,6 +611,12 @@ if ($records_result) {
             padding: 15px;
             margin-bottom: 20px;
         }
+        .ris-info {
+            background: linear-gradient(120deg, #d2fbd5ff, #90e49eff);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
         .status-badge {
             font-size: 0.9rem;
             padding: 8px 15px;
@@ -493,6 +633,19 @@ if ($records_result) {
         .btn-excel {
             background: linear-gradient(120deg, #28a745, #20c997);
             color: white;
+        }
+        .select2-container--default .select2-selection--multiple {
+        min-height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #007bff;
+            border-color: #006fe6;
+            color: white;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+            color: rgba(255,255,255,0.7);
         }
     </style>
 </head>
@@ -535,6 +688,9 @@ if ($records_result) {
                             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#deliveryModal">
                                 <i class="fas fa-plus"></i> New Delivery Entry
                             </button>
+                            <a href="ris_records.php" class="btn btn-success">
+                                <i class="fas fa-external-link-alt"></i> View RIS Records
+                            </a>
                         </div>
                     </div>
                     <div class="card-body">
@@ -570,8 +726,12 @@ if ($records_result) {
                                             <a href="delivery_view.php?id=<?= $record['id'] ?>" class="btn btn-info btn-sm" title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <button class="btn btn-secondary btn-sm print-iar" data-id="<?= $record['id'] ?>" title="Print IAR">
+                                            <button class="btn btn-secondary btn-sm print-iar" data-id="<?= $record['id'] ?>" title="Generate IAR">
                                                 <i class="fas fa-print"></i>
+                                            </button>
+                                            <!-- Add this Create RIS button -->
+                                            <button class="btn btn-success btn-sm create-ris" data-id="<?= $record['id'] ?>" title="Create RIS">
+                                                <i class="fas fa-file-export"></i> RIS
                                             </button>
                                             <form method="POST" action="" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this IAR record? This action cannot be undone.');">
                                                 <input type="hidden" name="iar_id" value="<?= $record['id'] ?>">
@@ -602,6 +762,7 @@ if ($records_result) {
                     </button>
                 </div>
                 <form method="POST" action="" id="deliveryForm">
+                    <input type="hidden" name="iar_number" id="hidden_iar_number" value="">
                     <div class="modal-body">
                         <!-- IAR Information Section -->
                         <div class="iar-info mb-4">
@@ -610,7 +771,7 @@ if ($records_result) {
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="iar_number">IAR Number</label>
-                                        <input type="text" class="form-control" id="iar_number" value="<?= $next_iar_number ?>" readonly>
+                                        <input type="text" class="form-control" id="iar_number" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -651,35 +812,39 @@ if ($records_result) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Delivery Information Section -->
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="po_number">PO Number *</label>
-                                    <input type="text" class="form-control" id="po_number" name="po_number" 
-                                           value="<?= htmlspecialchars($delivery_data['po_number']) ?>" required>
+                        
+                            <!-- In the deliveryModal form -->
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="po_number">PO Number *</label>
+                                        <input type="text" class="form-control" id="po_number" name="po_number" 
+                                            value="<?= htmlspecialchars($delivery_data['po_number']) ?>" 
+                                            pattern="PO-\d{4}-\d{2}-\d{4}"
+                                            title="Format: PO-YYYY-MM-#### (e.g., PO-2025-03-0045)"
+                                            required>
+                                        <small class="form-text text-muted">Format: PO-YYYY-MM-#### (e.g., PO-2025-03-0045)</small>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="po_date">PO Date *</label>
-                                    <input type="date" class="form-control" id="po_date" name="po_date">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="po_date">PO Date *</label>
+                                        <input type="date" class="form-control" id="po_date" name="po_date" value="<?= htmlspecialchars($delivery_data['po_date']) ?>">
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="supplier">Supplier *</label>
-                                    <input type="text" class="form-control" id="supplier" name="supplier" 
-                                           value="<?= htmlspecialchars($delivery_data['supplier']) ?>" required>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="supplier">Supplier *</label>
+                                        <input type="text" class="form-control" id="supplier" name="supplier" 
+                                            value="<?= htmlspecialchars($delivery_data['supplier']) ?>" required>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="delivery_date">Delivery Date *</label>
-                                    <input type="date" class="form-control" id="delivery_date" name="delivery_date" 
-                                           value="<?= htmlspecialchars($delivery_data['delivery_date']) ?>" required>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="delivery_date">Delivery Date *</label>
+                                        <input type="date" class="form-control" id="delivery_date" name="delivery_date" 
+                                            value="<?= htmlspecialchars($delivery_data['delivery_date']) ?>" required>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -691,10 +856,10 @@ if ($records_result) {
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label>Item *</label>
-                                            <select class="form-control" name="item_id[]" required>
+                                            <select class="form-control select22" multiple="multiple" name="item_id[]" required>
                                                 <option value="">-- Select Item --</option>
                                                 <?php foreach ($items as $id => $item): ?>
-                                                    <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) ?></option>
+                                                    <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) . ' ,' .htmlspecialchars($item['description']) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
@@ -745,19 +910,171 @@ if ($records_result) {
             </div>
         </div>
     </div>
+        <!-- RIS Entry Modal -->
+    <div class="modal fade" id="risModal" tabindex="-1" role="dialog" aria-labelledby="risModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success">
+                    <h5 class="modal-title" id="risModalLabel">Create Requisition and Issue Slip (RIS)</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="" id="risForm">
+                    <input type="hidden" name="ris_iar_id" id="ris_iar_id" value="">
+                    <div class="modal-body">
+                        <div class="ris-info mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="ris_requisition_office">Requisition Office/Dept *</label>
+                                        <input type="text" class="form-control" id="ris_requisition_office" name="ris_requisition_office" required readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="ris_purpose">Purpose *</label>
+                                        <input type="text" class="form-control" id="ris_purpose" name="ris_purpose" required>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="ris_requested_by">Requested By *</label>
+                                        <select class="form-control select22" multiple="multiple" id="ris_requested_by" name="ris_requested_by" required>
+                                            <option value="">-- Select Employee --</option>
+                                            <?php foreach ($employees as $employee): ?>
+                                                <option value="<?= $employee['emp_id'] ?>" 
+                                                        data-designation="<?= htmlspecialchars($employee['designation']) ?>" 
+                                                        data-section="<?= htmlspecialchars($employee['section_name']) ?>">
+                                                    <?= htmlspecialchars($employee['full_name'] . ' (' . $employee['section_name'] . ')') ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="ris_designation">Designation</label>
+                                        <input type="text" class="form-control" id="ris_designation" name="ris_designation" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="ris_date">Date</label>
+                                        <input type="date" class="form-control" id="ris_date" name="ris_date" value="<?= date('Y-m-d') ?>" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>                            
+                        <h4 class="mt-4 mb-3">Items to Issue</h4>
+                        <div id="risItems">
+                            <div class="ris-item">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Item *</label>
+                                            <select class="form-control ris-item-select select22" multiple="multiple" name="ris_item_id[]" required>
+                                                <option value="">-- Select Item --</option>
+                                                <!-- Items will be populated dynamically via JavaScript -->
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Available Stock</label>
+                                            <input type="text" class="form-control ris-available-stock" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Quantity *</label>
+                                            <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Unit</label>
+                                            <input type="text" class="form-control ris-unit" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Actions</label>
+                                            <button type="button" class="form-control btn btn-sm btn-danger ris-remove-item">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
+                        <div class="form-group">
+                            <button type="button" id="addRisItem" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Add Another Item
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="save_ris" class="btn btn-success">
+                            <i class="fas fa-save"></i> Create RIS
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <?php include '../includes/mainfooter.php'; ?>
 </div>
 <?php include '../includes/footer.php'; ?>
 <script>
     $(document).ready(function() {
+        // Add this script to update IAR number when PO number changes
+        $('#po_number').on('input', function() {
+            var poNumber = $(this).val();
+            if (poNumber.startsWith('PO-')) {
+                var iarNumber = poNumber.replace('PO-', 'IAR-');
+                $('#iar_number').val(iarNumber);
+                $('#hidden_iar_number').val(iarNumber); // Add this line
+            } else {
+                $('#iar_number').val('');
+                $('#hidden_iar_number').val(''); // Add this line
+            }
+        });
+
+        // Validate PO number format on form submission
+        $('#deliveryForm').on('submit', function() {
+            var poNumber = $('#po_number').val();
+            var poPattern = /^PO-\d{4}-\d{2}-\d{4}$/;
+            
+            if (!poPattern.test(poNumber)) {
+                alert('PO Number must be in the format PO-YYYY-MM-#### (e.g., PO-2025-03-0045)');
+                return false;
+            }
+            return true;
+        });
+        $('.select22').select2({
+            placeholder: "-- Please Select --",
+            allowClear: true,
+            maximumSelectionLength: 1
+        });
         // Initialize DataTable with export buttons
         $('#deliveryTable').DataTable({
             "responsive": true,
             "autoWidth": false,
             "order": [[8, 'desc']]
         });
-        
+
+        $('#risTable').DataTable({
+            "responsive": true,
+            "autoWidth": false,
+            "order": [[6, 'desc']]
+        });
+
         let itemCount = 1;
         
         // Add new item row
@@ -769,10 +1086,10 @@ if ($records_result) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control" name="item_id[]" required>
+                                <select class="form-control select22" multiple="multiple" name="item_id[]" required>
                                     <option value="">-- Select Item --</option>
                                     <?php foreach ($items as $id => $item): ?>
-                                        <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) ?></option>
+                                        <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) .','. htmlspecialchars($item['description'])?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -808,6 +1125,11 @@ if ($records_result) {
             `;
             $('#deliveryItems').append(newItem);
             attachCalculationEvents();
+            $('.select22').select2({
+            placeholder: "-- Please Select --",
+            allowClear: true,
+            maximumSelectionLength: 1
+        });
         });
         
         // Attach calculation events to existing elements
@@ -838,7 +1160,7 @@ if ($records_result) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control" name="item_id[]" required>
+                                <select class="form-control select22" multiple="multiple" name="item_id[]" required>
                                     <option value="">-- Select Item --</option>
                                     <?php foreach ($items as $id => $item): ?>
                                         <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) ?></option>
@@ -876,6 +1198,11 @@ if ($records_result) {
                 </div>
             `);
             attachCalculationEvents();
+            $('.select22').select2({
+                placeholder: "-- Please Select --",
+                allowClear: true,
+                maximumSelectionLength: 1
+            });
         });
 
        // Handle IAR print button click
@@ -908,6 +1235,39 @@ if ($records_result) {
             });
         });
     });
+            
+    // Add this function to fetch IAR items
+    function fetchIarItems(iarId) {
+        $.ajax({
+            url: 'fetch_iar_items.php', // Create this file
+            method: 'POST',
+            data: { iar_id: iarId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Clear existing options
+                    $('.ris-item-select').empty().append('<option value="">-- Select Item --</option>');
+                    
+                    // Add items from the IAR
+                    $.each(response.items, function(index, item) {
+                        $('.ris-item-select').append(
+                            $('<option>', {
+                                value: item.item_id,
+                                text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
+                                'data-stock': item.quantity, // Use delivered quantity as available stock
+                                'data-unit': item.unit_of_measure
+                            })
+                        );
+                    });
+                } else {
+                    alert('Error fetching IAR items: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Error fetching IAR items');
+            }
+        });
+    }
     
     // Move removeItem function outside the document ready scope
     function removeItem(button) {
@@ -917,6 +1277,241 @@ if ($records_result) {
             alert('You must have at least one item.');
         }
     }
+     // RIS Item functionality
+        let risItemCount = 1;
+        
+        // Add new RIS item row
+        $('#addRisItem').click(function() {
+            risItemCount++;
+            const newItem = `
+                <div class="ris-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Item *</label>
+                                <select class="form-control ris-item-select select22" multiple="multiple" name="ris_item_id[]" required>
+                                    <option value="">-- Select Item --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Available Stock</label>
+                                <input type="text" class="form-control ris-available-stock" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Quantity *</label>
+                                <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Unit</label>
+                                <input type="text" class="form-control ris-unit" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Actions</label>
+                                <button type="button" class="form-control btn btn-sm btn-danger ris-remove-item">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#risItems').append(newItem);
+            attachRisItemEvents();
+            function fetchIarItems(iarId) {
+                $.ajax({
+                    url: 'fetch_iar_items.php', // Create this file
+                    method: 'POST',
+                    data: { iar_id: iarId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            // Clear existing options
+                            $('.ris-item-select').empty().append('<option value="">-- Select Item --</option>');
+                            
+                            // Add items from the IAR
+                            $.each(response.items, function(index, item) {
+                                $('.ris-item-select').append(
+                                    $('<option>', {
+                                        value: item.item_id,
+                                        text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
+                                        'data-stock': item.quantity, // Use delivered quantity as available stock
+                                        'data-unit': item.unit_of_measure
+                                    })
+                                );
+                            });
+                        } else {
+                            alert('Error fetching IAR items: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Error fetching IAR items');
+                    }
+                });
+            }
+            $(document).on('click', '.create-ris', function() {
+                const iarId = $(this).data('id');
+                $('#ris_iar_id').val(iarId);
+                
+                // Fetch and populate IAR items
+                fetchIarItems(iarId);
+                
+                $('#risModal').modal('show');
+            });
+
+            $('.select22').select2({
+                placeholder: "-- Please Select --",
+                allowClear: true,
+                maximumSelectionLength: 1
+            });
+        });
+        
+        // In the attachRisItemEvents() function, replace the current implementation:
+        function attachRisItemEvents() {
+            $('.ris-item-select').off('change').on('change', function() {
+                const selectedOption = $(this).find('option:selected');
+                const stock = selectedOption.data('stock') || 0;
+                const unit = selectedOption.data('unit') || '';
+                
+                $(this).closest('.row').find('.ris-available-stock').val(stock);
+                $(this).closest('.row').find('.ris-unit').val(unit);
+            });
+            
+            $('.ris-remove-item').off('click').on('click', function() {
+                if ($('.ris-item').length > 1) {
+                    $(this).closest('.ris-item').remove();
+                } else {
+                    alert('You must have at least one item.');
+                }
+            });
+            
+            // Trigger change event on existing selects to populate initial values
+            $('.ris-item-select').trigger('change');
+        }
+        
+        // Initialize RIS item events
+        attachRisItemEvents();
+
+
+        // Update the RIS modal opening event
+        $(document).on('click', '.create-ris', function() {
+            const iarId = $(this).data('id');
+            $('#ris_iar_id').val(iarId);
+            
+            // Fetch and populate IAR items
+            fetchIarItems(iarId);
+            
+            $('#risModal').modal('show');
+        });
+
+        // Handle employee selection change
+        $('#ris_requested_by').change(function() {
+            var selectedOption = $(this).find('option:selected');
+            var designation = selectedOption.data('designation') || '';
+            var section = selectedOption.data('section') || '';
+            
+            $('#ris_designation').val(designation);
+            $('#ris_requisition_office').val(section);
+        });
+
+        // Reset RIS form when modal is closed
+        $('#risModal').on('hidden.bs.modal', function() {
+            $('#risForm')[0].reset();
+            $('#risItems').html(`
+                <div class="ris-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Item *</label>
+                                <select class="form-control ris-item-select select22" multiple="multiple" name="ris_item_id[]" required>
+                                   <option value="">-- Select Item --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Available Stock</label>
+                                <input type="text" class="form-control ris-available-stock" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Quantity *</label>
+                                <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Unit</label>
+                                <input type="text" class="form-control ris-unit" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Actions</label>
+                                <button type="button" class="btn btn-sm btn-danger mt-1 ris-remove-item">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+            attachRisItemEvents();
+            function fetchIarItems(iarId) {
+                $.ajax({
+                    url: 'fetch_iar_items.php', // Create this file
+                    method: 'POST',
+                    data: { iar_id: iarId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            // Clear existing options
+                            $('.ris-item-select').empty().append('<option value="">-- Select Item --</option>');
+                            
+                            // Add items from the IAR
+                            $.each(response.items, function(index, item) {
+                                $('.ris-item-select').append(
+                                    $('<option>', {
+                                        value: item.item_id,
+                                        text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
+                                        'data-stock': item.quantity, // Use delivered quantity as available stock
+                                        'data-unit': item.unit_of_measure
+                                    })
+                                );
+                            });
+                        } else {
+                            alert('Error fetching IAR items: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Error fetching IAR items');
+                    }
+                });
+            }
+            $(document).on('click', '.create-ris', function() {
+                const iarId = $(this).data('id');
+                $('#ris_iar_id').val(iarId);
+                
+                // Fetch and populate IAR items
+                fetchIarItems(iarId);
+                
+                $('#risModal').modal('show');
+            });
+
+            $('.select22').select2({
+                placeholder: "-- Please Select --",
+                allowClear: true,
+                maximumSelectionLength: 1
+            });
+        });
 </script>
 </body>
 </html>

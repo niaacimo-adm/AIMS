@@ -146,7 +146,6 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
                                         <th>Description</th>
                                         <th>Unit</th>
                                         <th>Current Stock</th>
-                                        <th>Min Level</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -161,9 +160,7 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
                                             $stock_class = '';
                                             if ($item['current_stock'] == 0) {
                                                 $stock_class = 'stock-very-low';
-                                            } elseif ($item['current_stock'] <= $item['min_stock_level']) {
-                                                $stock_class = 'stock-low';
-                                            }
+                                            } 
                                         ?>
                                             <tr class="<?= $stock_class ?>">
                                                 <td><?= htmlspecialchars($item['name']) ?></td>
@@ -171,12 +168,9 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
                                                 <td><?= htmlspecialchars($item['description'] ?? '') ?></td>
                                                 <td><?= htmlspecialchars($item['unit_of_measure'] ?? '') ?></td>
                                                 <td><?= $item['current_stock'] ?></td>
-                                                <td><?= $item['min_stock_level'] ?></td>
                                                 <td>
                                                     <?php if ($item['current_stock'] == 0): ?>
                                                         <span class="badge badge-danger">Out of Stock</span>
-                                                    <?php elseif ($item['current_stock'] <= $item['min_stock_level']): ?>
-                                                        <span class="badge badge-warning">Low Stock</span>
                                                     <?php else: ?>
                                                         <span class="badge badge-success">In Stock</span>
                                                     <?php endif; ?>

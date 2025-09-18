@@ -81,6 +81,11 @@ if (!$iar) {
             font-weight: bold;
             background-color: #f8f9fa;
         }
+        .card-header {
+            background: linear-gradient(120deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -213,7 +218,7 @@ if (!$iar) {
                                         <p><strong>Invoice No:</strong> <?= htmlspecialchars($iar['invoice_number'] ?? 'N/A') ?></p>
                                         <p><strong>Invoice Date:</strong> <?= $iar['invoice_date'] ? date('M j, Y', strtotime($iar['invoice_date'])) : 'N/A' ?></p>
                                         <p><strong>DR No:</strong> <?= htmlspecialchars($iar['dr_number'] ?? 'N/A') ?></p>
-                                        <p><strong>DR Date:</strong> <?= $iar['dr_date'] ? date('M j, Y', strtotime($iar['dr_date'])) : 'N/A' ?></p>
+                                        <p><strong>DR Date:</strong> <?= $iar['dr_date'] ? date('M j, Y', strtotime($iar['dr_date'])) : ' ' ?></p>
                                     </div>
                                 </div>
                             </div>
