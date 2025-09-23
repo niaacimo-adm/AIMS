@@ -393,8 +393,8 @@ $logs = $result->fetch_all(MYSQLI_ASSOC);
                                                     <i class="fas fa-exclamation-triangle fa-3x"></i>
                                                 </div>
                                                 <h5 class="card-title">RSMI</h5>
-                                                <p class="card-text">RSMI management section</p>
-                                                <a href="#" class="btn btn-danger btn-block">RSMI Tools</a>
+                                                <p class="card-text">REPORT OF SUPPLIES AND MATERIALS ISSUED</p>
+                                                <a href="#" class="btn btn-danger btn-block">RSMI Reports</a>
                                             </div>
                                         </div>
                                     </div>
@@ -405,8 +405,8 @@ $logs = $result->fetch_all(MYSQLI_ASSOC);
                                                     <i class="fas fa-file-alt fa-3x"></i>
                                                 </div>
                                                 <h5 class="card-title">RIS</h5>
-                                                <p class="card-text">RIS management section</p>
-                                                <a href="#" class="btn btn-warning btn-block">RIS Tools</a>
+                                                <p class="card-text">REQUISITION AND ISSUE SLIP</p>
+                                                <a href="ris_records.php" class="btn btn-warning btn-block">RIS Reports</a>
                                             </div>
                                         </div>
                                     </div>

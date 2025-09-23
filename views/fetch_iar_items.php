@@ -21,11 +21,11 @@ if (isset($_POST['iar_id'])) {
     
     // Query to get items from the specific IAR
     $query = "SELECT i.id as item_id, i.name, i.description, i.unit_of_measure, 
-                     ii.quantity, ii.unit_price, ii.total_price
-              FROM iar_items ii
-              JOIN delivery_items di ON ii.delivery_item_id = di.id
-              JOIN items i ON di.item_id = i.id
-              WHERE ii.iar_id = ?";
+                 i.current_stock as quantity, ii.unit_price, ii.total_price
+          FROM iar_items ii
+          JOIN delivery_items di ON ii.delivery_item_id = di.id
+          JOIN items i ON di.item_id = i.id
+          WHERE ii.iar_id = ?";
     
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $iar_id);

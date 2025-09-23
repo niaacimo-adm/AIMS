@@ -1236,29 +1236,18 @@ if ($employee_result) {
         });
     });
             
+    let iarItems = [];
     // Add this function to fetch IAR items
     function fetchIarItems(iarId) {
         $.ajax({
-            url: 'fetch_iar_items.php', // Create this file
+            url: 'fetch_iar_items.php',
             method: 'POST',
             data: { iar_id: iarId },
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    // Clear existing options
-                    $('.ris-item-select').empty().append('<option value="">-- Select Item --</option>');
-                    
-                    // Add items from the IAR
-                    $.each(response.items, function(index, item) {
-                        $('.ris-item-select').append(
-                            $('<option>', {
-                                value: item.item_id,
-                                text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
-                                'data-stock': item.quantity, // Use delivered quantity as available stock
-                                'data-unit': item.unit_of_measure
-                            })
-                        );
-                    });
+                    iarItems = response.items; // Store items globally
+                    populateAllRisItemSelects(); // Populate all existing selects
                 } else {
                     alert('Error fetching IAR items: ' + response.message);
                 }
@@ -1268,7 +1257,38 @@ if ($employee_result) {
             }
         });
     }
-    
+
+    function populateAllRisItemSelects() {
+        $('.ris-item-select').each(function() {
+            populateRisItemSelect($(this));
+        });
+    }
+
+    // Populate a single RIS item select
+    function populateRisItemSelect($select) {
+        // Clear existing options except the first one
+        $select.find('option:not(:first)').remove();
+        
+        // Add items from the global array
+        $.each(iarItems, function(index, item) {
+            $select.append(
+                $('<option>', {
+                    value: item.item_id,
+                    text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
+                    'data-stock': item.quantity,
+                    'data-unit': item.unit_of_measure
+                })
+            );
+        });
+        
+        // Reinitialize Select2
+        $select.select2({
+            placeholder: "-- Please Select --",
+            allowClear: true,
+            maximumSelectionLength: 1
+        });
+    }
+
     // Move removeItem function outside the document ready scope
     function removeItem(button) {
         if ($('.delivery-item').length > 1) {
@@ -1277,7 +1297,7 @@ if ($employee_result) {
             alert('You must have at least one item.');
         }
     }
-     // RIS Item functionality
+        // RIS Item functionality
         let risItemCount = 1;
         
         // Add new RIS item row
@@ -1289,7 +1309,7 @@ if ($employee_result) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control ris-item-select select22" multiple="multiple" name="ris_item_id[]" required>
+                                <select class="form-control ris-item-select select21" multiple="multiple" name="ris_item_id[]" required>
                                     <option value="">-- Select Item --</option>
                                 </select>
                             </div>
@@ -1324,57 +1344,24 @@ if ($employee_result) {
                 </div>
             `;
             $('#risItems').append(newItem);
+            
+            // Populate the new select with existing items
+            const $newSelect = $('#risItems .ris-item-select').last();
+            populateRisItemSelect($newSelect);
+            
             attachRisItemEvents();
-            function fetchIarItems(iarId) {
-                $.ajax({
-                    url: 'fetch_iar_items.php', // Create this file
-                    method: 'POST',
-                    data: { iar_id: iarId },
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            // Clear existing options
-                            $('.ris-item-select').empty().append('<option value="">-- Select Item --</option>');
-                            
-                            // Add items from the IAR
-                            $.each(response.items, function(index, item) {
-                                $('.ris-item-select').append(
-                                    $('<option>', {
-                                        value: item.item_id,
-                                        text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
-                                        'data-stock': item.quantity, // Use delivered quantity as available stock
-                                        'data-unit': item.unit_of_measure
-                                    })
-                                );
-                            });
-                        } else {
-                            alert('Error fetching IAR items: ' + response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('Error fetching IAR items');
-                    }
-                });
-            }
-            $(document).on('click', '.create-ris', function() {
-                const iarId = $(this).data('id');
-                $('#ris_iar_id').val(iarId);
-                
-                // Fetch and populate IAR items
-                fetchIarItems(iarId);
-                
-                $('#risModal').modal('show');
-            });
 
-            $('.select22').select2({
+            $('.select21').select2({
                 placeholder: "-- Please Select --",
                 allowClear: true,
                 maximumSelectionLength: 1
             });
         });
+
         
-        // In the attachRisItemEvents() function, replace the current implementation:
+        // Attach events to RIS item elements
         function attachRisItemEvents() {
+            // Item selection change event
             $('.ris-item-select').off('change').on('change', function() {
                 const selectedOption = $(this).find('option:selected');
                 const stock = selectedOption.data('stock') || 0;
@@ -1384,6 +1371,7 @@ if ($employee_result) {
                 $(this).closest('.row').find('.ris-unit').val(unit);
             });
             
+            // Remove item event
             $('.ris-remove-item').off('click').on('click', function() {
                 if ($('.ris-item').length > 1) {
                     $(this).closest('.ris-item').remove();
@@ -1391,16 +1379,12 @@ if ($employee_result) {
                     alert('You must have at least one item.');
                 }
             });
-            
-            // Trigger change event on existing selects to populate initial values
-            $('.ris-item-select').trigger('change');
         }
-        
+
         // Initialize RIS item events
         attachRisItemEvents();
 
-
-        // Update the RIS modal opening event
+       // Update the RIS modal opening event
         $(document).on('click', '.create-ris', function() {
             const iarId = $(this).data('id');
             $('#ris_iar_id').val(iarId);
@@ -1424,94 +1408,77 @@ if ($employee_result) {
         // Reset RIS form when modal is closed
         $('#risModal').on('hidden.bs.modal', function() {
             $('#risForm')[0].reset();
-            $('#risItems').html(`
-                <div class="ris-item">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Item *</label>
-                                <select class="form-control ris-item-select select22" multiple="multiple" name="ris_item_id[]" required>
-                                   <option value="">-- Select Item --</option>
-                                </select>
+            iarItems = []; // Clear the global items array
+            
+            // Reset RIS form when modal is closed
+            $('#risModal').on('hidden.bs.modal', function() {
+                $('#risForm')[0].reset();
+                iarItems = []; // Clear the global items array
+                
+                // Reset to single item row
+                $('#risItems').html(`
+                    <div class="ris-item">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Item *</label>
+                                    <select class="form-control ris-item-select select21" multiple="multiple" name="ris_item_id[]" required>
+                                    <option value="">-- Select Item --</option>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Available Stock</label>
-                                <input type="text" class="form-control ris-available-stock" readonly>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Available Stock</label>
+                                    <input type="text" class="form-control ris-available-stock" readonly>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Quantity *</label>
-                                <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Quantity *</label>
+                                    <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Unit</label>
-                                <input type="text" class="form-control ris-unit" readonly>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Unit</label>
+                                    <input type="text" class="form-control ris-unit" readonly>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Actions</label>
-                                <button type="button" class="btn btn-sm btn-danger mt-1 ris-remove-item">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>Actions</label>
+                                    <button type="button" class="btn btn-sm btn-danger mt-1 ris-remove-item">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `);
-            attachRisItemEvents();
-            function fetchIarItems(iarId) {
-                $.ajax({
-                    url: 'fetch_iar_items.php', // Create this file
-                    method: 'POST',
-                    data: { iar_id: iarId },
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            // Clear existing options
-                            $('.ris-item-select').empty().append('<option value="">-- Select Item --</option>');
-                            
-                            // Add items from the IAR
-                            $.each(response.items, function(index, item) {
-                                $('.ris-item-select').append(
-                                    $('<option>', {
-                                        value: item.item_id,
-                                        text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
-                                        'data-stock': item.quantity, // Use delivered quantity as available stock
-                                        'data-unit': item.unit_of_measure
-                                    })
-                                );
-                            });
-                        } else {
-                            alert('Error fetching IAR items: ' + response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('Error fetching IAR items');
-                    }
-                });
-            }
-            $(document).on('click', '.create-ris', function() {
-                const iarId = $(this).data('id');
-                $('#ris_iar_id').val(iarId);
+                `);
                 
-                // Fetch and populate IAR items
-                fetchIarItems(iarId);
-                
-                $('#risModal').modal('show');
+                // Reattach events to the reset form
+                attachRisItemEvents();
             });
-
-            $('.select22').select2({
+            $('.select21').select2({
                 placeholder: "-- Please Select --",
                 allowClear: true,
                 maximumSelectionLength: 1
             });
+            // Populate the new select with existing items
+            const $newSelect = $('#risItems .ris-item-select').last();
+                populateRisItemSelect($newSelect);
+                // Reattach events
+                attachRisItemEvents();
         });
+            // Reinitialize Select2 for elements inside the modal
+            $('.select21').select2({
+                placeholder: "-- Please Select --",
+                allowClear: true,
+                maximumSelectionLength: 1,
+                width: '100%'
+            });
+        
 </script>
 </body>
 </html>
