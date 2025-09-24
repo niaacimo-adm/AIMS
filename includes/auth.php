@@ -118,4 +118,40 @@ function getRolePermissions($roleId) {
     
     return $permissions;
 }
+
+// Add this function to auth.php or a helper file
+function getEmployeeIdFromUserId($db, $user_id) {
+    $emp_stmt = $db->prepare("SELECT emp_id FROM employee WHERE user_id = ? OR emp_id = ?");
+    $emp_stmt->bind_param("ii", $user_id, $user_id);
+    $emp_stmt->execute();
+    $emp_result = $emp_stmt->get_result();
+
+    if ($emp_result->num_rows > 0) {
+        $emp_data = $emp_result->fetch_assoc();
+        return $emp_data['emp_id'];
+    }
+    
+    // Try manager lookup
+    $manager_stmt = $db->prepare("SELECT emp_id FROM employee WHERE is_manager = 1 AND user_id = ?");
+    $manager_stmt->bind_param("i", $user_id);
+    $manager_stmt->execute();
+    $manager_result = $manager_stmt->get_result();
+    
+    if ($manager_result->num_rows > 0) {
+        $manager_data = $manager_result->fetch_assoc();
+        return $manager_data['emp_id'];
+    }
+    
+    // Final fallback
+    $default_stmt = $db->prepare("SELECT emp_id FROM employee WHERE is_manager = 1 LIMIT 1");
+    $default_stmt->execute();
+    $default_result = $default_stmt->get_result();
+    
+    if ($default_result->num_rows > 0) {
+        $default_emp = $default_result->fetch_assoc();
+        return $default_emp['emp_id'];
+    }
+    
+    return null;
+}
 ?>

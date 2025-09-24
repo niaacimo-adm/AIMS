@@ -58,6 +58,12 @@ $stats['approved'] = $stmt->get_result()->fetch_assoc()['approved'];
 // Total sections
 $stats['sections'] = count($sections);
 
+// Manager's Office files count (files without section_id or with special manager section)
+$stmt = $db->prepare("SELECT COUNT(*) as manager_files FROM files WHERE section_id IS NULL OR section_id = 0");
+$stmt->execute();
+$stats['manager_files'] = $stmt->get_result()->fetch_assoc()['manager_files'];
+
+// Remove the old manager_staff query since we don't need it anymore
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -261,47 +267,66 @@ $stats['sections'] = count($sections);
         .badge-rejected { background-color: #dc3545; }
         .badge-draft { background-color: #6c757d; }
         
-        /* Section cards */
-        .section-card {
-            border-left: 4px solid var(--primary-color);
-            transition: all 0.3s ease;
-            height: 100%;
+        /* Section cards with unique colors */
+        .section-card:nth-child(8n+1) { 
+            border-left-color: #4361ee; 
         }
-        
-        .section-card:hover {
-            border-left: 4px solid var(--secondary-color);
+        .section-card:nth-child(8n+1) .card-body {
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.05) 0%, rgba(67, 97, 238, 0.1) 100%);
         }
-        
-        .section-card .card-body {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
+
+        .section-card:nth-child(8n+2) { 
+            border-left-color: #f093fb; 
         }
-        
-        .section-card h5 {
-            font-size: 1.1rem;
-            margin-bottom: 5px;
-            color: #343a40;
+        .section-card:nth-child(8n+2) .card-body {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.05) 0%, rgba(240, 147, 251, 0.1) 100%);
         }
-        
-        .section-card p {
-            font-size: 0.9rem;
-            color: #6c757d;
-            margin-bottom: 10px;
+
+        .section-card:nth-child(8n+3) { 
+            border-left-color: #4facfe; 
         }
-        
-        .section-card .section-info {
-            flex-grow: 1;
+        .section-card:nth-child(8n+3) .card-body {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.05) 0%, rgba(79, 172, 254, 0.1) 100%);
         }
-        
-        .section-card .section-actions {
-            margin-top: auto;
+
+        .section-card:nth-child(8n+4) { 
+            border-left-color: #43e97b; 
         }
-        
-        .section-badge {
-            font-size: 0.8rem;
-            margin-right: 5px;
+        .section-card:nth-child(8n+4) .card-body {
+            background: linear-gradient(135deg, rgba(67, 233, 123, 0.05) 0%, rgba(67, 233, 123, 0.1) 100%);
+        }
+
+        .section-card:nth-child(8n+5) { 
+            border-left-color: #ff9a9e; 
+        }
+        .section-card:nth-child(8n+5) .card-body {
+            background: linear-gradient(135deg, rgba(255, 154, 158, 0.05) 0%, rgba(255, 154, 158, 0.1) 100%);
+        }
+
+        .section-card:nth-child(8n+6) { 
+            border-left-color: #a8edea; 
+        }
+        .section-card:nth-child(8n+6) .card-body {
+            background: linear-gradient(135deg, rgba(168, 237, 234, 0.05) 0%, rgba(168, 237, 234, 0.1) 100%);
+        }
+
+        .section-card:nth-child(8n+7) { 
+            border-left-color: #ffecd2; 
+        }
+        .section-card:nth-child(8n+7) .card-body {
+            background: linear-gradient(135deg, rgba(255, 236, 210, 0.05) 0%, rgba(255, 236, 210, 0.1) 100%);
+        }
+
+        .section-card:nth-child(8n+8) { 
+            border-left-color: #fcb69f; 
+        }
+        .section-card:nth-child(8n+8) .card-body {
+            background: linear-gradient(135deg, rgba(252, 182, 159, 0.05) 0%, rgba(252, 182, 159, 0.1) 100%);
+        }
+
+        /* Hover effects for section cards */
+        .section-card:hover .card-body {
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(67, 97, 238, 0.15) 100%);
         }
         
         /* Modal styles */
@@ -346,155 +371,88 @@ $stats['sections'] = count($sections);
             margin-top: 30px;
         }
         
-        /* Section colors for variety */
-        .section-card:nth-child(4n+1) { border-left-color: #4361ee; }
-        .section-card:nth-child(4n+2) { border-left-color: #f093fb; }
-        .section-card:nth-child(4n+3) { border-left-color: #4facfe; }
-        .section-card:nth-child(4n+4) { border-left-color: #43e97b; }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
-    <?php include '../includes/mainheader.php'; ?>
-    <?php include '../includes/sidebar_file.php'; ?>
-    <div class="content-wrapper">
+    <div class="wrapper">
+        <?php include '../includes/mainheader.php'; ?>
+        <?php include '../includes/sidebar_file.php'; ?>
+        <div class="content-wrapper">
 
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="m-0">File Management Dashboard</h1>
+            <div class="content-header">
+                <div class="container-fluid">
+                    <div class="row mb-2">
+                        <div class="col-sm-6">
+                            <h1 class="m-0">File Management Dashboard</h1>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Main content -->
-        <section class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-gradient-new-files">
-                            <div class="inner">
-                                <h3 id="newFilesCount"><?= $stats['new_files'] ?></h3>
-                                <p>New Files Uploaded</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-file-upload"></i>
-                            </div>
-                            <a href="upload_files.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-gradient-sections">
-                            <div class="inner">
-                                <h3 id="sectionsCount"><?= $stats['sections'] ?></h3>
-                                <p>Sections</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-sitemap"></i>
-                            </div>
-                            <a href="manage_sections.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-gradient-pending">
-                            <div class="inner">
-                                <h3 id="pendingCount"><?= $stats['pending'] ?></h3>
-                                <p>Pending Approvals</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <a href="pending_approvals.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-gradient-approved">
-                            <div class="inner">
-                                <h3 id="approvedCount"><?= $stats['approved'] ?></h3>
-                                <p>Approved Files</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <a href="approved_files.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                </div>
-                <!-- Main row -->
-                <div class="row">
-                    <!-- Left col -->
-                    <section class="col-lg-12">
-                        <!-- Custom tabs (Charts with tabs)-->
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h3 class="card-title">File Management</h3>
-                            </div><!-- /.card-header -->
-                            <div class="card-body">
-                                <!-- Dynamic Section Cards -->
-                                <div class="row mt-4">
-                                    <div class="col-12">
-                                        <h4 class="mb-3">Sections & Offices</h4>
-                                        <div class="row" id="sectionsContainer">
-                                            <?php if (empty($sections)): ?>
-                                                <div class="col-12">
-                                                    <div class="alert alert-info text-center">
-                                                        <i class="fas fa-info-circle mr-2"></i>
-                                                        No sections found. Please add sections to get started.
+            <!-- Main content -->
+            <section class="content">
+                <div class="container-fluid">
+                    <!-- Main row -->
+                    <div class="row">
+                        <!-- Left col -->
+                        <section class="col-lg-12">
+                            <!-- Custom tabs (Charts with tabs)-->
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h3 class="card-title">File Management</h3>
+                                </div><!-- /.card-header -->
+                                <div class="card-body">
+                                    <!-- Manager's Office Section Card -->
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h4 class="mb-3">Sections & Offices</h4>
+                                            <div class="row" id="sectionsContainer">
+                                                <?php if (empty($sections)): ?>
+                                                    <div class="col-12">
+                                                        <div class="alert alert-info text-center">
+                                                            <i class="fas fa-info-circle mr-2"></i>
+                                                            No sections found. Please add sections to get started.
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            <?php else: ?>
-                                                <?php foreach ($sections as $section): ?>
-                                                    <div class="col-md-6 col-lg-3 mb-4">
+                                                <?php else: ?>
+                                                    
+                                                    <div class="col-md-6 col-lg-3 mb-2">
                                                         <div class="card section-card dashboard-card">
                                                             <div class="card-body">
                                                                 <div class="section-info">
-                                                                    <h5 class="font-weight-bold"><?= htmlspecialchars($section['section_name']) ?></h5>
+                                                                    <h5 class="font-weight-bold">Manager's Office</h5>
                                                                     <div class="mb-2">
-                                                                        <span class="badge badge-primary section-badge"><?= htmlspecialchars($section['section_code']) ?></span>
-                                                                        <?php if (!empty($section['office_name'])): ?>
-                                                                            <span class="badge badge-secondary section-badge"><?= htmlspecialchars($section['office_name']) ?></span>
-                                                                        <?php endif; ?>
+                                                                        <span class="badge badge-primary section-badge">IMO</span>
+                                                                        <span class="badge badge-secondary section-badge">Executive</span>
                                                                     </div>
                                                                     
                                                                     <div class="section-details">
                                                                         <p class="mb-1">
                                                                             <i class="fas fa-file mr-2 text-primary"></i>
-                                                                            <strong><?= $section['file_count'] ?></strong> files
+                                                                            <strong><?= $stats['manager_files'] ?></strong> files
                                                                         </p>
                                                                         
-                                                                        <?php if (!empty($section['head_name'])): ?>
-                                                                            <p class="mb-1">
-                                                                                <i class="fas fa-user-tie mr-2 text-info"></i>
-                                                                                Head: <?= htmlspecialchars($section['head_name']) ?>
-                                                                            </p>
-                                                                        <?php endif; ?>
+                                                                        <p class="mb-1">
+                                                                            <i class="fas fa-user-tie mr-2 text-info"></i>
+                                                                            Office Manager:
+                                                                        </p>
                                                                         
                                                                         <p class="mb-0 text-muted small">
                                                                             <i class="fas fa-calendar mr-1"></i>
-                                                                            Created: <?= date('M j, Y', strtotime($section['created_at'])) ?>
+                                                                            Executive Office
                                                                         </p>
                                                                     </div>
                                                                 </div>
                                                                 
                                                                 <div class="section-actions mt-3">
                                                                     <div class="btn-group w-100">
-                                                                        <a href="section_files.php?section_id=<?= $section['section_id'] ?>" 
-                                                                           class="btn btn-primary-custom btn-sm">
+                                                                        <a href="section_files.php?section_id=manager" 
+                                                                        class="btn btn-primary-custom btn-sm">
                                                                             <i class="fas fa-eye mr-1"></i> View Files
                                                                         </a>
                                                                         <button class="btn btn-outline-secondary btn-sm create-folder-btn" 
-                                                                                data-section-id="<?= $section['section_id'] ?>"
-                                                                                data-section-name="<?= htmlspecialchars($section['section_name']) ?>">
+                                                                                data-section-id="manager"
+                                                                                data-section-name="Manager's Office">
                                                                             <i class="fas fa-folder-plus"></i>
                                                                         </button>
                                                                     </div>
@@ -502,203 +460,190 @@ $stats['sections'] = count($sections);
                                                             </div>
                                                         </div>
                                                     </div>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
+                                                    <?php foreach ($sections as $section): ?>
+                                                        <div class="col-md-6 col-lg-3 mb-2">
+                                                            <div class="card section-card dashboard-card">
+                                                                <div class="card-body">
+                                                                    <div class="section-info">
+                                                                        <h5 class="font-weight-bold"><?= htmlspecialchars($section['section_name']) ?></h5>
+                                                                        <div class="mb-2">
+                                                                            <span class="badge badge-primary section-badge"><?= htmlspecialchars($section['section_code']) ?></span>
+                                                                            <?php if (!empty($section['office_name'])): ?>
+                                                                                <span class="badge badge-secondary section-badge"><?= htmlspecialchars($section['office_name']) ?></span>
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                        
+                                                                        <div class="section-details">
+                                                                            <p class="mb-1">
+                                                                                <i class="fas fa-file mr-2 text-primary"></i>
+                                                                                <strong><?= $section['file_count'] ?></strong> files
+                                                                            </p>
+                                                                            
+                                                                            <?php if (!empty($section['head_name'])): ?>
+                                                                                <p class="mb-1">
+                                                                                    <i class="fas fa-user-tie mr-2 text-info"></i>
+                                                                                    Head: <?= htmlspecialchars($section['head_name']) ?>
+                                                                                </p>
+                                                                            <?php endif; ?>
+                                                                            
+                                                                            <p class="mb-0 text-muted small">
+                                                                                <i class="fas fa-calendar mr-1"></i>
+                                                                                Created: <?= date('M j, Y', strtotime($section['created_at'])) ?>
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div class="section-actions mt-3">
+                                                                        <div class="btn-group w-100">
+                                                                            <a href="section_files.php?section_id=<?= $section['section_id'] ?>" 
+                                                                            class="btn btn-primary-custom btn-sm">
+                                                                                <i class="fas fa-eye mr-1"></i> View Files
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div><!-- /.card-body -->
-                        </div>
-                        <!-- /.card -->
+                                </div><!-- /.card-body -->
+                            </div>
+                            <!-- /.card -->
 
-                    </section>
-                    <!-- /.Left col -->
+                        </section>
+                        <!-- /.Left col -->
+                    </div>
+                    <!-- /.row (main row) -->
                 </div>
-                <!-- /.row (main row) -->
-            </div>
-        </section>
-        <!-- /.content -->
-    </div>
-    <!-- /.content-wrapper -->
-
-    <!-- Footer -->
-    <footer class="main-footer">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12 text-center">
-                    <strong>File Management System</strong> &copy; 2025
-                </div>
-            </div>
+            </section>
+            <!-- /.content -->
         </div>
-    </footer>
-</div>
-<?php include '../includes/footer.php'; ?>
-<script>
-    $(document).ready(function() {
-        // Initialize DataTable for files
-        $('#filesTable').DataTable({
-            "responsive": true,
-            "lengthChange": false,
-            "autoWidth": false,
-            "order": [[4, "desc"]],
-            "ajax": {
-                "url": "get_recent_files.php",
-                "type": "GET",
-                "dataSrc": ""
-            },
-            "columns": [
-                { "data": "file_name" },
-                { 
-                    "data": "file_type",
-                    "render": function(data, type, row) {
-                        return '<span class="badge badge-' + data.toLowerCase() + '">' + data.toUpperCase() + '</span>';
-                    }
-                },
-                { "data": "section_name" },
-                { "data": "uploaded_by" },
-                { "data": "upload_date" },
-                { 
-                    "data": "status",
-                    "render": function(data, type, row) {
-                        return '<span class="badge badge-' + data.toLowerCase() + '">' + data.charAt(0).toUpperCase() + data.slice(1) + '</span>';
-                    }
-                },
-                {
-                    "data": null,
-                    "render": function(data, type, row) {
-                        return `
-                            <button class="btn btn-sm btn-info view-file-btn" data-id="${row.file_id}">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="btn btn-sm btn-warning download-file-btn" data-id="${row.file_id}">
-                                <i class="fas fa-download"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger delete-file-btn" data-id="${row.file_id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        `;
-                    }
+        <!-- /.content-wrapper -->
+
+        <?php include '../includes/mainfooter.php'; ?>
+    </div>
+    <?php include '../includes/footer.php'; ?>
+    <script>
+        $(document).ready(function() {
+            // Save folder button handler
+            $('#saveFolderBtn').click(function() {
+                const folderName = $('#folderName').val();
+                const folderSection = $('#folderSection').val();
+                const folderDescription = $('#folderDescription').val();
+                
+                if (!folderName || !folderSection) {
+                    alert('Please fill in all required fields.');
+                    return;
                 }
-            ],
-            "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
-        }).buttons().container().appendTo('#filesTable_wrapper .col-md-6:eq(0)');
-        
-        // Save folder button handler
-        $('#saveFolderBtn').click(function() {
-            const folderName = $('#folderName').val();
-            const folderSection = $('#folderSection').val();
-            const folderDescription = $('#folderDescription').val();
-            
-            if (!folderName || !folderSection) {
-                alert('Please fill in all required fields.');
-                return;
-            }
-            
-            // AJAX call to create folder
-            $.ajax({
-                url: 'create_folder.php',
-                method: 'POST',
-                data: {
-                    folder_name: folderName,
-                    section_id: folderSection,
-                    description: folderDescription
-                },
-                success: function(response) {
-                    if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: 'Folder created successfully!'
-                        });
-                        $('#createFolderModal').modal('hide');
-                        $('#folderForm')[0].reset();
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error!',
-                            text: response.message || 'Failed to create folder'
-                        });
-                    }
-                },
-                error: function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: 'Failed to create folder. Please try again.'
-                    });
-                }
-            });
-        });
-        
-        // Quick folder creation from section cards
-        $('.create-folder-btn').click(function() {
-            const sectionId = $(this).data('section-id');
-            const sectionName = $(this).data('section-name');
-            
-            $('#folderSection').val(sectionId);
-            $('#folderName').focus();
-            $('#createFolderModal').modal('show');
-            
-            // Update modal title to show which section
-            $('#createFolderModalLabel').text('Create Folder in ' + sectionName);
-        });
-        
-        // File action handlers
-        $(document).on('click', '.view-file-btn', function() {
-            const fileId = $(this).data('id');
-            window.location.href = 'view_file.php?id=' + fileId;
-        });
-        
-        $(document).on('click', '.download-file-btn', function() {
-            const fileId = $(this).data('id');
-            window.location.href = 'download_file.php?id=' + fileId;
-        });
-        
-        $(document).on('click', '.delete-file-btn', function() {
-            const fileId = $(this).data('id');
-            
-            Swal.fire({
-                title: 'Delete File?',
-                text: 'Are you sure you want to delete this file?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Delete'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: 'delete_file.php',
-                        method: 'POST',
-                        data: { file_id: fileId },
-                        success: function(response) {
-                            if (response.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Deleted!',
-                                    text: 'File deleted successfully!'
-                                });
-                                $('#filesTable').DataTable().ajax.reload();
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error!',
-                                    text: response.message || 'Failed to delete file'
-                                });
-                            }
-                        },
-                        error: function() {
+                
+                // AJAX call to create folder
+                $.ajax({
+                    url: 'create_folder.php',
+                    method: 'POST',
+                    data: {
+                        folder_name: folderName,
+                        section_id: folderSection,
+                        description: folderDescription
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Folder created successfully!'
+                            });
+                            $('#createFolderModal').modal('hide');
+                            $('#folderForm')[0].reset();
+                        } else {
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error!',
-                                text: 'Failed to delete file. Please try again.'
+                                text: response.message || 'Failed to create folder'
                             });
                         }
-                    });
-                }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Failed to create folder. Please try again.'
+                        });
+                    }
+                });
+            });
+            
+            // Quick folder creation from section cards
+            $('.create-folder-btn').click(function() {
+                const sectionId = $(this).data('section-id');
+                const sectionName = $(this).data('section-name');
+                
+                $('#folderSection').val(sectionId);
+                $('#folderName').focus();
+                $('#createFolderModal').modal('show');
+                
+                // Update modal title to show which section
+                $('#createFolderModalLabel').text('Create Folder in ' + sectionName);
+            });
+            
+            // File action handlers
+            $(document).on('click', '.view-file-btn', function() {
+                const fileId = $(this).data('id');
+                window.location.href = 'view_file.php?id=' + fileId;
+            });
+            
+            $(document).on('click', '.download-file-btn', function() {
+                const fileId = $(this).data('id');
+                window.location.href = 'download_file.php?id=' + fileId;
+            });
+            
+            $(document).on('click', '.delete-file-btn', function() {
+                const fileId = $(this).data('id');
+                
+                Swal.fire({
+                    title: 'Delete File?',
+                    text: 'Are you sure you want to delete this file?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Delete'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: 'delete_file.php',
+                            method: 'POST',
+                            data: { file_id: fileId },
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Deleted!',
+                                        text: 'File deleted successfully!'
+                                    });
+                                    $('#filesTable').DataTable().ajax.reload();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error!',
+                                        text: response.message || 'Failed to delete file'
+                                    });
+                                }
+                            },
+                            error: function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error!',
+                                    text: 'Failed to delete file. Please try again.'
+                                });
+                            }
+                        });
+                    }
+                });
             });
         });
-    });
-</script>
+    </script>
 </body>
 </html>
