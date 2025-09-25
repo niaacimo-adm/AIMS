@@ -378,6 +378,145 @@
         header("Location: folder_contents.php?folder_id=" . $folder_id . "&section_id=" . $section_id);
         exit();
     }
+
+    // Handle folder sharing
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'share_folder') {
+        $folder_id = $_POST['folder_id'];
+        $employee_ids = $_POST['employee_ids'] ?? [];
+        $permission_level = $_POST['permission_level'] ?? 'view';
+        $expires_at = !empty($_POST['expires_at']) ? $_POST['expires_at'] : null;
+
+        if (empty($employee_ids)) {
+            echo json_encode(['success' => false, 'message' => 'Please select at least one employee.']);
+            exit();
+        }
+
+        $success_count = 0;
+        $error_count = 0;
+        $results = [];
+
+        foreach ($employee_ids as $emp_id) {
+            // Check if share already exists
+            $check_stmt = $db->prepare("SELECT share_id FROM folder_shares WHERE folder_id = ? AND shared_with_emp_id = ?");
+            $check_stmt->bind_param("ii", $folder_id, $emp_id);
+            $check_stmt->execute();
+            $check_result = $check_stmt->get_result();
+
+            if ($check_result->num_rows > 0) {
+                // Update existing share
+                $update_stmt = $db->prepare("UPDATE folder_shares SET permission_level = ?, expires_at = ?, is_active = TRUE WHERE folder_id = ? AND shared_with_emp_id = ?");
+                $update_stmt->bind_param("ssii", $permission_level, $expires_at, $folder_id, $emp_id);
+                if ($update_stmt->execute()) {
+                    $success_count++;
+                    $results[] = ['emp_id' => $emp_id, 'action' => 'updated', 'success' => true];
+                } else {
+                    $error_count++;
+                    $results[] = ['emp_id' => $emp_id, 'action' => 'update_failed', 'success' => false, 'error' => $db->error];
+                }
+            } else {
+                // Create new share
+                $insert_stmt = $db->prepare("INSERT INTO folder_shares (folder_id, shared_by_emp_id, shared_with_emp_id, permission_level, expires_at) VALUES (?, ?, ?, ?, ?)");
+                $insert_stmt->bind_param("iiiss", $folder_id, $user_emp_id, $emp_id, $permission_level, $expires_at);
+                if ($insert_stmt->execute()) {
+                    $success_count++;
+                    $results[] = ['emp_id' => $emp_id, 'action' => 'shared', 'success' => true];
+
+                    // Log sharing activity
+                    $emp_stmt = $db->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM employee WHERE emp_id = ?");
+                    $emp_stmt->bind_param("i", $emp_id);
+                    $emp_stmt->execute();
+                    $emp_result = $emp_stmt->get_result();
+                    $emp_name = $emp_result->fetch_assoc()['name'] ?? 'Unknown';
+
+                    $log_stmt = $db->prepare("INSERT INTO folder_share_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'shared', ?, ?)");
+                    $log_description = "Folder shared with {$emp_name} ({$permission_level} access)";
+                    $ip = $_SERVER['REMOTE_ADDR'];
+                    $log_stmt->bind_param("iiss", $folder_id, $user_emp_id, $log_description, $ip);
+                    $log_stmt->execute();
+                } else {
+                    $error_count++;
+                    $results[] = ['emp_id' => $emp_id, 'action' => 'share_failed', 'success' => false, 'error' => $db->error];
+                }
+            }
+        }
+
+        echo json_encode([
+            'success' => $error_count === 0,
+            'message' => "Shared with {$success_count} employee(s). " . ($error_count > 0 ? "Failed for {$error_count} employee(s)." : ""),
+            'results' => $results
+        ]);
+        exit();
+    }
+
+    // Handle revoking access
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'revoke_access') {
+        $share_id = $_POST['share_id'];
+        
+        $stmt = $db->prepare("UPDATE folder_shares SET is_active = FALSE WHERE share_id = ?");
+        $stmt->bind_param("i", $share_id);
+        
+        if ($stmt->execute()) {
+            // Log revoke activity
+            $log_stmt = $db->prepare("INSERT INTO folder_share_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'access_revoked', ?, ?)");
+            $log_description = "Folder access revoked";
+            $ip = $_SERVER['REMOTE_ADDR'];
+            $log_stmt->bind_param("iiss", $folder_id, $user_emp_id, $log_description, $ip);
+            $log_stmt->execute();
+            
+            echo json_encode(['success' => true, 'message' => 'Access revoked successfully.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to revoke access.']);
+        }
+        exit();
+    }
+
+    // Fetch existing shares for this folder
+    $shares_stmt = $db->prepare("SELECT fs.*, 
+                                        CONCAT(e.first_name, ' ', e.last_name) as employee_name
+                                        
+                                FROM folder_shares fs
+                                JOIN employee e ON fs.shared_with_emp_id = e.emp_id
+                                WHERE fs.folder_id = ? AND fs.is_active = TRUE
+                                ORDER BY fs.created_at DESC");
+    $shares_stmt->bind_param("i", $folder_id);
+    $shares_stmt->execute();
+    $shares_result = $shares_stmt->get_result();
+    $folder_shares = [];
+    while ($row = $shares_result->fetch_assoc()) {
+        $folder_shares[] = $row;
+    }
+    // Fetch all employees for sharing (excluding current user)
+    $employees_stmt = $db->prepare("SELECT e.emp_id, 
+                                    CONCAT(e.first_name, ' ', e.last_name) as full_name, 
+                                    s.section_name as department
+                            FROM employee e 
+                            LEFT JOIN section s ON e.section_id = s.section_id
+                            WHERE e.emp_id != ? 
+                            ORDER BY e.first_name, e.last_name");
+    $employees_stmt->bind_param("i", $user_emp_id);
+    $employees_stmt->execute();
+    $employees_result = $employees_stmt->get_result();
+    $all_employees = [];
+    while ($row = $employees_result->fetch_assoc()) {
+        $all_employees[] = $row;
+    }
+    // Fetch employees from the same section for easier sharing
+    $section_employees_stmt = $db->prepare("SELECT e.emp_id, 
+                                        CONCAT(e.first_name, ' ', e.last_name) as full_name, 
+                                        e.email,
+                                        s.section_name as department
+                                    FROM employee e 
+                                    LEFT JOIN section s ON e.section_id = s.section_id
+                                    WHERE e.section_id = ? AND e.emp_id != ?
+                                    ORDER BY e.first_name, e.last_name");
+    $section_id_value = ($section_id === 'manager') ? NULL : $section_id;
+    $section_employees_stmt->bind_param("ii", $section_id_value, $user_emp_id);
+    $section_employees_stmt->execute();
+    $section_employees_result = $section_employees_stmt->get_result();
+    $section_employees = [];
+    while ($row = $section_employees_result->fetch_assoc()) {
+        $section_employees[] = $row;
+    }
     // Fetch subfolders
     $subfolders_stmt = $db->prepare("SELECT f.*, 
                                             CONCAT(e.first_name, ' ', e.last_name) as creator_name,
@@ -409,6 +548,16 @@
     while ($row = $files_result->fetch_assoc()) {
         $files[] = $row;
     }
+
+    function getPermissionBadgeClass($permission) {
+        switch ($permission) {
+            case 'view': return 'info';
+            case 'upload': return 'primary';
+            case 'edit': return 'warning';
+            case 'manage': return 'success';
+            default: return 'secondary';
+        }
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -418,417 +567,7 @@
     <title><?= htmlspecialchars($folder_name) ?> - Contents</title>
     
     <?php include '../includes/header.php'; ?>
-    
-    <style>
-        .file-explorer {
-            display: flex;
-            min-height: 600px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .sidebar {
-            width: 300px;
-            background: white;
-            border-right: 1px solid #dee2e6;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .folder-item, .folder-item-grid {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            position: relative;
-        }
-        
-        .folder-item:hover, .folder-item-grid:hover {
-            background-color: #e9ecef;
-        }
-        
-        .folder-icon {
-            font-size: 1.5rem;
-            margin-right: 10px;
-            color: #ffc107;
-        }
-        
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .file-item, .folder-item-grid {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-        }
-        
-        .file-item:hover, .folder-item-grid:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .file-icon {
-            font-size: 3rem;
-            color: #4361ee;
-            margin-bottom: 10px;
-        }
-        
-        .folder-icon-grid {
-            font-size: 3rem;
-            color: #ffc107;
-            margin-bottom: 10px;
-        }
-        
-        .locked-badge {
-            background: #dc3545;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            margin-left: 5px;
-        }
-        
-        .breadcrumb {
-            background: transparent;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-        
-        .current-folder {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #343a40;
-        }
-        
-        .upload-progress {
-            display: none;
-            margin-top: 10px;
-        }
-
-        .file-checkbox {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        #selectAllHeader {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        #selectAll {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        .btn-group .btn {
-            margin: 0 2px;
-        }
-        .file-explorer {
-            display: flex;
-            min-height: 600px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #dee2e6;
-        }
-
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-right: 1px solid #dee2e6;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 25px;
-            overflow-y: auto;
-            background: white;
-        }
-
-        .folder-item, .folder-item-grid {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            border: 1px solid #e9ecef;
-        }
-
-        .folder-item:hover, .folder-item-grid:hover {
-            background-color: #f8f9fa;
-            border-color: #4361ee;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        .folder-icon {
-            font-size: 1.8rem;
-            margin-right: 15px;
-            color: #ffc107;
-        }
-
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
-            margin-top: 25px;
-        }
-
-        .folder-item-grid {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            height: 180px;
-            justify-content: center;
-        }
-
-        .folder-item-grid:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-
-        .file-icon {
-            font-size: 3.5rem;
-            color: #4361ee;
-            margin-bottom: 15px;
-        }
-
-        .folder-icon-grid {
-            font-size: 3.5rem;
-            color: #ffc107;
-            margin-bottom: 15px;
-        }
-
-        .locked-badge {
-            background: #dc3545;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .breadcrumb {
-            background: transparent;
-            padding: 0;
-            margin-bottom: 25px;
-            font-size: 1.1rem;
-        }
-
-        .current-folder {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 25px;
-            color: #2c3e50;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .upload-progress {
-            display: none;
-            margin-top: 15px;
-        }
-
-        .file-checkbox {
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-
-        #selectAllHeader {
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-
-        #selectAll {
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-
-        .btn-group .btn {
-            margin: 0 3px;
-            border-radius: 6px;
-        }
-
-        .folder-actions .dropdown-toggle {
-            border: none;
-            background: rgba(255,255,255,0.9);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .folder-item-grid:hover .folder-actions .dropdown-toggle {
-            opacity: 1;
-        }
-
-        .folder-stats {
-            font-weight: 600;
-            color: #495057;
-            margin: 8px 0;
-        }
-
-        .folder-creator {
-            color: #6c757d;
-            font-size: 0.85rem;
-        }
-
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px 12px 0 0 !important;
-            padding: 20px 25px;
-        }
-
-        .card-title {
-            margin-bottom: 0;
-            font-weight: 600;
-        }
-
-        .table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-            border-bottom: 2px solid #dee2e6;
-        }
-
-        .badge-warning {
-            background: linear-gradient(45deg, #ffc107, #ff8c00);
-            color: white;
-        }
-
-        .folder-actions {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
-        }
-
-        .folder-actions-btn {
-            background: none;
-            border: none;
-            padding: 5px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.2s, background-color 0.2s;
-            font-size: 14px;
-            z-index: 101;
-            position: relative;
-        }
-
-        .folder-actions-btn:hover {
-            opacity: 1;
-            background-color: rgba(0,0,0,0.1);
-        }
-
-        .folder-item:hover .folder-actions-btn,
-        .folder-item-grid:hover .folder-actions-btn {
-            opacity: 0.7;
-        }
-
-        .folder-actions-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            z-index: 1000;
-            min-width: 120px;
-            display: none;
-        }
-
-        .folder-actions-menu.show {
-            display: block;
-        }
-
-        .folder-action-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            width: 100%;
-            text-align: left;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-        }
-
-        .folder-action-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .folder-action-item i {
-            margin-right: 8px;
-            width: 16px;
-            text-align: center;
-        }
-
-        .folder-action-item.edit {
-            color: #007bff;
-        }
-
-        .folder-action-item.delete {
-            color: #dc3545;
-        }
-
-        /* For sidebar folder items */
-        .folder-item {
-            position: relative;
-            padding-right: 40px; /* Make space for the actions button */
-        }
-
-        .folder-item .folder-actions {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-    </style>
+    <link rel="stylesheet" href="../css/folder_content.css">
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -931,10 +670,20 @@
                                                                             <?= $subfolder['is_locked'] ?>)">
                                                         <i class="fas fa-edit mr-2"></i>Edit
                                                     </button>
+                                                    <button class="folder-action-item share" 
+                                                            onclick="shareFolder(<?= $subfolder['folder_id'] ?>, 
+                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
+                                                        <i class="fas fa-share-alt mr-2"></i>Share
+                                                    </button>
+                                                    <button class="folder-action-item manage-shares" 
+                                                            onclick="manageShares(<?= $subfolder['folder_id'] ?>, 
+                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
+                                                        <i class="fas fa-users mr-2"></i>Manage Access
+                                                    </button>
                                                     <button class="folder-action-item delete" 
                                                             onclick="deleteFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
-                                                                                <?= $subfolder['is_locked'] ?>)">
+                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
+                                                                            <?= $subfolder['is_locked'] ?>)">
                                                         <i class="fas fa-trash mr-2"></i>Delete
                                                     </button>
                                                 </div>
@@ -981,10 +730,20 @@
                                                                                 <?= $subfolder['is_locked'] ?>)">
                                                             <i class="fas fa-edit mr-2"></i>Edit
                                                         </button>
+                                                        <button class="folder-action-item share" 
+                                                                onclick="shareFolder(<?= $subfolder['folder_id'] ?>, 
+                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
+                                                            <i class="fas fa-share-alt mr-2"></i>Share
+                                                        </button>
+                                                        <button class="folder-action-item manage-shares" 
+                                                                onclick="manageShares(<?= $subfolder['folder_id'] ?>, 
+                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
+                                                            <i class="fas fa-users mr-2"></i>Manage Access
+                                                        </button>
                                                         <button class="folder-action-item delete" 
                                                                 onclick="deleteFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                                    '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
-                                                                                    <?= $subfolder['is_locked'] ?>)">
+                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
+                                                                                <?= $subfolder['is_locked'] ?>)">
                                                             <i class="fas fa-trash mr-2"></i>Delete
                                                         </button>
                                                     </div>
@@ -1203,6 +962,121 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="manageSharesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Shared Access</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <?php if (empty($folder_shares)): ?>
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        This folder is not shared with anyone.
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Permission</th>
+                                    <th>Expires</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($folder_shares as $share): ?>
+                                    <tr>
+                                        <td>
+                                            <div class="font-weight-bold"><?= htmlspecialchars($share['employee_name']) ?></div>
+                                            <small class="text-muted"><?= htmlspecialchars($share['employee_email']) ?></small>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-<?= getPermissionBadgeClass($share['permission_level']) ?>">
+                                                <?= ucfirst($share['permission_level']) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?= $share['expires_at'] ? date('M j, Y', strtotime($share['expires_at'])) : 'Never' ?>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger revoke-access" 
+                                                    data-share-id="<?= $share['share_id'] ?>"
+                                                    data-employee-name="<?= htmlspecialchars($share['employee_name']) ?>">
+                                                <i class="fas fa-times"></i> Revoke
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <?php if (!empty($folder_shares)): ?>
+                    <button type="button" class="btn btn-primary" onclick="$('#manageSharesModal').modal('hide'); $('#shareFolderModal').modal('show');">
+                        <i class="fas fa-share-alt mr-1"></i> Share with More
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Share Folder Modal -->
+<div class="modal fade" id="shareFolderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Share Folder: <?= htmlspecialchars($folder_name) ?></h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form id="shareFolderForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="shareEmployees">Select Employees to Share With *</label>
+                        <select multiple class="form-control select2" id="shareEmployees" name="employee_ids[]" required style="width: 100%;">
+                            <?php foreach ($all_employees as $employee): ?>
+                                <option value="<?= $employee['emp_id'] ?>">
+                                    <?= htmlspecialchars($employee['full_name']) ?> (<?= htmlspecialchars($employee['department']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl to select multiple employees</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="permissionLevel">Permission Level *</label>
+                        <select class="form-control" id="permissionLevel" name="permission_level" required>
+                            <option value="view">View Only - Can view files</option>
+                            <option value="upload">Upload - Can view and upload files</option>
+                            <option value="edit">Edit - Can view, upload, and edit files</option>
+                            <option value="manage">Manage - Full access including sharing</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="expiresAt">Expiry Date (Optional)</label>
+                        <input type="datetime-local" class="form-control" id="expiresAt" name="expires_at">
+                        <small class="form-text text-muted">Leave blank for permanent access</small>
+                    </div>
+                    
+                    <input type="hidden" name="action" value="share_folder">
+                    <input type="hidden" name="folder_id" value="<?= $folder_id ?>">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="shareFolderBtn">Share Folder</button>
                 </div>
             </form>
         </div>
@@ -1701,6 +1575,162 @@ function deleteFolder(folderId, folderName, isLocked) {
         m.classList.remove('show');
     });
 }
+
+// Share folder function
+function shareFolder(folderId, folderName) {
+    $('#shareFolderForm input[name="folder_id"]').val(folderId);
+    $('#shareFolderModal .modal-title').html('Share Folder: ' + folderName);
+    $('#shareEmployees').val(null).trigger('change');
+    $('#permissionLevel').val('view');
+    $('#expiresAt').val('');
+    $('#shareFolderModal').modal('show');
+    
+    // Close the menu
+    document.querySelectorAll('.folder-actions-menu').forEach(m => {
+        m.classList.remove('show');
+    });
+}
+
+// Manage shares function
+function manageShares(folderId, folderName) {
+    // Load current shares via AJAX
+    $.ajax({
+        url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
+        type: 'GET',
+        data: {
+            action: 'get_shares',
+            folder_id: folderId
+        },
+        success: function(response) {
+            $('#manageSharesModal .modal-body').html(response);
+            $('#manageSharesModal').modal('show');
+        },
+        error: function(xhr, status, error) {
+            Swal.fire('Error!', 'Failed to load shares: ' + error, 'error');
+        }
+    });
+    
+    // Close the menu
+    document.querySelectorAll('.folder-actions-menu').forEach(m => {
+        m.classList.remove('show');
+    });
+}
+
+// Share folder form submission
+$('#shareFolderForm').submit(function(e) {
+    e.preventDefault();
+    
+    const formData = $(this).serialize();
+    const shareBtn = $('#shareFolderBtn');
+    const originalText = shareBtn.html();
+    
+    shareBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sharing...');
+    
+    $.ajax({
+        url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
+        type: 'POST',
+        data: formData,
+        success: function(response) {
+            shareBtn.prop('disabled', false).html(originalText);
+            
+            try {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: result.message,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        $('#shareFolderModal').modal('hide');
+                        // Optionally refresh the page or update UI
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (e) {
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Invalid server response',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            shareBtn.prop('disabled', false).html(originalText);
+            Swal.fire({
+                title: 'Error!',
+                text: 'Failed to share folder: ' + error,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    });
+});
+
+// Revoke access handler
+$(document).on('click', '.revoke-access', function() {
+    const shareId = $(this).data('share-id');
+    const employeeName = $(this).data('employee-name');
+    
+    Swal.fire({
+        title: 'Revoke Access?',
+        html: `Are you sure you want to revoke <strong>${employeeName}</strong>'s access to this folder?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, revoke access!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
+                type: 'POST',
+                data: {
+                    action: 'revoke_access',
+                    share_id: shareId
+                },
+                success: function(response) {
+                    try {
+                        const result = JSON.parse(response);
+                        if (result.success) {
+                            Swal.fire({
+                                title: 'Access Revoked!',
+                                text: result.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error!', result.message, 'error');
+                        }
+                    } catch (e) {
+                        Swal.fire('Error!', 'Invalid server response', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire('Error!', 'Failed to revoke access: ' + error, 'error');
+                }
+            });
+        }
+    });
+});
+
+// Initialize Select2 for employee selection
+$(document).ready(function() {
+    $('.select2').select2({
+        placeholder: "Select employees...",
+        allowClear: true
+    });
+});
 </script>
 </body>
 </html>
