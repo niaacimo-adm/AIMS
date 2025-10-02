@@ -114,6 +114,12 @@ if ($employee_id) {
           <?php if (hasPermission('manage_settings')): ?>
           <li class="nav-header">SETTINGS</li>
           <li class="nav-item">
+              <a href="content_management.php" class="nav-link">
+                  <i class="fas fa-tv nav-icon"></i>
+                  <p>Appointment Settings</p>
+              </a>
+          </li>
+          <li class="nav-item">
               <a href="appointment_status.php" class="nav-link">
                   <i class="fas fa-circle nav-icon"></i>
                   <p>Appointment Settings</p>
