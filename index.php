@@ -49,507 +49,37 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     <link rel="stylesheet" href="plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
     <!-- FullCalendar -->
     <link rel="stylesheet" href="plugins/fullcalendar/main.css">
-    
-    <!-- Custom CSS -->
-    <style>
-        :root {
-            --primary-color: #28a745; /* Green */
-            --primary-dark: #1e7e34; /* Darker green */
-            --secondary-color: #6c757d; /* Grey */
-            --light-color: #f8f9fa; /* Light grey/white */
-            --dark-color: #343a40; /* Dark grey/black */
-            --accent-color: #17a2b8; /* Light blue */
-        }
-        
-        body {
-            background: url("dist/img/OGSONG.JPG") no-repeat center center fixed;
-            background-size: cover;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            position: relative;
-            z-index: 1;
-        }
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.45); /* adjust darkness */
-            z-index: -1;
-        }
-                
-        .hero-section h1 {
-            font-weight: 800;
-            margin-bottom: 20px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .hero-section p {
-            font-size: 1.2rem;
-            max-width: 600px;
-            margin: 0 auto 30px;
-            opacity: 0.9;
-        }
-        
-        .login-btn {
-            background: #fff;
-            color: #007b3e;
-            font-weight: bold;
-            border-radius: 30px;
-            padding: 12px 25px;
-            box-shadow: 0px 5px 15px rgba(0,0,0,0.4); /* Increased shadow visibility */
-            transition: all 0.3s ease-in-out;
-        }
-        .login-btn:hover {
-            background: #007b3e;
-            color: #fff;
-        }
-        
-        .section-padding {
-            padding: 80px 0;
-            text-align: center;
-        }
-        
-        .section-title {
-            position: relative;
-            margin-bottom: 50px;
-            text-align: center;
-        }
-        
-        .section-title::after {
-            content: '';
-            display: block;
-            width: 80px;
-            height: 3px;
-            background: var(--primary-color);
-            margin: 15px auto 0;
-        }
-        
-        .about-section {
-            background: transparent;
-            border-radius: 10px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3); /* Increased shadow visibility */
-            transition: transform 0.3s ease;
-            height: 100%;
-        }
 
-        
-        .about-section:hover {
-            transform: translateY(-5px);
-        }
-        
-        .about-title {
-            color: var(--primary-color);
-            font-weight: 600;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
-        }
-        
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-                
-        .gallery-item {
-            position: relative;
-            overflow: hidden;
-            border-radius: 8px;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.3); /* Increased shadow visibility */
-            transition: transform 0.3s ease;
-            cursor: pointer;
-            height: 200px;
-        }
-        
-        .gallery-item:hover {
-            transform: translateY(-5px);
-        }
-        
-        .gallery-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
-        }
-        
-        .gallery-item:hover img {
-            transform: scale(1.05);
-        }
-        
-        .gallery-caption {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px;
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
-        }
-        
-        .gallery-item:hover .gallery-caption {
-            transform: translateY(0);
-        }
-        
-        .events-section {
-            background: var(--light-color);
-        }
-        
-        /* Update calendar box shadow */
-        #calendar {
-            position: relative;
-            border-radius: 8px;
-            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
-            padding: 20px;
-            color: #fff !important;
-        }
+    <link rel="stylesheet" href="index.css">
 
-        #calendar::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            border-radius: 8px;
-            z-index: 1;
-        }
-
-        #calendar > * {
-            position: relative;
-            z-index: 2;
-        }
-
-        /* Force all calendar text to be white */
-        #calendar,
-        #calendar * {
-            color: #fff !important;
-        }
-
-        /* Calendar header and navigation buttons */
-        .fc-toolbar-title,
-        .fc-col-header-cell,
-        .fc-daygrid-day-number,
-        .fc-timegrid-slot-label,
-        .fc-event-title {
-            color: #fff !important;
-        }
-
-        /* Calendar buttons */
-        .fc-button {
-            color: #fff !important;
-            background-color: var(--primary-color) !important;
-            border-color: var(--primary-color) !important;
-        }
-
-        .fc-button:hover {
-            background-color: var(--primary-dark) !important;
-            border-color: var(--primary-dark) !important;
-        }
-        
-        
-        .nav-tabs .nav-link.active {
-            background-color: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        
-        .nav-tabs .nav-link {
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-        
-        .forms-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        
-        .form-card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1); /* Very subtle white */
-            transition: transform 0.3s ease;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.98);
-        }
-
-        .form-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
-        }
-        
-        .form-card .card-body {
-            text-align: center;
-            padding: 30px 20px;
-        }
-        
-        .form-icon {
-            font-size: 2.5rem;
-            color: var(--primary-color);
-            margin-bottom: 15px;
-        }
-        
-        .form-card .card-title {
-            color: var(--dark-color);
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-        
-        .form-card .card-text {
-            color: var(--dark-color);
-            margin-bottom: 20px;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-            border-radius: 30px;
-            padding: 8px 20px;
-            font-weight: 500;
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-            border-color: var(--primary-dark);
-        }
-        
-        footer {
-            background: var(--dark-color);
-            color: white;
-            padding: 40px 0 20px;
-        }
-        
-        .footer-logo {
-            margin-bottom: 20px;
-        }
-        
-        .footer-text {
-            opacity: 0.8;
-            margin-bottom: 10px;
-        }
-        
-        /* Scroll to top button */
-        .scroll-to-top {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 1000;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.4); /* Increased shadow visibility */
-            transition: all 0.3s ease;
-        }
-        
-        .scroll-to-top:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-        
-        /* Fixed navbar offset */
-        html {
-            scroll-padding-top: 80px;
-        }
-        
-        /* Loading spinner */
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
-        }
-        
-        /* Pagination styling */
-        .pagination-container {
-            display: flex;
-            justify-content: center;
-            margin-top: 30px;
-        }
-
-        .page-item.active .page-link {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .page-link {
-            color: var(--primary-color);
-        }
-
-        .page-link:hover {
-            color: var(--primary-dark);
-        }
-
-        /* Search box styling */
-        .search-box {
-            max-width: 400px;
-            margin: 0 auto 30px;
-        }
-
-        /* Modal styling */
-        .modal-image {
-            width: 100%;
-            max-height: 80vh;
-            object-fit: contain;
-        }
-
-        /* Gallery controls */
-        .gallery-controls, .forms-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .gallery-controls, .forms-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .search-box {
-                width: 100%;
-            }
-            
-            .hero-section {
-                padding: 100px 0 60px;
-            }
-            
-            .hero-section h1 {
-                font-size: 2rem;
-            }
-        }
-        
-        /* Navigation styling */
-        .navbar {
-            background: var(--dark-color) !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); /* Increased shadow visibility */
-            padding: 10px 0;
-        }
-                
-        .navbar-brand {
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-        }
-        
-        .navbar-brand img {
-            margin-right: 10px;
-        }
-        
-        .navbar-nav .nav-link {
-            color: white !important;
-            font-weight: 500;
-            margin: 0 5px;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-        }
-        
-        .navbar-nav .nav-link:hover {
-            background: rgba(255,255,255,0.1);
-            color: var(--light-color) !important;
-        }
-        
-        .navbar-nav .login-btn {
-            background: var(--primary-color);
-            color: white !important;
-            padding: 8px 20px;
-            margin-left: 10px;
-        }
-
-        .navbar-nav .login-btn:hover {
-            background: var(--primary-dark);
-            color: white !important;
-        }
-
-        /* Calendar event colors */
-        .fc-event {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-
-        .badge-primary {
-            background-color: var(--primary-color);
-        }
-
-        .badge-info {
-            background-color: var(--accent-color);
-        }
-
-        .badge-warning {
-            background-color: #ffc107;
-        }
-
-        .badge-success {
-            background-color: var(--primary-color);
-        }
-        /* Hero Section */
-        #home.hero-section {
-            background: url("dist/img/OGSONG.JPG") no-repeat center center fixed;
-            background-size: cover;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            text-align: center;
-            color: #fff; 
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Dark overlay for readability */
-        #home.hero-section::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.45); /* darker overlay */
-            z-index: -1;
-        }
-
-        .display-3 {
-            font-weight: 700;
-            text-shadow: 
-                -2px -2px 4px rgba(0,0,0,0.9),
-                2px -2px 4px rgba(0,0,0,0.9),
-                -2px  2px 4px rgba(0,0,0,0.9),
-                2px  2px 4px rgba(0,0,0,0.9);
-        }
-
-        p, .lead {
-            color: #f0f0f0;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-        }
-        /* Lead paragraph under headline */
-        .hero-section .lead {
-            color: #e0e0e0; /* softer gray for contrast */
-            font-size: 1.2rem;
-            text-shadow: 0px 1px 3px rgba(0,0,0,0.8);
-            margin-bottom: 25px;
-        }
-       section {
-            background: transparent !important;
-            color: #fff; /* text stays white */
-        }
-    </style>
 </head>
 <body>
+
+    <!-- Floating Calendar Button -->
+    <button class="floating-calendar-btn" id="floatingCalendarBtn" title="Quick Calendar View">
+        <i class="fas fa-calendar-alt"></i>
+    </button>
+
+    <!-- Floating Calendar Modal -->
+    <div class="modal fade floating-calendar-modal" id="floatingCalendarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Quick Calendar</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="miniCalendar"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <a href="#events" class="btn btn-primary" data-dismiss="modal">Full Calendar</a>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Scroll to top button -->
     <button class="scroll-to-top" id="scrollToTop">
         <i class="fas fa-chevron-up"></i>
@@ -624,20 +154,87 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             <?php if (!empty($carousel_images)): ?>
                 <div class="gallery-controls">
                     <div class="gallery-info">
-                        Showing <span id="gallery-start">1</span>-<span id="gallery-end">6</span> of <span id="gallery-total"><?= count($carousel_images) ?></span> images
+                        Showing <span id="gallery-start">1</span> of <span id="gallery-total"><?= count($carousel_images) ?></span> images
                     </div>
                 </div>
 
-                <div id="gallery-container">
-                    <!-- Gallery pages will be loaded here by JavaScript -->
-                </div>
-
-                <div class="pagination-container">
-                    <nav>
-                        <ul class="pagination" id="gallery-pagination">
-                            <!-- Pagination will be generated by JavaScript -->
-                        </ul>
-                    </nav>
+                <!-- 3D Carousel Container -->
+                <div class="carousel-3d-container">
+                    <div class="carousel-3d" id="carousel3d">
+                        <?php foreach ($carousel_images as $index => $image): ?>
+                            <?php 
+                                // Fix image path - ensure it's relative to the project root
+                                $imagePath = $image['image_path'];
+                                
+                                // Debug output
+                                echo "<!-- Original path: " . htmlspecialchars($imagePath) . " -->";
+                                
+                                // Remove any problematic prefixes
+                                $imagePath = str_replace(['../', './'], '', $imagePath);
+                                
+                                // Ensure the path starts from project root
+                                if (strpos($imagePath, 'uploads/') === 0) {
+                                    // Path is already correct
+                                    $finalPath = $imagePath;
+                                } else if (strpos($imagePath, 'carousel/') === 0) {
+                                    $finalPath = 'uploads/' . $imagePath;
+                                } else {
+                                    // Extract just the filename and build correct path
+                                    $filename = basename($imagePath);
+                                    $finalPath = 'uploads/carousel/' . $filename;
+                                }
+                                
+                                // Check if file exists
+                                $fileExists = file_exists($finalPath);
+                                if (!$fileExists) {
+                                    // Try alternative paths
+                                    $alternativePaths = [
+                                        '../' . $finalPath,
+                                        './' . $finalPath,
+                                        'uploads/carousel/' . basename($imagePath),
+                                        '../uploads/carousel/' . basename($imagePath)
+                                    ];
+                                    
+                                    foreach ($alternativePaths as $altPath) {
+                                        if (file_exists($altPath)) {
+                                            $finalPath = $altPath;
+                                            $fileExists = true;
+                                            echo "<!-- Found at alternative path: $finalPath -->";
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                echo "<!-- Final path: $finalPath -->";
+                                echo "<!-- File exists: " . ($fileExists ? 'YES' : 'NO') . " -->";
+                                
+                                $caption = $image['caption'] ?: 'No caption';
+                            ?>
+                            <div class="carousel-item" data-index="<?= $index ?>">
+                                <img src="<?= $finalPath ?>" alt="<?= htmlspecialchars($caption) ?>" 
+                                    onerror="this.onerror=null; this.src='dist/img/default-image.jpg'; console.log('Image failed to load: <?= $finalPath ?>')">
+                                <div class="carousel-caption">
+                                    <p><?= htmlspecialchars($caption) ?></p>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <!-- Navigation Controls -->
+                    <button class="carousel-control prev" id="carouselPrev">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="carousel-control next" id="carouselNext">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    
+                    <!-- Indicators -->
+                    <div class="carousel-indicators" id="carouselIndicators">
+                        <?php foreach ($carousel_images as $index => $image): ?>
+                            <span class="indicator <?= $index === 0 ? 'active' : '' ?>" 
+                                data-index="<?= $index ?>"></span>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="text-center py-5">
@@ -647,7 +244,6 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             <?php endif; ?>
         </div>
     </section>
-
     <!-- Image Modal -->
     <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -1252,7 +848,527 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 }
             });
         }).scroll();
+        // 3D Carousel functionality - FIXED VERSION
+        class Carousel3D {
+            constructor() {
+                this.carousel = document.getElementById('carousel3d');
+                this.items = document.querySelectorAll('.carousel-item');
+                this.prevBtn = document.getElementById('carouselPrev');
+                this.nextBtn = document.getElementById('carouselNext');
+                this.indicators = document.querySelectorAll('.carousel-indicators .indicator');
+                this.galleryStart = document.getElementById('gallery-start');
+                this.galleryTotal = document.getElementById('gallery-total');
+                
+                this.currentIndex = 0;
+                this.totalItems = this.items.length;
+                this.isAnimating = false;
+                this.autoRotateInterval = null;
+                
+                this.init();
+            }
+            
+            init() {
+                if (this.totalItems === 0) return;
+                
+                console.log(`Initializing 3D Carousel with ${this.totalItems} items`);
+                
+                this.setupEventListeners();
+                this.updateCarousel();
+                this.startAutoRotation();
+                
+                // Update gallery info
+                this.updateGalleryInfo();
+            }
+            
+            setupEventListeners() {
+                // Navigation buttons
+                if (this.prevBtn) {
+                    this.prevBtn.addEventListener('click', () => this.previous());
+                }
+                if (this.nextBtn) {
+                    this.nextBtn.addEventListener('click', () => this.next());
+                }
+                
+                // Indicators
+                this.indicators.forEach((indicator, index) => {
+                    indicator.addEventListener('click', () => this.goToSlide(index));
+                });
+                
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') {
+                        this.previous();
+                    } else if (e.key === 'ArrowRight') {
+                        this.next();
+                    }
+                });
+                
+                // Touch events for mobile
+                this.setupTouchEvents();
+                
+                // Pause auto-rotation on hover
+                if (this.carousel) {
+                    this.carousel.addEventListener('mouseenter', () => this.pauseAutoRotation());
+                    this.carousel.addEventListener('mouseleave', () => this.startAutoRotation());
+                }
+                
+                // Click on carousel items to open modal
+                this.items.forEach(item => {
+                    item.addEventListener('click', () => {
+                        const img = item.querySelector('img');
+                        const caption = item.querySelector('.carousel-caption p')?.textContent || 'No caption';
+                        this.openImageModal(img.src, caption);
+                    });
+                });
+            }
+            
+            setupTouchEvents() {
+                let startX = 0;
+                let endX = 0;
+                
+                if (this.carousel) {
+                    this.carousel.addEventListener('touchstart', (e) => {
+                        startX = e.touches[0].clientX;
+                    });
+                    
+                    this.carousel.addEventListener('touchend', (e) => {
+                        endX = e.changedTouches[0].clientX;
+                        this.handleSwipe(startX, endX);
+                    });
+                }
+            }
+            
+            handleSwipe(startX, endX) {
+                const swipeThreshold = 50;
+                const diff = startX - endX;
+                
+                if (Math.abs(diff) > swipeThreshold) {
+                    if (diff > 0) {
+                        this.next();
+                    } else {
+                        this.previous();
+                    }
+                }
+            }
+            
+            previous() {
+                if (this.isAnimating || this.totalItems <= 1) return;
+                
+                this.currentIndex = (this.currentIndex - 1 + this.totalItems) % this.totalItems;
+                this.updateCarousel();
+            }
+            
+            next() {
+                if (this.isAnimating || this.totalItems <= 1) return;
+                
+                this.currentIndex = (this.currentIndex + 1) % this.totalItems;
+                this.updateCarousel();
+            }
+            
+            goToSlide(index) {
+                if (this.isAnimating || index === this.currentIndex || this.totalItems <= 1) return;
+                
+                this.currentIndex = index;
+                this.updateCarousel();
+            }
+            
+            updateCarousel() {
+                this.isAnimating = true;
+                
+                console.log(`Updating carousel to index: ${this.currentIndex}`);
+                
+                // Calculate positions for all items
+                this.items.forEach((item, index) => {
+                    const position = (index - this.currentIndex + this.totalItems) % this.totalItems;
+                    this.positionItem(item, position);
+                });
+                
+                // Update indicators
+                this.updateIndicators();
+                
+                // Update gallery info
+                this.updateGalleryInfo();
+                
+                // Reset animation flag after transition
+                setTimeout(() => {
+                    this.isAnimating = false;
+                }, 800);
+            }
+            
+            positionItem(item, position) {
+                let transform = '';
+                let zIndex = 0;
+                let opacity = 1;
+                let scale = 1;
+                
+                // For single item, center it
+                if (this.totalItems === 1) {
+                    transform = 'translateX(0) translateZ(0) rotateY(0)';
+                    zIndex = 10;
+                    scale = 1;
+                    opacity = 1;
+                } 
+                // For multiple items
+                else {
+                    switch(position) {
+                        case 0: // Center (active)
+                            transform = 'translateX(0) translateZ(0) rotateY(0)';
+                            zIndex = 10;
+                            scale = 1;
+                            opacity = 1;
+                            break;
+                        case 1: // Right side
+                            transform = 'translateX(280px) translateZ(-150px) rotateY(-25deg)';
+                            zIndex = 8;
+                            scale = 0.85;
+                            opacity = 0.8;
+                            break;
+                        case this.totalItems - 1: // Left side
+                            transform = 'translateX(-280px) translateZ(-150px) rotateY(25deg)';
+                            zIndex = 8;
+                            scale = 0.85;
+                            opacity = 0.8;
+                            break;
+                        case 2: // Far right
+                            transform = 'translateX(400px) translateZ(-300px) rotateY(-40deg)';
+                            zIndex = 6;
+                            scale = 0.7;
+                            opacity = 0.6;
+                            break;
+                        case this.totalItems - 2: // Far left
+                            transform = 'translateX(-400px) translateZ(-300px) rotateY(40deg)';
+                            zIndex = 6;
+                            scale = 0.7;
+                            opacity = 0.6;
+                            break;
+                        default: // Hidden (behind)
+                            transform = 'translateX(0) translateZ(-500px) rotateY(0)';
+                            zIndex = 1;
+                            scale = 0.5;
+                            opacity = 0.3;
+                    }
+                }
+                
+                // Apply all transformations
+                item.style.transform = `${transform} scale(${scale})`;
+                item.style.zIndex = zIndex;
+                item.style.opacity = opacity;
+                
+                // Ensure the item is visible
+                item.style.visibility = 'visible';
+                item.style.display = 'block';
+            }
+            
+            updateIndicators() {
+                this.indicators.forEach((indicator, index) => {
+                    if (index === this.currentIndex) {
+                        indicator.classList.add('active');
+                    } else {
+                        indicator.classList.remove('active');
+                    }
+                });
+            }
+            
+            updateGalleryInfo() {
+                if (this.galleryStart && this.galleryTotal) {
+                    this.galleryStart.textContent = this.currentIndex + 1;
+                    this.galleryTotal.textContent = this.totalItems;
+                }
+            }
+            
+            startAutoRotation() {
+                if (this.autoRotateInterval || this.totalItems <= 1) {
+                    return;
+                }
+                
+                this.autoRotateInterval = setInterval(() => {
+                    this.next();
+                }, 5000); // Change every 5 seconds
+            }
+            
+            pauseAutoRotation() {
+                if (this.autoRotateInterval) {
+                    clearInterval(this.autoRotateInterval);
+                    this.autoRotateInterval = null;
+                }
+            }
+            
+            openImageModal(imagePath, caption) {
+                $('#modalImage').attr('src', imagePath);
+                $('#modalCaption').text(caption);
+                $('#imageModal').modal('show');
+            }
+            
+            destroy() {
+                this.pauseAutoRotation();
+            }
+        }
+
+        // Initialize the 3D carousel when DOM is fully loaded
+        function initializeCarousel() {
+            console.log('Initializing 3D carousel...');
+            
+            // Hide old gallery elements if they exist
+            const galleryContainer = document.getElementById('gallery-container');
+            if (galleryContainer) {
+                galleryContainer.style.display = 'none';
+            }
+            
+            const paginationContainer = document.querySelector('.pagination-container');
+            if (paginationContainer) {
+                paginationContainer.style.display = 'none';
+            }
+            
+            // Initialize 3D Carousel if elements exist
+            const carousel3d = document.getElementById('carousel3d');
+            if (carousel3d) {
+                console.log('3D Carousel container found, initializing...');
+                window.carousel3D = new Carousel3D();
+                
+                // Debug: Log carousel state
+                setTimeout(() => {
+                    console.log('Carousel initialized successfully');
+                    console.log('Carousel items:', window.carousel3D.items.length);
+                    console.log('Current index:', window.carousel3D.currentIndex);
+                }, 100);
+            } else {
+                console.error('3D Carousel container not found!');
+            }
+        }
+
+        // Make carousel methods available globally
+        window.Carousel3D = Carousel3D;
+
+        // Add this to your JavaScript section
+        function checkAllImages() {
+            console.log('Checking all carousel images...');
+            document.querySelectorAll('.carousel-item img').forEach((img, index) => {
+                img.onerror = function() {
+                    console.error('Image failed to load:', this.src);
+                    this.src = 'dist/img/default-image.jpg';
+                };
+                
+                // Test if image loads
+                const testImage = new Image();
+                testImage.onload = function() {
+                    console.log('✓ Image loaded successfully:', img.src);
+                };
+                testImage.onerror = function() {
+                    console.error('✗ Image failed to load:', img.src);
+                };
+                testImage.src = img.src;
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCarousel);
+        } else {
+            initializeCarousel();
+        }
+
+        // Debug function to check carousel state
+        function debugCarousel() {
+            console.log('=== CAROUSEL DEBUG INFO ===');
+            if (window.carousel3D) {
+                console.log('Total items:', window.carousel3D.totalItems);
+                console.log('Current index:', window.carousel3D.currentIndex);
+                console.log('Is animating:', window.carousel3D.isAnimating);
+            } else {
+                console.log('Carousel3D not initialized yet');
+            }
+            
+            const items = document.querySelectorAll('.carousel-item');
+            console.log('DOM items found:', items.length);
+            
+            items.forEach((item, index) => {
+                const style = window.getComputedStyle(item);
+                console.log(`Item ${index}:`, {
+                    transform: style.transform,
+                    opacity: style.opacity,
+                    zIndex: style.zIndex,
+                    visibility: style.visibility,
+                    display: style.display
+                });
+            });
+            console.log('=== END DEBUG ===');
+        }
+
+        // Test carousel functionality
+        function testCarousel() {
+            console.log('Testing carousel functionality...');
+            
+            // Test if buttons exist and are clickable
+            const prevBtn = document.getElementById('carouselPrev');
+            const nextBtn = document.getElementById('carouselNext');
+            
+            console.log('Previous button:', prevBtn);
+            console.log('Next button:', nextBtn);
+            
+            if (prevBtn && nextBtn) {
+                console.log('Buttons found, testing click events...');
+                
+                // Add test click handlers
+                prevBtn.addEventListener('click', function() {
+                    console.log('Previous button clicked');
+                });
+                
+                nextBtn.addEventListener('click', function() {
+                    console.log('Next button clicked');
+                });
+            }
+        }
+
+        // Call debug functions after initialization
+        setTimeout(() => {
+            debugCarousel();
+            testCarousel();
+        }, 100);
     });
+
+    // Floating Calendar functionality
+// Floating Calendar functionality
+function initializeFloatingCalendar() {
+    const calendarBtn = document.getElementById('floatingCalendarBtn');
+    const calendarModal = $('#floatingCalendarModal');
+    
+    let miniCalendar = null;
+    
+    if (calendarBtn) {
+        calendarBtn.addEventListener('click', function() {
+            initializeMiniCalendar();
+            calendarModal.modal('show');
+        });
+    }
+    
+    // Reinitialize when modal is shown
+    calendarModal.on('shown.bs.modal', function() {
+        initializeMiniCalendar();
+    });
+    
+    function initializeMiniCalendar() {
+        var miniCalendarEl = document.getElementById('miniCalendar');
+        
+        // Destroy existing calendar if it exists
+        if (miniCalendar) {
+            miniCalendar.destroy();
+        }
+        
+        if (miniCalendarEl) {
+            miniCalendar = new FullCalendar.Calendar(miniCalendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: ''
+                },
+                height: 'auto',
+                aspectRatio: 1.2,
+                dayMaxEvents: 2,
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    $.ajax({
+                        url: 'views/get_events.php',
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success && response.data && response.data.length > 0) {
+                                var events = response.data.map(function(event) {
+                                    return {
+                                        id: event.id,
+                                        title: event.title,
+                                        start: event.start,
+                                        end: event.end,
+                                        description: event.description,
+                                        type: event.type,
+                                        backgroundColor: getEventColor(event.type),
+                                        borderColor: getEventColor(event.type),
+                                        textColor: '#ffffff'
+                                    };
+                                });
+                                successCallback(events);
+                            } else {
+                                successCallback([]);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error loading mini calendar events:', error);
+                            successCallback([]);
+                        }
+                    });
+                },
+                eventClick: function(info) {
+                    // Show event details when clicked
+                    Swal.fire({
+                        title: info.event.title,
+                        html: `<p><strong>Type:</strong> ${info.event.extendedProps.type}</p>
+                               <p><strong>Description:</strong> ${info.event.extendedProps.description || 'No description'}</p>
+                               <p><strong>Start:</strong> ${moment(info.event.start).format('MMMM D, YYYY h:mm A')}</p>
+                               <p><strong>End:</strong> ${info.event.end ? moment(info.event.end).format('MMMM D, YYYY h:mm A') : 'N/A'}</p>`,
+                        icon: 'info',
+                        confirmButtonText: 'Close'
+                    });
+                },
+                datesSet: function(dateInfo) {
+                    // Force update of calendar styling after navigation
+                    setTimeout(() => {
+                        updateMiniCalendarStyles();
+                    }, 50);
+                }
+            });
+            miniCalendar.render();
+            
+            // Apply initial styles
+            setTimeout(() => {
+                updateMiniCalendarStyles();
+            }, 100);
+        }
+    }
+    
+    function updateMiniCalendarStyles() {
+        // Ensure all text in mini calendar remains dark
+        $('#miniCalendar .fc-toolbar-title').css('color', '#343a40');
+        $('#miniCalendar .fc-col-header-cell').css('color', '#343a40');
+        $('#miniCalendar .fc-col-header-cell a').css('color', '#343a40');
+        $('#miniCalendar .fc-daygrid-day-number').css('color', '#343a40');
+        
+        // Style the buttons
+        $('#miniCalendar .fc-button').css({
+            'background-color': '#28a745',
+            'border-color': '#28a745',
+            'color': 'white'
+        });
+    }
+}
+
+// Initialize floating calendar
+initializeFloatingCalendar();
+
+    // Update the existing getEventColor function to ensure it's available
+    function getEventColor(type) {
+        switch(type) {
+            case 'holiday':
+                return '#ffc107'; // Yellow
+            case 'meeting':
+                return '#17a2b8'; // Teal
+            case 'birthday':
+                return '#e83e8c'; // Pink
+            default:
+                return '#007bff'; // Blue
+        }
+    }
+    $(window).on('resize', function() {
+    setTimeout(() => {
+        updateMiniCalendarStyles();
+    }, 100);
+});
+
+// Update when tab becomes visible
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        setTimeout(() => {
+            updateMiniCalendarStyles();
+        }, 100);
+    }
+});
     </script>
 </body>
 </html>

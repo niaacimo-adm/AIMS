@@ -7,6 +7,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Get current page for active state
+$current_page = basename($_SERVER['PHP_SELF']);
+
 // Get employee data if user is logged in
 $employee_name = '';
 $employee_picture = '../dist/img/user2-160x160.jpg'; // Default image
@@ -73,7 +76,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('view_dashboard')): ?>
           <li class="nav-item">
-            <a href="dashboard.php" class="nav-link active">
+            <a href="dashboard.php" class="nav-link <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
               <i class="nav-icon fas fa-home"></i>
               <p>Dashboard</p>
             </a>
@@ -82,7 +85,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('view_calendar')): ?>
           <li class="nav-item">
-            <a href="calendar.php" class="nav-link">
+            <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active' : '' ?>">
               <i class="nav-icon fas fa-calendar"></i>
               <p>Calendar</p>
             </a>
@@ -93,7 +96,7 @@ if ($employee_id) {
           <li class="nav-header">EMPLOYEE MANAGEMENT</li>
             <?php if (hasPermission('create_employees')): ?>
               <li class="nav-item">
-                <a href="../views/emp.create.php" class="nav-link">
+                <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active' : '' ?>">
                   <i class="fas fa-plus nav-icon"></i>
                   <p>Create</p>
                 </a>
@@ -102,7 +105,7 @@ if ($employee_id) {
 
               <?php if (hasPermission('view_employees')): ?>
               <li class="nav-item">
-                <a href="../views/emp.list.php" class="nav-link">
+                <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active' : '' ?>">
                   <i class="fas fa-list nav-icon"></i>
                   <p>List</p>
                 </a>
@@ -114,37 +117,37 @@ if ($employee_id) {
           <?php if (hasPermission('manage_settings')): ?>
           <li class="nav-header">SETTINGS</li>
           <li class="nav-item">
-              <a href="content_management.php" class="nav-link">
+              <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active' : '' ?>">
                   <i class="fas fa-tv nav-icon"></i>
-                  <p>Appointment Settings</p>
+                  <p>Content Management</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="appointment_status.php" class="nav-link">
+              <a href="appointment_status.php" class="nav-link <?= $current_page == 'appointment_status.php' ? 'active' : '' ?>">
                   <i class="fas fa-circle nav-icon"></i>
                   <p>Appointment Settings</p>
               </a>
           </li>
           <li class="nav-item">
-            <a href="position.php" class="nav-link">
+            <a href="position.php" class="nav-link <?= $current_page == 'position.php' ? 'active' : '' ?>">
                 <i class="fas fa-circle nav-icon"></i>
                 <p>Positions</p>
             </a>
           </li>
           <li class="nav-item">
-              <a href="sections.php" class="nav-link">
+              <a href="sections.php" class="nav-link <?= $current_page == 'sections.php' ? 'active' : '' ?>">
                   <i class="fas fa-circle nav-icon"></i>
                   <p>Sections</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="offices.php" class="nav-link">
+              <a href="offices.php" class="nav-link <?= $current_page == 'offices.php' ? 'active' : '' ?>">
                   <i class="fas fa-circle nav-icon"></i>
                   <p>Offices</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="employment_status.php" class="nav-link">
+              <a href="employment_status.php" class="nav-link <?= $current_page == 'employment_status.php' ? 'active' : '' ?>">
                   <i class="fas fa-circle nav-icon"></i>
                   <p>Employment Status</p>
               </a>
@@ -153,7 +156,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_users')): ?>
           <li class="nav-item">
-              <a href="users.php" class="nav-link">
+              <a href="users.php" class="nav-link <?= $current_page == 'users.php' ? 'active' : '' ?>">
                   <i class="nav-icon fas fa-users"></i>
                   <p>Users</p>
               </a>
@@ -162,7 +165,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_roles')): ?>
           <li class="nav-item">
-              <a href="roles.php" class="nav-link">
+              <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active' : '' ?>">
                   <i class="nav-icon fas fa-user-shield"></i>
                   <p>Roles</p>
               </a>
@@ -171,7 +174,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_permissions')): ?>
           <li class="nav-item">
-              <a href="permissions.php" class="nav-link">
+              <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active' : '' ?>">
                   <i class="nav-icon fas fa-key"></i>
                   <p>Permissions</p>
               </a>
@@ -181,7 +184,7 @@ if ($employee_id) {
           <!-- Common menu items for all users -->
           <?php if (isset($_SESSION['user_id'])): ?>
           <li class="nav-item">
-            <a href="profile.php" class="nav-link">
+            <a href="profile.php" class="nav-link <?= $current_page == 'profile.php' ? 'active' : '' ?>">
               <i class="nav-icon fas fa-user"></i>
               <p>My Profile</p>
             </a>

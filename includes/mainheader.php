@@ -1,53 +1,49 @@
 <?php
     require_once '../config/database.php';
     require_once 'helpers.php';
-  ?>
-  <!-- Navbar -->
-  <nav class="main-header navbar navbar-expand navbar-white navbar-light ">
+?>
+<!-- Navbar -->
+<nav class="main-header navbar navbar-expand navbar-white navbar-light ">
     <!-- Left navbar links -->
     <ul class="navbar-nav">
       <li class="nav-item">
         <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
       </li>
-      <li class="nav-item d-none d-sm-inline-block">
-        <a href="dashboard.php" class="nav-link">Home</a>
-      </li>
-      <li class="nav-item d-none d-sm-inline-block">
-        <a href="service.php" class="nav-link">Reserve Service</a>
-      </li>
-      <li class="nav-item d-none d-sm-inline-block">
-        <a href="inventory.php" class="nav-link">Procurement Inventory</a>
-      </li>
-      <li class="nav-item d-none d-sm-inline-block">
-        <a href="file_management.php" class="nav-link">File Management</a>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-th"></i> Apps
+        </a>
+        <div class="dropdown-menu dropdown-menu-lg">
+          <div class="dropdown-header">Application Pages</div>
+          <div class="dropdown-divider"></div>
+          <div class="d-flex flex-wrap" style="width: 300px;">
+            <a href="dashboard.php" class="dropdown-item text-center p-3">
+              <i class="fas fa-tachometer-alt fa-2x mb-2 text-primary"></i>
+              <br>
+              <span class="d-block">Admin Section</span>
+            </a>
+            <a href="service.php" class="dropdown-item text-center p-3">
+              <i class="fas fa-car fa-2x mb-2 text-success"></i>
+              <br>
+              <span class="d-block">Reserve Service</span>
+            </a>
+            <a href="inventory.php" class="dropdown-item text-center p-3">
+              <i class="fas fa-boxes fa-2x mb-2 text-warning"></i>
+              <br>
+              <span class="d-block">Procurement Inventory</span>
+            </a>
+            <a href="file_management.php" class="dropdown-item text-center p-3">
+              <i class="fas fa-folder fa-2x mb-2 text-info"></i>
+              <br>
+              <span class="d-block">File Management</span>
+            </a>
+          </div>
+        </div>
       </li>
     </ul>
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
-      <!-- Navbar Search -->
-      <li class="nav-item">
-        <a class="nav-link" data-widget="navbar-search" href="#" role="button">
-          <i class="fas fa-search"></i>
-        </a>
-        <div class="navbar-search-block">
-          <form class="form-inline">
-            <div class="input-group input-group-sm">
-              <input class="form-control form-control-navbar" type="search" placeholder="Search" aria-label="Search">
-              <div class="input-group-append">
-                <button class="btn btn-navbar" type="submit">
-                  <i class="fas fa-search"></i>
-                </button>
-                <button class="btn btn-navbar" type="button" data-widget="navbar-search">
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </li>
-
-      
       <!-- Notifications Dropdown Menu -->
         <li class="nav-item dropdown">
             <a class="nav-link" data-toggle="dropdown" href="#" id="notificationDropdown">
@@ -121,19 +117,19 @@
                 <a href="#" class="dropdown-item dropdown-footer text-center" data-toggle="modal" data-target="#allNotificationsModal">See All Notifications</a>
             </div>
         </li>
-      <li class="nav-item">
-        <a class="nav-link" data-widget="fullscreen" href="#" role="button">
-          <i class="fas fa-expand-arrows-alt"></i>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="#" role="button">
-          <i class="fas fa-th-large"></i>
-        </a>
-      </li>
-      <li class="nav-item d-none d-sm-inline-block">
-          <a href="admin_approve_reset.php" class="nav-link"><i class="fas fa-lock"></i></a>
-      </li>
+        <li class="nav-item">
+          <a class="nav-link" data-widget="fullscreen" href="#" role="button">
+            <i class="fas fa-expand-arrows-alt"></i>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="#" role="button">
+            <i class="fas fa-th-large"></i>
+          </a>
+        </li>
+        <li class="nav-item d-none d-sm-inline-block">
+            <a href="admin_approve_reset.php" class="nav-link"><i class="fas fa-lock"></i></a>
+        </li>
     </ul>
   </nav>
   <!-- /.navbar -->
@@ -319,6 +315,26 @@
         margin-top: 2px;
         display: block;
     }
+
+    /* Apps dropdown styles */
+    .dropdown-menu-lg .d-flex {
+        flex-wrap: wrap;
+    }
+    
+    .dropdown-menu-lg .dropdown-item {
+        width: 50%;
+        border: none;
+        text-align: center;
+    }
+    
+    .dropdown-menu-lg .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .dropdown-menu-lg .dropdown-item span {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
 </style>
 
 <script>
@@ -326,6 +342,13 @@
     // Get base URL for AJAX calls
     const baseUrl = window.location.origin + '/NIA-PROJECT/views/';
     console.log('Base URL:', baseUrl); // Debugging
+    
+    // Fix pushmenu functionality
+    $('[data-widget="pushmenu"]').click(function(e) {
+      e.preventDefault();
+      $('body').toggleClass('sidebar-collapse');
+    });
+
     // Mark all notifications as read (dropdown)
     $('.mark-all-read-btn').click(function(e) {
       e.preventDefault();

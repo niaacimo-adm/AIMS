@@ -1,0 +1,1229 @@
+    
+        :root {
+            --primary-color: #28a745; /* Green */
+            --primary-dark: #1e7e34; /* Darker green */
+            --secondary-color: #6c757d; /* Grey */
+            --light-color: #f8f9fa; /* Light grey/white */
+            --dark-color: #343a40; /* Dark grey/black */
+            --accent-color: #17a2b8; /* Light blue */
+        }
+        
+        body {
+            background: url("dist/img/OGSONG.JPG") no-repeat center center fixed;
+            background-size: cover;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            position: relative;
+            z-index: 1;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.45); /* adjust darkness */
+            z-index: -1;
+        }
+                
+        .hero-section h1 {
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .hero-section p {
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            opacity: 0.9;
+        }
+        
+        .login-btn {
+            background: #fff;
+            color: #007b3e;
+            font-weight: bold;
+            border-radius: 30px;
+            padding: 12px 25px;
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.4); /* Increased shadow visibility */
+            transition: all 0.3s ease-in-out;
+        }
+        .login-btn:hover {
+            background: #007b3e;
+            color: #fff;
+        }
+        
+        .section-padding {
+            padding: 80px 0;
+            text-align: center;
+        }
+        
+        .section-title {
+            position: relative;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+        
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 3px;
+            background: var(--primary-color);
+            margin: 15px auto 0;
+        }
+        
+        .about-section {
+            background: transparent;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3); /* Increased shadow visibility */
+            transition: transform 0.3s ease;
+            height: 100%;
+        }
+
+        
+        .about-section:hover {
+            transform: translateY(-5px);
+        }
+        
+        .about-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+                
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3); /* Increased shadow visibility */
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            height: 200px;
+        }
+        
+        .gallery-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        .gallery-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .gallery-item:hover .gallery-caption {
+            transform: translateY(0);
+        }
+        
+        .events-section {
+            background: var(--light-color);
+        }
+        
+        /* Update calendar box shadow */
+        #calendar {
+            position: relative;
+            border-radius: 8px;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+            padding: 20px;
+            color: #fff !important;
+        }
+
+        #calendar::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        #calendar > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Force all calendar text to be white */
+        #calendar,
+        #calendar * {
+            color: #fff !important;
+        }
+
+        /* Calendar header and navigation buttons */
+        .fc-toolbar-title,
+        .fc-col-header-cell,
+        .fc-daygrid-day-number,
+        .fc-timegrid-slot-label,
+        .fc-event-title {
+            color: #fff !important;
+        }
+
+        /* Calendar buttons */
+        .fc-button {
+            color: #fff !important;
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+        }
+
+        .fc-button:hover {
+            background-color: var(--primary-dark) !important;
+            border-color: var(--primary-dark) !important;
+        }
+        
+        
+        .nav-tabs .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .nav-tabs .nav-link {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        .forms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1); /* Very subtle white */
+            transition: transform 0.3s ease;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+        }
+
+        .form-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+        }
+        
+        .form-card .card-body {
+            text-align: center;
+            padding: 30px 20px;
+        }
+        
+        .form-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .form-card .card-title {
+            color: var(--dark-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .form-card .card-text {
+            color: var(--dark-color);
+            margin-bottom: 20px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            border-radius: 30px;
+            padding: 8px 20px;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        
+        footer {
+            background: var(--dark-color);
+            color: white;
+            padding: 40px 0 20px;
+        }
+        
+        .footer-logo {
+            margin-bottom: 20px;
+        }
+        
+        .footer-text {
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        
+        /* Scroll to top button */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4); /* Increased shadow visibility */
+            transition: all 0.3s ease;
+        }
+        
+        .scroll-to-top:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        /* Fixed navbar offset */
+        html {
+            scroll-padding-top: 80px;
+        }
+        
+        /* Loading spinner */
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        /* Pagination styling */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .page-item.active .page-link {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .page-link {
+            color: var(--primary-color);
+        }
+
+        .page-link:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Search box styling */
+        .search-box {
+            max-width: 400px;
+            margin: 0 auto 30px;
+        }
+
+        /* Modal styling */
+        .modal-image {
+            background-color: #007b3e;
+            width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+        }
+
+        /* Gallery controls */
+        .gallery-controls, .forms-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .gallery-controls, .forms-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .hero-section {
+                padding: 100px 0 60px;
+            }
+            
+            .hero-section h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Navigation styling */
+        .navbar {
+            background: var(--dark-color) !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); /* Increased shadow visibility */
+            padding: 10px 0;
+        }
+                
+        .navbar-brand {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        .navbar-brand img {
+            margin-right: 10px;
+        }
+        
+        .navbar-nav .nav-link {
+            color: white !important;
+            font-weight: 500;
+            margin: 0 5px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--light-color) !important;
+        }
+        
+        .navbar-nav .login-btn {
+            background: var(--primary-color);
+            color: white !important;
+            padding: 8px 20px;
+            margin-left: 10px;
+        }
+
+        .navbar-nav .login-btn:hover {
+            background: var(--primary-dark);
+            color: white !important;
+        }
+
+        /* Calendar event colors */
+        .fc-event {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .badge-primary {
+            background-color: var(--primary-color);
+        }
+
+        .badge-info {
+            background-color: var(--accent-color);
+        }
+
+        .badge-warning {
+            background-color: #ffc107;
+        }
+
+        .badge-success {
+            background-color: var(--primary-color);
+        }
+        /* Hero Section */
+        #home.hero-section {
+            background: url("dist/img/OGSONG.JPG") no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #fff; 
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Dark overlay for readability */
+        #home.hero-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.45); /* darker overlay */
+            z-index: -1;
+        }
+
+        .display-3 {
+            font-weight: 700;
+            text-shadow: 
+                -2px -2px 4px rgba(0,0,0,0.9),
+                2px -2px 4px rgba(0,0,0,0.9),
+                -2px  2px 4px rgba(0,0,0,0.9),
+                2px  2px 4px rgba(0,0,0,0.9);
+        }
+
+        p, .lead {
+            color: #f0f0f0;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+        /* Lead paragraph under headline */
+        .hero-section .lead {
+            color: #e0e0e0; /* softer gray for contrast */
+            font-size: 1.2rem;
+            text-shadow: 0px 1px 3px rgba(0,0,0,0.8);
+            margin-bottom: 25px;
+        }
+       section {
+            background: transparent !important;
+            color: #fff; /* text stays white */
+        }
+
+        /* 3D Carousel Styles */
+        .carousel-3d-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            margin: 40px 0;
+            perspective: 1200px;
+            overflow: hidden;
+        }
+
+        .carousel-3d {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        .carousel-item {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            top: 75px;
+            left: 50%;
+            margin-left: -175px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+            cursor: pointer;
+            backface-visibility: hidden;
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .carousel-item:hover img {
+            transform: scale(1.08);
+        }
+
+        .carousel-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+            color: white;
+            padding: 20px 15px 15px;
+            text-align: center;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .carousel-item:hover .carousel-caption {
+            transform: translateY(0);
+        }
+
+        /* Carousel Controls */
+        .carousel-control {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .carousel-control:hover {
+            background: rgba(30, 126, 52, 1);
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .carousel-control.prev {
+            left: 30px;
+        }
+
+        .carousel-control.next {
+            right: 30px;
+        }
+
+        .carousel-control:disabled {
+            background: rgba(108, 117, 125, 0.5);
+            cursor: not-allowed;
+            transform: translateY(-50%) scale(1);
+        }
+
+        .carousel-control:disabled:hover {
+            background: rgba(108, 117, 125, 0.5);
+            transform: translateY(-50%) scale(1);
+        }
+
+        /* Carousel Indicators */
+        .carousel-indicators {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .carousel-indicators .indicator {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .carousel-indicators .indicator.active {
+            background: var(--primary-color);
+            transform: scale(1.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .carousel-indicators .indicator:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: scale(1.2);
+        }
+
+        /* Loading State */
+        .carousel-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .carousel-loading .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            border-width: 0.3em;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .carousel-3d-container {
+                height: 450px;
+            }
+            
+            .carousel-item {
+                width: 300px;
+                height: 300px;
+                margin-left: -150px;
+                top: 75px;
+            }
+            
+            .carousel-control {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .carousel-control.prev {
+                left: 15px;
+            }
+            
+            .carousel-control.next {
+                right: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .carousel-3d-container {
+                height: 400px;
+                perspective: 800px;
+            }
+            
+            .carousel-item {
+                width: 250px;
+                height: 250px;
+                margin-left: -125px;
+                top: 75px;
+            }
+            
+            .carousel-control {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+            
+            .carousel-caption {
+                padding: 15px 10px 10px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .carousel-3d-container {
+                height: 350px;
+            }
+            
+            .carousel-item {
+                width: 220px;
+                height: 220px;
+                margin-left: -110px;
+                top: 65px;
+            }
+            
+            .carousel-control {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .carousel-control.prev {
+                left: 10px;
+            }
+            
+            .carousel-control.next {
+                right: 10px;
+            }
+            
+            .carousel-indicators {
+                bottom: 15px;
+            }
+            
+            .carousel-indicators .indicator {
+                width: 10px;
+                height: 10px;
+            }
+        }
+
+        /* Add this to your CSS section */
+        .carousel-item {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            top: 75px;
+            left: 50%;
+            margin-left: -175px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+            cursor: pointer;
+            backface-visibility: hidden;
+            /* Ensure items are visible */
+            visibility: visible;
+            display: block;
+            /* Prevent any background issues */
+            background: transparent;
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+            /* Ensure images are properly displayed */
+            display: block;
+            background: transparent;
+        }
+
+        /* Ensure carousel container has proper 3D perspective */
+        .carousel-3d-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            margin: 40px 0;
+            perspective: 1200px;
+            overflow: visible; /* Changed from hidden to visible */
+        }
+
+        .carousel-3d {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        /* Fix for carousel controls */
+        .carousel-control {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000; /* Increased z-index to ensure it's above everything */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .carousel-control:hover {
+            background: rgba(30, 126, 52, 1);
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .carousel-control.prev {
+            left: 30px;
+        }
+
+        .carousel-control.next {
+            right: 30px;
+        }
+
+        .carousel-control:disabled {
+            background: rgba(108, 117, 125, 0.5);
+            cursor: not-allowed;
+            transform: translateY(-50%) scale(1);
+        }
+
+        .carousel-control:disabled:hover {
+            background: rgba(108, 117, 125, 0.5);
+            transform: translateY(-50%) scale(1);
+        }
+
+        /* Ensure carousel container has proper stacking context */
+        .carousel-3d-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            margin: 40px 0;
+            perspective: 1200px;
+            overflow: visible;
+            z-index: 1;
+        }
+        /* Modal text styling */
+.modal-content {
+    color: #000 !important; /* Black text */
+    background-color: #fff !important; /* White background */
+}
+
+.modal-header {
+    background-color: #f8f9fa !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+.modal-title {
+    color: #000 !important; /* Black text for modal titles */
+    font-weight: 600;
+    text-shadow: none !important; /* Remove any text shadow */
+}
+
+.modal-body {
+    color: #000 !important; /* Black text for modal body */
+    background-color: #fff !important; /* White background */
+}
+
+.modal-body p {
+    color: #000 !important; /* Black text for paragraphs */
+    text-shadow: none !important; /* Remove text shadow */
+}
+
+.modal-footer {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #dee2e6 !important;
+}
+
+/* SweetAlert2 modal styling */
+.swal2-popup {
+    background: #fff !important;
+    color: #000 !important;
+}
+
+.swal2-title {
+    color: #000 !important; /* Black text for SweetAlert titles */
+    text-shadow: none !important;
+}
+
+.swal2-html-container {
+    color: #000 !important; /* Black text for SweetAlert content */
+    text-shadow: none !important;
+}
+
+.swal2-content {
+    color: #000 !important;
+}
+
+/* Ensure all modal text is black and has no shadow */
+.modal * {
+    color: #000 !important;
+    text-shadow: none !important;
+}
+
+/* Specific styling for image modal */
+#imageModal .modal-content {
+    background: #fff !important;
+}
+
+#imageModal .modal-header,
+#imageModal .modal-body,
+#imageModal .modal-footer {
+    background: #fff !important;
+    color: #000 !important;
+}
+
+#imageModal .modal-title,
+#imageModal #modalCaption {
+    color: #000 !important;
+    text-shadow: none !important;
+}
+
+/* Calendar event modal specific styling */
+.swal2-modal {
+    background: #fff !important;
+}
+
+.swal2-modal * {
+    color: #000 !important;
+    text-shadow: none !important;
+}
+
+/* Ensure close button in modals is visible */
+.modal-header .close {
+    color: #000 !important;
+    text-shadow: none !important;
+    opacity: 1;
+}
+
+.modal-header .close:hover {
+    color: #333 !important;
+}
+/* Floating Calendar Button Styles */
+.floating-calendar-btn {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+    animation: float 3s ease-in-out infinite;
+}
+
+.floating-calendar-btn:hover {
+    background: var(--primary-dark);
+    transform: scale(1.1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    animation: none; /* Stop floating animation on hover */
+}
+
+/* Floating animation */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Floating Calendar Modal Styles */
+.floating-calendar-modal .modal-dialog {
+    max-width: 400px;
+    margin: 20px;
+}
+
+.floating-calendar-modal .modal-content {
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: none;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.floating-calendar-modal .modal-header {
+    background: var(--primary-color);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border-bottom: none;
+    padding: 15px 20px;
+}
+
+.floating-calendar-modal .modal-title {
+    color: white !important;
+    font-weight: 600;
+    margin: 0;
+}
+
+.floating-calendar-modal .close {
+    color: white;
+    opacity: 0.8;
+    text-shadow: none;
+}
+
+.floating-calendar-modal .close:hover {
+    color: white;
+    opacity: 1;
+}
+
+.floating-calendar-modal .modal-body {
+    padding: 20px;
+    background: #f8f9fa;
+    color: #000 !important;
+}
+
+.floating-calendar-modal .modal-body * {
+    color: #000 !important;
+}
+
+.floating-calendar-modal .modal-footer {
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 15px 15px;
+    padding: 15px 20px;
+}
+
+/* Mini Calendar Styles */
+#miniCalendar {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+#miniCalendar .fc {
+    font-size: 12px;
+}
+
+#miniCalendar .fc-toolbar-title {
+    font-size: 14px !important;
+    font-weight: 600;
+    color: var(--dark-color) !important;
+}
+
+#miniCalendar .fc-col-header-cell {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 5px 0;
+    color: var(--dark-color) !important;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+#miniCalendar .fc-col-header-cell a {
+    color: var(--dark-color) !important;
+    text-decoration: none;
+}
+
+#miniCalendar .fc-daygrid-day-number {
+    font-size: 11px;
+    color: var(--dark-color) !important;
+    font-weight: 500;
+}
+
+#miniCalendar .fc-day-today {
+    background-color: rgba(40, 167, 69, 0.2) !important;
+}
+
+#miniCalendar .fc-day-today .fc-daygrid-day-number {
+    color: var(--primary-color) !important;
+    font-weight: bold;
+}
+
+#miniCalendar .fc-event {
+    font-size: 9px;
+    padding: 1px 3px;
+    margin: 1px 0;
+    border-radius: 3px;
+    border: none;
+}
+
+#miniCalendar .fc-event-title {
+    color: white !important;
+    font-weight: 500;
+}
+
+#miniCalendar .fc-button {
+    padding: 4px 8px;
+    font-size: 11px;
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+#miniCalendar .fc-button:hover {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+#miniCalendar .fc-button:disabled {
+    background-color: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+}
+
+#miniCalendar .fc-button-active {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+/* Ensure all calendar text in mini calendar is dark */
+#miniCalendar,
+#miniCalendar * {
+    color: var(--dark-color) !important;
+}
+
+#miniCalendar .fc-daygrid-day-frame,
+#miniCalendar .fc-timegrid-slot-label,
+#miniCalendar .fc-event-time {
+    color: var(--dark-color) !important;
+}
+
+/* Fix for calendar header */
+#miniCalendar .fc-toolbar {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+#miniCalendar .fc-toolbar-chunk {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Fix for day cells */
+#miniCalendar .fc-daygrid-day-frame {
+    background: transparent;
+}
+
+#miniCalendar .fc-daygrid-day:hover {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Fix for event colors in mini calendar */
+#miniCalendar .fc-h-event {
+    background-color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+}
+
+#miniCalendar .fc-event-main {
+    color: white !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .floating-calendar-btn {
+        bottom: 90px;
+        right: 15px;
+        width: 55px;
+        height: 55px;
+        font-size: 22px;
+    }
+    
+    .floating-calendar-modal .modal-dialog {
+        margin: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .floating-calendar-btn {
+        bottom: 80px;
+        right: 10px;
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    #miniCalendar .fc {
+        font-size: 10px;
+    }
+    
+    #miniCalendar .fc-toolbar-title {
+        font-size: 12px !important;
+    }
+}
+
+/* Ensure modal text is properly styled */
+.floating-calendar-modal .modal-body,
+.floating-calendar-modal .modal-footer {
+    color: #000 !important;
+}
+
+.floating-calendar-modal .btn {
+    border-radius: 25px;
+    padding: 8px 20px;
+    font-weight: 500;
+}
+
+.floating-calendar-modal .btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.floating-calendar-modal .btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}

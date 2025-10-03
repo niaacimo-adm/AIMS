@@ -7,6 +7,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Get current page for active state
+$current_page = basename($_SERVER['PHP_SELF']);
+
 // Get employee data if user is logged in
 $employee_name = '';
 $employee_picture = '../dist/img/user2-160x160.jpg'; // Default image
@@ -72,32 +75,26 @@ if ($employee_id) {
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class with font-awesome or any other icon font library -->
                 <li class="nav-item">
-                    <a href="inventory.php" class="nav-link active bg-light">
+                    <a href="inventory.php" class="nav-link bg-light <?= $current_page == 'inventory.php' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-home text-info"></i>
                         <p class="text-dark">Dashboard</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="view_inventory.php" class="nav-link text-white">
+                    <a href="view_inventory.php" class="nav-link text-white <?= $current_page == 'view_inventory.php' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-box"></i>
                         <p>Inventory</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="reports.php" class="nav-link text-white">
+                    <a href="reports.php" class="nav-link text-white <?= $current_page == 'reports.php' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-chart-bar"></i>
                         <p>Reports</p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="settings.php" class="nav-link text-white">
-                        <i class="nav-icon fas fa-cog"></i>
-                        <p>Settings</p>
-                    </a>
-                </li>
                 <?php if (isset($_SESSION['user_id'])): ?>
             <li class="nav-item">
-                <a href="profile.php" class="nav-link text-white">
+                <a href="profile.php" class="nav-link text-white <?= $current_page == 'profile.php' ? 'active' : '' ?>">
                     <i class="nav-icon fas fa-user"></i>
                     <p>My Profile</p>
                 </a>

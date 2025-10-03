@@ -7,6 +7,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Get current page for active state
+$current_page = basename($_SERVER['PHP_SELF']);
+
 // Get employee data if user is logged in
 $employee_name = '';
 $employee_picture = '../dist/img/user2-160x160.jpg'; // Default image
@@ -72,45 +75,39 @@ if ($employee_id) {
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
 
           <li class="nav-item">
-            <a href="service.php" class="nav-link active bg-dark">
+            <a href="service.php" class="nav-link bg-dark <?= $current_page == 'service.php' ? 'active' : '' ?>">
               <i class="nav-icon fas fa-home text-primary"></i>
               <p class="text-white">Dashboard</p>
             </a>
           </li>
 
         <li class="nav-item">
-            <a href="service_calendar.php" class="nav-link text-white">
+            <a href="service_calendar.php" class="nav-link text-white <?= $current_page == 'service_calendar.php' ? 'active' : '' ?>">
                 <i class="nav-icon fas fa-calendar"></i>
                 <p>Service Calendar</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_vehicle.php" class="nav-link text-white">
+            <a href="service_vehicle.php" class="nav-link text-white <?= $current_page == 'service_vehicle.php' ? 'active' : '' ?>">
                 <i class="nav-icon fas fa-car"></i>
                 <p>Service Information</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="#" class="nav-link text-white">
-                <i class="nav-icon fas fa-calendar-check"></i>
-                <p>Reservation Service</p>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a href="service_driver.php" class="nav-link text-white">
+            <a href="service_driver.php" class="nav-link text-white <?= $current_page == 'service_driver.php' ? 'active' : '' ?>">
                 <i class="nav-icon fas fa-user"></i>
                 <p>Operator/Driver</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_request.php" class="nav-link text-white">
+            <a href="service_request.php" class="nav-link text-white <?= $current_page == 'service_request.php' ? 'active' : '' ?>">
                 <i class="nav-icon fas fa-user"></i>
                 <p>Transportation Request</p>
             </a>
         </li>
         <?php if (isset($_SESSION['user_id'])): ?>
             <li class="nav-item">
-                <a href="profile.php" class="nav-link text-white">
+                <a href="profile.php" class="nav-link text-white <?= $current_page == 'profile.php' ? 'active' : '' ?>">
                     <i class="nav-icon fas fa-user"></i>
                     <p>My Profile</p>
                 </a>
