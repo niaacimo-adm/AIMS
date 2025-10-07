@@ -1,11 +1,15 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/auth.php';
-
+header('Content-Type: application/json');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_POST['action']) || $_POST['action'] !== 'upload_files') {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+    exit();
+}
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Not authenticated']);
@@ -65,104 +69,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         mkdir($upload_dir, 0777, true);
     }
     
-    $section_id = isset($_POST['section_id']) && $_POST['section_id'] !== 'manager' ? $_POST['section_id'] : NULL;
-    $folder_id = isset($_POST['folder_id']) && !empty($_POST['folder_id']) ? $_POST['folder_id'] : NULL;
-    $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+    $section_id = $_POST['section_id'] ?? null;
+    $folder_id = $_POST['folder_id'] ?? null;
+    $description = $_POST['description'] ?? '';
     
     $uploaded_files = [];
-    $failed_files = [];
     $errors = [];
     
-    // Check if files were uploaded
-    if (!isset($_FILES['files']) || empty($_FILES['files']['name'][0])) {
-        echo json_encode(['success' => false, 'message' => 'No files selected']);
-        exit();
-    }
-    
-    // Process each file
-    foreach ($_FILES['files']['name'] as $index => $name) {
-        if ($_FILES['files']['error'][$index] !== UPLOAD_ERR_OK) {
-            $errors[] = "Error uploading {$name}: " . getUploadError($_FILES['files']['error'][$index]);
-            $failed_files[] = $name;
-            continue;
-        }
-        
-        $file_name = basename($name);
-        $file_tmp = $_FILES['files']['tmp_name'][$index];
-        $file_size = $_FILES['files']['size'][$index];
-        $file_type = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        
-        // Validate file size (500MB limit)
-        $max_file_size = 500 * 1024 * 1024; // 500MB in bytes
-        if ($file_size > $max_file_size) {
-            $errors[] = "File {$file_name} is too large (max 500MB)";
-            $failed_files[] = $file_name;
-            continue;
-        }
-        
-        // Generate unique filename to prevent conflicts
-        $unique_name = uniqid() . '_' . time() . '.' . $file_type;
-        $target_path = $upload_dir . $unique_name;
-        
-        // Move uploaded file
-        if (move_uploaded_file($file_tmp, $target_path)) {
-            // Insert into database
-            $stmt = $db->prepare("INSERT INTO files (file_name, file_path, file_type, file_size, description, section_id, folder_id, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssisii", $file_name, $unique_name, $file_type, $file_size, $description, $section_id, $folder_id, $user_emp_id);
-            
-            if ($stmt->execute()) {
-                $file_id = $db->insert_id;
-                $uploaded_files[] = [
-                    'name' => $file_name,
-                    'size' => $file_size,
-                    'type' => $file_type
-                ];
+    if (!empty($_FILES['files'])) {
+        foreach ($_FILES['files']['name'] as $key => $name) {
+            if ($_FILES['files']['error'][$key] === UPLOAD_ERR_OK) {
+                $temp_name = $_FILES['files']['tmp_name'][$key];
+                $file_size = $_FILES['files']['size'][$key];
+                $file_type = pathinfo($name, PATHINFO_EXTENSION);
                 
-                // Log file upload activity
-                $log_stmt = $db->prepare("INSERT INTO file_activity_logs (file_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'uploaded', ?, ?)");
-                $log_description = "File '{$file_name}' uploaded";
-                $ip = $_SERVER['REMOTE_ADDR'];
-                $log_stmt->bind_param("iiss", $file_id, $user_emp_id, $log_description, $ip);
-                $log_stmt->execute();
+                // Generate unique filename
+                $new_filename = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9\._-]/', '_', $name);
+                $file_path = $upload_dir . $new_filename;
+                
+                if (move_uploaded_file($temp_name, $file_path)) {
+                    // Insert into database
+                    $stmt = $db->prepare("INSERT INTO files (file_name, file_path, file_type, file_size, description, section_id, folder_id, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $section_id_value = ($section_id === 'manager' || empty($section_id)) ? NULL : $section_id;
+                    $folder_id_value = empty($folder_id) ? NULL : $folder_id;
+                    $stmt->bind_param("sssisiii", $name, $new_filename, $file_type, $file_size, $description, $section_id_value, $folder_id_value, $user_emp_id);
+                    
+                    if ($stmt->execute()) {
+                        $uploaded_files[] = [
+                            'name' => $name,
+                            'size' => $file_size,
+                            'id' => $db->insert_id
+                        ];
+                    } else {
+                        $errors[] = "Failed to save file '$name' to database";
+                        // Remove uploaded file if database insert failed
+                        unlink($file_path);
+                    }
+                } else {
+                    $errors[] = "Failed to upload file '$name'";
+                }
             } else {
-                // Remove the uploaded file if database insert failed
-                unlink($target_path);
-                $errors[] = "Database error for {$file_name}: " . $db->error;
-                $failed_files[] = $file_name;
+                $errors[] = "Error uploading file '$name': " . $_FILES['files']['error'][$key];
             }
-        } else {
-            $errors[] = "Failed to move uploaded file {$file_name}";
-            $failed_files[] = $file_name;
         }
     }
     
-    $response = [
-        'success' => count($uploaded_files) > 0,
-        'uploaded_count' => count($uploaded_files),
-        'failed_count' => count($failed_files),
-        'uploaded_files' => $uploaded_files,
-        'failed_files' => $failed_files
-    ];
-    
-    if (!empty($errors)) {
-        $response['errors'] = $errors;
+    if (count($uploaded_files) > 0) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Files uploaded successfully',
+            'uploaded_count' => count($uploaded_files),
+            'uploaded_files' => $uploaded_files,
+            'errors' => $errors
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No files were uploaded',
+            'errors' => $errors
+        ]);
     }
-    
-    echo json_encode($response);
-    exit();
-}
-
-function getUploadError($error_code) {
-    $errors = [
-        UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize directive in php.ini',
-        UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE directive in HTML form',
-        UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
-        UPLOAD_ERR_NO_FILE => 'No file was uploaded',
-        UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
-        UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
-        UPLOAD_ERR_EXTENSION => 'File upload stopped by extension'
-    ];
-    
-    return $errors[$error_code] ?? 'Unknown upload error';
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid request']);
 }
 ?>

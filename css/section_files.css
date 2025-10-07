@@ -592,3 +592,38 @@ tr.selected {
 .file-remove:hover {
     color: #c82333;
 }
+.folder-item.no-access {
+    opacity: 0.7;
+    background-color: #f8f9fa;
+}
+
+.folder-item.no-access .folder-name {
+    color: #6c757d;
+}
+
+.no-access-badge {
+    background-color: #6c757d;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    margin-left: 5px;
+}
+
+.folder-item.no-access .folder-actions {
+    display: none; /* Hide actions for folders without access */
+}
+
+/* File Type Colors */
+.file-icon-pdf { color: #dc3545 !important; } /* Red for PDF */
+.file-icon-word { color: #2b579a !important; } /* Blue for Word */
+.file-icon-excel { color: #217346 !important; } /* Green for Excel */
+.file-icon-powerpoint { color: #d24726 !important; } /* Orange for PowerPoint */
+.file-icon-image { color: #20c997 !important; } /* Teal for Images */
+.file-icon-video { color: #6f42c1 !important; } /* Purple for Video */
+.file-icon-audio { color: #fd7e14 !important; } /* Orange for Audio */
+.file-icon-archive { color: #6c757d !important; } /* Gray for Archives */
+.file-icon-text { color: #495057 !important; } /* Dark gray for Text */
+.file-icon-default { color: #007bff !important; } /* Blue for others */
+
+/* Update the getFileIcon function in PHP to use these classes */

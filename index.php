@@ -111,11 +111,15 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     <!-- Hero Section -->
     <section id="home" class="hero-section">
         <div class="container">
-            <h1 class="display-3 mb-8">Welcome to NIA Albay-Catanduanes Irrigation Management Office</h1>
-            <p class="lead mb-4">National Irrigation Administration - Providing efficient irrigation services for sustainable agriculture</p>
-            <a href="login.php" class="login-btn btn-lg">
-                <i class="fas fa-sign-in-alt me-2"></i> Employee Sign In
-            </a>
+            <div class="text-center">
+                <h1 class="display-4 mb-3">Welcome to</h1>
+                <h1 class="display-4 mb-3">National Irrigation Administration</h1>
+                <h1 class="display-4 mb-4">Albay-Catanduanes Irrigation Management Office</h1>
+                <p class="lead mb-4">Providing efficient irrigation services for sustainable agriculture</p>
+                <a href="login.php" class="login-btn btn-lg">
+                    <i class="fas fa-sign-in-alt me-2"></i> Employee Sign In
+                </a>
+            </div>
         </div>
     </section>
 

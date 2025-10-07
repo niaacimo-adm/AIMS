@@ -22,23 +22,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $parent_folder_id = $_POST['parent_folder_id'];
     $section_id = $_POST['section_id'];
     
-    // Get the actual employee ID for the current user
+    // FIXED: Get the actual employee ID for the current user using the same logic as folder_contents.php
     $user_emp_id = null;
-    $emp_stmt = $db->prepare("SELECT emp_id FROM employee WHERE emp_id = ?");
-    $emp_stmt->bind_param("i", $_SESSION['user_id']);
-    $emp_stmt->execute();
-    $emp_result = $emp_stmt->get_result();
     
-    if ($emp_result->num_rows > 0) {
-        $user_emp_id = $_SESSION['user_id'];
+    // First, try to get the employee ID from the users table (correct approach)
+    $user_stmt = $db->prepare("SELECT employee_id FROM users WHERE id = ?");
+    $user_stmt->bind_param("i", $_SESSION['user_id']);
+    $user_stmt->execute();
+    $user_result = $user_stmt->get_result();
+    
+    if ($user_result->num_rows > 0) {
+        $user_data = $user_result->fetch_assoc();
+        $user_emp_id = $user_data['employee_id'];
     } else {
-        // Fallback to first available employee ID
-        $default_stmt = $db->prepare("SELECT emp_id FROM employee LIMIT 1");
-        $default_stmt->execute();
-        $default_result = $default_stmt->get_result();
-        if ($default_result->num_rows > 0) {
-            $default_emp = $default_result->fetch_assoc();
-            $user_emp_id = $default_emp['emp_id'];
+        // If no user record found, try direct employee table lookup as fallback
+        $emp_stmt = $db->prepare("SELECT emp_id FROM employee WHERE emp_id = ?");
+        $emp_stmt->bind_param("i", $_SESSION['user_id']);
+        $emp_stmt->execute();
+        $emp_result = $emp_stmt->get_result();
+        
+        if ($emp_result->num_rows > 0) {
+            $emp_data = $emp_result->fetch_assoc();
+            $user_emp_id = $emp_data['emp_id'];
+        } else {
+            // Last resort: use session user_emp_id if previously set
+            if (isset($_SESSION['user_emp_id']) && $_SESSION['user_emp_id']) {
+                $user_emp_id = $_SESSION['user_emp_id'];
+            } else {
+                // Final fallback: use the session user_id itself
+                $user_emp_id = $_SESSION['user_id'];
+                error_log("Using session user_id as fallback employee ID: " . $user_emp_id);
+            }
         }
     }
 
@@ -47,6 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         header("Location: folder_contents.php?folder_id=" . $parent_folder_id . "&section_id=" . $section_id);
         exit();
     }
+    
+    // Store for consistent use
+    $_SESSION['user_emp_id'] = $user_emp_id;
     
     // Validate folder name
     if (empty($folder_name)) {

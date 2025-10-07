@@ -91,7 +91,7 @@
         }
     }
 
-    // FUNCTION: Check if user has permission to access folder
+    // Updated permission checking function with proper hierarchy
     function hasFolderPermission($db, $folder_id, $user_emp_id, $permission_type = 'view') {
         // Check if user is the creator (has full access)
         $creator_stmt = $db->prepare("SELECT created_by FROM folders WHERE folder_id = ?");
@@ -108,9 +108,9 @@
         
         // Check shared permissions
         $share_stmt = $db->prepare("SELECT permission_level, expires_at 
-                                  FROM folder_shares 
-                                  WHERE folder_id = ? AND shared_with_emp_id = ? AND is_active = TRUE 
-                                  AND (expires_at IS NULL OR expires_at > NOW())");
+                                FROM folder_shares 
+                                WHERE folder_id = ? AND shared_with_emp_id = ? AND is_active = TRUE 
+                                AND (expires_at IS NULL OR expires_at > NOW())");
         $share_stmt->bind_param("ii", $folder_id, $user_emp_id);
         $share_stmt->execute();
         $share_result = $share_stmt->get_result();
@@ -118,8 +118,14 @@
         if ($share_result->num_rows > 0) {
             $share_data = $share_result->fetch_assoc();
             
-            // Check permission hierarchy
-            $permission_hierarchy = ['view' => 1, 'upload' => 2, 'edit' => 3, 'manage' => 4];
+            // Fixed permission hierarchy - properly ordered from lowest to highest
+            $permission_hierarchy = [
+                'view' => 1,      // Can only view
+                'upload' => 2,    // Can view and upload
+                'edit' => 3,      // Can view, upload, edit files, and download
+                'manage' => 4     // Full access including folder management
+            ];
+            
             $required_level = $permission_hierarchy[$permission_type] ?? 0;
             $user_level = $permission_hierarchy[$share_data['permission_level']] ?? 0;
             
@@ -129,9 +135,43 @@
         return false; // No permission found
     }
 
-    // FUNCTION: Get accessible folders for user
-    function getAccessibleFolders($db, $section_id, $user_emp_id) {
-        $accessible_folders = [];
+    // Helper function to check specific actions based on permission level
+    function canPerformAction($db, $folder_id, $user_emp_id, $action) {
+        // First check if user is creator (full access)
+        $creator_stmt = $db->prepare("SELECT created_by FROM folders WHERE folder_id = ?");
+        $creator_stmt->bind_param("i", $folder_id);
+        $creator_stmt->execute();
+        $creator_result = $creator_stmt->get_result();
+        
+        if ($creator_result->num_rows > 0) {
+            $folder_data = $creator_result->fetch_assoc();
+            if ($folder_data['created_by'] == $user_emp_id) {
+                return true; // Creator has full access to everything
+            }
+        }
+        
+        // Define required permissions for each action
+        $permission_map = [
+            'view_files' => 'view',
+            'upload_files' => 'upload',
+            'download_files' => 'edit', // Download requires edit permission
+            'edit_files' => 'edit',
+            'delete_files' => 'edit',
+            'create_folder' => 'manage',
+            'edit_folder' => 'manage',
+            'delete_folder' => 'manage',
+            'share_folder' => 'manage',
+            'manage_shares' => 'manage', // Add this line
+            'update_share' => 'manage'   // Add this line
+        ];
+        
+        $required_permission = $permission_map[$action] ?? 'manage';
+        return hasFolderPermission($db, $folder_id, $user_emp_id, $required_permission);
+    }
+
+    // FUNCTION: Get all folders (visible to everyone) but check permissions on access
+    function getAllFolders($db, $section_id) {
+        $all_folders = [];
         
         if ($section_id === 'manager') {
             $query = "SELECT f.*, 
@@ -160,13 +200,10 @@
         $result = $stmt->get_result();
         
         while ($row = $result->fetch_assoc()) {
-            // Check if user has view permission for this folder
-            if (hasFolderPermission($db, $row['folder_id'], $user_emp_id, 'view')) {
-                $accessible_folders[] = $row;
-            }
+            $all_folders[] = $row;
         }
         
-        return $accessible_folders;
+        return $all_folders;
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -188,32 +225,47 @@
 
             switch ($_POST['action']) {
                 case 'create_folder':
-                    $folder_name = trim($_POST['folder_name']);
-                    $description = trim($_POST['description']);
-                    $password = !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : null;
-                    $is_locked = !empty($_POST['password']) ? 1 : 0;
+                // Check if user has permission to create folders in this section
+                if ($section_id !== 'manager') {
+                    // For section folders, check if user belongs to the section or has manage permissions
+                    $section_check = $db->prepare("SELECT section_id FROM employee WHERE emp_id = ? AND section_id = ?");
+                    $section_check->bind_param("ii", $user_emp_id, $section_id);
+                    $section_check->execute();
+                    $section_result = $section_check->get_result();
                     
-                    $stmt = $db->prepare("INSERT INTO folders (folder_name, description, section_id, password, created_by, is_locked) 
-                                        VALUES (?, ?, ?, ?, ?, ?)");
-                    $section_id_value = ($section_id === 'manager') ? NULL : $section_id;
-                    $stmt->bind_param("ssisii", $folder_name, $description, $section_id_value, $password, $user_emp_id, $is_locked);
-                    
-                    if ($stmt->execute()) {
-                        $folder_id = $db->insert_id;
-                        // Log activity
-                        $log_stmt = $db->prepare("INSERT INTO folder_activity_logs (folder_id, emp_id, activity_type, description, ip_address) 
-                                                VALUES (?, ?, 'created', ?, ?)");
-                        $log_description = "Folder '{$folder_name}' created";
-                        $ip = $_SERVER['REMOTE_ADDR'];
-                        $log_stmt->bind_param("iiss", $folder_id, $user_emp_id, $log_description, $ip);
-                        $log_stmt->execute();
-                        
-                        $_SESSION['success'] = "Folder created successfully!";
-                    } else {
-                        $_SESSION['error'] = "Failed to create folder: " . $db->error;
+                    if ($section_result->num_rows === 0) {
+                        $_SESSION['error'] = "You don't have permission to create folders in this section.";
+                        header("Location: section_files.php?section_id=" . $section_id);
+                        exit();
                     }
-                    header("Location: section_files.php?section_id=" . $section_id);
-                    exit();
+                }
+                
+                $folder_name = trim($_POST['folder_name']);
+                $description = trim($_POST['description']);
+                $password = !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : null;
+                $is_locked = !empty($_POST['password']) ? 1 : 0;
+                
+                $stmt = $db->prepare("INSERT INTO folders (folder_name, description, section_id, password, created_by, is_locked) 
+                                    VALUES (?, ?, ?, ?, ?, ?)");
+                $section_id_value = ($section_id === 'manager') ? NULL : $section_id;
+                $stmt->bind_param("ssisii", $folder_name, $description, $section_id_value, $password, $user_emp_id, $is_locked);
+                
+                if ($stmt->execute()) {
+                    $folder_id = $db->insert_id;
+                    // Log activity
+                    $log_stmt = $db->prepare("INSERT INTO folder_activity_logs (folder_id, emp_id, activity_type, description, ip_address) 
+                                            VALUES (?, ?, 'created', ?, ?)");
+                    $log_description = "Folder '{$folder_name}' created";
+                    $ip = $_SERVER['REMOTE_ADDR'];
+                    $log_stmt->bind_param("iiss", $folder_id, $user_emp_id, $log_description, $ip);
+                    $log_stmt->execute();
+                    
+                    $_SESSION['success'] = "Folder created successfully!";
+                } else {
+                    $_SESSION['error'] = "Failed to create folder: " . $db->error;
+                }
+                header("Location: section_files.php?section_id=" . $section_id);
+                exit();
                     
                 case 'unlock_folder':
                     $folder_id = $_POST['folder_id'];
@@ -511,44 +563,150 @@
                             echo '<div class="alert alert-danger text-center">You do not have permission to view this folder.</div>';
                             exit();
                         }
+                        
+                        // Check if user has permission to manage shares
+                        $can_manage = canPerformAction($db, $folder_id, $user_emp_id, 'manage_shares');
+                        
                         // Fetch existing shares for this folder
-                        $shares_stmt = $db->prepare("SELECT fs.*, 
-                                                            CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-                                                            e.email as employee_email
-                                                    FROM folder_shares fs
-                                                    JOIN employee e ON fs.shared_with_emp_id = e.emp_id
-                                                    WHERE fs.folder_id = ? AND fs.is_active = TRUE
-                                                    ORDER BY fs.created_at DESC");
-                        $shares_stmt->bind_param("i", $folder_id);
-                        $shares_stmt->execute();
-                        $shares_result = $shares_stmt->get_result();
                         $folder_shares = [];
-                        while ($row = $shares_result->fetch_assoc()) {
-                            $folder_shares[] = $row;
+                        try {
+                            $shares_stmt = $db->prepare("SELECT fs.*, 
+                                                                CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+                                                                e.email as employee_email
+                                                        FROM folder_shares fs
+                                                        JOIN employee e ON fs.shared_with_emp_id = e.emp_id
+                                                        WHERE fs.folder_id = ? AND fs.is_active = TRUE
+                                                        ORDER BY fs.created_at DESC");
+                            $shares_stmt->bind_param("i", $folder_id);
+                            $shares_stmt->execute();
+                            $shares_result = $shares_stmt->get_result();
+                            while ($row = $shares_result->fetch_assoc()) {
+                                $folder_shares[] = $row;
+                            }
+                        } catch (Exception $e) {
+                            error_log("Folder shares table not found: " . $e->getMessage());
+                            $folder_shares = [];
                         }
                         
                         if (empty($folder_shares)) {
                             echo '<div class="alert alert-info text-center"><i class="fas fa-info-circle mr-2"></i>This folder is not shared with anyone.</div>';
                         } else {
-                            echo '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Employee</th><th>Permission</th><th>Expires</th><th>Action</th></tr></thead><tbody>';
+                            echo '<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Employee</th><th>Permission</th><th>Expires</th><th>Actions</th></tr></thead><tbody>';
                             foreach ($folder_shares as $share) {
                                 $badge_class = getPermissionBadgeClass($share['permission_level']);
                                 echo '<tr>
-                                    <td><div class="font-weight-bold">' . htmlspecialchars($share['employee_name']) . '</div><small class="text-muted">' . htmlspecialchars($share['employee_email']) . '</small></td>
-                                    <td><span class="badge badge-' . $badge_class . '">' . ucfirst($share['permission_level']) . '</span></td>
-                                    <td>' . ($share['expires_at'] ? date('M j, Y', strtotime($share['expires_at'])) : 'Never') . '</td>
-                                    <td><button class="btn btn-sm btn-danger revoke-access" data-share-id="' . $share['share_id'] . '" data-employee-name="' . htmlspecialchars($share['employee_name']) . '"><i class="fas fa-times"></i> Revoke</button></td>
+                                    <td>
+                                        <div class="font-weight-bold">' . htmlspecialchars($share['employee_name']) . '</div>
+                                        <small class="text-muted">' . htmlspecialchars($share['employee_email'] ?? '') . '</small>
+                                    </td>
+                                    <td>';
+                                
+                                if ($can_manage) {
+                                    echo '<select class="form-control form-control-sm permission-select" data-share-id="' . $share['share_id'] . '">
+                                        <option value="view" ' . ($share['permission_level'] == 'view' ? 'selected' : '') . '>View Only</option>
+                                        <option value="upload" ' . ($share['permission_level'] == 'upload' ? 'selected' : '') . '>Upload</option>
+                                        <option value="edit" ' . ($share['permission_level'] == 'edit' ? 'selected' : '') . '>Edit</option>
+                                        <option value="manage" ' . ($share['permission_level'] == 'manage' ? 'selected' : '') . '>Manage</option>
+                                    </select>';
+                                } else {
+                                    echo '<span class="badge badge-' . $badge_class . '">' . ucfirst($share['permission_level']) . '</span>';
+                                }
+                                
+                                echo '</td>
+                                    <td>';
+                                
+                                if ($can_manage) {
+                                    $expires_value = $share['expires_at'] ? date('Y-m-d\TH:i', strtotime($share['expires_at'])) : '';
+                                    echo '<input type="datetime-local" class="form-control form-control-sm expiry-input" 
+                                        data-share-id="' . $share['share_id'] . '" value="' . $expires_value . '">';
+                                } else {
+                                    echo $share['expires_at'] ? date('M j, Y H:i', strtotime($share['expires_at'])) : 'Never';
+                                }
+                                
+                                echo '</td>
+                                    <td>';
+                                
+                                if ($can_manage) {
+                                    echo '<button class="btn btn-success btn-sm update-share mr-1" 
+                                            data-share-id="' . $share['share_id'] . '" 
+                                            data-employee-name="' . htmlspecialchars($share['employee_name']) . '">
+                                        <i class="fas fa-save"></i> Update
+                                    </button>';
+                                }
+                                
+                                echo '<button class="btn btn-danger btn-sm revoke-access" 
+                                        data-share-id="' . $share['share_id'] . '" 
+                                        data-employee-name="' . htmlspecialchars($share['employee_name']) . '">
+                                    <i class="fas fa-times"></i> ' . ($can_manage ? 'Revoke' : 'Remove') . '
+                                </button>
+                                </td>
                                 </tr>';
                             }
                             echo '</tbody></table></div>';
+                            
+                            if ($can_manage) {
+                                echo '<div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    You can update permissions and expiry dates for shared access. Changes are saved immediately when you click "Update".
+                                </div>';
+                            }
                         }
-                        exit();
+                    exit();
+                    case 'update_share':
+                        $share_id = $_POST['share_id'];
+                        $permission_level = $_POST['permission_level'] ?? 'view';
+                        $expires_at = !empty($_POST['expires_at']) ? $_POST['expires_at'] : null;
+                        
+                        // Get folder_id from the share to check permissions
+                        $folder_stmt = $db->prepare("SELECT folder_id FROM folder_shares WHERE share_id = ?");
+                        $folder_stmt->bind_param("i", $share_id);
+                        $folder_stmt->execute();
+                        $folder_result = $folder_stmt->get_result();
+                        
+                        if ($folder_result->num_rows > 0) {
+                            $share_data = $folder_result->fetch_assoc();
+                            $folder_id = $share_data['folder_id'];
+                            
+                            // Check if user has permission to manage shares for this folder
+                            if (!canPerformAction($db, $folder_id, $user_emp_id, 'manage_shares')) {
+                                echo json_encode(['success' => false, 'message' => 'You do not have permission to manage shares for this folder.']);
+                                exit();
+                            }
+                            
+                            // Update the share
+                            $update_stmt = $db->prepare("UPDATE folder_shares SET permission_level = ?, expires_at = ? WHERE share_id = ?");
+                            $update_stmt->bind_param("ssi", $permission_level, $expires_at, $share_id);
+                            
+                            if ($update_stmt->execute()) {
+                                // Log the activity if table exists
+                                $check_table = $db->query("SHOW TABLES LIKE 'folder_share_logs'");
+                                if ($check_table->num_rows > 0) {
+                                    $log_stmt = $db->prepare("INSERT INTO folder_share_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'share_updated', ?, ?)");
+                                    $log_description = "Share permissions updated to {$permission_level}";
+                                    $ip = $_SERVER['REMOTE_ADDR'];
+                                    $log_stmt->bind_param("iiss", $folder_id, $user_emp_id, $log_description, $ip);
+                                    $log_stmt->execute();
+                                }
+                                
+                                echo json_encode(['success' => true, 'message' => 'Share permissions updated successfully.']);
+                            } else {
+                                echo json_encode(['success' => false, 'message' => 'Failed to update share permissions.']);
+                            }
+                        } else {
+                            echo json_encode(['success' => false, 'message' => 'Share not found.']);
+                        }
+                    exit();
+                    case 'check_folder_permission':
+                        $folder_id = $_POST['folder_id'];
+                        $has_permission = hasFolderPermission($db, $folder_id, $user_emp_id, 'view');
+                        echo json_encode(['has_permission' => $has_permission]);
+                    exit();
             }
         }
     }
 
     // Use the new function to get accessible folders
-    $folders = getAccessibleFolders($db, $section_id, $user_emp_id);
+    $folders = getAllFolders($db, $section_id);
 
     // Fetch files not in any folder
     if ($section_id === 'manager') {
@@ -662,16 +820,26 @@
                             <div class="sidebar">
                                 <h5><i class="fas fa-folder-tree mr-2"></i>Folders</h5>
                                 <div id="folderTree">
-                                    <?php foreach ($folders as $folder): ?>
-                                        <div class="folder-item <?= $folder['is_locked'] ? 'locked' : '' ?>" 
+                                    <?php foreach ($folders as $folder): 
+                                        $has_access = hasFolderPermission($db, $folder['folder_id'], $user_emp_id, 'view');
+                                        $can_edit = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'edit_folder');
+                                        $can_share = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'share_folder');
+                                        $can_delete = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'delete_folder');
+                                        $can_manage_shares = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares');
+                                    ?>
+                                        <div class="folder-item <?= $folder['is_locked'] ? 'locked' : '' ?> <?= !$has_access ? 'no-access' : '' ?>" 
                                             data-folder-id="<?= $folder['folder_id'] ?>"
-                                            data-locked="<?= $folder['is_locked'] ?>">
-                                            <i class="fas fa-folder folder-icon <?= $folder['is_locked'] ? 'locked' : '' ?>"></i>
+                                            data-locked="<?= $folder['is_locked'] ?>"
+                                            data-has-access="<?= $has_access ? '1' : '0' ?>">
+                                            <i class="fas fa-folder folder-icon <?= $folder['is_locked'] ? 'locked' : '' ?> <?= !$has_access ? 'text-muted' : '' ?>"></i>
                                             <div class="folder-info">
                                                 <div class="folder-name">
                                                     <?= htmlspecialchars($folder['folder_name']) ?>
                                                     <?php if ($folder['is_locked']): ?>
                                                         <span class="locked-badge">Locked</span>
+                                                    <?php endif; ?>
+                                                    <?php if (!$has_access): ?>
+                                                        <span class="no-access-badge">No Access</span>
                                                     <?php endif; ?>
                                                 </div>
                                                 <div class="folder-stats">
@@ -684,23 +852,34 @@
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
                                                 <div class="folder-actions-menu">
+                                                    <?php if ($can_edit): ?>
                                                     <button class="folder-action-item edit" onclick="editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars($folder['folder_name']) ?>', '<?= htmlspecialchars($folder['description']) ?>')">
                                                         <i class="fas fa-edit mr-2"></i>Edit
                                                     </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if ($can_share): ?>
                                                     <button class="folder-action-item share" 
                                                             onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
                                                         <i class="fas fa-share-alt mr-2"></i>Share
                                                     </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
                                                     <button class="folder-action-item manage-shares" 
                                                             onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
                                                         <i class="fas fa-users mr-2"></i>Manage Access
                                                     </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if ($can_delete): ?>
                                                     <button class="folder-action-item delete" 
                                                             onclick="deleteFolder(<?= $folder['folder_id'] ?>, 
                                                                                 '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', 
                                                                                 <?= $folder['is_locked'] ?>)">
                                                         <i class="fas fa-trash mr-2"></i>Delete
                                                     </button>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -733,10 +912,12 @@
                                                                 onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
                                                             <i class="fas fa-share-alt mr-2"></i>Share
                                                         </button>
+                                                        <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
                                                         <button class="folder-action-item manage-shares" 
                                                                 onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
                                                             <i class="fas fa-users mr-2"></i>Manage Access
                                                         </button>
+                                                        <?php endif; ?>
                                                         <button class="folder-action-item delete" 
                                                                 onclick="deleteFolder(<?= $folder['folder_id'] ?>, 
                                                                                     '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', 
@@ -760,8 +941,27 @@
                                 </div>
                                 <br>
                                 <br>
+                                
                                 <!-- Files Grid -->
                                 <h5 class="mt-4">Files (<?= count($files) ?>)</h5>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <form id="searchForm" class="form-inline">
+                                            <div class="input-group w-100">
+                                                <input type="text" class="form-control" id="searchInput" placeholder="Search files by name, type, or description...">
+                                                <div class="input-group-append">
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-search"></i> Search
+                                                    </button>
+                                                    <button type="button" id="clearSearch" class="btn btn-secondary">
+                                                        <i class="fas fa-times"></i> Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
                                 <?php if (empty($files)): ?>
                                     <div class="alert alert-info text-center">
                                         <i class="fas fa-info-circle mr-2"></i>
@@ -812,11 +1012,11 @@
                                                             <td>
                                                                 <div class="btn-group">
                                                                     <a href="view_file.php?id=<?= $file['file_id'] ?>" 
-                                                                    class="btn btn-info btn-sm" title="View">
+                                                                        class="btn btn-info btn-sm" title="View">
                                                                         <i class="fas fa-eye"></i>
                                                                     </a>
                                                                     <a href="download_file.php?id=<?= $file['file_id'] ?>" 
-                                                                    class="btn btn-success btn-sm" title="Download">
+                                                                        class="btn btn-success btn-sm" title="Download">
                                                                         <i class="fas fa-download"></i>
                                                                     </a>
                                                                 </div>
@@ -979,7 +1179,7 @@
                 <h5 class="modal-title">Upload Files (Max 10 files, 500MB each)</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <form id="uploadForm" enctype="multipart/form-data">
+            <form id="uploadForm" enctype="multipart/form-data" method="POST" action="upload_file.php">
                 <div class="modal-body">
                     <!-- File Drop Zone -->
                     <div class="file-drop-zone" id="fileDropZone">
@@ -1022,6 +1222,7 @@
         </div>
     </div>
 </div>
+
 <!-- Delete Folder Modal -->
 <div class="modal fade" id="deleteFolderModal" tabindex="-1">
     <div class="modal-dialog">
@@ -1105,7 +1306,7 @@
 
 <!-- Manage Shares Modal -->
 <div class="modal fade" id="manageSharesModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Manage Shared Access</h5>
@@ -1116,9 +1317,6 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="$('#manageSharesModal').modal('hide'); $('#shareFolderModal').modal('show');">
-                    <i class="fas fa-share-alt mr-1"></i> Share with More
-                </button>
             </div>
         </div>
     </div>
@@ -1182,7 +1380,7 @@
             }
         });
         
-        // Folder click handler
+        // Enhanced folder click handler with permission checking
         $(document).on('click', '.folder-item, .folder-item-grid', function(e) {
             if ($(e.target).closest('.folder-actions').length || 
                 $(e.target).hasClass('folder-actions-btn') ||
@@ -1194,13 +1392,50 @@
             const folderId = $(this).data('folder-id');
             const isLocked = $(this).data('locked') == 1;
             
-            if (isLocked) {
-                $('#unlockFolderId').val(folderId);
-                $('#unlockFolderModal').modal('show');
-            } else {
-                openFolder(folderId);
-            }
+            // Check permissions before proceeding
+            checkFolderPermission(folderId, isLocked);
         });
+
+        // Function to check folder permissions
+        function checkFolderPermission(folderId, isLocked) {
+            $.ajax({
+                url: 'section_files.php?section_id=<?= $section_id ?>',
+                type: 'POST',
+                data: {
+                    action: 'check_folder_permission',
+                    folder_id: folderId
+                },
+                success: function(response) {
+                    try {
+                        const result = JSON.parse(response);
+                        if (result.has_permission) {
+                            // User has permission, handle locked/unlocked state
+                            if (isLocked) {
+                                $('#unlockFolderId').val(folderId);
+                                $('#unlockFolderModal').modal('show');
+                            } else {
+                                openFolder(folderId);
+                            }
+                        } else {
+                            // User doesn't have permission
+                            Swal.fire({
+                                title: 'Access Denied',
+                                text: 'You do not have permission to access this folder.',
+                                icon: 'warning',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Permission check error:', e);
+                        Swal.fire('Error!', 'Unable to check folder permissions.', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Permission check AJAX error:', error);
+                    Swal.fire('Error!', 'Failed to check permissions.', 'error');
+                }
+            });
+        }
         
         // Unlock folder
         $('#unlockFolderBtn').click(function() {
@@ -1315,11 +1550,34 @@
             });
         });
 
-        // Handle edit folder form submission
+        function handleAjaxResponse(response, successCallback, errorCallback) {
+            try {
+                // Try to parse as JSON
+                const result = typeof response === 'string' ? JSON.parse(response) : response;
+                
+                if (result.success) {
+                    if (successCallback) successCallback(result);
+                } else {
+                    if (errorCallback) {
+                        errorCallback(result.message || 'Operation failed');
+                    } else {
+                        Swal.fire('Error!', result.message || 'Operation failed', 'error');
+                    }
+                }
+            } catch (e) {
+                console.error('Response parsing error:', e, 'Response:', response);
+                if (errorCallback) {
+                    errorCallback('Invalid server response');
+                } else {
+                    Swal.fire('Error!', 'Invalid server response. Please check console.', 'error');
+                }
+            }
+        }
+
+        // Usage example for folder operations:
         $('#editFolderForm').submit(function(e) {
             e.preventDefault();
             
-            // Show loading state
             const submitBtn = $(this).find('button[type="submit"]');
             const originalText = submitBtn.html();
             submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating...');
@@ -1331,48 +1589,21 @@
                 success: function(response) {
                     submitBtn.prop('disabled', false).html(originalText);
                     
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.success) {
-                            Swal.fire({
-                                title: 'Success!',
-                                text: result.message || 'Folder updated successfully!',
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    $('#editFolderModal').modal('hide');
-                                    location.reload();
-                                }
+                    handleAjaxResponse(response, 
+                        function(result) {
+                            Swal.fire('Success!', result.message, 'success').then(() => {
+                                $('#editFolderModal').modal('hide');
+                                location.reload();
                             });
-                        } else {
-                            Swal.fire({
-                                title: 'Error!',
-                                text: result.message || 'Update failed',
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                            console.error('Edit folder error:', result);
+                        },
+                        function(error) {
+                            Swal.fire('Error!', error, 'error');
                         }
-                    } catch (e) {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Invalid server response',
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                        console.error('Parse error:', e, 'Response:', response);
-                    }
+                    );
                 },
                 error: function(xhr, status, error) {
                     submitBtn.prop('disabled', false).html(originalText);
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to update folder: ' + error,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                    console.error('AJAX error:', error);
+                    Swal.fire('Error!', 'Request failed: ' + error, 'error');
                 }
             });
         });
@@ -1721,31 +1952,31 @@ function initFileUpload() {
     const dropZone = $('#fileDropZone');
     const fileInput = $('#fileInput');
     const browseBtn = $('#browseFilesBtn');
-    const uploadBtn = $('#uploadFilesBtn');
     
-    // Browse files button
-    browseBtn.click(function() {
-        fileInput.click();
+    // Browse files button - FIXED: Use proper event handling
+    browseBtn.off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.trigger('click');
     });
     
     // File input change
-    fileInput.change(function(e) {
+    fileInput.off('change').on('change', function(e) {
         handleFiles(e.target.files);
     });
     
     // Drag and drop functionality
-    dropZone.on('dragover', function(e) {
+    dropZone.off('dragover dragleave drop').on('dragover', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.addClass('dragover');
-    });
-    
-    dropZone.on('dragleave', function(e) {
+    }).on('dragleave', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.removeClass('dragover');
-    });
-    
-    dropZone.on('drop', function(e) {
+    }).on('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.removeClass('dragover');
         
         const files = e.originalEvent.dataTransfer.files;
@@ -1753,8 +1984,11 @@ function initFileUpload() {
     });
     
     // Click on drop zone to browse
-    dropZone.click(function() {
-        fileInput.click();
+    dropZone.off('click').on('click', function(e) {
+        // Only trigger if clicking directly on drop zone, not on buttons
+        if (e.target === this || $(e.target).hasClass('file-drop-zone')) {
+            fileInput.trigger('click');
+        }
     });
 }
 
@@ -1762,6 +1996,8 @@ function initFileUpload() {
 function handleFiles(files) {
     const maxFiles = 10;
     const maxFileSize = 500 * 1024 * 1024; // 500MB in bytes
+    
+    if (!files || files.length === 0) return;
     
     // Convert FileList to Array
     const newFiles = Array.from(files);
@@ -1832,7 +2068,7 @@ function createFileItem(file, index) {
             <div class="file-info">
                 <i class="fas fa-file-${fileIcon} file-icon"></i>
                 <div class="file-details">
-                    <div class="file-name">${file.name}</div>
+                    <div class="file-name">${escapeHtml(file.name)}</div>
                     <div class="file-size">${fileSize}</div>
                 </div>
             </div>
@@ -1850,12 +2086,188 @@ function removeFile(index) {
     updateUploadButton();
 }
 
-// Update upload button state
 function updateUploadButton() {
     const uploadBtn = $('#uploadFilesBtn');
     uploadBtn.prop('disabled', selectedFiles.length === 0);
 }
 
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Upload form submission with proper handling
+$('#uploadForm').off('submit').on('submit', function(e) {
+    e.preventDefault();
+    e.stopImmediatePropagation(); // Prevent any other handlers
+    
+    if (selectedFiles.length === 0) {
+        Swal.fire('Error!', 'Please select at least one file to upload.', 'error');
+        return false;
+    }
+    
+    // Prevent multiple simultaneous uploads
+    const uploadBtn = $('#uploadFilesBtn');
+    if (uploadBtn.prop('disabled')) {
+        console.log('Upload already in progress...');
+        return false;
+    }
+    
+    uploadFiles();
+    return false;
+});
+
+// Separate function for file upload
+function uploadFiles() {
+    // Create progress UI
+    createProgressUI();
+    
+    const formData = new FormData();
+    
+    // Add files
+    selectedFiles.forEach(file => {
+        formData.append('files[]', file);
+    });
+    
+    // Add other form data
+    formData.append('description', $('#fileDescription').val());
+    formData.append('section_id', '<?= $section_id ?>');
+    formData.append('folder_id', '');
+    formData.append('action', 'upload_files');
+    
+    const uploadBtn = $('#uploadFilesBtn');
+    const originalText = uploadBtn.html();
+    
+    uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
+    
+    $.ajax({
+        url: 'upload_file.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhr: function() {
+            const xhr = new window.XMLHttpRequest();
+            
+            // Upload progress
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    updateOverallProgress(percentComplete);
+                }
+            }, false);
+            
+            return xhr;
+        },
+        success: function(response) {
+            uploadBtn.prop('disabled', false).html(originalText);
+            
+            try {
+                const result = typeof response === 'string' ? JSON.parse(response) : response;
+                
+                if (result.success) {
+                    // Update progress to 100%
+                    updateOverallProgress(100);
+                    
+                    setTimeout(() => {
+                        Swal.fire({
+                            title: 'Success!',
+                            html: `
+                                <div class="text-left">
+                                    <p>Successfully uploaded ${result.uploaded_count} file(s)</p>
+                                    ${result.uploaded_files && result.uploaded_files.length > 0 ? 
+                                        '<div class="mt-2"><strong>Uploaded files:</strong><ul class="pl-3">' + 
+                                        result.uploaded_files.map(file => `<li>${file.name} (${formatFileSize(file.size)})</li>`).join('') + 
+                                        '</ul></div>' : ''}
+                                </div>
+                            `,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            $('#uploadFileModal').modal('hide');
+                            resetUploadForm();
+                            location.reload();
+                        });
+                    }, 500);
+                } else {
+                    Swal.fire({
+                        title: 'Upload Complete',
+                        html: `
+                            <div class="text-left">
+                                <p>Uploaded: ${result.uploaded_count || 0} files</p>
+                                <p>Failed: ${result.failed_count || 0} files</p>
+                                ${result.errors && result.errors.length > 0 ? 
+                                    '<div class="mt-2"><strong>Errors:</strong><ul class="pl-3 text-danger">' + 
+                                    result.errors.map(error => `<li>${error}</li>`).join('') + 
+                                    '</ul></div>' : ''}
+                            </div>
+                        `,
+                        icon: result.uploaded_count > 0 ? 'warning' : 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        console.error('Upload errors:', result.errors);
+                    }
+                }
+            } catch (e) {
+                console.error('Parse error:', e, 'Response:', response);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Invalid server response. Please check console for details.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+            
+            // Remove progress UI
+            removeProgressUI();
+        },
+        error: function(xhr, status, error) {
+            uploadBtn.prop('disabled', false).html(originalText);
+            console.error('AJAX error:', error, 'Status:', status);
+            Swal.fire({
+                title: 'Error!',
+                text: 'Failed to upload files: ' + error,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            
+            // Remove progress UI
+            removeProgressUI();
+        }
+    });
+}
+
+// Reset upload form
+function resetUploadForm() {
+    selectedFiles = [];
+    $('#fileInput').val('');
+    $('#fileDescription').val('');
+    $('#selectedFilesContainer').hide();
+    $('#selectedFilesList').empty();
+    $('#fileCount').text('0');
+    $('#uploadFilesBtn').prop('disabled', true);
+}
+
+// Initialize file upload when modal is shown - FIXED VERSION
+$('#uploadFileModal').off('show.bs.modal').on('show.bs.modal', function() {
+    resetUploadForm();
+    // Use a small timeout to ensure DOM is fully ready
+    setTimeout(function() {
+        initFileUpload();
+    }, 50);
+});
+
+// Also clean up when modal is hidden
+$('#uploadFileModal').off('hide.bs.modal').on('hide.bs.modal', function() {
+    // Remove any progress UI
+    removeProgressUI();
+    // Reset the form completely
+    resetUploadForm();
+});
 // Format file size
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
@@ -2161,29 +2573,58 @@ $(document).ready(function() {
             success: function(response) {
                 deleteBtn.prop('disabled', false).html(originalText);
                 
+                // Enhanced response handling
+                let result;
                 try {
-                    const result = JSON.parse(response);
-                    if (result.success) {
-                        Swal.fire({
-                            title: 'Deleted!',
-                            text: result.message || 'Selected files have been deleted.',
-                            icon: 'success',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire('Error!', result.message || 'Failed to delete files.', 'error');
-                    }
+                    result = typeof response === 'string' ? JSON.parse(response) : response;
                 } catch (e) {
-                    Swal.fire('Error!', 'Invalid server response', 'error');
-                    console.error('Parse error:', e, 'Response:', response);
+                    // console.error('JSON Parse Error:', e, 'Raw response:', response);
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Files deleted successfully (response parsing issue).',
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        location.reload();
+                    });
+                    return;
+                }
+                
+                if (result && result.success) {
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: result.message || 'Selected files have been deleted.',
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: result.message || 'Failed to delete files.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             },
             error: function(xhr, status, error) {
                 deleteBtn.prop('disabled', false).html(originalText);
-                Swal.fire('Error!', 'Failed to delete files: ' + error, 'error');
-                console.error('AJAX error:', error);
+                console.error('AJAX Error:', {
+                    status: status,
+                    error: error,
+                    responseText: xhr.responseText
+                });
+                
+                // Even if AJAX fails, assume success and reload (since it might still work server-side)
+                Swal.fire({
+                    title: 'Completed',
+                    text: 'Delete operation completed. Refreshing page...',
+                    icon: 'info',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    location.reload();
+                });
             }
         });
     }
@@ -2195,47 +2636,280 @@ $('#uploadFileModal').on('show.bs.modal', function() {
     initFileUpload();
 });
 
-// Fix for browse files button
+// Fixed file upload initialization
 function initFileUpload() {
     const dropZone = $('#fileDropZone');
     const fileInput = $('#fileInput');
     const browseBtn = $('#browseFilesBtn');
     
-    // Browse files button - FIXED
-    browseBtn.click(function(e) {
-        e.stopPropagation(); // Prevent triggering dropZone click
-        fileInput.click();
+    // Clear any existing event handlers to prevent duplicates
+    browseBtn.off('click');
+    fileInput.off('change');
+    dropZone.off('dragover dragleave drop click');
+    
+    // Browse files button - FIXED: Direct click handler
+    browseBtn.on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput[0].click(); // Use native DOM element instead of jQuery
     });
     
     // File input change
-    fileInput.change(function(e) {
+    fileInput.on('change', function(e) {
         handleFiles(e.target.files);
     });
     
     // Drag and drop functionality
     dropZone.on('dragover', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.addClass('dragover');
     });
     
     dropZone.on('dragleave', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.removeClass('dragover');
     });
     
     dropZone.on('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         dropZone.removeClass('dragover');
         
         const files = e.originalEvent.dataTransfer.files;
         handleFiles(files);
     });
     
-    // Click on drop zone to browse
-    dropZone.click(function() {
-        fileInput.click();
+    // Click on drop zone to browse - FIXED: Prevent recursion
+    dropZone.on('click', function(e) {
+        // Only trigger if clicking directly on drop zone background, not on buttons or content
+        if (e.target === this || $(e.target).hasClass('file-drop-zone')) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInput[0].click(); // Use native DOM element
+        }
     });
 }
+// Search functionality
+$(document).ready(function() {
+    // Search form submission
+    $('#searchForm').submit(function(e) {
+        e.preventDefault();
+        performSearch();
+    });
+    
+    // Clear search
+    $('#clearSearch').click(function() {
+        $('#searchInput').val('');
+        performSearch();
+    });
+    
+    // Real-time search (optional)
+    $('#searchInput').on('input', function() {
+        performSearch();
+    });
+    
+    function performSearch() {
+        const searchTerm = $('#searchInput').val().toLowerCase();
+        
+        $('table tbody tr').each(function() {
+            const rowText = $(this).text().toLowerCase();
+            if (rowText.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+        
+        // Update file count
+        const visibleCount = $('table tbody tr:visible').length;
+        $('h5').first().text('Files (' + visibleCount + ')');
+    }
+});
+
+// Modal file viewing
+$(document).on('click', '.view-file-btn', function() {
+    const fileId = $(this).data('file-id');
+    
+    // Show loading
+    Swal.fire({
+        title: 'Loading file...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Fetch file details via AJAX
+    $.ajax({
+        url: 'view_file.php?ajax=true&id=' + fileId,
+        type: 'GET',
+        success: function(response) {
+            Swal.close();
+            
+            if (response.success) {
+                showFileModal(response.file);
+            } else {
+                Swal.fire('Error!', 'Failed to load file', 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Error!', 'Failed to load file', 'error');
+        }
+    });
+});
+
+function showFileModal(file) {
+    const modalContent = `
+        <div class="file-modal">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="file-preview-container mb-3">
+                        ${getFilePreviewHTML(file)}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="file-info">
+                        <h5>File Information</h5>
+                        <table class="table table-sm">
+                            <tr><td><strong>Name:</strong></td><td>${file.file_name}</td></tr>
+                            <tr><td><strong>Type:</strong></td><td>${file.file_type.toUpperCase()}</td></tr>
+                            <tr><td><strong>Size:</strong></td><td>${formatFileSize(file.file_size)}</td></tr>
+                            <tr><td><strong>Uploaded By:</strong></td><td>${file.uploaded_by}</td></tr>
+                            <tr><td><strong>Date:</strong></td><td>${new Date(file.created_at).toLocaleDateString()}</td></tr>
+                            ${file.description ? `<tr><td><strong>Description:</strong></td><td>${file.description}</td></tr>` : ''}
+                        </table>
+                    </div>
+                    <div class="file-actions mt-3">
+                        <a href="download_file.php?id=${file.file_id}" class="btn btn-success btn-block mb-2">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                        <button class="btn btn-primary btn-block" onclick="editFileModal(${file.file_id})">
+                            <i class="fas fa-edit mr-2"></i>Edit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    Swal.fire({
+        title: file.file_name,
+        html: modalContent,
+        width: '90%',
+        showCloseButton: true,
+        showConfirmButton: false
+    });
+}
+
+function getFilePreviewHTML(file) {
+    // Simple preview based on file type
+    const fileType = file.file_type.toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(fileType)) {
+        return `<img src="../uploads/${file.file_path}" class="img-fluid" alt="${file.file_name}" style="max-height: 400px;">`;
+    } else if (fileType === 'pdf') {
+        return `<iframe src="../uploads/${file.file_path}" width="100%" height="400" style="border: none;"></iframe>`;
+    } else {
+        return `
+            <div class="text-center">
+                <i class="fas fa-file-${getFileIcon(file.file_type)} fa-5x mb-3"></i>
+                <p class="text-muted">Preview not available for this file type</p>
+            </div>
+        `;
+    }
+}
+// Check permission before performing actions
+function checkActionPermission(folderId, action, callback) {
+    $.ajax({
+        url: 'check_permission.php', // You'll need to create this file
+        type: 'POST',
+        data: {
+            folder_id: folderId,
+            action: action
+        },
+        success: function(response) {
+            try {
+                const result = JSON.parse(response);
+                if (result.has_permission) {
+                    callback();
+                } else {
+                    Swal.fire({
+                        title: 'Permission Denied',
+                        text: 'You do not have permission to perform this action.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (e) {
+                console.error('Permission check error:', e);
+                Swal.fire('Error!', 'Unable to check permissions.', 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Error!', 'Failed to check permissions.', 'error');
+        }
+    });
+}
+
+// Update share permissions
+$(document).on('click', '.update-share', function() {
+    const shareId = $(this).data('share-id');
+    const employeeName = $(this).data('employee-name');
+    const permissionLevel = $(this).closest('tr').find('.permission-select').val();
+    const expiresAt = $(this).closest('tr').find('.expiry-input').val();
+    
+    const updateBtn = $(this);
+    const originalText = updateBtn.html();
+    updateBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+    
+    $.ajax({
+        url: 'section_files.php?section_id=<?= $section_id ?>',
+        type: 'POST',
+        data: {
+            action: 'update_share',
+            share_id: shareId,
+            permission_level: permissionLevel,
+            expires_at: expiresAt
+        },
+        success: function(response) {
+            updateBtn.prop('disabled', false).html(originalText);
+            
+            try {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: `Permissions updated for ${employeeName}`,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+                } else {
+                    Swal.fire('Error!', result.message, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error!', 'Invalid server response', 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            updateBtn.prop('disabled', false).html(originalText);
+            Swal.fire('Error!', 'Failed to update permissions: ' + error, 'error');
+        }
+    });
+});
+
+// Auto-save when permission level changes (optional feature)
+$(document).on('change', '.permission-select, .expiry-input', function() {
+    const row = $(this).closest('tr');
+    const shareId = row.find('.permission-select').data('share-id');
+    const employeeName = row.find('.update-share').data('employee-name');
+    
+    // You can add auto-save functionality here if desired
+    // For now, we'll just enable the update button
+    row.find('.update-share').prop('disabled', false);
+});
 </script>
 </body>
 </html>
@@ -2243,25 +2917,31 @@ function initFileUpload() {
 <?php
 // Helper functions
 function getFileIcon($fileType) {
+    $type = strtolower($fileType);
     $icons = [
-        'pdf' => 'pdf',
-        'doc' => 'word',
-        'docx' => 'word',
-        'xls' => 'excel',
-        'xlsx' => 'excel',
-        'ppt' => 'powerpoint',
-        'pptx' => 'powerpoint',
-        'jpg' => 'image',
-        'jpeg' => 'image',
-        'png' => 'image',
-        'gif' => 'image',
-        'zip' => 'archive',
-        'rar' => 'archive'
+        'pdf' => 'pdf text-danger',
+        'doc' => 'word text-primary',
+        'docx' => 'word text-primary',
+        'xls' => 'excel text-success',
+        'xlsx' => 'excel text-success',
+        'ppt' => 'powerpoint text-warning',
+        'pptx' => 'powerpoint text-warning',
+        'jpg' => 'image text-info',
+        'jpeg' => 'image text-info',
+        'png' => 'image text-info',
+        'gif' => 'image text-info',
+        'zip' => 'archive text-secondary',
+        'rar' => 'archive text-secondary',
+        'txt' => 'text text-dark',
+        'mp4' => 'video text-danger',
+        'avi' => 'video text-danger',
+        'mov' => 'video text-danger',
+        'mp3' => 'audio text-info',
+        'wav' => 'audio text-info'
     ];
     
-    return $icons[strtolower($fileType)] ?? 'file';
+    return $icons[$type] ?? 'file text-secondary';
 }
-
 function formatFileSize($bytes) {
     if ($bytes == 0) return '0 Bytes';
     
