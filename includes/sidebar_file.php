@@ -101,14 +101,57 @@ if ($employee_id) {
 </aside>
 
 <style>
-.sidebar-light-info {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Force sidebar positioning and styling */
+.main-sidebar.sidebar-light-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    z-index: 1030 !important;
+    width: 250px !important;
 }
-.nav-sidebar > .nav-item > .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+
+.sidebar-light-info .brand-link,
+.sidebar-light-info .sidebar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
 }
-.nav-sidebar .nav-item > .nav-link {
-    margin: 0.2rem 0.5rem;
-    border-radius: 5px;
+
+.sidebar-light-info .nav-sidebar > .nav-item > .nav-link {
+    color: white !important;
+}
+
+.sidebar-light-info .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+}
+
+.sidebar-light-info .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+.sidebar-light-info .user-panel .info a {
+    color: white !important;
+}
+
+/* Ensure content doesn't overlap sidebar */
+.content-wrapper {
+    margin-left: 250px !important;
+    min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+    .main-sidebar.sidebar-light-info {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar-open .main-sidebar.sidebar-light-info {
+        transform: translateX(0);
+    }
+    
+    .content-wrapper {
+        margin-left: 0 !important;
+    }
 }
 </style>

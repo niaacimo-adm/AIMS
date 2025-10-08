@@ -805,9 +805,9 @@ while ($row = $result->fetch_assoc()) {
                         </div>
                       <?php endif; ?>
                       <div class="manager-details">
-                        <div class="manager-name">Engr. <?= htmlspecialchars($manager['first_name'] . 'G.' . $manager['last_name']) .' ,MBA'?></div>
+                        <div class="manager-name">Engr. <?= htmlspecialchars($manager['first_name'] . 'G.' . $manager['last_name']) .''?></div>
                         <div class="manager-title">
-                          <h5>IMO MANAGER</h5>
+                          <h5>ACTING DIVISION MANAGER</h5>
                         </div>
                       </div>
                     <?php else: ?>

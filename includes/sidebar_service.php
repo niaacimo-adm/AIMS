@@ -75,7 +75,7 @@ if ($employee_id) {
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
 
           <li class="nav-item">
-            <a href="service.php" class="nav-link bg-dark <?= $current_page == 'service.php' ? 'active' : '' ?>">
+            <a href="service.php" class="nav-link text-white<?= $current_page == 'service.php' ? 'active' : '' ?>">
               <i class="nav-icon fas fa-home text-primary"></i>
               <p class="text-white">Dashboard</p>
             </a>

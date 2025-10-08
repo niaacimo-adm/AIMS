@@ -82,7 +82,12 @@ if ($employee_id) {
             </a>
           </li>
           <?php endif; ?>
-
+          <li class="nav-item">
+            <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active' : '' ?>">
+              <i class="nav-icon fas fa-paperclip"></i>
+              <p>Attachment Monitoring</p>
+            </a>
+          </li>
           <?php if (hasPermission('view_calendar')): ?>
           <li class="nav-item">
             <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active' : '' ?>">
