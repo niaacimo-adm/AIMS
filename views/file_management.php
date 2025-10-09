@@ -74,6 +74,36 @@ $stats['manager_files'] = $stmt->get_result()->fetch_assoc()['manager_files'];
     
     <?php include '../includes/header.php'; ?>
     <link rel="stylesheet" href="../css/file.css">
+    <style>
+        .btn-primary-custom {
+            background-color: #800020;
+            border-color: #800020;
+            color: white;
+        }
+        .btn-primary-custom:hover {
+            background-color: #5a0a1d;
+            border-color: #5a0a1d;
+            color: white;
+        }
+        .section-card {
+            border-left: 4px solid #800020;
+        }
+        .section-card:hover {
+            box-shadow: 0 4px 8px rgba(128, 0, 32, 0.2);
+        }
+        .badge-primary {
+            background-color: #800020;
+        }
+        .card-header {
+            border-bottom: 2px solid #800020;
+        }
+         h3 {
+            color: #5a0a1d;
+        }
+        .section-card:nth-child(8n+1) { 
+            border-left-color: #800020; 
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">

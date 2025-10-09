@@ -43,13 +43,13 @@ if ($employee_id) {
 ?>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="dashboard.php" class="brand-link">
+    <a href="dashboard.php" class="brand-link bg-gradient-primary">
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text text-white"><b>NIA-ACIMO</b></span>
+      <span class="brand-text font-weight-light"><b>NIA-ACIMO</b> </span>
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" style="background-color: #2c3e50 !important;">
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
@@ -57,12 +57,9 @@ if ($employee_id) {
         </div>
         <div class="info">
           <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="profile.php" class="d-block"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
+            <a href="profile.php" class="d-block text-white"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
             <?php if (isset($_SESSION['role_name'])): ?>
-            <span class="badge <?= 
-                $_SESSION['role_name'] === 'Administrator' ? 'badge-danger' : 
-                ($_SESSION['role_name'] === 'Employee' ? 'badge-warning' : 'badge-primary')
-            ?>">
+            <span class="badge badge-primary mt-1">
                 <?= htmlspecialchars($_SESSION['role_name']) ?>
             </span>
             <?php endif; ?>
@@ -72,97 +69,99 @@ if ($employee_id) {
 
       <!-- Sidebar Menu -->
       <nav class="mt-2">
-        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+        <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
 
           <?php if (hasPermission('view_dashboard')): ?>
           <li class="nav-item">
-            <a href="dashboard.php" class="nav-link <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
-              <i class="nav-icon fas fa-home"></i>
+            <a href="dashboard.php" class="nav-link <?= $current_page == 'dashboard.php' ? 'active bg-primary' : 'text-white' ?>">
+              <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>Dashboard</p>
             </a>
           </li>
           <?php endif; ?>
+          
           <li class="nav-item">
-            <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active' : '' ?>">
+            <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
               <i class="nav-icon fas fa-paperclip"></i>
               <p>Attachment Monitoring</p>
             </a>
           </li>
+          
           <?php if (hasPermission('view_calendar')): ?>
           <li class="nav-item">
-            <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active' : '' ?>">
-              <i class="nav-icon fas fa-calendar"></i>
+            <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active bg-primary' : 'text-white' ?>">
+              <i class="nav-icon fas fa-calendar-alt"></i>
               <p>Calendar</p>
             </a>
           </li>
           <?php endif; ?>
 
           <?php if (hasPermission('manage_employees')): ?>
-          <li class="nav-header">EMPLOYEE MANAGEMENT</li>
+          <li class="nav-header text-light border-bottom pb-2 mt-3">EMPLOYEE MANAGEMENT</li>
             <?php if (hasPermission('create_employees')): ?>
               <li class="nav-item">
-                <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active' : '' ?>">
-                  <i class="fas fa-plus nav-icon"></i>
-                  <p>Create</p>
+                <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-user-plus nav-icon"></i>
+                  <p>Create Employee</p>
                 </a>
               </li>
               <?php endif; ?>
 
               <?php if (hasPermission('view_employees')): ?>
               <li class="nav-item">
-                <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active' : '' ?>">
-                  <i class="fas fa-list nav-icon"></i>
-                  <p>List</p>
+                <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-users nav-icon"></i>
+                  <p>Employee List</p>
                 </a>
               </li>
               <?php endif; ?>
-          </li>
           <?php endif; ?>
 
           <?php if (hasPermission('manage_settings')): ?>
-          <li class="nav-header">SETTINGS</li>
+          <li class="nav-header text-light border-bottom pb-2 mt-3">SETTINGS</li>
           <li class="nav-item">
-              <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active' : '' ?>">
+              <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="fas fa-tv nav-icon"></i>
                   <p>Content Management</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="appointment_status.php" class="nav-link <?= $current_page == 'appointment_status.php' ? 'active' : '' ?>">
-                  <i class="fas fa-circle nav-icon"></i>
+              <a href="appointment_status.php" class="nav-link <?= $current_page == 'appointment_status.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-briefcase nav-icon"></i>
                   <p>Appointment Settings</p>
               </a>
           </li>
           <li class="nav-item">
-            <a href="position.php" class="nav-link <?= $current_page == 'position.php' ? 'active' : '' ?>">
-                <i class="fas fa-circle nav-icon"></i>
+            <a href="position.php" class="nav-link <?= $current_page == 'position.php' ? 'active bg-primary' : 'text-white' ?>">
+                <i class="fas fa-id-card-alt nav-icon"></i>
                 <p>Positions</p>
             </a>
           </li>
           <li class="nav-item">
-              <a href="sections.php" class="nav-link <?= $current_page == 'sections.php' ? 'active' : '' ?>">
-                  <i class="fas fa-circle nav-icon"></i>
+              <a href="sections.php" class="nav-link <?= $current_page == 'sections.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-sitemap nav-icon"></i>
                   <p>Sections</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="offices.php" class="nav-link <?= $current_page == 'offices.php' ? 'active' : '' ?>">
-                  <i class="fas fa-circle nav-icon"></i>
+              <a href="offices.php" class="nav-link <?= $current_page == 'offices.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-building nav-icon"></i>
                   <p>Offices</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="employment_status.php" class="nav-link <?= $current_page == 'employment_status.php' ? 'active' : '' ?>">
-                  <i class="fas fa-circle nav-icon"></i>
+              <a href="employment_status.php" class="nav-link <?= $current_page == 'employment_status.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-user-check nav-icon"></i>
                   <p>Employment Status</p>
               </a>
           </li>
           <?php endif; ?>
 
           <?php if (hasPermission('manage_users')): ?>
+          <li class="nav-header text-light border-bottom pb-2 mt-3">USER MANAGEMENT</li>
           <li class="nav-item">
-              <a href="users.php" class="nav-link <?= $current_page == 'users.php' ? 'active' : '' ?>">
-                  <i class="nav-icon fas fa-users"></i>
+              <a href="users.php" class="nav-link <?= $current_page == 'users.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="nav-icon fas fa-user-cog"></i>
                   <p>Users</p>
               </a>
           </li>
@@ -170,7 +169,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_roles')): ?>
           <li class="nav-item">
-              <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active' : '' ?>">
+              <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="nav-icon fas fa-user-shield"></i>
                   <p>Roles</p>
               </a>
@@ -179,29 +178,53 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_permissions')): ?>
           <li class="nav-item">
-              <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active' : '' ?>">
+              <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="nav-icon fas fa-key"></i>
                   <p>Permissions</p>
               </a>
-          </li>
-          <?php endif; ?>
-
-          <!-- Common menu items for all users -->
-          <?php if (isset($_SESSION['user_id'])): ?>
-          <li class="nav-item">
-            <a href="profile.php" class="nav-link <?= $current_page == 'profile.php' ? 'active' : '' ?>">
-              <i class="nav-icon fas fa-user"></i>
-              <p>My Profile</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="../logout.php" class="nav-link">
-              <i class="nav-icon fas fa-sign-out-alt"></i>
-              <p>Logout</p>
-            </a>
           </li>
           <?php endif; ?>
         </ul>
       </nav>
     </div>
 </aside>
+<style>
+.sidebar-dark-primary {
+    background-color: #2c3e50 !important;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
+    color: #c2c7d0 !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: #007bff !important;
+    color: white !important;
+    border-left: 4px solid #fff;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+.brand-link.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%) !important;
+}
+.nav-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1rem;
+}
+</style>
+<script>
+$(document).ready(function() {
+    // Force set admin theme
+    localStorage.setItem('currentTheme', 'admin');
+    // Trigger theme update in mainheader
+    if (window.parent && window.parent.setTheme) {
+        window.parent.setTheme('admin');
+    }
+});
+</script>

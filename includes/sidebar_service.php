@@ -41,28 +41,25 @@ if ($employee_id) {
     }
 }
 ?>
-<aside class="main-sidebar sidebar-light-primary elevation-4">
+<aside class="main-sidebar sidebar-dark-warning elevation-4">
     <!-- Brand Logo -->
-    <a href="dashboard.php" class="brand-link bg-primary">
+    <a href="dashboard.php" class="brand-link bg-gradient-warning">
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text text-white"><b>NIA-ACIMO</b></span>
+      <span class="brand-text font-weight-light"><b>NIA-ACIMO</b> </span>
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar bg-primary">
+    <div class="sidebar" style="background-color: #5a3e00 !important;">
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
-          <img src="<?= $employee_picture ?>" class="img-circle elevation-2 bg-white" alt="User Image">
+          <img src="<?= $employee_picture ?>" class="img-circle elevation-2" alt="User Image">
         </div>
         <div class="info">
           <?php if (isset($_SESSION['user_id'])): ?>
             <a href="profile.php" class="d-block text-white"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
             <?php if (isset($_SESSION['role_name'])): ?>
-            <span class="badge <?= 
-                $_SESSION['role_name'] === 'Administrator' ? 'badge-danger' : 
-                ($_SESSION['role_name'] === 'Employee' ? 'badge-info' : 'badge-primary')
-            ?>">
+            <span class="badge badge-primary mt-1">
                 <?= htmlspecialchars($_SESSION['role_name']) ?>
             </span>
             <?php endif; ?>
@@ -72,70 +69,88 @@ if ($employee_id) {
 
       <!-- Sidebar Menu -->
       <nav class="mt-2">
-        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-
+        <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
           <li class="nav-item">
-            <a href="service.php" class="nav-link text-white<?= $current_page == 'service.php' ? 'active' : '' ?>">
-              <i class="nav-icon fas fa-home text-primary"></i>
-              <p class="text-white">Dashboard</p>
+            <a href="service.php" class="nav-link <?= $current_page == 'service.php' ? 'active bg-warning' : 'text-white' ?>">
+              <i class="nav-icon fas fa-tachometer-alt"></i>
+              <p>Dashboard</p>
             </a>
           </li>
 
         <li class="nav-item">
-            <a href="service_calendar.php" class="nav-link text-white <?= $current_page == 'service_calendar.php' ? 'active' : '' ?>">
-                <i class="nav-icon fas fa-calendar"></i>
+            <a href="service_calendar.php" class="nav-link <?= $current_page == 'service_calendar.php' ? 'active bg-warning' : 'text-white' ?>">
+                <i class="nav-icon fas fa-calendar-alt"></i>
                 <p>Service Calendar</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_vehicle.php" class="nav-link text-white <?= $current_page == 'service_vehicle.php' ? 'active' : '' ?>">
-                <i class="nav-icon fas fa-car"></i>
+            <a href="service_vehicle.php" class="nav-link <?= $current_page == 'service_vehicle.php' ? 'active bg-warning' : 'text-white' ?>">
+                <i class="nav-icon fas fa-truck"></i>
                 <p>Service Information</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_driver.php" class="nav-link text-white <?= $current_page == 'service_driver.php' ? 'active' : '' ?>">
-                <i class="nav-icon fas fa-user"></i>
+            <a href="service_driver.php" class="nav-link <?= $current_page == 'service_driver.php' ? 'active bg-warning' : 'text-white' ?>">
+                <i class="nav-icon fas fa-id-card"></i>
                 <p>Operator/Driver</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_request.php" class="nav-link text-white <?= $current_page == 'service_request.php' ? 'active' : '' ?>">
-                <i class="nav-icon fas fa-user"></i>
+            <a href="service_request.php" class="nav-link <?= $current_page == 'service_request.php' ? 'active bg-warning' : 'text-white' ?>">
+                <i class="nav-icon fas fa-file-alt"></i>
                 <p>Transportation Request</p>
             </a>
         </li>
-        <?php if (isset($_SESSION['user_id'])): ?>
-            <li class="nav-item">
-                <a href="profile.php" class="nav-link text-white <?= $current_page == 'profile.php' ? 'active' : '' ?>">
-                    <i class="nav-icon fas fa-user"></i>
-                    <p>My Profile</p>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="../logout.php" class="nav-link text-white">
-                    <i class="nav-icon fas fa-sign-out-alt"></i>
-                    <p>Logout</p>
-                </a>
-            </li>
-        <?php endif; ?>
         </ul>
       </nav>
     </div>
 </aside>
 
 <style>
-.sidebar-light-primary {
-    background-color: #007bff !important;
+.sidebar-dark-warning {
+    background-color: #7c5800 !important;
 }
-.nav-sidebar > .nav-item > .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+.sidebar-dark-warning .nav-sidebar > .nav-item > .nav-link {
+    color: #c2c7d0 !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
 }
-.nav-sidebar .nav-item > .nav-link {
-    margin: 0.2rem 0.5rem;
-    border-radius: 5px;
+.sidebar-dark-warning .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+    border-left: 4px solid #fff;
 }
-.brand-link.bg-primary {
-    border-bottom: 1px solid #e0a800;
+.sidebar-dark-warning .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+.brand-link.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+}
+
+/* Additional orange theme enhancements */
+.nav-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1rem;
+    color: #ffeaa7 !important;
+    border-bottom-color: #ffc107 !important;
+}
+
+.user-panel .info .badge {
+    background-color: #17a2b8 !important;
 }
 </style>
+<script>
+$(document).ready(function() {
+    // Force set service theme
+    localStorage.setItem('currentTheme', 'service');
+    // Trigger theme update in mainheader
+    if (window.parent && window.parent.setTheme) {
+        window.parent.setTheme('service');
+    }
+});
+</script>

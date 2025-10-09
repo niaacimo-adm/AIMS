@@ -41,28 +41,25 @@ if ($employee_id) {
     }
 }
 ?>
-<aside class="main-sidebar sidebar-light-info elevation-4">
+<aside class="main-sidebar sidebar-dark-success elevation-4">
     <!-- Brand Logo -->
-    <a href="dashboard.php" class="brand-link bg-info">
+    <a href="dashboard.php" class="brand-link bg-gradient-success">
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text text-white"><b>NIA-ACIMO</b></span>
+      <span class="brand-text font-weight-light"><b>NIA-ACIMO</b> </span>
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar bg-info">
+    <div class="sidebar" style="background-color: #153021 !important;">
         <!-- Sidebar user panel (optional) -->
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
-          <img src="<?= $employee_picture ?>" class="img-circle elevation-2 bg-white" alt="User Image" style="border: 2px solid #17a2b8;">
+          <img src="<?= $employee_picture ?>" class="img-circle elevation-2" alt="User Image">
         </div>
         <div class="info">
           <?php if (isset($_SESSION['user_id'])): ?>
             <a href="profile.php" class="d-block text-white"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
             <?php if (isset($_SESSION['role_name'])): ?>
-            <span class="badge <?= 
-                $_SESSION['role_name'] === 'Administrator' ? 'badge-danger' : 
-                ($_SESSION['role_name'] === 'Employee' ? 'badge-warning' : 'badge-secondary')
-            ?>">
+            <span class="badge badge-info mt-1">
                 <?= htmlspecialchars($_SESSION['role_name']) ?>
             </span>
             <?php endif; ?>
@@ -72,56 +69,81 @@ if ($employee_id) {
 
         <!-- Sidebar Menu -->
         <nav class="mt-2">
-            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-                <!-- Add icons to the links using the .nav-icon class with font-awesome or any other icon font library -->
+            <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
                 <li class="nav-item">
-                    <a href="inventory.php" class="nav-link bg-light <?= $current_page == 'inventory.php' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-home text-info"></i>
-                        <p class="text-dark">Dashboard</p>
+                    <a href="inventory.php" class="nav-link <?= $current_page == 'inventory.php' ? 'active bg-success' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="view_inventory.php" class="nav-link text-white <?= $current_page == 'view_inventory.php' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-box"></i>
+                    <a href="view_inventory.php" class="nav-link <?= $current_page == 'view_inventory.php' ? 'active bg-success' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-boxes"></i>
                         <p>Inventory</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="reports.php" class="nav-link text-white <?= $current_page == 'reports.php' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-chart-bar"></i>
-                        <p>Reports</p>
+                    <a href="request_supplies.php" class="nav-link <?= $current_page == 'request_supplies.php' ? 'active bg-success' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-clipboard-check"></i>
+                        <p>Request Supplies</p>
                     </a>
                 </li>
-                <?php if (isset($_SESSION['user_id'])): ?>
-            <li class="nav-item">
-                <a href="profile.php" class="nav-link text-white <?= $current_page == 'profile.php' ? 'active' : '' ?>">
-                    <i class="nav-icon fas fa-user"></i>
-                    <p>My Profile</p>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="../logout.php" class="nav-link text-white">
-                    <i class="nav-icon fas fa-sign-out-alt"></i>
-                    <p>Logout</p>
-                </a>
-            </li>
-        <?php endif; ?>
+                <li class="nav-item">
+                    <a href="my_supply_requests.php" class="nav-link <?= $current_page == 'my_supply_requests.php' ? 'active bg-success' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-list-check"></i>
+                        <p>My Requests</p>
+                    </a>
+                </li>
             </ul>
         </nav>
-        <!-- /.sidebar-menu -->
     </div>
-    <!-- /.sidebar -->
 </aside>
 
 <style>
-.sidebar-light-info {
+.sidebar-dark-success {
+    background-color: #1a472a !important;
+}
+.sidebar-dark-success .nav-sidebar > .nav-item > .nav-link {
+    color: #c2c7d0 !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+}
+.sidebar-dark-success .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: #28a745 !important;
+    color: white !important;
+    border-left: 4px solid #fff;
+}
+.sidebar-dark-success .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+.brand-link.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+/* Additional green theme enhancements */
+.nav-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1rem;
+    color: #a8d5b2 !important;
+    border-bottom-color: #28a745 !important;
+}
+
+.user-panel .info .badge {
     background-color: #17a2b8 !important;
 }
-.nav-sidebar > .nav-item > .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-}
-.nav-sidebar .nav-item > .nav-link {
-    margin: 0.2rem 0.5rem;
-    border-radius: 5px;
-}
 </style>
+<script>
+$(document).ready(function() {
+    // Force set inventory theme
+    localStorage.setItem('currentTheme', 'inventory');
+    // Trigger theme update in mainheader
+    if (window.parent && window.parent.setTheme) {
+        window.parent.setTheme('inventory');
+    }
+});
+</script>

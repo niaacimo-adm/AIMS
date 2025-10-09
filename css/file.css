@@ -191,9 +191,7 @@
         .badge-draft { background-color: #6c757d; }
         
         /* Section cards with unique colors */
-        .section-card:nth-child(8n+1) { 
-            border-left-color: #4361ee; 
-        }
+        
         .section-card:nth-child(8n+1) .card-body {
             background: linear-gradient(135deg, rgba(67, 97, 238, 0.05) 0%, rgba(67, 97, 238, 0.1) 100%);
         }
