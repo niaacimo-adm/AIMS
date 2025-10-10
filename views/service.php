@@ -150,215 +150,268 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
   <title>NIA-ACIMO | Service Dashboard</title>
   
   <?php include '../includes/header.php'; ?>
-
   <style>
-    :root {
-      --primary: #007bff;
-      --secondary: #6c757d;
-      --success: #28a745;
-      --info: #17a2b8;
-      --warning: #ffc107;
-      --danger: #dc3545;
-      --light: #f8f9fa;
-      --dark: #343a40;
+    /* Custom styles matching inventory.php */
+    .small-box {
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 20px;
     }
     
+    .small-box>.inner {
+        padding: 20px;
+    }
+    
+    .small-box h3 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin: 0 0 10px 0;
+        white-space: nowrap;
+        padding: 0;
+        color: white;
+    }
+    
+    .small-box p {
+        font-size: 1rem;
+        color: rgba(255,255,255,0.9);
+    }
+    
+    .small-box .icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 0;
+        font-size: 70px;
+        color: rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .small-box:hover .icon {
+        font-size: 75px;
+    }
+    
+    .small-box-footer {
+        position: relative;
+        text-align: center;
+        padding: 10px 0;
+        color: rgba(255,255,255,0.8);
+        background: rgba(0,0,0,0.1);
+        text-decoration: none;
+        display: block;
+        z-index: 10;
+    }
+    
+    .small-box-footer:hover {
+        color: white;
+        background: rgba(0,0,0,0.2);
+        text-decoration: none;
+    }
+    
+    /* Service-specific gradient backgrounds */
+    .bg-gradient-vehicles {
+        background: linear-gradient(120deg, #007bff, #0056b3) !important;
+    }
+    
+    .bg-gradient-drivers {
+        background: linear-gradient(120deg, #28a745, #20c997) !important;
+    }
+    
+    .bg-gradient-pending {
+        background: linear-gradient(120deg, #ffc107, #fd7e14) !important;
+    }
+    
+    .bg-gradient-completed {
+        background: linear-gradient(120deg, #17a2b8, #138496) !important;
+    }
+    
+    .bg-gradient-available {
+        background: linear-gradient(120deg, #28a745, #20c997) !important;
+    }
+    
+    .bg-gradient-maintenance {
+        background: linear-gradient(120deg, #ffc107, #fd7e14) !important;
+    }
+    
+    .bg-gradient-unavailable {
+        background: linear-gradient(120deg, #dc3545, #c82333) !important;
+    }
+    
+    /* Dashboard cards */
     .dashboard-card {
-      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-      border-radius: 0.5rem;
-      margin-bottom: 1.5rem;
-      background: #fff;
-      border: 1px solid rgba(0, 0, 0, 0.125);
-      transition: all 0.3s ease;
-    }
-    
-    .dashboard-card:hover {
-      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-      transform: translateY(-2px);
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+        overflow: hidden;
     }
     
     .dashboard-card .card-header {
-      background-color: #f8f9fa;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-      padding: 0.75rem 1.25rem;
-      border-radius: 0.5rem 0.5rem 0 0;
+        background: white;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        padding: 15px 20px;
+    }
+    
+    .dashboard-card .card-header h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+        color: #343a40;
     }
     
     .dashboard-card .card-body {
-      padding: 1.25rem;
+        padding: 20px;
     }
     
-    .stat-card {
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .stat-card .stat-icon {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-      opacity: 0.8;
-    }
-    
-    .stat-card .stat-number {
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-    
-    .stat-card .stat-text {
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-    
+    /* Quick Actions */
     .quick-action {
-      display: block;
-      text-align: center;
-      padding: 1.5rem 0.5rem;
-      border-radius: 0.5rem;
-      background-color: #f8f9fa;
-      transition: all 0.3s ease;
-      text-decoration: none;
-      margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 15px 10px;
+        border-radius: 10px;
+        transition: all 0.3s;
+        text-decoration: none;
+        color: #343a40;
     }
     
     .quick-action:hover {
-      background-color: #e9ecef;
-      transform: translateY(-3px);
-      text-decoration: none;
+        background-color: #f8f9fa;
+        transform: translateY(-3px);
+        color: #007bff;
+        text-decoration: none;
     }
     
     .quick-action i {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      display: block;
+        font-size: 2rem;
+        margin-bottom: 10px;
     }
     
     .quick-action div {
-      font-weight: 600;
+        font-weight: 500;
     }
     
+    /* Upcoming Requests */
     .upcoming-request {
-      padding: 1rem;
-      border-left: 4px solid var(--primary);
-      background-color: #f8f9fa;
-      border-radius: 0.25rem;
-      margin-bottom: 1rem;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+        border-left: 4px solid #007bff;
     }
     
-    .upcoming-request:last-child {
-      margin-bottom: 0;
+    .upcoming-request:hover {
+        background-color: #e9ecef;
     }
     
     .request-date {
-      font-weight: 600;
-      color: var(--dark);
+        font-weight: 600;
+        color: #343a40;
     }
     
     .request-destination {
-      color: var(--secondary);
-      margin: 0.25rem 0;
+        font-size: 0.95rem;
+        margin: 5px 0;
+        color: #6c757d;
     }
     
     .request-requester {
-      font-size: 0.875rem;
-      color: var(--secondary);
+        font-size: 0.85rem;
+        color: #6c757d;
     }
     
     .status-badge {
-      font-size: 0.75rem;
+        font-size: 0.75rem;
+        padding: 5px 10px;
+        border-radius: 20px;
     }
     
+    /* Progress Bars */
+    .progress {
+        height: 8px;
+        border-radius: 10px;
+        margin-top: 5px;
+        background-color: #e9ecef;
+    }
+    
+    .progress-bar {
+        border-radius: 10px;
+    }
+    
+    /* Recent Activity */
     .recent-activity {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+        list-style: none;
+        padding: 0;
+        margin: 0;
     }
     
     .recent-activity li {
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 1rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: flex-start;
+        padding: 12px 0;
+        border-bottom: 1px solid #e9ecef;
     }
     
     .recent-activity li:last-child {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: none;
+        border-bottom: none;
     }
     
     .activity-icon {
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 1rem;
-      flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        flex-shrink: 0;
+        color: white;
     }
     
     .activity-content {
-      flex: 1;
+        flex: 1;
     }
     
     .activity-time {
-      font-size: 0.75rem;
-      color: var(--secondary);
-      margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 3px;
     }
     
-    .dashboard-header {
-      background: linear-gradient(135deg, var(--primary) 0%, #0056b3 100%);
-      color: white;
-      padding: 2rem 0;
-      margin-bottom: 1.5rem;
-      border-radius: 0.5rem;
+    /* Quick Stats */
+    .quick-stats .border-right {
+        border-right: 1px solid #e9ecef !important;
     }
     
-    .dashboard-header h1 {
-      font-weight: 700;
-      margin-bottom: 0.5rem;
+    /* Empty States */
+    .empty-state {
+        text-align: center;
+        padding: 30px 15px;
+        color: #6c757d;
     }
     
-    .dashboard-header .lead {
-      opacity: 0.9;
-      margin-bottom: 0;
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
     }
     
-    .progress-sm {
-      height: 0.5rem;
-    }
-    
-    .bg-gradient-primary {
-      background: linear-gradient(135deg, var(--primary) 0%, #0056b3 100%) !important;
-    }
-    
-    .bg-gradient-success {
-      background: linear-gradient(135deg, var(--success) 0%, #1e7e34 100%) !important;
-    }
-    
-    .bg-gradient-warning {
-      background: linear-gradient(135deg, var(--warning) 0%, #e0a800 100%) !important;
-    }
-    
-    .bg-gradient-info {
-      background: linear-gradient(135deg, var(--info) 0%, #138496 100%) !important;
-    }
-    
+    /* Responsive */
     @media (max-width: 768px) {
-      .dashboard-header .text-right {
-        text-align: left !important;
-        margin-top: 1rem;
-      }
-      
-      .quick-action {
-        margin-bottom: 1rem;
-      }
+        .small-box h3 {
+            font-size: 1.8rem;
+        }
+        
+        .quick-action {
+            margin-bottom: 15px;
+        }
+        
+        .dashboard-card .card-body {
+            padding: 15px;
+        }
     }
   </style>
 </head>
@@ -393,53 +446,66 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
       <!-- Main content -->
       <section class="content">
         <div class="container-fluid">
-          <!-- Statistics Cards -->
+          <!-- Statistics Cards - Updated to match inventory.php style -->
           <div class="row">
-            <div class="col-lg-3 col-md-6">
-              <div class="dashboard-card">
-                <div class="stat-card bg-gradient-primary text-white">
-                  <div class="stat-icon">
-                    <i class="fas fa-car"></i>
-                  </div>
-                  <div class="stat-number"><?php echo $stats['total_vehicles']; ?></div>
-                  <div class="stat-text">Total Vehicles</div>
+            <div class="col-lg-3 col-6">
+              <!-- small box -->
+              <div class="small-box bg-gradient-vehicles">
+                <div class="inner">
+                  <h3><?php echo $stats['total_vehicles']; ?></h3>
+                  <p>Total Vehicles</p>
                 </div>
+                <div class="icon">
+                  <i class="fas fa-car"></i>
+                </div>
+                <a href="service_vehicle.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
               </div>
             </div>
-            <div class="col-lg-3 col-md-6">
-              <div class="dashboard-card">
-                <div class="stat-card bg-gradient-success text-white">
-                  <div class="stat-icon">
-                    <i class="fas fa-users"></i>
-                  </div>
-                  <div class="stat-number"><?php echo $stats['active_drivers']; ?></div>
-                  <div class="stat-text">Active Drivers</div>
+            <!-- ./col -->
+            <div class="col-lg-3 col-6">
+              <!-- small box -->
+              <div class="small-box bg-gradient-drivers">
+                <div class="inner">
+                  <h3><?php echo $stats['active_drivers']; ?></h3>
+                  <p>Active Drivers</p>
                 </div>
+                <div class="icon">
+                  <i class="fas fa-users"></i>
+                </div>
+                <a href="service_driver.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
               </div>
             </div>
-            <div class="col-lg-3 col-md-6">
-              <div class="dashboard-card">
-                <div class="stat-card bg-gradient-warning text-white">
-                  <div class="stat-icon">
-                    <i class="fas fa-list"></i>
-                  </div>
-                  <div class="stat-number"><?php echo $stats['pending_requests']; ?></div>
-                  <div class="stat-text">Pending Requests</div>
+            <!-- ./col -->
+            <div class="col-lg-3 col-6">
+              <!-- small box -->
+              <div class="small-box bg-gradient-pending">
+                <div class="inner">
+                  <h3><?php echo $stats['pending_requests']; ?></h3>
+                  <p>Pending Requests</p>
                 </div>
+                <div class="icon">
+                  <i class="fas fa-list"></i>
+                </div>
+                <a href="service_request.php" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
               </div>
             </div>
-            <div class="col-lg-3 col-md-6">
-              <div class="dashboard-card">
-                <div class="stat-card bg-gradient-info text-white">
-                  <div class="stat-icon">
-                    <i class="fas fa-check-circle"></i>
-                  </div>
-                  <div class="stat-number"><?php echo $stats['completed_trips']; ?></div>
-                  <div class="stat-text">Completed Trips</div>
+            <!-- ./col -->
+            <div class="col-lg-3 col-6">
+              <!-- small box -->
+              <div class="small-box bg-gradient-completed">
+                <div class="inner">
+                  <h3><?php echo $stats['completed_trips']; ?></h3>
+                  <p>Completed Trips</p>
                 </div>
+                <div class="icon">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <a href="service_request.php?status=completed" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
               </div>
             </div>
+            <!-- ./col -->
           </div>
+          <!-- /.row -->
 
           <div class="row">
             <!-- Left Column -->
@@ -508,8 +574,8 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                       </div>
                     <?php endforeach; ?>
                   <?php else: ?>
-                    <div class="text-center text-muted py-3">
-                      <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                    <div class="empty-state">
+                      <i class="fas fa-calendar-times"></i>
                       <p>No upcoming requests</p>
                     </div>
                   <?php endif; ?>
@@ -523,32 +589,35 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                 </div>
                 <div class="card-body">
                   <div class="row">
-                    <div class="col-md-4">
-                      <div class="d-flex justify-content-between">
+                    <div class="col-md-4 mb-3">
+                      <div class="d-flex justify-content-between mb-1">
                         <span>Available Vehicles</span>
                         <span class="font-weight-bold"><?php echo $stats['available_vehicles']; ?></span>
                       </div>
-                      <div class="progress progress-sm">
+                      <div class="progress">
                         <div class="progress-bar bg-success" style="width: <?php echo $available_percent; ?>%"></div>
                       </div>
+                      <small class="text-muted"><?php echo round($available_percent); ?>% of fleet</small>
                     </div>
-                    <div class="col-md-4">
-                      <div class="d-flex justify-content-between">
+                    <div class="col-md-4 mb-3">
+                      <div class="d-flex justify-content-between mb-1">
                         <span>In Maintenance</span>
                         <span class="font-weight-bold"><?php echo $stats['maintenance_vehicles']; ?></span>
                       </div>
-                      <div class="progress progress-sm">
+                      <div class="progress">
                         <div class="progress-bar bg-warning" style="width: <?php echo $maintenance_percent; ?>%"></div>
                       </div>
+                      <small class="text-muted"><?php echo round($maintenance_percent); ?>% of fleet</small>
                     </div>
-                    <div class="col-md-4">
-                      <div class="d-flex justify-content-between">
+                    <div class="col-md-4 mb-3">
+                      <div class="d-flex justify-content-between mb-1">
                         <span>Unavailable</span>
                         <span class="font-weight-bold"><?php echo $stats['unavailable_vehicles']; ?></span>
                       </div>
-                      <div class="progress progress-sm">
+                      <div class="progress">
                         <div class="progress-bar bg-danger" style="width: <?php echo $unavailable_percent; ?>%"></div>
                       </div>
+                      <small class="text-muted"><?php echo round($unavailable_percent); ?>% of fleet</small>
                     </div>
                   </div>
                 </div>
@@ -577,7 +646,7 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                         </li>
                       <?php endforeach; ?>
                     <?php else: ?>
-                      <li class="text-center text-muted">
+                      <li class="empty-state">
                         <div class="activity-content">
                           <div>No recent activity</div>
                         </div>
@@ -597,7 +666,7 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                     <span>Available</span>
                     <span class="font-weight-bold"><?php echo $available_drivers; ?></span>
                   </div>
-                  <div class="progress progress-sm mb-3">
+                  <div class="progress mb-3">
                     <div class="progress-bar bg-success" style="width: <?php echo $available_drivers_percent; ?>%"></div>
                   </div>
                   
@@ -605,7 +674,7 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                     <span>On Leave</span>
                     <span class="font-weight-bold"><?php echo $on_leave_drivers; ?></span>
                   </div>
-                  <div class="progress progress-sm mb-3">
+                  <div class="progress mb-3">
                     <div class="progress-bar bg-warning" style="width: <?php echo $on_leave_percent; ?>%"></div>
                   </div>
                   
@@ -613,7 +682,7 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                     <span>On Trip</span>
                     <span class="font-weight-bold"><?php echo $on_trip_drivers; ?></span>
                   </div>
-                  <div class="progress progress-sm">
+                  <div class="progress">
                     <div class="progress-bar bg-info" style="width: <?php echo $on_trip_percent; ?>%"></div>
                   </div>
                 </div>
@@ -625,24 +694,24 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
                   <h3 class="card-title">This Month</h3>
                 </div>
                 <div class="card-body">
-                  <div class="row text-center">
-                    <div class="col-6 border-right">
-                      <div class="text-primary font-weight-bold" style="font-size: 1.5rem;"><?php echo $stats['month_trips']; ?></div>
+                  <div class="row text-center quick-stats">
+                    <div class="col-6 border-right mb-3">
+                      <div class="text-primary font-weight-bold" style="font-size: 1.8rem;"><?php echo $stats['month_trips']; ?></div>
                       <div class="text-muted">Trips</div>
                     </div>
-                    <div class="col-6">
-                      <div class="text-success font-weight-bold" style="font-size: 1.5rem;"><?php echo $stats['month_completed']; ?></div>
+                    <div class="col-6 mb-3">
+                      <div class="text-success font-weight-bold" style="font-size: 1.8rem;"><?php echo $stats['month_completed']; ?></div>
                       <div class="text-muted">Completed</div>
                     </div>
                   </div>
                   <hr>
-                  <div class="row text-center">
+                  <div class="row text-center quick-stats">
                     <div class="col-6 border-right">
-                      <div class="text-info font-weight-bold" style="font-size: 1.5rem;"><?php echo $stats['month_trips'] * 50; ?></div>
+                      <div class="text-info font-weight-bold" style="font-size: 1.8rem;"><?php echo $stats['month_trips'] * 50; ?></div>
                       <div class="text-muted">Km Traveled</div>
                     </div>
                     <div class="col-6">
-                      <div class="text-warning font-weight-bold" style="font-size: 1.5rem;"><?php echo $stats['month_efficiency']; ?>%</div>
+                      <div class="text-warning font-weight-bold" style="font-size: 1.8rem;"><?php echo $stats['month_efficiency']; ?>%</div>
                       <div class="text-muted">Efficiency</div>
                     </div>
                   </div>
@@ -655,15 +724,7 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
       <!-- /.content -->
     </div>
     <!-- /.content-wrapper -->
-
-    <!-- Main Footer -->
-    <footer class="main-footer">
-      <strong>Copyright &copy; 2023 <a href="#">NIA-ACIMO</a>.</strong>
-      All rights reserved.
-      <div class="float-right d-none d-sm-inline-block">
-        <b>Version</b> 1.0.0
-      </div>
-    </footer>
+  <?php include '../includes/mainfooter.php'; ?>
   </div>
   <!-- ./wrapper -->
 

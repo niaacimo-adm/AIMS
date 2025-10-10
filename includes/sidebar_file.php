@@ -1,4 +1,5 @@
 <?php
+ob_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
 
@@ -39,6 +40,7 @@ if ($employee_id) {
         }
     }
 }
+ob_end_clean();
 ?>
 <aside class="main-sidebar sidebar-dark-maroon elevation-4">
     <!-- Brand Logo -->
@@ -178,4 +180,13 @@ $(document).ready(function() {
         window.parent.setTheme('file');
     }
 });
+// Force set admin theme and update profile if open
+localStorage.setItem('currentTheme', 'admin');
+// Set cookie for profile detection
+document.cookie = "current_module=admin; path=/; max-age=300";
+
+// Update header theme if we're in a parent window
+if (window.parent && window.parent.setTheme) {
+    window.parent.setTheme('admin');
+}
 </script>

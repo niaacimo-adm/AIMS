@@ -153,4 +153,13 @@ $(document).ready(function() {
         window.parent.setTheme('service');
     }
 });
+// Force set admin theme and update profile if open
+localStorage.setItem('currentTheme', 'admin');
+// Set cookie for profile detection
+document.cookie = "current_module=admin; path=/; max-age=300";
+
+// Update header theme if we're in a parent window
+if (window.parent && window.parent.setTheme) {
+    window.parent.setTheme('admin');
+}
 </script>

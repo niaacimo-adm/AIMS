@@ -4,3 +4,11 @@ php_value post_max_size 500M
 php_value max_execution_time 300
 php_value max_input_time 300
 php_value memory_limit 512M
+# Allow access to files
+<FilesMatch "\.(pdf|doc|docx|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes

@@ -90,7 +90,7 @@ if ($employee_id) {
                 </li>
                 <li class="nav-item">
                     <a href="my_supply_requests.php" class="nav-link <?= $current_page == 'my_supply_requests.php' ? 'active bg-success' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-list-check"></i>
+                        <i class="nav-icon fas fa-list-ol"></i>
                         <p>My Requests</p>
                     </a>
                 </li>
@@ -146,4 +146,13 @@ $(document).ready(function() {
         window.parent.setTheme('inventory');
     }
 });
+// Force set admin theme and update profile if open
+localStorage.setItem('currentTheme', 'admin');
+// Set cookie for profile detection
+document.cookie = "current_module=admin; path=/; max-age=300";
+
+// Update header theme if we're in a parent window
+if (window.parent && window.parent.setTheme) {
+    window.parent.setTheme('admin');
+}
 </script>

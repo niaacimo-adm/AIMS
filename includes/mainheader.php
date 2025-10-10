@@ -47,247 +47,247 @@ if ($employee_id) {
     }
 }
 ?>
-    <nav class="main-header navbar navbar-expand">
-        <ul class="navbar-nav me-auto">
-            <li class="nav-item">
-                <a class="nav-link sidebar-toggle" data-widget="pushmenu" href="#" role="button">
-                    <i class="fas fa-bars"></i>
-                </a>
-            </li>
-            <li class="nav-item dropdown apps-dropdown">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-th me-1"></i> Apps
-                </a>
-                <div class="dropdown-menu">
-                    <div class="dropdown-header">Application Pages</div>
-                    <div class="row g-2 p-2">
-                      <div class="col-6">
-                          <a href="dashboard.php" class="app-item" data-theme="admin">
-                              <div class="app-icon">
-                                  <i class="fas fa-tachometer-alt"></i>
-                              </div>
-                              <span class="app-name">Admin Section</span>
-                          </a>
-                      </div>
-                      <div class="col-6">
-                          <a href="service.php" class="app-item" data-theme="service">
-                              <div class="app-icon">
-                                  <i class="fas fa-car"></i>
-                              </div>
-                              <span class="app-name">Reserve Service</span>
-                          </a>
-                      </div>
-                      <div class="col-6">
-                          <a href="inventory.php" class="app-item" data-theme="inventory">
-                              <div class="app-icon">
-                                  <i class="fas fa-boxes"></i>
-                              </div>
-                              <span class="app-name">Procurement Inventory</span>
-                          </a>
-                      </div>
-                      <div class="col-6">
-                          <a href="file_management.php" class="app-item" data-theme="file">
-                              <div class="app-icon">
-                                  <i class="fas fa-folder"></i>
-                              </div>
-                              <span class="app-name">File Management</span>
-                          </a>
-                      </div>
-                  </div>
+<nav class="main-header navbar navbar-expand">
+    <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+            <a class="nav-link sidebar-toggle" data-widget="pushmenu" href="#" role="button">
+                <i class="fas fa-bars"></i>
+            </a>
+        </li>
+        <li class="nav-item dropdown apps-dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-th me-1"></i> Apps
+            </a>
+            <div class="dropdown-menu">
+                <div class="dropdown-header">Application Pages</div>
+                <div class="row g-2 p-2">
+                    <div class="col-6">
+                        <a href="dashboard.php" class="app-item" data-theme="admin">
+                            <div class="app-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <span class="app-name">Admin Section</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="service.php" class="app-item" data-theme="service">
+                            <div class="app-icon">
+                                <i class="fas fa-car"></i>
+                            </div>
+                            <span class="app-name">Reserve Service</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="inventory.php" class="app-item" data-theme="inventory">
+                            <div class="app-icon">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                            <span class="app-name">Procurement Inventory</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="file_management.php" class="app-item" data-theme="file">
+                            <div class="app-icon">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <span class="app-name">File Management</span>
+                        </a>
+                    </div>
                 </div>
-            </li>
-        </ul>
-
-        <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto">
-            <!-- Notifications Dropdown -->
-            <li class="nav-item dropdown notification-dropdown">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false" id="notificationDropdown">
-                    <i class="far fa-bell"></i>
-                    <?php
-                    // Get unread notification count for current admin - ORIGINAL PHP CODE
-                    if (isset($_SESSION['emp_id'])) {
-                        $database = new Database();
-                        $db = $database->getConnection();
-                        
-                        $query = "SELECT COUNT(*) as unread_count FROM admin_notifications 
-                                WHERE admin_emp_id = ? AND is_read = 0";
-                        $stmt = $db->prepare($query);
-                        $stmt->bind_param("i", $_SESSION['emp_id']);
-                        $stmt->execute();
-                        $result = $stmt->get_result();
-                        $count = $result->fetch_assoc()['unread_count'];
-                        
-                        if ($count > 0) {
-                            echo '<span class="notification-badge" id="notificationCount">' . $count . '</span>';
-                        }
-                    }
-                    ?>
-                </a>
-                <div class="dropdown-menu">
-                    <div class="notification-header">
-                        <span>Notifications</span>
-                        <span class="notification-count" id="notificationHeader">
-                            <?= isset($count) && $count > 0 ? $count . ' New' : 'No Notifications' ?>
-                        </span>
-                    </div>
-                    <div class="notification-list" id="notificationList">
-                        <?php
-                        // ORIGINAL PHP CODE for notifications
-                        if (isset($_SESSION['emp_id'])) {
-                            $query = "SELECT * FROM admin_notifications 
-                                    WHERE admin_emp_id = ? 
-                                    ORDER BY created_at DESC 
-                                    LIMIT 10";
-                            $stmt = $db->prepare($query);
-                            $stmt->bind_param("i", $_SESSION['emp_id']);
-                            $stmt->execute();
-                            $result = $stmt->get_result();
-                            
-                            if ($result->num_rows > 0) {
-                                while ($row = $result->fetch_assoc()) {
-                                    $time_ago = time_elapsed_string($row['created_at']);
-                                    $read_class = $row['is_read'] ? '' : 'unread';
-                                    
-                                    echo '<div class="notification-item ' . $read_class . '" data-notification-id="' . $row['id'] . '">
-                                            <div class="notification-content">
-                                                <div class="notification-icon">
-                                                    <i class="fas fa-key"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="notification-text">' . htmlspecialchars_decode($row['message']) . '</div>
-                                                    <div class="notification-time">' . $time_ago . '</div>
-                                                </div>
-                                            </div>
-                                          </div>';
-                                }
-                            } else {
-                                echo '<div class="text-center py-4 text-muted">No notifications</div>';
-                            }
-                        }
-                        ?>
-                    </div>
-                    <div class="notification-actions">
-                        <button class="btn btn-sm btn-outline-primary btn-notification mark-all-read-btn">
-                            <i class="fas fa-check-double me-1"></i> Mark All Read
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger btn-notification delete-all-btn">
-                            <i class="fas fa-trash me-1"></i> Delete All
-                        </button>
-                    </div>
-                    <a href="#" class="dropdown-item text-center py-2" data-toggle="modal" data-target="#allNotificationsModal">
-                        See All Notifications
-                    </a>
-                </div>
-            </li>
-            
-            <!-- Fullscreen Toggle -->
-            <li class="nav-item">
-                <a class="nav-link" data-widget="fullscreen" href="#" role="button">
-                    <i class="fas fa-expand-arrows-alt"></i>
-                </a>
-            </li>
-            
-<!-- Profile Dropdown -->
-<li class="nav-item dropdown profile-dropdown">
-    <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
-        <div class="profile-avatar">
-            <?php if (!empty($employee_data['picture']) && file_exists('../dist/img/employees/' . $employee_data['picture'])): ?>
-                <img src="../dist/img/employees/<?= $employee_data['picture'] ?>" alt="<?= $employee_name ?>" class="profile-avatar-img">
-            <?php else: ?>
-                <span><?= $employee_initials ?></span>
-            <?php endif; ?>
-        </div>
-        <span class="profile-name d-none d-md-inline"><?= $employee_name ?: 'User' ?></span>
-        <i class="fas fa-chevron-down d-none d-md-inline"></i>
-    </a>
-    <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i> My Profile</a></li>
-        <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="admin_approve_reset.php"><i class="fas fa-lock"></i> Change Password</a></li>
-        <li><a class="dropdown-item" href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </div>
+        </li>
     </ul>
-</li>
-        </ul>
-    </nav>
 
-    <!-- All Notifications Modal -->
-    <div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="allNotificationsModalLabel">All Notifications</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+    <!-- Right navbar links -->
+    <ul class="navbar-nav ml-auto">
+        <!-- Notifications Dropdown -->
+        <li class="nav-item dropdown notification-dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false" id="notificationDropdown">
+                <i class="far fa-bell"></i>
+                <?php
+                // Get unread notification count for current admin - ORIGINAL PHP CODE
+                if (isset($_SESSION['emp_id'])) {
+                    $database = new Database();
+                    $db = $database->getConnection();
+                    
+                    $query = "SELECT COUNT(*) as unread_count FROM admin_notifications 
+                            WHERE admin_emp_id = ? AND is_read = 0";
+                    $stmt = $db->prepare($query);
+                    $stmt->bind_param("i", $_SESSION['emp_id']);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $count = $result->fetch_assoc()['unread_count'];
+                    
+                    if ($count > 0) {
+                        echo '<span class="notification-badge" id="notificationCount">' . $count . '</span>';
+                    }
+                }
+                ?>
+            </a>
+            <div class="dropdown-menu">
+                <div class="notification-header">
+                    <span>Notifications</span>
+                    <span class="notification-count" id="notificationHeader">
+                        <?= isset($count) && $count > 0 ? $count . ' New' : 'No Notifications' ?>
+                    </span>
                 </div>
-                <div class="modal-body">
+                <div class="notification-list" id="notificationList">
                     <?php
-                    // ORIGINAL PHP CODE for all notifications modal
+                    // ORIGINAL PHP CODE for notifications
                     if (isset($_SESSION['emp_id'])) {
                         $query = "SELECT * FROM admin_notifications 
                                 WHERE admin_emp_id = ? 
-                                ORDER BY created_at DESC";
+                                ORDER BY created_at DESC 
+                                LIMIT 10";
                         $stmt = $db->prepare($query);
                         $stmt->bind_param("i", $_SESSION['emp_id']);
                         $stmt->execute();
                         $result = $stmt->get_result();
-                        $all_notifications = $result->fetch_all(MYSQLI_ASSOC);
+                        
+                        if ($result->num_rows > 0) {
+                            while ($row = $result->fetch_assoc()) {
+                                $time_ago = time_elapsed_string($row['created_at']);
+                                $read_class = $row['is_read'] ? '' : 'unread';
+                                
+                                echo '<div class="notification-item ' . $read_class . '" data-notification-id="' . $row['id'] . '">
+                                        <div class="notification-content">
+                                            <div class="notification-icon">
+                                                <i class="fas fa-key"></i>
+                                            </div>
+                                            <div>
+                                                <div class="notification-text">' . htmlspecialchars_decode($row['message']) . '</div>
+                                                <div class="notification-time">' . $time_ago . '</div>
+                                            </div>
+                                        </div>
+                                        </div>';
+                            }
+                        } else {
+                            echo '<div class="text-center py-4 text-muted">No notifications</div>';
+                        }
+                    }
                     ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Message</th>
-                                    <th width="120">Status</th>
-                                    <th width="150">Date</th>
-                                    <th width="100">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (count($all_notifications) > 0): ?>
-                                    <?php foreach ($all_notifications as $notification): ?>
-                                        <tr class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>">
-                                            <td><?= htmlspecialchars_decode($notification['message']) ?></td>
-                                            <td>
-                                                <span class="badge badge-<?= $notification['is_read'] ? 'success' : 'warning' ?>">
-                                                    <?= $notification['is_read'] ? 'Read' : 'Unread' ?>
-                                                </span>
-                                            </td>
-                                            <td><?= time_elapsed_string($notification['created_at']) ?></td>
-                                            <td>
-                                                <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['id'] ?>">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['id'] ?>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">No notifications found</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                    <?php } ?>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-primary" id="modalMarkAllRead">
-                        <i class="fas fa-check-double me-1"></i> Mark All as Read
+                <div class="notification-actions">
+                    <button class="btn btn-sm btn-outline-primary btn-notification mark-all-read-btn">
+                        <i class="fas fa-check-double me-1"></i> Mark All Read
                     </button>
-                    <button type="button" class="btn btn-outline-danger" id="modalDeleteAll">
+                    <button class="btn btn-sm btn-outline-danger btn-notification delete-all-btn">
                         <i class="fas fa-trash me-1"></i> Delete All
                     </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
+                <a href="#" class="dropdown-item text-center py-2" data-toggle="modal" data-target="#allNotificationsModal">
+                    See All Notifications
+                </a>
+            </div>
+        </li>
+        
+        <!-- Fullscreen Toggle -->
+        <li class="nav-item">
+            <a class="nav-link" data-widget="fullscreen" href="#" role="button">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </a>
+        </li>
+        
+            <!-- Profile Dropdown -->
+            <li class="nav-item dropdown profile-dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
+                    <div class="profile-avatar">
+                        <?php if (!empty($employee_data['picture']) && file_exists('../dist/img/employees/' . $employee_data['picture'])): ?>
+                            <img src="../dist/img/employees/<?= $employee_data['picture'] ?>" alt="<?= $employee_name ?>" class="profile-avatar-img">
+                        <?php else: ?>
+                            <span><?= $employee_initials ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <span class="profile-name d-none d-md-inline"><?= $employee_name ?: 'User' ?></span>
+                    <i class="fas fa-chevron-down d-none d-md-inline"></i>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i> My Profile</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="admin_approve_reset.php"><i class="fas fa-lock"></i> Change Password</a></li>
+                    <li><a class="dropdown-item" href="../index.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                </ul>
+            </li>
+    </ul>
+</nav>
+
+<!-- All Notifications Modal -->
+<div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="allNotificationsModalLabel">All Notifications</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <?php
+                // ORIGINAL PHP CODE for all notifications modal
+                if (isset($_SESSION['emp_id'])) {
+                    $query = "SELECT * FROM admin_notifications 
+                            WHERE admin_emp_id = ? 
+                            ORDER BY created_at DESC";
+                    $stmt = $db->prepare($query);
+                    $stmt->bind_param("i", $_SESSION['emp_id']);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $all_notifications = $result->fetch_all(MYSQLI_ASSOC);
+                ?>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Message</th>
+                                <th width="120">Status</th>
+                                <th width="150">Date</th>
+                                <th width="100">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($all_notifications) > 0): ?>
+                                <?php foreach ($all_notifications as $notification): ?>
+                                    <tr class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>">
+                                        <td><?= htmlspecialchars_decode($notification['message']) ?></td>
+                                        <td>
+                                            <span class="badge badge-<?= $notification['is_read'] ? 'success' : 'warning' ?>">
+                                                <?= $notification['is_read'] ? 'Read' : 'Unread' ?>
+                                            </span>
+                                        </td>
+                                        <td><?= time_elapsed_string($notification['created_at']) ?></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['id'] ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['id'] ?>">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No notifications found</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php } ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" id="modalMarkAllRead">
+                    <i class="fas fa-check-double me-1"></i> Mark All as Read
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="modalDeleteAll">
+                    <i class="fas fa-trash me-1"></i> Delete All
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
+</div>
 
 <style>
     :root {
@@ -799,7 +799,6 @@ if ($employee_id) {
             }
         });
 
-        // ORIGINAL JAVASCRIPT FUNCTIONS with modern UI integration
 
         // Mark all notifications as read (dropdown)
         $('.mark-all-read-btn').click(function(e) {
@@ -1084,123 +1083,123 @@ if ($employee_id) {
     });
 </script>
 <script>
-$(document).ready(function() {
-    // Theme configuration
-    const themes = {
-        'admin': {
-            header: 'linear-gradient(135deg, #4361ee, #3f37c9)',
-            footer: 'linear-gradient(135deg, #4361ee, #3f37c9)',
-            class: 'theme-admin'
-        },
-        'service': {
-            header: 'linear-gradient(135deg, #ffc107, #fd7e14)',
-            footer: 'linear-gradient(135deg, #ffc107, #fd7e14)',
-            class: 'theme-service'
-        },
-        'inventory': {
-            header: 'linear-gradient(135deg, #28a745, #20c997)',
-            footer: 'linear-gradient(135deg, #28a745, #20c997)',
-            class: 'theme-inventory'
-        },
-        'file': {
-            header: 'linear-gradient(135deg, #800020, #5a0a1d)',
-            footer: 'linear-gradient(135deg, #800020, #5a0a1d)',
-            class: 'theme-file'
-        }
-    };
+    $(document).ready(function() {
+        // Theme configuration
+        const themes = {
+            'admin': {
+                header: 'linear-gradient(135deg, #4361ee, #3f37c9)',
+                footer: 'linear-gradient(135deg, #4361ee, #3f37c9)',
+                class: 'theme-admin'
+            },
+            'service': {
+                header: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                footer: 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                class: 'theme-service'
+            },
+            'inventory': {
+                header: 'linear-gradient(135deg, #28a745, #20c997)',
+                footer: 'linear-gradient(135deg, #28a745, #20c997)',
+                class: 'theme-inventory'
+            },
+            'file': {
+                header: 'linear-gradient(135deg, #800020, #5a0a1d)',
+                footer: 'linear-gradient(135deg, #800020, #5a0a1d)',
+                class: 'theme-file'
+            }
+        };
 
-    // Function to set theme
-    function setTheme(themeName) {
-        console.log('Setting theme:', themeName);
-        const theme = themes[themeName];
-        if (!theme) return;
+        // Function to set theme
+        function setTheme(themeName) {
+            console.log('Setting theme:', themeName);
+            const theme = themes[themeName];
+            if (!theme) return;
 
-        // Update header
-        const header = $('.main-header');
-        if (header.length) {
-            header.css('background', theme.header);
-            header.removeClass('theme-admin theme-service theme-inventory theme-file');
-            header.addClass(theme.class);
-            console.log('Header updated');
-        }
+            // Update header
+            const header = $('.main-header');
+            if (header.length) {
+                header.css('background', theme.header);
+                header.removeClass('theme-admin theme-service theme-inventory theme-file');
+                header.addClass(theme.class);
+                console.log('Header updated');
+            }
 
-        // Update footer
-        const footer = $('#mainFooter');
-        if (footer.length) {
-            footer.css('background', theme.footer);
-            footer.removeClass('theme-admin theme-service theme-inventory theme-file');
-            footer.addClass(theme.class);
-            console.log('Footer updated');
-        }
+            // Update footer
+            const footer = $('#mainFooter');
+            if (footer.length) {
+                footer.css('background', theme.footer);
+                footer.removeClass('theme-admin theme-service theme-inventory theme-file');
+                footer.addClass(theme.class);
+                console.log('Footer updated');
+            }
 
-        // Save theme to localStorage
-        localStorage.setItem('currentTheme', themeName);
-        
-        // Update notification header background to match theme
-        $('.notification-header').css('background', theme.header);
-    }
-
-    // Handle app clicks
-    $(document).on('click', '.app-item', function(e) {
-        const theme = $(this).data('theme');
-        console.log('App clicked, theme:', theme);
-        if (theme) {
-            // Set theme immediately before navigation
-            setTheme(theme);
-            // Allow navigation to proceed
-        }
-    });
-
-    // Set theme based on current page
-    function setThemeFromPage() {
-        const currentPage = window.location.pathname;
-        console.log('Current page:', currentPage);
-        let theme = 'admin'; // default
-        
-        if (currentPage.includes('service')) {
-            theme = 'service';
-        } else if (currentPage.includes('inventory')) {
-            theme = 'inventory';
-        } else if (currentPage.includes('file_management')) {
-            theme = 'file';
-        }
-        
-        console.log('Detected theme:', theme);
-        setTheme(theme);
-    }
-
-    // Set theme on page load with delay to ensure DOM is ready
-    setTimeout(function() {
-        // Check if theme is already set by sidebar
-        const sidebarTheme = localStorage.getItem('currentTheme');
-        if (!sidebarTheme) {
-            setThemeFromPage();
-        } else {
-            setTheme(sidebarTheme);
-        }
-    }, 100);
-
-    // Update notification dropdown header to match current theme
-    function updateNotificationHeaderTheme() {
-        const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-        const theme = themes[currentTheme];
-        if (theme) {
+            // Save theme to localStorage
+            localStorage.setItem('currentTheme', themeName);
+            
+            // Update notification header background to match theme
             $('.notification-header').css('background', theme.header);
         }
-    }
 
-    // Update notification header when dropdown is shown
-    $('.notification-dropdown').on('show.bs.dropdown', function() {
-        updateNotificationHeaderTheme();
-    });
+        // Handle app clicks
+        $(document).on('click', '.app-item', function(e) {
+            const theme = $(this).data('theme');
+            console.log('App clicked, theme:', theme);
+            if (theme) {
+                // Set theme immediately before navigation
+                setTheme(theme);
+                // Allow navigation to proceed
+            }
+        });
 
-    // Listen for theme changes from other pages
-    $(window).on('storage', function(e) {
-        if (e.originalEvent.key === 'currentTheme') {
-            setTheme(e.originalEvent.newValue);
+        // Set theme based on current page
+        function setThemeFromPage() {
+            const currentPage = window.location.pathname;
+            console.log('Current page:', currentPage);
+            let theme = 'admin'; // default
+            
+            if (currentPage.includes('service')) {
+                theme = 'service';
+            } else if (currentPage.includes('inventory')) {
+                theme = 'inventory';
+            } else if (currentPage.includes('file_management')) {
+                theme = 'file';
+            }
+            
+            console.log('Detected theme:', theme);
+            setTheme(theme);
         }
+
+        // Set theme on page load with delay to ensure DOM is ready
+        setTimeout(function() {
+            // Check if theme is already set by sidebar
+            const sidebarTheme = localStorage.getItem('currentTheme');
+            if (!sidebarTheme) {
+                setThemeFromPage();
+            } else {
+                setTheme(sidebarTheme);
+            }
+        }, 100);
+
+        // Update notification dropdown header to match current theme
+        function updateNotificationHeaderTheme() {
+            const currentTheme = localStorage.getItem('currentTheme') || 'admin';
+            const theme = themes[currentTheme];
+            if (theme) {
+                $('.notification-header').css('background', theme.header);
+            }
+        }
+
+        // Update notification header when dropdown is shown
+        $('.notification-dropdown').on('show.bs.dropdown', function() {
+            updateNotificationHeaderTheme();
+        });
+
+        // Listen for theme changes from other pages
+        $(window).on('storage', function(e) {
+            if (e.originalEvent.key === 'currentTheme') {
+                setTheme(e.originalEvent.newValue);
+            }
+        });
     });
-});
 </script>
 <script>
 // Force theme application on load
@@ -1218,4 +1217,36 @@ $(window).on('load', function() {
         $('#mainFooter').css('background', themes[currentTheme]);
     }, 200);
 });
+// Set module cookie based on current theme when profile is accessed from header
+function setModuleCookie() {
+    const currentTheme = localStorage.getItem('currentTheme') || 'admin';
+    document.cookie = `current_module=${currentTheme}; path=/; max-age=300`; // 5 minutes
+}
+
+// Call this when profile link is clicked in header
+$(document).ready(function() {
+    $('.profile-dropdown a[href="profile.php"]').on('click', function(e) {
+        setModuleCookie();
+        // Allow normal navigation to proceed
+    });
+    
+    // Also set cookie on page load if we're on profile page
+    if (window.location.pathname.includes('profile.php')) {
+        setModuleCookie();
+    }
+});
+// Sync theme when profile page is loaded
+function syncProfileTheme() {
+    if (window.location.pathname.includes('profile.php')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const theme = urlParams.get('theme') || localStorage.getItem('currentTheme') || 'admin';
+        setTheme(theme);
+    }
+}
+
+// Call this on page load
+$(document).ready(function() {
+    syncProfileTheme();
+});
 </script>
+<?php include '../includes/footer.php'; ?>

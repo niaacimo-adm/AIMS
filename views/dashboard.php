@@ -126,7 +126,7 @@ while ($row = $result->fetch_assoc()) {
     .manager-section {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 25px;
+        padding: 15px;
         border-radius: 10px;
         margin-bottom: 30px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -496,7 +496,7 @@ while ($row = $result->fetch_assoc()) {
     
     .org-manager {
         margin-bottom: 10px;
-        width: 33%;
+        width: auto;
     }
     
     .org-sections {
@@ -805,7 +805,7 @@ while ($row = $result->fetch_assoc()) {
                         </div>
                       <?php endif; ?>
                       <div class="manager-details">
-                        <div class="manager-name">Engr. <?= htmlspecialchars($manager['first_name'] . 'G.' . $manager['last_name']) .''?></div>
+                        <div class="manager-name">Engr. <?= htmlspecialchars($manager['first_name'] . 'G. ' . $manager['last_name']) .' ,MPA'?></div>
                         <div class="manager-title">
                           <h5>ACTING DIVISION MANAGER</h5>
                         </div>
@@ -903,7 +903,7 @@ while ($row = $result->fetch_assoc()) {
                               
                             <!-- Modal for viewing all employees in unit -->
                             <div class="modal fade" id="unitEmployeesModal<?= $unit['unit_id'] ?>">
-                                <div class="modal-dialog modal-lg">
+                                <div class="modal-dialog modal-lg modal-dialog-centered">
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h4 class="modal-title">

@@ -21,8 +21,13 @@ $employee_id = $_SESSION['emp_id'] ?? 0;
 $employee_details = [];
 
 if ($employee_id) {
+    // Modified query to handle employees without section_id (like managers_staff)
     $employee_query = "SELECT emp_id, CONCAT(first_name, ' ', last_name) as full_name, 
-                      s.section_name 
+                      COALESCE(s.section_name, 'Manager\'s Office') as section_name,
+                      CASE 
+                          WHEN EXISTS (SELECT 1 FROM managers_office_staff WHERE emp_id = e.emp_id) THEN 'Manager\'s Office'
+                          ELSE COALESCE(s.section_name, 'General')
+                      END as display_section
                       FROM employee e 
                       LEFT JOIN section s ON e.section_id = s.section_id 
                       WHERE e.emp_id = ?";
@@ -52,13 +57,13 @@ $error = $success = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_request'])) {
     // Get values from session/employee details
     $employee_name = $employee_details['full_name'] ?? '';
-    $section = $employee_details['section_name'] ?? '';
+    $section = $employee_details['display_section'] ?? '';
     $request_date = date('Y-m-d'); // Current date
     $item_ids = $_POST['item_id'] ?? [];
     $quantities = $_POST['quantity'] ?? [];
 
     // Validate required fields
-    if (empty($employee_name) || empty($section)) {
+    if (empty($employee_name)) {
         $error = "Employee information is required.";
     } elseif (empty($item_ids) || empty($quantities)) {
         $error = "At least one supply item is required.";
@@ -311,7 +316,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_excel'])) {
                                 </div>
                                 <div class="col-md-4">
                                     <strong>Section/Department:</strong><br>
-                                    <?= htmlspecialchars($employee_details['section_name'] ?? '') ?>
+                                    <?= htmlspecialchars($employee_details['display_section'] ?? '') ?>
                                 </div>
                                 <div class="col-md-4">
                                     <strong>Request Date:</strong><br>
@@ -337,7 +342,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_excel'])) {
                         <form method="POST" action="" id="supplyRequestForm">
                             <!-- Hidden inputs for employee data and request date -->
                             <input type="hidden" name="employee_name" value="<?= htmlspecialchars($employee_details['full_name'] ?? '') ?>">
-                            <input type="hidden" name="section" value="<?= htmlspecialchars($employee_details['section_name'] ?? '') ?>">
+                            <input type="hidden" name="section" value="<?= htmlspecialchars($employee_details['display_section'] ?? '') ?>">
                             
                             <!-- No form fields needed - everything is automatic -->
 

@@ -1,6 +1,6 @@
 <!-- Main Footer -->
 <footer class="main-footer" id="mainFooter">
-    <strong>NIA - ACIMO (ADMIN SECTION)</strong>
+    <strong>NIA - ACIMO Intelligent Management Solution (AIMS)</strong>
     
     <div class="float-right d-none d-sm-inline-block">
       <b>MDO</b>(2024)
