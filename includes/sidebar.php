@@ -79,14 +79,14 @@ if ($employee_id) {
             </a>
           </li>
           <?php endif; ?>
-          
+          <?php if (hasPermission('process_attachment')): ?>
           <li class="nav-item">
             <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
               <i class="nav-icon fas fa-paperclip"></i>
               <p>Attachment Monitoring</p>
             </a>
           </li>
-          
+          <?php endif; ?>
           <?php if (hasPermission('view_calendar')): ?>
           <li class="nav-item">
             <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active bg-primary' : 'text-white' ?>">
@@ -119,6 +119,13 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_settings')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">SETTINGS</li>
+          
+          <li class="nav-item">
+              <a href="../maintenance_page.php" class="nav-link <?= $current_page == 'maintenance_page.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-tools nav-icon"></i>
+                  <p>Module Maintenance</p>
+              </a>
+          </li>
           <li class="nav-item">
               <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="fas fa-tv nav-icon"></i>

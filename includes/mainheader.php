@@ -205,7 +205,7 @@ if ($employee_id) {
                     <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i> My Profile</a></li>
                     <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="admin_approve_reset.php"><i class="fas fa-lock"></i> Change Password</a></li>
+                    <!-- <li><a class="dropdown-item" href="admin_approve_reset.php"><i class="fas fa-lock"></i> Change Password</a></li> -->
                     <li><a class="dropdown-item" href="../index.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </li>
@@ -747,6 +747,7 @@ if ($employee_id) {
             margin-left: -250px;
         }
     }
+    
 </style>
 
 <script>

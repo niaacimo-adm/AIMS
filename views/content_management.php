@@ -217,6 +217,15 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap4.min.css">
     <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --success-color: #4cc9f0;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+
         .image-preview {
             max-width: 120px;
             max-height: 80px;
@@ -241,8 +250,10 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
             max-width: 80%;
         }
         .table th {
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
             font-weight: 600;
+            border: none;
         }
         .btn-group-sm > .btn, .btn-sm {
             padding: 0.25rem 0.5rem;
@@ -263,6 +274,153 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        /* Admin Theme Specific Styles */
+        .card-primary {
+            border-color: var(--primary-color);
+        }
+
+        .card-primary .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom: none;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .card-header h3, .card-header .card-title {
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            border-color: var(--secondary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-color: #28a745;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            border-color: #ffc107;
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            border-color: #dc3545;
+        }
+
+        .badge-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .badge-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(67, 97, 238, 0.02);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .modal-header .close {
+            color: white;
+            opacity: 0.8;
+        }
+
+        .modal-header .close:hover {
+            opacity: 1;
+        }
+
+        .alert-success {
+            border-left: 4px solid #28a745;
+            background-color: #f8fff9;
+        }
+
+        .alert-danger {
+            border-left: 4px solid #dc3545;
+            background-color: #fff8f8;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+
+        .dataTables_paginate .page-item.active .page-link {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-color: var(--primary-color);
+        }
+
+        .dataTables_paginate .page-link {
+            color: var(--primary-color);
+        }
+
+        .dataTables_paginate .page-link:hover {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .dataTables_filter input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+
+        .dataTables_length select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+
+        .content-header {
+            color: black;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .content-header h1 {
+            color: BLACK;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        hr {
+            border-top: 2px solid var(--primary-color);
+            opacity: 0.3;
         }
     </style>
 </head>
@@ -301,7 +459,7 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
                 <div class="row">
                     <!-- Carousel Management -->
                     <div class="col-md-6">
-                        <div class="card">
+                        <div class="card card-primary">
                             <div class="card-header">
                                 <h3 class="card-title">Carousel Images</h3>
                             </div>
@@ -395,7 +553,7 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
 
                     <!-- Company Information Management -->
                     <div class="col-md-6">
-                        <div class="card">
+                        <div class="card card-primary">
                             <div class="card-header">
                                 <h3 class="card-title">Company Information</h3>
                             </div>
@@ -468,7 +626,7 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
                 <!-- Forms Management -->
                 <div class="row mt-4">
                     <div class="col-12">
-                        <div class="card">
+                        <div class="card card-primary">
                             <div class="card-header">
                                 <h3 class="card-title">Forms & Documents</h3>
                             </div>
@@ -551,7 +709,7 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
 
 <!-- View Modal -->
 <div class="modal fade" id="viewModal" tabindex="-1" role="dialog" aria-labelledby="viewModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="viewModalLabel">View Details</h5>
@@ -571,7 +729,7 @@ $company_forms = $db->query("SELECT * FROM company_forms ORDER BY created_at DES
 
 <!-- Image View Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-labelledby="imageModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="imageModalLabel">Image Preview</h5>
@@ -600,6 +758,14 @@ function viewImage(imagePath, caption) {
 }
 
 $(document).ready(function() {
+    // Set admin theme
+    setAdminTheme();
+    
+    function setAdminTheme() {
+        localStorage.setItem('currentTheme', 'admin');
+        $('body').addClass('theme-admin');
+    }
+
     // Initialize DataTables with page length 5
     $('#carouselTable').DataTable({
         "paging": true,

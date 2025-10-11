@@ -168,110 +168,193 @@ while ($row = $result->fetch_assoc()) {
     /* Grid container */
     .profile-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-        padding: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+        padding: 20px;
         margin-top: 20px;
         width: 100%;
     }
 
-    /* Card styling */
+    /* Modern Card styling */
     .profile-card {
-        border-radius: 10px;
+        border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
         background: white;
         display: flex;
         flex-direction: column;
         height: 100%;
+        border: 1px solid #e9ecef;
+        position: relative; /* Add this */
     }
 
     .profile-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
 
+    /* Modern Profile Header with Admin Theme */
     .profile-header {
         position: relative;
-        height: 120px;
-        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        height: 140px;
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
         display: flex;
         align-items: flex-end;
         justify-content: center;
+        padding-bottom: 20px;
     }
 
-    .profile-avatar {
-        width: 100px;
-        height: 100px;
+    .profile-avatarr {
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
-        border: 4px solid white;
+        border: 5px solid white;
         background: #f8f9fa;
         position: absolute;
-        bottom: -50px;
+        bottom: -60px;
         object-fit: cover;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 2; /* Add this */
+    }
+
+    /* Fix for avatar placeholder */
+    .profile-avatarr.d-flex {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 5px solid white;
+        background: #f8f9fa;
+        position: absolute;
+        bottom: -60px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 2;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
     }
 
     .profile-body {
-        padding: 60px 20px 20px;
+        padding: 70px 20px 20px;
         text-align: center;
         flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative; /* Add this */
+        z-index: 1; /* Add this */
     }
 
-    .profile-name {
-        font-weight: 600;
-        margin-bottom: 5px;
-        font-size: 1.1rem;
+    .profile-named {
+        font-weight: 700;
+        margin-bottom: 8px;
+        font-size: 1.2rem;
+        color: #4361ee;
+        line-height: 1.3;
+        min-height: 1.6em; /* Ensure space for name */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
 
     .profile-position {
         color: #6c757d;
-        font-size: 0.9rem;
-        margin-bottom: 15px;
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+        font-weight: 500;
+        line-height: 1.4;
+        min-height: 1.4em; /* Ensure space for position */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
     }
 
     .profile-details {
         text-align: left;
-        font-size: 0.85rem;
-        margin-bottom: 15px;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        flex-grow: 1;
     }
 
     .profile-detail {
         display: flex;
-        margin-bottom: 8px;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        line-height: 1.4;
     }
 
     .profile-detail i {
         width: 20px;
         color: #6c757d;
         margin-right: 10px;
+        margin-top: 2px;
+        flex-shrink: 0;
     }
 
-    /* PROFILE ACTIONS - FIXED STYLING */
+    .profile-detail span {
+        word-break: break-word;
+        flex: 1;
+        min-height: 1.4em; /* Ensure consistent height */
+    }
+
+    /* Status badges container */
+    .status-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+        margin-top: auto;
+    }
+
+    /* Modern Profile Actions */
     .profile-actions {
         display: flex;
         justify-content: center;
-        padding: 10px;
+        padding: 15px;
         border-top: 1px solid #eee;
-        background: white;
-        margin-top: auto; /* Push to bottom of card */
+        background: #f8f9fa;
+        margin-top: auto;
+        gap: 8px;
+        position: relative; /* Add this */
+        z-index: 1; /* Add this */
     }
 
     .profile-actions a {
-        margin: 0 5px;
-        width: 30px;
-        height: 30px;
+        width: 36px;
+        height: 36px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
-    /* Badges and other elements */
+    .profile-actions a:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .profile-actions a.btn-warning {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+    }
+
+    .profile-actions a.btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+    }
+
+    /* Modern Badges */
     .badge-custom {
         font-size: 0.75rem;
-        padding: 4px 8px;
-        margin: 2px;
+        padding: 6px 10px;
+        border-radius: 12px;
+        font-weight: 500;
     }
 
     /* Search and pagination */
@@ -286,20 +369,23 @@ while ($row = $result->fetch_assoc()) {
     .no-results {
         grid-column: 1 / -1;
         text-align: center;
-        padding: 20px;
+        padding: 40px 20px;
         color: #6c757d;
         font-style: italic;
+        font-size: 1.1rem;
     }
 
     .grid-pagination {
-        padding: 15px;
+        padding: 20px;
         border-top: 1px solid #dee2e6;
         margin-top: 10px;
         background: white;
+        border-radius: 0 0 10px 10px;
     }
 
     .grid-pagination button {
         margin-left: 5px;
+        border-radius: 6px;
     }
 
     .grid-pagination .disabled {
@@ -308,15 +394,40 @@ while ($row = $result->fetch_assoc()) {
     }
 
     /* Responsive adjustments */
+    @media (max-width: 1200px) {
+        .profile-grid {
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+            padding: 15px;
+        }
+    }
+
     @media (max-width: 768px) {
         .profile-grid {
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+            padding: 10px;
+        }
+        
+        .profile-header {
+            height: 120px;
+        }
+        
+        .profile-avatarr {
+            width: 100px;
+            height: 100px;
+            bottom: -50px;
+        }
+        
+        .profile-body {
+            padding: 60px 15px 15px;
         }
     }
 
     @media (max-width: 576px) {
         .profile-grid {
             grid-template-columns: 1fr;
+            gap: 15px;
         }
         
         .profile-grid-container {
@@ -324,23 +435,58 @@ while ($row = $result->fetch_assoc()) {
         }
         
         .profile-actions a {
-            margin: 0 3px;
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             font-size: 0.8rem;
         }
+        
+        .profile-header {
+            height: 100px;
+        }
+        
+        .profile-avatarr {
+            width: 90px;
+            height: 90px;
+            bottom: -45px;
+        }
+        
+        .profile-body {
+            padding: 55px 12px 12px;
+        }
     }
+
     #gridViewBtn.active {
-    background-color: #007bff;
-    color: white;
+        background-color: #4361ee;
+        color: white;
     }
 
     #tableViewBtn.active {
-    background-color: #007bff;
-    color: white;
+        background-color: #4361ee;
+        color: white;
+    }
+
+    /* Text truncation for long content */
+    .text-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    /* Modern Card Header */
+    .grid-card-header {
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px 10px 0 0;
+    }
+
+    .grid-card-header h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
     }
 </style>
-
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -560,41 +706,40 @@ while ($row = $result->fetch_assoc()) {
                         <div class="card-body p-0">
                         <div class="profile-grid">
                             <?php foreach ($employees as $employee): ?>
-                            <div class="profile-card" data-search="<?= strtolower(htmlspecialchars($employee['first_name'].' '.$employee['last_name'].' '.$employee['id_number'].' '.$employee['position_name'].' '.$employee['office_name'])) ?>">
-                            <!-- Your existing profile card content -->
+                        <div class="profile-card" data-search="<?= strtolower(htmlspecialchars($employee['first_name'].' '.$employee['last_name'].' '.$employee['id_number'].' '.$employee['position_name'].' '.$employee['office_name'])) ?>">
                             <div class="profile-header">
                                 <?php 
                                 $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture']);
                                 if (!empty($employee['picture']) && file_exists($imagePath)): ?>
-                                <img src="<?= $imagePath ?>" class="profile-avatar" 
-                                    alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
+                                    <img src="<?= $imagePath ?>" class="profile-avatarr" 
+                                        alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
                                 <?php else: ?>
-                                <div class="profile-avatar d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-user fa-3x text-muted"></i>
-                                </div>
+                                    <div class="profile-avatarr d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-user fa-3x text-muted"></i>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                             <div class="profile-body">
-                                <h5 class="profile-name"><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></h5>
+                                <h5 class="profile-named"><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></h5>
                                 <div class="profile-position"><?= htmlspecialchars($employee['position_name']) ?></div>
                                 
                                 <div class="profile-details">
-                                <div class="profile-detail">
-                                    <i class="fas fa-id-card"></i>
-                                    <span><?= htmlspecialchars($employee['id_number']) ?></span>
-                                </div>
-                                <div class="profile-detail">
-                                    <i class="fas fa-envelope"></i>
-                                    <span><?= htmlspecialchars($employee['email']) ?></span>
-                                </div>
-                                <div class="profile-detail">
-                                    <i class="fas fa-phone"></i>
-                                    <span><?= htmlspecialchars($employee['phone_number']) ?></span>
-                                </div>
-                                <div class="profile-detail">
-                                    <i class="fas fa-building"></i>
-                                    <span><?= htmlspecialchars($employee['office_name']) ?></span>
-                                </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-id-card"></i>
+                                        <span><?= htmlspecialchars($employee['id_number']) ?></span>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-envelope"></i>
+                                        <span><?= htmlspecialchars($employee['email']) ?></span>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-phone"></i>
+                                        <span><?= htmlspecialchars($employee['phone_number']) ?></span>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-building"></i>
+                                        <span><?= htmlspecialchars($employee['office_name']) ?></span>
+                                    </div>
                                 </div>
                                 
                                 <div class="mb-3">

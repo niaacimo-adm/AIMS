@@ -34,8 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_request'])) {
         
         if ($request) {
             // Send notification to the requester with reset link
-            // Update the reset link to use the correct IP address
-            $reset_link = "http://192.168.0.118/NIA-PROJECT/views/reset_password.php?token=" . $request['reset_token'];
+            $reset_link = "http://192.168.1.100/AIMS/views/reset_password.php?token=" . $request['reset_token'];
 
             // Update the notification message to open in new tab
 $notification_message = "Your password reset request has been approved. <button onclick=\"window.open('" . $reset_link . "', '_blank')\" style='color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;'>Click here to reset your password</button>";

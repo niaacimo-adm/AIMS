@@ -250,63 +250,376 @@ if ($row['is_manager_staff'] > 0) {
   <title>AdminLTE 3 | Employee Profile</title>
   <?php include '../includes/header.php'; ?>
   <style>
+    /* Modern Profile Styles */
+    .profile-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    /* Admin Theme Colors */
+    .profile-header {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      color: white;
+      padding: 30px 0;
+      border-radius: 10px 10px 0 0;
+      margin-bottom: 20px;
+    }
+    
+    .profile-avatar-xl {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 5px solid rgba(255,255,255,0.4);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      object-fit: cover;
+      object-position: center;
+    }
+
+    @media (max-width: 768px) {
+      .profile-avatar-xl {
+        width: 180px;
+        height: 180px;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .profile-avatar {
+        width: 250px;
+        height: 250px;
+      }
+    }
+
+    .profile-info-card {
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      border: none;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    
+    .profile-info-card .card-header {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      border-bottom: 1px solid #e3e6f0;
+      font-weight: 600;
+      padding: 15px 20px;
+      color: white;
+    }
+    
+    .profile-tabs .nav-link {
+      border-radius: 8px 8px 0 0;
+      padding: 12px 20px;
+      font-weight: 500;
+      color: #6c757d;
+      transition: all 0.3s;
+    }
+    
+    .profile-tabs .nav-link.active {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      color: white;
+      border-bottom: 3px solid rgba(255,255,255,0.5);
+    }
+    
+    .profile-tabs .nav-link:hover:not(.active) {
+      background: rgba(67, 97, 238, 0.1);
+      color: #4361ee;
+    }
+    
+    .tab-content {
+      background: #fff;
+      border-radius: 0 0 10px 10px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    
+    .info-table {
+      width: 100%;
+    }
+    
+    .info-table th {
+      width: 30%;
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      font-weight: 600;
+      padding: 12px 15px;
+      color: white;
+    }
+    
+    .info-table td {
+      padding: 12px 15px;
+    }
+    
     .file-icon {
-      font-size: 2rem;
+      font-size: 1.5rem;
       margin-right: 10px;
     }
+    
     .pdf-icon { color: #d63031; }
     .word-icon { color: #2b579a; }
     .excel-icon { color: #217346; }
     .ppt-icon { color: #d24726; }
     .image-icon { color: #6c5ce7; }
+    
     .file-item {
       display: flex;
       align-items: center;
-      padding: 10px;
+      padding: 12px;
       border-bottom: 1px solid #eee;
+      transition: background-color 0.2s;
     }
+    
+    .file-item:hover {
+      background-color: #f8f9fa;
+    }
+    
     .file-info {
       flex-grow: 1;
     }
+    
     .file-actions {
       margin-left: 10px;
     }
+    
     .manager-link {
-        color: #495057;
-        text-decoration: none;
-        transition: color 0.2s;
+      color: #495057;
+      text-decoration: none;
+      transition: color 0.2s;
     }
+    
     .manager-link:hover {
-        color: #007bff;
-        text-decoration: underline;
+      color: #4361ee;
+      text-decoration: underline;
     }
+    
     .badge-you {
-        font-size: 0.7em;
-        vertical-align: middle;
+      font-size: 0.7em;
+      vertical-align: middle;
     }
+    
     .leadership-section {
-        margin-top: 15px;
-        padding: 15px;
-        background-color: #f8f9fa;
-        border-radius: 5px;
+      margin-top: 15px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
     }
+    
     .leadership-item {
-        margin-bottom: 10px;
-        padding: 10px;
-        background-color: white;
-        border-radius: 5px;
-        border-left: 4px solid #007bff;
+      margin-bottom: 10px;
+      padding: 12px;
+      background-color: white;
+      border-radius: 8px;
+      border-left: 4px solid #4361ee;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
+    
     .leadership-title {
-        font-weight: bold;
-        margin-bottom: 10px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #495057;
     }
+    
     .focal-person-item {
-        border-left-color: #6f42c1;
+      border-left-color: #6f42c1;
+    }
+    
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    
+    /* Modern button styles */
+    .btn-modern {
+      border-radius: 6px;
+      font-weight: 500;
+      padding: 8px 16px;
+      transition: all 0.3s;
+    }
+    
+    .btn-modern-primary {
+      background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
+      border: none;
+      color: white;
+    }
+    
+    .btn-modern-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+      background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
+    }
+    
+    /* Card headers */
+    .card-primary .card-header {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      color: white;
+    }
+    
+    .card-info .card-header {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      color: white;
+    }
+    
+    /* Content header theming */
+    .content-header h1 {
+      color: #4361ee;
+    }
+    
+    /* Button theming */
+    .btn-primary {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      border-color: #4361ee;
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      border-color: #4361ee;
+      transform: translateY(-1px);
+    }
+    
+    .btn-info {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      border-color: #4361ee;
+    }
+    
+    .btn-info:hover {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      border-color: #4361ee;
+    }
+    
+    /* Badge theming */
+    .badge-warning {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      color: white;
+    }
+    
+    /* Icon theming */
+    .text-primary {
+      color: #4361ee !important;
+    }
+    
+    /* Modal header theming */
+    .modal-header {
+      background: linear-gradient(135deg, #4361ee, #3f37c9);
+      color: white;
+    }
+    
+    /* Sidebar Navigation Styles */
+    .sidebar-nav-container {
+    margin-bottom: 20px;
+    }
+
+    .sidebar-nav-pills {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .sidebar-nav-pills .nav-link {
+    border-radius: 6px;
+    padding: 12px 15px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 5px;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+    background-color: #ffffff; /* Add white background for inactive pills */
+    }
+
+    .sidebar-nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #4361ee, #3f37c9);
+    color: white;
+    border-color: #4361ee;
+    box-shadow: 0 2px 5px rgba(67, 97, 238, 0.3);
+    }
+
+    .sidebar-nav-pills .nav-link:not(.active) {
+    background: rgba(67, 98, 238, 0.36);
+    color: #4361ee;
+    border-color: rgba(67, 97, 238, 0.2);
+    }
+
+    .sidebar-nav-pills .nav-link i {
+    margin-right: 8px;
+    width: 20px;
+    text-align: center;
+    }
+    
+    .sidebar-tab-content {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      min-height: 300px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .profile-header {
+        padding: 20px 0;
+      }
+      
+      .profile-avatar {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .info-table th, .info-table td {
+        display: block;
+        width: 100%;
+      }
+      
+      .info-table th {
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        margin-top: 10px;
+        color: white;
+      }
+      
+      .sidebar-nav-pills .nav-link {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Fix for table overlapping footer */
+    .tab-content {
+        min-height: auto;
+        overflow: visible;
+    }
+
+    .table-responsive {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+
+    #filesTable {
+        margin-bottom: 0 !important;
+    }
+
+    .main-tabs{
+      background-color: #4362eeb6 !important;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .main-tabs .nav-link {
+      color: rgba(255,255,255,0.8) !important;
+      border-radius: 0;
+      padding: 12px 20px;
+      transition: all 0.3s;
+    }
+    
+    .main-tabs .nav-link.active {
+      background: #4361ee !important;
+      color: white !important;
+      border-bottom: 3px solid rgba(255,255,255,0.5);
+    }
+    
+    .main-tabs .nav-link:hover:not(.active) {
+      background: rgba(255,255,255,0.1) !important;
+      color: white !important;
     }
   </style>
 </head>
-<body class="hold-transition sidebar-mini">
+<body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 <?php include '../includes/mainheader.php'; ?>
   <!-- Main Sidebar Container -->
@@ -314,265 +627,284 @@ if ($row['is_manager_staff'] > 0) {
   <!-- Content Wrapper. Contains page content -->
   <div class="content-wrapper">
     <!-- Content Header (Page header) -->
-    <section class="content-header">
+    <div class="content-header">
       <div class="container-fluid">
         <div class="row mb-2">
           <div class="col-sm-6">
             <h1>Employee Profile</h1>
           </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
+              <li class="breadcrumb-item"><a href="emp.list.php">Employees</a></li>
+              <li class="breadcrumb-item active">Employee Profile</li>
+            </ol>
+          </div>
         </div>
       </div><!-- /.container-fluid -->
-    </section>
+    </div>
 
     <!-- Main content -->
     <section class="content">
-      <div class="container-fluid">
+      <div class="container-fluid profile-container">
         <div class="row">
-          <div class="col-md-3">
-            <!-- Profile Image -->
-            <div class="card card-primary card-outline">
-              <div class="card-body box-profile">
-                <div class="text-center">
+          <div class="col-md-12">
+            
+        <div class="profile-header text-center mb-4">
+          <div class="row justify-content-center">
+            <div class="col-md-10">
+              <div class="d-flex align-items-center justify-content-center flex-column flex-md-row">
+                <div class="mr-md-4 mb-3 mb-md-0">
                   <?php 
                   $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture']);
                   if (!empty($employee['picture']) && file_exists($imagePath)): ?>
-                    <img class="profile-user-img img-fluid img-circle"
-                         src="<?= $imagePath ?>"
-                         alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
+                    <img class="profile-avatar-xl"
+                        src="<?= $imagePath ?>"
+                        alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
                   <?php else: ?>
-                    <img class="profile-user-img img-fluid img-circle"
-                         src="../dist/img/user-default.png"
-                         alt="Default user image">
+                    <img class="profile-avatar-xl"
+                        src="../dist/img/user-default.png"
+                        alt="Default user image">
                   <?php endif; ?>
                 </div>
-
-                <h3 class="profile-username text-center"><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></h3>
-
-                <p class="text-muted text-center"><?= htmlspecialchars($employee['position_name']) ?></p>
-
-                <ul class="list-group list-group-unbordered mb-3">
-                  <li class="list-group-item">
-                    <b>Employee ID</b> <a class="float-right"><?= htmlspecialchars($employee['id_number']) ?></a>
-                  </li>
-                  <li class="list-group-item">
-                    <b>Email</b> <a class="float-right"><?= htmlspecialchars($employee['email']) ?></a>
-                  </li>
-                  <li class="list-group-item">
-                    <b>Phone</b> <a class="float-right"><?= htmlspecialchars($employee['phone_number']) ?></a>
-                  </li>
-                </ul>
-                <?php if ($is_manager_office_staff): ?>
-                    <div class="text-center mt-2">
-                        <span class="badge badge-warning">
-                             Manager's Office Staff
-                        </span>
-                    </div>
-                <?php endif; ?>
-                <hr>
-                <div class="text-center">
-                  <a href="emp.edit.php?emp_id=<?= $emp_id ?>" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Edit Profile
-                  </a>
+                <div class="text-center text-md-left text-white">
+                  <h2 class="mb-2 display-5 font-weight-bold"><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></h2>
+                  <p class="mb-1 h4"><?= htmlspecialchars($employee['position_name']) ?></p>
+                  <p class="mb-0 h5"><?= htmlspecialchars($employee['id_number']) ?></p>  
                 </div>
               </div>
-              <!-- /.card-body -->
-            </div>
-            <!-- /.card -->
-            
-            <!-- Status Card -->
-            <div class="card card-primary">
-                <div class="card-header">
-                    <h3 class="card-title">Employment Status</h3>
-                </div>
-                <div class="card-body">
-                    <strong><i class="fas fa-briefcase mr-1"></i> Position</strong>
-                    <p class="text-muted"><?= htmlspecialchars($employee['position_name']) ?></p>
-                    <hr>
-                    
-                      <strong><i class="fas fa-building mr-1"></i> Office</strong>
-                      <p class="text-muted">
-                          <?= htmlspecialchars($employee['office_name']) ?>
-                          <?php if (!empty($current_assignment['section_name'])): ?>
-                              <small class="d-block">Section: <?= htmlspecialchars($current_assignment['section_name']) ?>
-                                  <?php if (!empty($current_assignment['unit_name'])): ?>
-                                      <small class="d-block">Unit: <?= htmlspecialchars($current_assignment['unit_name']) ?></small>
-                                  <?php endif; ?>
-                              </small>
-                          <?php endif; ?>
-                      </p>
-
-                    <?php if (!empty($current_assignment['section_name'])): ?>
-             
-                        <?php if (!empty($current_assignment['unit_name'])): ?>
-                            <small class="d-block">Unit: <?= htmlspecialchars($current_assignment['unit_name']) ?>
-                                <?php if (!empty($current_assignment['unit_head_first_name'])): ?>
-                                    (Head: <a href="emp.profile.php?emp_id=<?= $current_assignment['unit_head_id'] ?>" class="manager-link">
-                                        <?= htmlspecialchars($current_assignment['unit_head_first_name'] . ' ' . $current_assignment['unit_head_last_name']) ?>
-                                        <?php if ($current_assignment['unit_head_id'] == $emp_id): ?>
-                                            <span class="badge badge-warning badge-you">(You)</span>
-                                        <?php endif; ?>
-                                    </a>)
-                                <?php endif; ?>
-                            </small>
-                        <?php endif; ?>
-                    </p>
-                    <?php endif; ?>
-                    
-                    <?php if ($employee['is_office_manager'] || !empty($sections_as_head) || !empty($units_as_head)): ?>
-                    <hr>
-                    <div class="leadership-section">
-                        <strong><i class="fas fa-user-shield mr-1"></i> Leadership Roles</strong>
-                        <?php if ($employee['is_office_manager']): ?>
-                            <div class="leadership-item">
-                                <div class="leadership-title">
-                                    <i class="fas fa-building mr-2"></i> Office Manager
-                                </div>
-                                <div class="text-muted">
-                                    Manages <?= htmlspecialchars($employee['office_name']) ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($sections_as_head)): ?>
-                            <div class="leadership-title mt-3">
-                                <i class="fas fa-users mr-2"></i> Section Head Of:
-                            </div>
-                            <?php foreach ($sections_as_head as $section): ?>
-                                <div class="leadership-item">
-                                    <div>
-                                        <strong><?= htmlspecialchars($section['section_name']) ?></strong>
-                                        <small class="text-muted">(<?= htmlspecialchars($section['section_code']) ?>)</small>
-                                    </div>
-                                    <div class="text-muted">
-                                        Office: <?= htmlspecialchars($section['office_name']) ?>
-                                    </div>
-                                    <div class="mt-2">
-                                        <a href="sections.php?edit=<?= $section['section_id'] ?>" class="btn btn-xs btn-info">
-                                            <i class="fas fa-edit"></i> Manage Section
-                                        </a>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        
-                        <?php if (!empty($sections_as_secretary)): ?>
-                          <div class="leadership-title mt-3">
-                              <i class="fas fa-user-secret mr-2"></i> Focal Person Of:
-                          </div>
-                          <?php foreach ($sections_as_secretary as $section): ?>
-                              <div class="leadership-item">
-                                  <div>
-                                      <strong><?= htmlspecialchars($section['section_name']) ?></strong>
-                                  </div>
-                                  <div class="mt-2">
-                                      <a href="sections.php?edit=<?= $section['section_id'] ?>" class="btn btn-xs btn-info">
-                                          <i class="fas fa-edit"></i> Manage Section
-                                      </a>
-                                  </div>
-                              </div>
-                          <?php endforeach; ?>
-                      <?php endif; ?>
-                      
-                        <?php if (!empty($units_as_head)): ?>
-                            <div class="leadership-title mt-3">
-                                <i class="fas fa-users mr-2"></i> Unit Head Of:
-                            </div>
-                            <?php foreach ($units_as_head as $unit): ?>
-                                <div class="leadership-item">
-                                    <div>
-                                        <strong><?= htmlspecialchars($unit['unit_name']) ?></strong>
-                                        <small class="text-muted">(<?= htmlspecialchars($unit['unit_code']) ?>)</small>
-                                    </div>
-                                    <div class="text-muted">
-                                        Parent Section: <?= htmlspecialchars($unit['section_name']) ?>
-                                    </div>
-                                    <div class="mt-2">
-                                        <a href="sections.php?edit_unit=<?= $unit['unit_id'] ?>" class="btn btn-xs btn-info">
-                                            <i class="fas fa-edit"></i> Manage Unit
-                                        </a>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
-                    <hr>
-                    <strong><i class="fas fa-user-tag mr-1"></i> Employment Status</strong>
-                    <p class="text-muted">
-                        <span class="badge" style="background-color: <?= htmlspecialchars($employee['employment_color']) ?>; 
-                            color: <?= (hexdec(substr($employee['employment_color'], 1)) > 0xffffff/2) ? '#000000' : '#ffffff' ?>">
-                            <?= htmlspecialchars($employee['employment_status']) ?>
-                        </span>
-                    </p>
-                    <hr>
-                    
-                    <strong><i class="fas fa-file-signature mr-1"></i> Appointment Status</strong>
-                    <p class="text-muted">
-                        <span class="badge" style="background-color: <?= htmlspecialchars($employee['appointment_color']) ?>; 
-                            color: <?= (hexdec(substr($employee['appointment_color'], 1)) > 0xffffff/2) ? '#000000' : '#ffffff' ?>">
-                            <?= htmlspecialchars($employee['appointment_status']) ?>
-                        </span>
-                    </p>
-                    
-                </div>
             </div>
           </div>
-          <!-- /.col -->
-          <div class="col-md-9">
-            <div class="card">
-              <div class="card-header p-2">
-                <ul class="nav nav-pills">
-                  <li class="nav-item"><a class="nav-link active" href="#about" data-toggle="tab">About Me</a></li>
-                  <li class="nav-item"><a class="nav-link" href="#file" data-toggle="tab">My Files</a></li>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-4">
+            <!-- Sidebar Navigation Pills -->
+            <div class="sidebar-nav-container">
+              <div class="sidebar-nav-pills">
+                <ul class="nav nav-pills flex-column" id="sidebarTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <a class="nav-link active" id="profile-summary-tab" data-toggle="pill" href="#profile-summary" role="tab" aria-controls="profile-summary" aria-selected="true">
+                      <i class="fas fa-user-circle mr-2"></i> Profile Summary
+                    </a>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="employment-status-tab" data-toggle="pill" href="#employment-status" role="tab" aria-controls="employment-status" aria-selected="false">
+                      <i class="fas fa-briefcase mr-2"></i> Employment Status
+                    </a>
+                  </li>
+                  <?php if ($employee['is_office_manager'] || !empty($sections_as_head) || !empty($units_as_head) || !empty($sections_as_secretary)): ?>
+                  <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="leadership-roles-tab" data-toggle="pill" href="#leadership-roles" role="tab" aria-controls="leadership-roles" aria-selected="false">
+                      <i class="fas fa-user-shield mr-2"></i> Leadership Roles
+                    </a>
+                  </li>
+                  <?php endif; ?>
                 </ul>
-              </div><!-- /.card-header -->
+              </div>
+              
+              <!-- Sidebar Tab Content -->
+              <div class="tab-content sidebar-tab-content mt-3" id="sidebarTabContent">
+                <!-- Profile Summary Tab -->
+                <div class="tab-pane fade show active" id="profile-summary" role="tabpanel" aria-labelledby="profile-summary-tab">
+                  <div class="mb-3">
+                    <strong><i class="fas fa-envelope mr-2 text-primary"></i> Email</strong>
+                    <p class="text-muted mb-2"><?= htmlspecialchars($employee['email']) ?></p>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <strong><i class="fas fa-phone mr-2 text-primary"></i> Phone</strong>
+                    <p class="text-muted mb-2"><?= htmlspecialchars($employee['phone_number']) ?></p>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <strong><i class="fas fa-briefcase mr-2 text-primary"></i> Position</strong>
+                    <p class="text-muted mb-2"><?= htmlspecialchars($employee['position_name']) ?></p>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <strong><i class="fas fa-building mr-2 text-primary"></i> Office</strong>
+                    <p class="text-muted mb-0"><?= htmlspecialchars($employee['office_name']) ?></p>
+                    <?php if (!empty($current_assignment['section_name'])): ?>
+                      <small class="text-muted d-block">Section: <?= htmlspecialchars($current_assignment['section_name']) ?></small>
+                      <?php if (!empty($current_assignment['unit_name'])): ?>
+                        <small class="text-muted d-block">Unit: <?= htmlspecialchars($current_assignment['unit_name']) ?></small>
+                      <?php endif; ?>
+                    <?php endif; ?>
+                  </div>
+                  
+                  <?php if ($is_manager_office_staff): ?>
+                    <div class="text-center mt-3">
+                      <span class="badge badge-warning p-2">
+                        <i class="fas fa-star mr-1"></i> Manager's Office Staff
+                      </span>
+                    </div>
+                  <?php endif; ?>
+                  
+                  <hr>
+                  
+                  <div class="text-center">
+                    <a href="emp.edit.php?emp_id=<?= $emp_id ?>" class="btn btn-modern btn-modern-primary">
+                      <i class="fas fa-edit mr-1"></i> Edit Profile
+                    </a>
+                  </div>
+                </div>
+                
+                <!-- Employment Status Tab -->
+                <div class="tab-pane fade" id="employment-status" role="tabpanel" aria-labelledby="employment-status-tab">
+                  <div class="mb-3">
+                    <strong><i class="fas fa-user-tag mr-2 text-primary"></i> Employment Status</strong>
+                    <p class="mt-1">
+                      <span class="status-badge" style="background-color: <?= htmlspecialchars($employee['employment_color']) ?>; 
+                        color: <?= (hexdec(substr($employee['employment_color'], 1)) > 0xffffff/2) ? '#000000' : '#ffffff' ?>">
+                        <?= htmlspecialchars($employee['employment_status']) ?>
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <strong><i class="fas fa-file-signature mr-2 text-primary"></i> Appointment Status</strong>
+                    <p class="mt-1">
+                      <span class="status-badge" style="background-color: <?= htmlspecialchars($employee['appointment_color']) ?>; 
+                        color: <?= (hexdec(substr($employee['appointment_color'], 1)) > 0xffffff/2) ? '#000000' : '#ffffff' ?>">
+                        <?= htmlspecialchars($employee['appointment_status']) ?>
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- Leadership Roles Tab -->
+                <?php if ($employee['is_office_manager'] || !empty($sections_as_head) || !empty($units_as_head) || !empty($sections_as_secretary)): ?>
+                <div class="tab-pane fade" id="leadership-roles" role="tabpanel" aria-labelledby="leadership-roles-tab">
+                  <?php if ($employee['is_office_manager']): ?>
+                    <div class="leadership-item mb-3">
+                      <div class="leadership-title">
+                        <i class="fas fa-building mr-2"></i> Division Manager
+                      </div>
+                      <div class="text-muted">
+                        Manages <?= htmlspecialchars($employee['office_name']) ?>
+                      </div>
+                    </div>
+                  <?php endif; ?>
+                  
+                  <?php if (!empty($sections_as_head)): ?>
+                    <div class="leadership-title mt-3">
+                      <i class="fas fa-users mr-2"></i> Section Head Of:
+                    </div>
+                    <?php foreach ($sections_as_head as $section): ?>
+                      <div class="leadership-item mb-2">
+                        <div>
+                          <strong><?= htmlspecialchars($section['section_name']) ?></strong>
+                          <small class="text-muted">(<?= htmlspecialchars($section['section_code']) ?>)</small>
+                        </div>
+                        <div class="text-muted">
+                          Office: <?= htmlspecialchars($section['office_name']) ?>
+                        </div>
+                        <div class="mt-2">
+                          <a href="sections.php?edit=<?= $section['section_id'] ?>" class="btn btn-xs btn-info">
+                            <i class="fas fa-edit"></i> Manage Section
+                          </a>
+                        </div>
+                      </div>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                  
+                  <?php if (!empty($sections_as_secretary)): ?>
+                    <div class="leadership-title mt-3">
+                      <i class="fas fa-user-secret mr-2"></i> Focal Person Of:
+                    </div>
+                    <?php foreach ($sections_as_secretary as $section): ?>
+                      <div class="leadership-item mb-2">
+                        <div>
+                          <strong><?= htmlspecialchars($section['section_name']) ?></strong>
+                        </div>
+                        <div class="mt-2">
+                          <a href="sections.php?edit=<?= $section['section_id'] ?>" class="btn btn-xs btn-info">
+                            <i class="fas fa-edit"></i> Manage Section
+                          </a>
+                        </div>
+                      </div>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                  
+                  <?php if (!empty($units_as_head)): ?>
+                    <div class="leadership-title mt-3">
+                      <i class="fas fa-users mr-2"></i> Unit Head Of:
+                    </div>
+                    <?php foreach ($units_as_head as $unit): ?>
+                      <div class="leadership-item mb-2">
+                        <div>
+                          <strong><?= htmlspecialchars($unit['unit_name']) ?></strong>
+                          <small class="text-muted">(<?= htmlspecialchars($unit['unit_code']) ?>)</small>
+                        </div>
+                        <div class="text-muted">
+                          Parent Section: <?= htmlspecialchars($unit['section_name']) ?>
+                        </div>
+                        <div class="mt-2">
+                          <a href="sections.php?edit_unit=<?= $unit['unit_id'] ?>" class="btn btn-xs btn-info">
+                            <i class="fas fa-edit"></i> Manage Unit
+                          </a>
+                        </div>
+                      </div>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                </div>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-8">
+            <!-- Main Content Tabs -->
+            <div class="card">
+              <div class="sidebar-nav-pills">
+                <div class="main-tabs">
+                    <ul class="nav nav-pills" id="mainTabs">
+                    <li class="nav-item"><a class="nav-link active" href="#about" data-toggle="tab">About Me</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#file" data-toggle="tab">My Files</a></li>
+                    </ul>
+                </div>
+              </div>
+              
               <div class="card-body">
                 <div class="tab-content">
                   <div class="active tab-pane" id="about">
-                    <!-- About Me Content -->
-                    <div class="post">
-                        <span class="username">
-                          <h3>Personal Information</h3>
-                        </span>
-                      
-                      <div class="row">
-                        <div class="col-md-6">
-                          <table class="table table-bordered">
-                            <tr>
-                              <th width="30%">Full Name</th>
-                              <td><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['middle_name'] . ' ' . $employee['last_name'] . ' ' . $employee['ext_name']) ?></td>
-                            </tr>
-                            <tr>
-                              <th>Gender</th>
-                              <td><?= htmlspecialchars($employee['gender']) ?></td>
-                            </tr>
-                            <tr>
-                              <th>Birthday</th>
-                              <td><?= htmlspecialchars($employee['bday']) ?></td>
-                            </tr>
-                          </table>
-                        </div>
-                        <div class="col-md-6">
-                          <table class="table table-bordered">
-                            <tr>
-                              <th width="30%">Email</th>
-                              <td><?= htmlspecialchars($employee['email']) ?></td>
-                            </tr>
-                            <tr>
-                              <th>Phone</th>
-                              <td><?= htmlspecialchars($employee['phone_number']) ?></td>
-                            </tr>
-                            <tr>
-                              <th>Address</th>
-                              <td><?= htmlspecialchars($employee['address']) ?></td>
-                            </tr>
-                          </table>
-                        </div>
-                        
+                    <h4 class="mb-4">Personal Information</h4>
+                    <div class="row">
+                      <div class="col-md-6">
+                        <table class="table table-bordered info-table">
+                          <tr>
+                            <th>Full Name</th>
+                            <td><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['middle_name'] . ' ' . $employee['last_name'] . ' ' . $employee['ext_name']) ?></td>
+                          </tr>
+                          <tr>
+                            <th>Gender</th>
+                            <td><?= htmlspecialchars($employee['gender']) ?></td>
+                          </tr>
+                          <tr>
+                            <th>Birthday</th>
+                            <td><?= htmlspecialchars($employee['bday']) ?></td>
+                          </tr>
+                        </table>
+                      </div>
+                      <div class="col-md-6">
+                        <table class="table table-bordered info-table">
+                          <tr>
+                            <th>Email</th>
+                            <td><?= htmlspecialchars($employee['email']) ?></td>
+                          </tr>
+                          <tr>
+                            <th>Phone</th>
+                            <td><?= htmlspecialchars($employee['phone_number']) ?></td>
+                          </tr>
+                          <tr>
+                            <th>Address</th>
+                            <td><?= htmlspecialchars($employee['address']) ?></td>
+                          </tr>
+                        </table>
                       </div>
                     </div>
                   </div>
-                  <!-- /.tab-pane -->
                   
                   <div class="tab-pane" id="file">
                     <!-- File Upload Form -->
@@ -598,251 +930,140 @@ if ($row['is_manager_staff'] > 0) {
                         </div>
                       </form>
                     </div>
+                    
                     <!-- File List -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Uploaded Files</h3>
-                        </div>
-                        <div class="card-body">
-                            <?php if (empty($uploadedFiles)): ?>
-                                <div class="p-3 text-center text-muted">No files uploaded yet.</div>
-                            <?php else: ?>
-                                <table id="filesTable" class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>File</th>
-                                            <th>Type</th>
-                                            <th>Size</th>
-                                            <th>Modified</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($uploadedFiles as $file): ?>
-                                            <?php 
-                                            $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                                            $iconClass = 'fa-file';
-                                            $fileType = 'File';
-                                            
-                                            if (in_array($fileExt, ['pdf'])) {
-                                                $iconClass = 'fa-file-pdf pdf-icon';
-                                                $fileType = 'PDF';
-                                            } elseif (in_array($fileExt, ['doc', 'docx'])) {
-                                                $iconClass = 'fa-file-word word-icon';
-                                                $fileType = 'Word';
-                                            } elseif (in_array($fileExt, ['xls', 'xlsx'])) {
-                                                $iconClass = 'fa-file-excel excel-icon';
-                                                $fileType = 'Excel';
-                                            } elseif (in_array($fileExt, ['ppt', 'pptx'])) {
-                                                $iconClass = 'fa-file-powerpoint ppt-icon';
-                                                $fileType = 'PowerPoint';
-                                            } elseif (in_array($fileExt, ['jpg', 'jpeg', 'png', 'gif'])) {
-                                                $iconClass = 'fa-file-image image-icon';
-                                                $fileType = 'Image';
-                                            }
-                                            ?>
-                                            <tr>
-                                                <td>
-                                                    <i class="fas <?= $iconClass ?> mr-2"></i>
-                                                    <?= htmlspecialchars($file['name']) ?>
-                                                </td>
-                                                <td><?= $fileType ?></td>
-                                                <td><?= formatSizeUnits($file['size']) ?></td>
-                                                <td><?= date('M d, Y H:i', $file['modified']) ?></td>
-                                                <td>
-                                                    <div class="btn-group">
-                                                        <a href="../dist/files/employees/<?= $emp_id ?>/<?= urlencode($file['name']) ?>" 
-                                                        class="btn btn-sm btn-primary" 
-                                                        title="Download"
-                                                        download>
-                                                            <i class="fas fa-download"></i>
-                                                        </a>
-                                                        <a href="emp.profile.php?emp_id=<?= $emp_id ?>&delete_file=<?= urlencode($file['name']) ?>" 
-                                                          class="btn btn-sm btn-danger delete-file-btn" 
-                                                          data-filename="<?= htmlspecialchars($file['name']) ?>" 
-                                                          title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </a>
-                                                        <button class="btn btn-sm btn-info view-file-btn" 
-                                                                title="Preview"
-                                                                data-filepath="../dist/files/employees/<?= $emp_id ?>/<?= urlencode($file['name']) ?>"
-                                                                data-filetype="<?= $fileType ?>">
-                                                            <i class="fas fa-eye"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <!-- Preview Modal -->
-                    <div class="modal fade" id="filePreviewModal" tabindex="-1" role="dialog" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-lg" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body" id="filePreviewContent">
-                                    <!-- Content will be loaded here -->
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                    <a id="downloadPreviewBtn" href="#" class="btn btn-primary" download>
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="card mt-4">
+                      <div class="card-header">
+                        <h3 class="card-title">Uploaded Files</h3>
+                      </div>
+                      <div class="card-body">
+                        <?php if (empty($uploadedFiles)): ?>
+                          <div class="text-center text-muted py-5">
+                            <i class="fas fa-folder-open fa-3x mb-3"></i>
+                            <p>No files uploaded yet.</p>
+                          </div>
+                        <?php else: ?>
+                          <div class="table-responsive">
+                            <table id="filesTable" class="table table-hover">
+                              <thead>
+                                <tr>
+                                  <th>File</th>
+                                  <th>Type</th>
+                                  <th>Size</th>
+                                  <th>Modified</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <?php foreach ($uploadedFiles as $file): ?>
+                                  <?php 
+                                  $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                                  $iconClass = 'fa-file';
+                                  $fileType = 'File';
+                                  
+                                  if (in_array($fileExt, ['pdf'])) {
+                                    $iconClass = 'fa-file-pdf pdf-icon';
+                                    $fileType = 'PDF';
+                                  } elseif (in_array($fileExt, ['doc', 'docx'])) {
+                                    $iconClass = 'fa-file-word word-icon';
+                                    $fileType = 'Word';
+                                  } elseif (in_array($fileExt, ['xls', 'xlsx'])) {
+                                    $iconClass = 'fa-file-excel excel-icon';
+                                    $fileType = 'Excel';
+                                  } elseif (in_array($fileExt, ['ppt', 'pptx'])) {
+                                    $iconClass = 'fa-file-powerpoint ppt-icon';
+                                    $fileType = 'PowerPoint';
+                                  } elseif (in_array($fileExt, ['jpg', 'jpeg', 'png', 'gif'])) {
+                                    $iconClass = 'fa-file-image image-icon';
+                                    $fileType = 'Image';
+                                  }
+                                  ?>
+                                  <tr>
+                                    <td>
+                                      <i class="fas <?= $iconClass ?> mr-2"></i>
+                                      <span class="file-name" style="max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <?= htmlspecialchars($file['name']) ?>
+                                      </span>
+                                    </td>
+                                    <td><?= $fileType ?></td>
+                                    <td><?= formatSizeUnits($file['size']) ?></td>
+                                    <td><?= date('M d, Y H:i', $file['modified']) ?></td>
+                                    <td>
+                                      <div class="btn-group btn-group-sm">
+                                        <a href="../dist/files/employees/<?= $emp_id ?>/<?= urlencode($file['name']) ?>" 
+                                           class="btn btn-info" target="_blank" download>
+                                          <i class="fas fa-download"></i>
+                                        </a>
+                                        <a href="emp.profile.php?emp_id=<?= $emp_id ?>&delete_file=<?= urlencode($file['name']) ?>" 
+                                           class="btn btn-danger" 
+                                           onclick="return confirm('Are you sure you want to delete this file?')">
+                                          <i class="fas fa-trash"></i>
+                                        </a>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                <?php endforeach; ?>
+                              </tbody>
+                            </table>
+                          </div>
+                        <?php endif; ?>
+                      </div>
                     </div>
                   </div>
-                  <!-- /.tab-pane -->
                 </div>
-                <!-- /.tab-content -->
-              </div><!-- /.card-body -->
+              </div>
             </div>
-            <!-- /.card -->
           </div>
-          <!-- /.col -->
         </div>
-        <!-- /.row -->
-      </div><!-- /.container-fluid -->
+      </div>
     </section>
   </div>
-  <?php include '../includes/mainfooter.php'; ?>
+    <?php include '../includes/mainfooter.php'; ?>
+
+  <?php include '../includes/footer.php'; ?>
 </div>
-<?php include '../includes/footer.php'; ?>
 
-<!-- SweetAlert Toast Notification -->
-<?php if (isset($_SESSION['toast'])): ?>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const toast = <?php echo json_encode($_SESSION['toast']); ?>;
-    
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: toast.type,
-        title: toast.message,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-            toast.addEventListener('mouseenter', Swal.stopTimer)
-            toast.addEventListener('mouseleave', Swal.resumeTimer)
-        }
-    });
-});
-</script>
-<?php unset($_SESSION['toast']); endif; ?>
-
-<!-- bs-custom-file-input -->
-<script src="../plugins/bs-custom-file-input/bs-custom-file-input.min.js"></script>
-<script>
-$(function () {
-  bsCustomFileInput.init();
-});
-</script>
-<script>
-$(function () {
-    // Initialize DataTable
-    $('#filesTable').DataTable({
-        responsive: true,
-        autoWidth: false,
-        order: [[3, 'desc']], // Sort by modified date by default
-        columnDefs: [
-            { responsivePriority: 1, targets: 0 }, // File name
-            { responsivePriority: 2, targets: -1 }, // Actions
-            { width: '30%', targets: 0 }, // File name column width
-            { width: '10%', targets: 1 }, // Type column width
-            { width: '15%', targets: 2 }, // Size column width
-            { width: '20%', targets: 3 }, // Modified column width
-            { width: '25%', targets: -1, orderable: false } // Actions column
-        ],
-        language: {
-            search: "_INPUT_",
-            searchPlaceholder: "Search files...",
-            lengthMenu: "Show _MENU_ files per page",
-            zeroRecords: "No files found",
-            info: "Showing _START_ to _END_ of _TOTAL_ files",
-            infoEmpty: "No files available",
-            infoFiltered: "(filtered from _MAX_ total files)"
-        }
-    });
-
-    // File preview handler
-    $('.view-file-btn').on('click', function() {
-        const filePath = $(this).data('filepath');
-        const fileType = $(this).data('filetype').toLowerCase();
-        const modal = $('#filePreviewModal');
-        const downloadBtn = $('#downloadPreviewBtn');
-        
-        // Set download link
-        downloadBtn.attr('href', filePath);
-        
-        // Clear previous content
-        $('#filePreviewContent').html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
-        
-        // Show modal
-        modal.modal('show');
-        
-        // Load content based on file type
-        if (fileType === 'image') {
-            $('#filePreviewContent').html(`<img src="${filePath}" class="img-fluid" alt="Preview">`);
-        } else if (fileType === 'pdf') {
-            $('#filePreviewContent').html(`
-                <embed src="${filePath}#toolbar=0&navpanes=0&scrollbar=0" 
-                       type="application/pdf" 
-                       width="100%" 
-                       height="600px" />
-            `);
-        } else {
-            // For other file types, show a message with download option
-            $('#filePreviewContent').html(`
-                <div class="text-center py-5">
-                    <i class="fas fa-file fa-5x mb-3"></i>
-                    <h4>Preview not available for this file type</h4>
-                    <p>Please download the file to view it</p>
-                </div>
-            `);
-        }
-    });
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const deleteButtons = document.querySelectorAll('.delete-file-btn');
-
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.preventDefault(); // Prevent the default link behavior
-
-            const href = this.getAttribute('href');
-            const filename = this.getAttribute('data-filename');
-
-            Swal.fire({
-                title: 'Are you sure?',
-                text: `Delete the file "${filename}"?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = href; // Proceed with deletion
-                }
-            });
+$(document).ready(function() {
+    // Initialize DataTables for files table
+    if ($('#filesTable').length) {
+        $('#filesTable').DataTable({
+            "paging": true,
+            "lengthChange": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "autoWidth": false,
+            "responsive": true,
+            "pageLength": 10,
+            "language": {
+                "search": "Search files:",
+                "lengthMenu": "Show _MENU_ files per page",
+                "info": "Showing _START_ to _END_ of _TOTAL_ files",
+                "infoEmpty": "No files available",
+                "infoFiltered": "(filtered from _MAX_ total files)"
+            }
         });
+    }
+    
+    // File input label update
+    $('.custom-file-input').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').html(fileName);
     });
+    
+    // Toast notification
+    <?php if (isset($_SESSION['toast'])): ?>
+        $(document).Toasts('create', {
+            class: 'bg-<?= $_SESSION['toast']['type'] ?>',
+            title: '<?= ucfirst($_SESSION['toast']['type']) ?>',
+            body: '<?= $_SESSION['toast']['message'] ?>',
+            autohide: true,
+            delay: 3000
+        });
+        <?php unset($_SESSION['toast']); ?>
+    <?php endif; ?>
 });
 </script>
-
 </body>
 </html>

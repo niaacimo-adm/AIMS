@@ -13,6 +13,23 @@ if (!isset($_SESSION['user_id'])) {
 $database = new Database();
 $db = $database->getConnection();
 
+$module_name = 'Admin Dashboard';
+$check_stmt = $db->prepare("SELECT is_under_maintenance FROM system_modules WHERE module_name = ?");
+$check_stmt->bind_param("s", $module_name);
+$check_stmt->execute();
+$result = $check_stmt->get_result();
+
+if ($result->num_rows > 0) {
+    $module = $result->fetch_assoc();
+    if ($module['is_under_maintenance'] && !hasPermission('manage_settings')) {
+        // Redirect to maintenance page or show message
+        $_SESSION['error'] = "The $module_name module is currently under maintenance. Please try again later.";
+        header("Location: ../unauthorized.php");
+        exit();
+    }
+}
+
+
 // Get user role information
 $stmt = $db->prepare("
     SELECT u.id, u.user, r.name as role_name, r.id as role_id 

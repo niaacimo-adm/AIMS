@@ -68,6 +68,7 @@ switch ($current_module) {
         break;
 }
 $current_theme = $current_module;
+
 // Handle password change request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     $current_password = $_POST['current_password'] ?? '';
@@ -102,8 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
         exit();
     }
     
-    // Get current password hash from database
-    $query = "SELECT password FROM employee WHERE emp_id = ?";
+    // Get current password hash from users table (not employee table)
+    $query = "SELECT u.password 
+              FROM users u 
+              WHERE u.employee_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $emp_id);
     $stmt->execute();
@@ -112,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     if ($result->num_rows === 0) {
         $_SESSION['toast'] = [
             'type' => 'error',
-            'message' => 'User not found.'
+            'message' => 'User account not found.'
         ];
         echo "<script>window.location.href = 'profile.php';</script>";
         exit();
@@ -132,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     
     // Hash new password and update database
     $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-    $update_query = "UPDATE employee SET password = ? WHERE emp_id = ?";
+    $update_query = "UPDATE users SET password = ? WHERE employee_id = ?";
     $update_stmt = $db->prepare($update_query);
     $update_stmt->bind_param("si", $hashed_password, $emp_id);
     
@@ -168,12 +171,12 @@ function notifyAdministratorsAboutPasswordChange($emp_id) {
     $result = $stmt->get_result();
     $user = $result->fetch_assoc();
     
-    // Get all administrators
+    // Get all administrators - FIXED: Changed r.role_id to r.id
     $query = "SELECT e.emp_id, e.email, e.first_name, e.last_name 
               FROM employee e 
-              JOIN users u ON e.emp_id = u.emp_id 
-              JOIN roles r ON u.role_id = r.role_id 
-              WHERE r.role_name = 'Administrator' 
+              JOIN users u ON e.emp_id = u.employee_id 
+              JOIN user_roles r ON u.role_id = r.id  -- CHANGED: r.role_id to r.id
+              WHERE r.name = 'Administrator' 
               AND e.email IS NOT NULL";
     
     $stmt = $db->prepare($query);
@@ -893,7 +896,27 @@ if ($row['is_manager_staff'] > 0) {
 #filesTable {
     margin-bottom: 0 !important;
 }
+.password-match {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
 
+.password-strength {
+    height: 5px;
+    margin-top: 5px;
+    border-radius: 5px;
+    transition: all 0.3s;
+}
+
+.progress-bar {
+    border-radius: 5px;
+}
+
+.password-hint {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 5px;
+}
 
   </style>
 </head>
@@ -1061,7 +1084,7 @@ if ($row['is_manager_staff'] > 0) {
                     <?php if ($employee['is_office_manager']): ?>
                       <div class="leadership-item mb-3">
                         <div class="leadership-title">
-                          <i class="fas fa-building mr-2"></i> Office Manager
+                          <i class="fas fa-building mr-2"></i> Division Manager
                         </div>
                         <div class="text-muted">
                           Manages <?= htmlspecialchars($employee['office_name']) ?>
@@ -1358,7 +1381,7 @@ if ($row['is_manager_staff'] > 0) {
                               <div class="input-group">
                                 <input type="password" class="form-control" id="current_password" name="current_password" required>
                                 <div class="input-group-append">
-                                  <span class="input-group-text password-toggle" data-target="current_password">
+                                  <span class="input-group-text password-toggle" onclick="togglePassword('current_password')">
                                     <i class="fas fa-eye"></i>
                                   </span>
                                 </div>
@@ -1368,29 +1391,40 @@ if ($row['is_manager_staff'] > 0) {
                             <div class="form-group">
                               <label for="new_password">New Password</label>
                               <div class="input-group">
-                                <input type="password" class="form-control" id="new_password" name="new_password" required minlength="8">
+                                <input type="password" class="form-control" id="new_password" name="new_password" required minlength="8" placeholder="Enter new password">
                                 <div class="input-group-append">
-                                  <span class="input-group-text password-toggle" data-target="new_password">
+                                  <span class="input-group-text password-toggle" onclick="togglePassword('new_password')">
                                     <i class="fas fa-eye"></i>
                                   </span>
                                 </div>
                               </div>
-                              <small class="text-muted">Password must be at least 8 characters long.</small>
+                              <div class="password-hint">
+                                Use at least 8 characters with a mix of letters, numbers, and symbols
+                              </div>
+                              <div class="password-strength mt-2">
+                                <div class="progress" style="height: 8px;">
+                                  <div id="passwordStrengthBar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small id="passwordStrengthText" class="text-muted">Password strength: Very weak</small>
+                              </div>
                             </div>
                             
                             <div class="form-group">
                               <label for="confirm_password">Confirm New Password</label>
                               <div class="input-group">
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8">
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8" placeholder="Confirm new password">
                                 <div class="input-group-append">
-                                  <span class="input-group-text password-toggle" data-target="confirm_password">
+                                  <span class="input-group-text password-toggle" onclick="togglePassword('confirm_password')">
                                     <i class="fas fa-eye"></i>
                                   </span>
                                 </div>
                               </div>
+                              <div id="passwordMatch" class="password-match mt-2"></div>
                             </div>
                             
-                            <button type="submit" class="btn btn-modern btn-modern-primary">Change Password</button>
+                            <button type="submit" class="btn btn-modern btn-modern-primary">
+                              <i class="fas fa-sync-alt mr-1"></i> Change Password
+                            </button>
                           </div>
                         </form>
                       </div>
@@ -1868,6 +1902,136 @@ if ($row['is_manager_staff'] > 0) {
           }
       }
   });
+
+  // Password strength calculation
+const newPasswordInput = document.getElementById('new_password');
+const strengthBar = document.getElementById('passwordStrengthBar');
+const strengthText = document.getElementById('passwordStrengthText');
+
+if (newPasswordInput) {
+    newPasswordInput.addEventListener('input', function() {
+        const password = this.value;
+        let strength = 0;
+        
+        // Check password length
+        if (password.length >= 8) {
+            strength += 25;
+        }
+        
+        // Check for numbers
+        if (/\d/.test(password)) {
+            strength += 25;
+        }
+        
+        // Check for special characters
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            strength += 25;
+        }
+        
+        // Check for uppercase and lowercase letters
+        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) {
+            strength += 25;
+        }
+        
+        // Update strength bar
+        strengthBar.style.width = strength + '%';
+        
+        // Update strength text and color
+        if (strength === 0) {
+            strengthText.textContent = 'Password strength: Very weak';
+            strengthBar.className = 'progress-bar bg-danger';
+        } else if (strength <= 25) {
+            strengthText.textContent = 'Password strength: Weak';
+            strengthBar.className = 'progress-bar bg-danger';
+        } else if (strength <= 50) {
+            strengthText.textContent = 'Password strength: Fair';
+            strengthBar.className = 'progress-bar bg-warning';
+        } else if (strength <= 75) {
+            strengthText.textContent = 'Password strength: Good';
+            strengthBar.className = 'progress-bar bg-info';
+        } else {
+            strengthText.textContent = 'Password strength: Strong';
+            strengthBar.className = 'progress-bar bg-success';
+        }
+    });
+}
+
+// Password matching validation
+const confirmPassword = document.getElementById('confirm_password');
+const passwordMatch = document.getElementById('passwordMatch');
+
+if (confirmPassword) {
+    confirmPassword.addEventListener('input', function() {
+        const newPassword = document.getElementById('new_password').value;
+        
+        if (this.value && newPassword) {
+            if (this.value === newPassword) {
+                passwordMatch.innerHTML = '<i class="fas fa-check-circle text-success"></i> Passwords match!';
+            } else {
+                passwordMatch.innerHTML = '<i class="fas fa-times-circle text-danger"></i> Passwords do not match!';
+            }
+        } else {
+            passwordMatch.innerHTML = '';
+        }
+    });
+}
+
+// Toggle password visibility
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = input.parentNode.querySelector('.password-toggle i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// Form validation for password change
+const changePasswordForm = document.querySelector('form[method="post"]');
+if (changePasswordForm && changePasswordForm.querySelector('input[name="change_password"]')) {
+    changePasswordForm.addEventListener('submit', function(e) {
+        const newPassword = document.getElementById('new_password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        if (newPassword !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match. Please make sure both fields are identical.');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            e.preventDefault();
+            alert('Password must be at least 8 characters long.');
+            return;
+        }
+        
+        // Check password strength
+        const strength = calculatePasswordStrength(newPassword);
+        if (strength < 50) {
+            e.preventDefault();
+            alert('Your password is too weak. Please use a stronger password with a mix of letters, numbers, and special characters.');
+            return;
+        }
+    });
+}
+
+// Calculate password strength
+function calculatePasswordStrength(password) {
+    let strength = 0;
+    
+    if (password.length >= 8) strength += 25;
+    if (/\d/.test(password)) strength += 25;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 25;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+    
+    return strength;
+}
 </script>
 </body>
 </html>

@@ -681,7 +681,7 @@ $(document).ready(function() {
   // Initialize DataTable
   const dataTable = $('#monitoringTable').DataTable({
     responsive: true,
-    pageLength: 25,
+    pageLength: 10,
     dom: '<"top"lf>rt<"bottom"ip>',
     columnDefs: [
       { orderable: false, targets: [0, 11] } // Disable sorting for checkbox and actions columns

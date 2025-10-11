@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $notified = notifyAdministratorsAboutPasswordReset($user, $id_number, $reset_token, $expiry);
                     
                     if ($notified) {
-                        $success = "Your password reset request has been sent to administrators for approval. You will receive an notification on your account with reset instructions once approved.";
+                        $success = "Your password reset request has been sent to administrators for approval. You will receive a notification on your account with reset instructions once approved.";
                     } else {
                         $success = "Password reset request submitted. Please contact administrators for further instructions.";
                     }
@@ -156,58 +156,233 @@ $notification_message = "Password reset requested for {$user['first_name']} {$us
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forgot Password</title>
-    <?php include '../includes/header.php'; ?>
+    <title>Forgot Password - NIA Albay-Catanduanes IMO</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+    <!-- IonIcons -->
+    <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="../dist/css/adminlte.min.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="../plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
+    
     <style>
-        .login-box {
-            margin-top: 50px;
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Source Sans Pro', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 20px 0;
+        }
+        
+        .forgot-password-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .forgot-password-card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            border: none;
+        }
+        
+        .forgot-password-header {
+            background-color: #343a40;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 4px solid #28a745;
+        }
+        
+        .forgot-password-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .forgot-password-logo img {
+            height: 50px;
+            margin-right: 15px;
+        }
+        
+        .forgot-password-body {
+            padding: 30px;
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            padding: 12px 15px;
+            border: 1px solid #ced4da;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: #28a745;
+            border-color: #28a745;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .back-link {
+            color: #28a745;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .back-link:hover {
+            color: #218838;
+            text-decoration: underline;
+        }
+        
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .input-group-text {
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+        }
+        
+        .forgot-password-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .forgot-password-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        .footer-logo {
+            margin-bottom: 10px;
+        }
+        
+        .footer-logo img {
+            height: 40px;
         }
     </style>
 </head>
-<body class="hold-transition login-page">
-<div class="login-box">
-    <div class="login-logo">
-        <a href="index.php"><b>Admin</b>LTE</a>
-    </div>
-    <div class="card">
-        <div class="card-body login-card-body">
-            <p class="login-box-msg">Forgot your password? Enter your ID number to reset it.</p>
-            
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger"><?= $error ?></div>
-            <?php endif; ?>
-            
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success"><?= $success ?></div>
-                <!-- NEW: Show notification about admin notification -->
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> Administrators have been notified about this password reset request.
+<body>
+    <div class="forgot-password-container">
+        <div class="card forgot-password-card">
+            <div class="forgot-password-header">
+                <div class="forgot-password-logo">
+                    <img src="../dist/img/nialogo.png" alt="NIA Logo">
+                    <h4 class="mb-0">NIA Albay-Catanduanes IMO</h4>
                 </div>
-            <?php endif; ?>
+                <h3 class="forgot-password-title">Password Reset</h3>
+                <p class="forgot-password-subtitle">Enter your ID number to request a password reset</p>
+            </div>
             
-            <form method="post">
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control" placeholder="ID Number" name="id_number" value="<?= htmlspecialchars($id_number) ?>" required>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <span class="fas fa-id-card"></span>
+            <div class="card-body forgot-password-body">
+                <?php if (!empty($error)): ?>
+                    <div class="alert alert-danger alert-dismissible">
+                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                        <h5><i class="icon fas fa-ban"></i> Error</h5>
+                        <?= $error ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($success)): ?>
+                    <div class="alert alert-success alert-dismissible">
+                        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                        <h5><i class="icon fas fa-check"></i> Success</h5>
+                        <?= $success ?>
+                    </div>
+                    <!-- NEW: Show notification about admin notification -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Administrators have been notified about this password reset request.
+                    </div>
+                <?php endif; ?>
+                
+                <form method="post">
+                    <div class="input-group mb-4">
+                        <input type="text" class="form-control" placeholder="ID Number" name="id_number" value="<?= htmlspecialchars($id_number) ?>" required>
+                        <div class="input-group-append">
+                            <div class="input-group-text">
+                                <span class="fas fa-id-card"></span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-primary btn-block">Request Password Reset</button>
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-key mr-2"></i>Request Password Reset
+                            </button>
+                        </div>
                     </div>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <a href="../views/profile.php" class="back-link">
+                        <i class="fas fa-arrow-left mr-1"></i>Back to Profile
+                    </a>
                 </div>
-            </form>
-            
-            <p class="mt-3 mb-1">
-                <a href="../views/profile.php">Back to Login</a>
-            </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-logo">
+                <img src="../dist/img/nialogo.png" alt="NIA Logo">
+            </div>
+            <p class="mb-1">&copy; <?= date('Y') ?> National Irrigation Administration - Albay Catanduanes IMO</p>
+            <p class="mb-0">Providing efficient irrigation services for sustainable agriculture</p>
         </div>
     </div>
-</div>
 
-<?php include '../includes/footer.php'; ?>
+    <!-- jQuery -->
+    <script src="../plugins/jquery/jquery.min.js"></script>
+    <!-- Bootstrap -->
+    <script src="../plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <!-- AdminLTE -->
+    <script src="../dist/js/adminlte.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="../plugins/sweetalert2/sweetalert2.min.js"></script>
 </body>
 </html>
