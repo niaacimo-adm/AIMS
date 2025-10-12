@@ -118,26 +118,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         .login-left img {
-            max-width: 120px;
+            max-width: 230px;
             margin-bottom: 25px;
         }
         
         .login-left h2 {
             font-weight: 700;
-            margin-bottom: 15px;
-            font-size: 1.6rem;
+            margin-bottom: 7px;
+            font-size: 1.8rem;
         }
         
         .login-left h3 {
             font-size: 1.3rem;
             margin-bottom: 20px;
             font-weight: 600;
-        }
-        
-        .login-left p {
-            opacity: 0.9;
-            font-size: 1rem;
-            line-height: 1.5;
         }
         
         .login-right {
@@ -164,23 +158,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group label {
             font-weight: 600;
             color: #495057;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: block;
-            font-size: 1rem;
+            font-size: 0.95rem;
+        }
+        
+        .input-container {
+            max-width: 400px;
+            margin: 0 auto;
         }
         
         .form-control {
             border-radius: 5px;
-            padding: 14px 15px;
+            padding: 12px 15px;
             border: 1px solid #e0e0e0;
-            transition: all 0.3s;
-            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
             height: auto;
+            width: 100%;
         }
         
         .form-control:focus {
             border-color: #2a5298;
             box-shadow: 0 0 0 0.2rem rgba(42, 82, 152, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .input-group {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-radius: 5px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .input-group:focus-within {
+            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.1);
+            transform: translateY(-2px);
         }
         
         .input-group-text {
@@ -188,12 +201,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid #e0e0e0;
             border-left: none;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             padding: 0 15px;
+            min-width: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .input-group-text:hover {
             background-color: #e9ecef;
+        }
+        
+        .password-toggle:hover {
+            transform: scale(1.05);
         }
         
         .input-group .form-control:not(:last-child) {
@@ -204,17 +225,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             border: none;
             color: white;
-            padding: 14px;
+            padding: 12px;
             font-weight: 600;
             border-radius: 5px;
-            transition: all 0.3s;
-            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            font-size: 1rem;
             margin-top: 10px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+            width: 100%;
         }
         
         .btn-login:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(42, 82, 152, 0.3);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
         }
         
         .alert {
@@ -223,6 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 500;
             margin-bottom: 25px;
             padding: 12px 15px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .password-toggle {
@@ -240,8 +273,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 30px;
         }
         
-        .input-group {
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        .login-form-container {
+            max-width: 400px;
+            margin: 0 auto;
+            width: 100%;
         }
         
         @media (max-width: 768px) {
@@ -266,6 +301,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .login-title {
                 font-size: 1.6rem;
                 margin-bottom: 30px;
+            }
+            
+            .input-container,
+            .btn-login,
+            .alert {
+                max-width: 100%;
             }
         }
         
@@ -296,49 +337,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <img src="dist/img/nialogo.png" alt="NIA Logo">
                 <h2>National Irrigation Administration</h2>
                 <h3>Albay-Catanduanes IMO</h3>
-                <p class="mt-3">Providing efficient irrigation services for sustainable agriculture</p>
             </div>
             <div class="col-md-6 login-right">
-                <h2 class="login-title">User Login</h2>
-                
-                <?php if (!empty($error)): ?>
-                <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-                <?php endif; ?>
-                
-                <form action="login.php" method="post">
-                    <div class="form-section">
-                        <div class="form-group">
-                            <label for="username">Username</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="username" name="username" 
-                                       placeholder="Enter your username" value="<?= htmlspecialchars($username) ?>" required>
-                                <div class="input-group-append">
-                                    <span class="input-group-text">
-                                        <i class="fas fa-user"></i>
-                                    </span>
+                <div class="login-form-container">
+                    <h2 class="login-title">User Login</h2>
+                    
+                    <?php if (!empty($error)): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+                    <?php endif; ?>
+                    
+                    <form action="login.php" method="post" id="loginForm">
+                        <div class="form-section">
+                            <div class="form-group">
+                                <label for="username">Username</label>
+                                <div class="input-container">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="username" name="username" 
+                                               placeholder="Enter your username" value="<?= htmlspecialchars($username) ?>" required>
+                                        <div class="input-group-append">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <div class="input-container">
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="password" name="password" 
+                                               placeholder="Enter your password" required>
+                                        <div class="input-group-append">
+                                            <span class="input-group-text password-toggle" id="passwordToggle">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="password" name="password" 
-                                       placeholder="Enter your password" required>
-                                <div class="input-group-append">
-                                    <span class="input-group-text password-toggle" id="passwordToggle">
-                                        <i class="fas fa-eye"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        <button type="submit" class="btn btn-login" id="loginButton">Login</button>
+                    </form>
                     
-                    <button type="submit" class="btn btn-login btn-block">Login</button>
-                </form>
-                
-                <div class="footer-text">
-                    <p class="mb-0">ACIMO Intelligent Management Solution (AIMS)</p>
+                    <div class="footer-text">
+                        <p class="mb-0">ACIMO Intelligent Management Solution (AIMS)</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -368,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
             
             // Form validation
-            $('form').on('submit', function() {
+            $('#loginForm').on('submit', function() {
                 const username = $('#username').val().trim();
                 const password = $('#password').val();
                 

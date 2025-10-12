@@ -16,7 +16,20 @@
     $db = $database->getConnection();
 
     $user_emp_id = null;
+    $section_check = $db->prepare("SELECT f.section_id FROM folders f WHERE f.folder_id = ?");
+    $section_check->bind_param("i", $folder_id);
+    $section_check->execute();
+    $section_result = $section_check->get_result();
 
+    if ($section_result->num_rows > 0) {
+        $folder_section = $section_result->fetch_assoc();
+        
+        if (!userBelongsToSection($db, $user_emp_id, $folder_section['section_id'])) {
+            $_SESSION['error'] = "You do not have access to this section.";
+            header("Location: section_files.php?section_id=" . $section_id);
+            exit();
+        }
+    }
     // First, try to get the employee ID from the users table
     $user_stmt = $db->prepare("SELECT employee_id FROM users WHERE id = ?");
     $user_stmt->bind_param("i", $_SESSION['user_id']);

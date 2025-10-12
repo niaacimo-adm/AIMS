@@ -205,8 +205,7 @@ if ($employee_id) {
                     <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i> My Profile</a></li>
                     <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <!-- <li><a class="dropdown-item" href="admin_approve_reset.php"><i class="fas fa-lock"></i> Change Password</a></li> -->
-                    <li><a class="dropdown-item" href="../index.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </li>
     </ul>
@@ -1249,5 +1248,52 @@ function syncProfileTheme() {
 $(document).ready(function() {
     syncProfileTheme();
 });
+// Add this function to handle logout properly
+function logoutUser() {
+    // First set user offline via AJAX
+    $.ajax({
+        url: '../includes/chat_ajax.php',
+        type: 'POST',
+        async: false, // Make it synchronous to ensure it completes
+        data: { action: 'set_offline' },
+        success: function(response) {
+            console.log('User set offline successfully');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error setting offline status:', error);
+        }
+    });
+    
+    // Then redirect to logout.php
+    window.location.href = '../logout.php';
+}
+$(window).on('beforeunload', function() {
+    if (<?php echo isset($_SESSION['emp_id']) ? 'true' : 'false'; ?>) {
+        // Use synchronous AJAX to ensure the request completes
+        $.ajax({
+            url: '../includes/chat_ajax.php',
+            type: 'POST',
+            async: false, // Make it synchronous
+            data: {
+                action: 'set_offline'
+            },
+            success: function(response) {
+                console.log('User set offline on page unload');
+            },
+            error: function(xhr, status, error) {
+                console.error('Error setting offline status on unload:', error);
+            }
+        });
+    }
+});
+
+// Also handle page visibility changes (tab switching)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden && <?php echo isset($_SESSION['emp_id']) ? 'true' : 'false'; ?>) {
+        // User switched tabs or minimized window - update status
+        $.post('../includes/chat_ajax.php', { action: 'update_online_status' });
+    }
+});
 </script>
+
 <?php include '../includes/footer.php'; ?>

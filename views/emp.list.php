@@ -714,9 +714,7 @@ while ($row = $result->fetch_assoc()) {
                                     <img src="<?= $imagePath ?>" class="profile-avatarr" 
                                         alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
                                 <?php else: ?>
-                                    <div class="profile-avatarr d-flex align-items-center justify-content-center">
-                                        <i class="fas fa-user fa-3x text-muted"></i>
-                                    </div>
+                                        <img class="profile-avatarr d-flex align-items-center justify-content-center" src="../dist/img/nialogo.png">
                                 <?php endif; ?>
                             </div>
                             <div class="profile-body">

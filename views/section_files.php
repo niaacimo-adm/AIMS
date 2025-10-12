@@ -66,7 +66,24 @@
 
     // Get section ID from URL parameter
     $section_id = isset($_GET['section_id']) ? $_GET['section_id'] : '';
-
+    // Validate user access to this section
+    if (!userBelongsToSection($db, $user_emp_id, $section_id)) {
+        $_SESSION['error'] = "You do not have access to this section.";
+        
+        // Redirect to user's default section or file management
+        $default_section_stmt = $db->prepare("SELECT section_id FROM employee WHERE emp_id = ?");
+        $default_section_stmt->bind_param("i", $user_emp_id);
+        $default_section_stmt->execute();
+        $default_section_result = $default_section_stmt->get_result();
+        
+        if ($default_section_result->num_rows > 0) {
+            $user_section = $default_section_result->fetch_assoc();
+            header("Location: section_files.php?section_id=" . ($user_section['section_id'] ?: 'manager'));
+        } else {
+            header("Location: file_management.php");
+        }
+        exit();
+    }
     // Fetch section details
     $section_name = "Manager's Office";
     $section_code = "MGR";
@@ -91,18 +108,74 @@
         }
     }
 
-    // Updated permission checking function with proper hierarchy
+    function userBelongsToSection($db, $user_emp_id, $section_id) {
+        if ($section_id === 'manager') {
+            // For manager's office, check if user has access rights
+            // Users with section_id NULL/0 or users with admin/manager roles can access
+            $stmt = $db->prepare("SELECT e.emp_id 
+                                FROM employee e 
+                                LEFT JOIN users u ON e.emp_id = u.employee_id
+                                LEFT JOIN user_roles ur ON u.role_id = ur.id
+                                WHERE e.emp_id = ? 
+                                AND (e.section_id IS NULL OR e.section_id = 0 OR ur.id IN (1, 2))");
+            $stmt->bind_param("i", $user_emp_id);
+        } else {
+            // For regular sections, check if user belongs to the section or is admin/manager
+            $stmt = $db->prepare("SELECT e.emp_id 
+                                FROM employee e 
+                                LEFT JOIN users u ON e.emp_id = u.employee_id
+                                LEFT JOIN user_roles ur ON u.role_id = ur.id
+                                WHERE e.emp_id = ? 
+                                AND (e.section_id = ? OR ur.id IN (1, 2))");
+            $stmt->bind_param("ii", $user_emp_id, $section_id);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->num_rows > 0;
+    }
+
     function hasFolderPermission($db, $folder_id, $user_emp_id, $permission_type = 'view') {
+        // First, check if user is admin or manager (full access)
+        $role_stmt = $db->prepare("SELECT ur.id as role_id 
+                                FROM employee e 
+                                LEFT JOIN users u ON e.emp_id = u.employee_id
+                                LEFT JOIN user_roles ur ON u.role_id = ur.id
+                                WHERE e.emp_id = ?");
+        $role_stmt->bind_param("i", $user_emp_id);
+        $role_stmt->execute();
+        $role_result = $role_stmt->get_result();
+
+        if ($role_result->num_rows > 0) {
+            $user_data = $role_result->fetch_assoc();
+            // Admin (1) and Manager (2) have full access
+            if (in_array($user_data['role_id'], [1, 2])) {
+                return true;
+            }
+        }
+        
         // Check if user is the creator (has full access)
-        $creator_stmt = $db->prepare("SELECT created_by FROM folders WHERE folder_id = ?");
+        $creator_stmt = $db->prepare("SELECT created_by, section_id FROM folders WHERE folder_id = ?");
         $creator_stmt->bind_param("i", $folder_id);
         $creator_stmt->execute();
         $creator_result = $creator_stmt->get_result();
         
         if ($creator_result->num_rows > 0) {
             $folder_data = $creator_result->fetch_assoc();
+            
+            // Creator has full access to their folders
             if ($folder_data['created_by'] == $user_emp_id) {
-                return true; // Creator has full access
+                return true;
+            }
+            
+            // Check if user belongs to the folder's section
+            $section_check = $db->prepare("SELECT emp_id FROM employee WHERE emp_id = ? AND section_id = ?");
+            $section_check->bind_param("ii", $user_emp_id, $folder_data['section_id']);
+            $section_check->execute();
+            $section_result = $section_check->get_result();
+            
+            if ($section_result->num_rows > 0) {
+                return true; // User belongs to the folder's section
             }
         }
         
@@ -118,12 +191,11 @@
         if ($share_result->num_rows > 0) {
             $share_data = $share_result->fetch_assoc();
             
-            // Fixed permission hierarchy - properly ordered from lowest to highest
             $permission_hierarchy = [
-                'view' => 1,      // Can only view
-                'upload' => 2,    // Can view and upload
-                'edit' => 3,      // Can view, upload, edit files, and download
-                'manage' => 4     // Full access including folder management
+                'view' => 1,
+                'upload' => 2,
+                'edit' => 3,
+                'manage' => 4
             ];
             
             $required_level = $permission_hierarchy[$permission_type] ?? 0;
@@ -132,7 +204,7 @@
             return $user_level >= $required_level;
         }
         
-        return false; // No permission found
+        return false;
     }
 
     // Helper function to check specific actions based on permission level
@@ -169,31 +241,88 @@
         return hasFolderPermission($db, $folder_id, $user_emp_id, $required_permission);
     }
 
-    // FUNCTION: Get all folders (visible to everyone) but check permissions on access
-    function getAllFolders($db, $section_id) {
+    function getAllFolders($db, $section_id, $user_emp_id) {
         $all_folders = [];
         
+        $role_stmt = $db->prepare("SELECT ur.id as role_id 
+                                FROM employee e 
+                                LEFT JOIN users u ON e.emp_id = u.employee_id
+                                LEFT JOIN user_roles ur ON u.role_id = ur.id
+                                WHERE e.emp_id = ?");
+        $role_stmt->bind_param("i", $user_emp_id);
+        $role_stmt->execute();
+        $role_result = $role_stmt->get_result();
+        $is_admin_manager = false;
+
+        if ($role_result->num_rows > 0) {
+            $user_data = $role_result->fetch_assoc();
+            $is_admin_manager = in_array($user_data['role_id'], [1, 2]);
+        }
+        
         if ($section_id === 'manager') {
-            $query = "SELECT f.*, 
-                            CONCAT(e.first_name, ' ', e.last_name) as creator_name,
-                            (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
-                            (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
-                    FROM folders f 
-                    LEFT JOIN employee e ON f.created_by = e.emp_id 
-                    WHERE f.section_id IS NULL AND f.parent_folder_id IS NULL
-                    ORDER BY f.folder_name";
+            if ($is_admin_manager) {
+                // Admin/Manager can see all manager folders
+                $query = "SELECT f.*, 
+                                CONCAT(e.first_name, ' ', e.last_name) as creator_name,
+                                (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
+                                (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
+                        FROM folders f 
+                        LEFT JOIN employee e ON f.created_by = e.emp_id 
+                        WHERE f.section_id IS NULL AND f.parent_folder_id IS NULL
+                        ORDER BY f.folder_name";
+            } else {
+                // Regular users only see their own manager folders or shared ones
+                $query = "SELECT f.*, 
+                                CONCAT(e.first_name, ' ', e.last_name) as creator_name,
+                                (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
+                                (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
+                        FROM folders f 
+                        LEFT JOIN employee e ON f.created_by = e.emp_id 
+                        WHERE f.section_id IS NULL AND f.parent_folder_id IS NULL
+                        AND (f.created_by = ? OR EXISTS (
+                            SELECT 1 FROM folder_shares fs 
+                            WHERE fs.folder_id = f.folder_id 
+                            AND fs.shared_with_emp_id = ? 
+                            AND fs.is_active = TRUE
+                        ))
+                        ORDER BY f.folder_name";
+            }
             $stmt = $db->prepare($query);
+            if (!$is_admin_manager) {
+                $stmt->bind_param("ii", $user_emp_id, $user_emp_id);
+            }
         } else {
-            $query = "SELECT f.*, 
-                            CONCAT(e.first_name, ' ', e.last_name) as creator_name,
-                            (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
-                            (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
-                    FROM folders f 
-                    LEFT JOIN employee e ON f.created_by = e.emp_id 
-                    WHERE f.section_id = ? AND f.parent_folder_id IS NULL
-                    ORDER BY f.folder_name";
-            $stmt = $db->prepare($query);
-            $stmt->bind_param("i", $section_id);
+            if ($is_admin_manager) {
+                // Admin/Manager can see all section folders
+                $query = "SELECT f.*, 
+                                CONCAT(e.first_name, ' ', e.last_name) as creator_name,
+                                (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
+                                (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
+                        FROM folders f 
+                        LEFT JOIN employee e ON f.created_by = e.emp_id 
+                        WHERE f.section_id = ? AND f.parent_folder_id IS NULL
+                        ORDER BY f.folder_name";
+                $stmt = $db->prepare($query);
+                $stmt->bind_param("i", $section_id);
+            } else {
+                // Regular users only see folders from their section or shared folders
+                $query = "SELECT f.*, 
+                                CONCAT(e.first_name, ' ', e.last_name) as creator_name,
+                                (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
+                                (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
+                        FROM folders f 
+                        LEFT JOIN employee e ON f.created_by = e.emp_id 
+                        WHERE f.section_id = ? AND f.parent_folder_id IS NULL
+                        AND (f.created_by = ? OR EXISTS (
+                            SELECT 1 FROM folder_shares fs 
+                            WHERE fs.folder_id = f.folder_id 
+                            AND fs.shared_with_emp_id = ? 
+                            AND fs.is_active = TRUE
+                        ))
+                        ORDER BY f.folder_name";
+                $stmt = $db->prepare($query);
+                $stmt->bind_param("iii", $section_id, $user_emp_id, $user_emp_id);
+            }
         }
         
         $stmt->execute();
@@ -706,7 +835,7 @@
     }
 
     // Use the new function to get accessible folders
-    $folders = getAllFolders($db, $section_id);
+    $folders = getAllFolders($db, $section_id, $user_emp_id);
 
     // Fetch files not in any folder
     if ($section_id === 'manager') {

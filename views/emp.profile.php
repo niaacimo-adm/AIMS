@@ -663,7 +663,7 @@ if ($row['is_manager_staff'] > 0) {
                         alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
                   <?php else: ?>
                     <img class="profile-avatar-xl"
-                        src="../dist/img/user-default.png"
+                        src="../dist/img/nialogo.png"
                         alt="Default user image">
                   <?php endif; ?>
                 </div>
