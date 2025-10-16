@@ -29,24 +29,33 @@ if (!$emp_id) {
 $database = new Database();
 $db = $database->getConnection();
 
+$current_module = $_COOKIE['current_module'] ?? 'admin';
+$current_theme = $current_module;
 
-// Enhanced theme detection
-$current_module = 'admin'; // default
-
-// Priority 1: Check cookie (set by sidebar)
-if (isset($_COOKIE['current_module'])) {
+// Priority 1: Check URL parameter (for direct navigation)
+if (isset($_GET['theme'])) {
+    $current_module = $_GET['theme'];
+}
+// Priority 2: Check cookie (set by sidebar)
+elseif (isset($_COOKIE['current_module'])) {
     $current_module = $_COOKIE['current_module'];
 } 
-// Priority 2: Check session theme
+// Priority 3: Check session theme
 elseif (isset($_SESSION['current_theme'])) {
     $current_module = $_SESSION['current_theme'];
 }
-// Priority 3: Fallback to referer detection
+// Priority 4: Fallback to referer detection with ICT support
 elseif (isset($_SERVER['HTTP_REFERER'])) {
     $referer = $_SERVER['HTTP_REFERER'];
-    if (strpos($referer, 'service') !== false) $current_module = 'service';
-    if (strpos($referer, 'inventory') !== false) $current_module = 'inventory';
-    if (strpos($referer, 'file_management') !== false) $current_module = 'file';
+    if (strpos($referer, 'service') !== false) {
+        $current_module = 'service';
+    } elseif (strpos($referer, 'ict') !== false) {
+        $current_module = 'ict';
+    } elseif (strpos($referer, 'inventory') !== false && strpos($referer, 'ict') === false) {
+        $current_module = 'inventory';
+    } elseif (strpos($referer, 'file_management') !== false) {
+        $current_module = 'file';
+    }
 }
 
 // Store in session for consistency
@@ -62,6 +71,9 @@ switch ($current_module) {
         break;
     case 'file':
         include '../includes/sidebar_file.php';
+        break;
+    case 'ict':
+        include '../includes/sidebar_ict.php';
         break;
     default:
         include '../includes/sidebar.php';
@@ -513,6 +525,15 @@ if ($row['is_manager_staff'] > 0) {
             'header' => 'linear-gradient(135deg, #800020, #5a0a1d)',
             'button' => 'linear-gradient(135deg, #800020, #5a0a1d)',
             'accent' => '#800020'
+        ],
+        'ict' => [
+            'primary' => 'linear-gradient(135deg, #17a2b8, #138496)',
+            'secondary' => 'linear-gradient(135deg, #17a2b8, #138496)',
+            'sidebar' => '#1c3b5e',
+            'tabs' => '#1c3b5e',
+            'header' => 'linear-gradient(135deg, #17a2b8, #138496)',
+            'button' => 'linear-gradient(135deg, #17a2b8, #138496)',
+            'accent' => '#17a2b8'
         ]
     ];
     
@@ -1788,7 +1809,8 @@ if ($row['is_manager_staff'] > 0) {
           'admin': 'linear-gradient(135deg, #4361ee, #3f37c9)',
           'service': 'linear-gradient(135deg, #ffc107, #fd7e14)',
           'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
-          'file': 'linear-gradient(135deg, #800020, #5a0a1d)'
+          'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
+          'ict': 'linear-gradient(135deg, #17a2b8, #138496)'
       };
       
       const theme = themes[currentModule] || themes['admin'];

@@ -1,0 +1,66 @@
+
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+.timeline-item {
+    position: relative;
+    padding: 20px 0;
+}
+.timeline-point {
+    position: absolute;
+    left: 0;
+    top: 20px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 2;
+}
+.timeline-point-success {
+    background-color: #28a745;
+}
+.timeline-point-danger {
+    background-color: #dc3545;
+}
+.timeline-event {
+    margin-left: 50px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+.timeline-header {
+    margin-bottom: 10px;
+}
+.timeline-body {
+    margin-bottom: 10px;
+}
+.timeline-footer {
+    font-size: 0.875em;
+}
+.stats-card {
+    border-left: 4px solid #007bff;
+}
+.stats-card.pending {
+    border-left-color: #ffc107;
+}
+.stats-card.approved {
+    border-left-color: #28a745;
+}
+.stats-card.rejected {
+    border-left-color: #dc3545;
+}
+.action-buttons .btn {
+    margin-right: 5px;
+}
+.employee-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}

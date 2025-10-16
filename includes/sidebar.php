@@ -95,7 +95,12 @@ if ($employee_id) {
             </a>
           </li>
           <?php endif; ?>
-
+          <li class="nav-item"> 
+            <a href="leave_request.php" class="nav-link <?= $current_page == 'leave_request.php' ? 'active bg-primary' : 'text-white' ?>">
+              <i class="fas fa-newspaper nav-icon"></i>
+              <p>Leave Request</p>
+            </a>
+          </li>
           <?php if (hasPermission('manage_employees')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">EMPLOYEE MANAGEMENT</li>
             <?php if (hasPermission('create_employees')): ?>
@@ -104,6 +109,12 @@ if ($employee_id) {
                   <i class="fas fa-user-plus nav-icon"></i>
                   <p>Create Employee</p>
                 </a>
+              </li>
+              <li class="nav-item">
+                  <a href="../views/hr_leave_monitoring.php" class="nav-link <?= $current_page == 'hr_leave_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
+                      <i class="fas fa-clipboard-list nav-icon"></i>
+                      <p>HR Leave Monitoring</p>
+                  </a>
               </li>
               <?php endif; ?>
 
@@ -130,6 +141,12 @@ if ($employee_id) {
               <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="fas fa-tv nav-icon"></i>
                   <p>Content Management</p>
+              </a>
+          </li>
+          <li class="nav-item">
+              <a href="types_leaves.php" class="nav-link <?= $current_page == 'types_leaves.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-arrow-circle-right nav-icon"></i>
+                  <p>Leave Types</p>
               </a>
           </li>
           <li class="nav-item">
@@ -234,13 +251,4 @@ $(document).ready(function() {
         window.parent.setTheme('admin');
     }
 });
-// Force set admin theme and update profile if open
-localStorage.setItem('currentTheme', 'admin');
-// Set cookie for profile detection
-document.cookie = "current_module=admin; path=/; max-age=300";
-
-// Update header theme if we're in a parent window
-if (window.parent && window.parent.setTheme) {
-    window.parent.setTheme('admin');
-}
 </script>

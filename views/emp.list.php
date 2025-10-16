@@ -197,7 +197,7 @@ while ($row = $result->fetch_assoc()) {
     /* Modern Profile Header with Admin Theme */
     .profile-header {
         position: relative;
-        height: 140px;
+        height: 70px;
         background: linear-gradient(135deg, #4361ee, #3f37c9);
         display: flex;
         align-items: flex-end;
@@ -255,6 +255,7 @@ while ($row = $result->fetch_assoc()) {
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
     }
 
@@ -269,6 +270,7 @@ while ($row = $result->fetch_assoc()) {
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
     }
 

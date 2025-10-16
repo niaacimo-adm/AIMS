@@ -9,11 +9,14 @@ $current_theme = 'admin'; // default
 
 if (strpos($current_page, 'service') !== false) {
     $current_theme = 'service';
-} elseif (strpos($current_page, 'inventory') !== false) {
+} elseif (strpos($current_page, 'inventory') !== false && strpos($current_page, 'ict_') === false) {
     $current_theme = 'inventory';
 } elseif (strpos($current_page, 'file_management') !== false) {
     $current_theme = 'file';
+} elseif (strpos($current_page, 'ict_') !== false) {
+    $current_theme = 'ict';
 }
+
 
 // Store in session for persistence
 $_SESSION['current_theme'] = $current_theme;
@@ -93,6 +96,14 @@ if ($employee_id) {
                             <span class="app-name">File Management</span>
                         </a>
                     </div>
+                    <div class="col-6">
+                        <a href="ict_inventory.php" class="app-item" data-theme="ict">
+                            <div class="app-icon">
+                                <i class="fas fa-desktop"></i>
+                            </div>
+                            <span class="app-name">ICT Equipment Inventory</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </li>
@@ -100,26 +111,37 @@ if ($employee_id) {
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
-        <!-- Notifications Dropdown -->
+    <!-- Notifications Dropdown -->
         <li class="nav-item dropdown notification-dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false" id="notificationDropdown">
                 <i class="far fa-bell"></i>
                 <?php
-                // Get unread notification count for current admin - ORIGINAL PHP CODE
+                // Get unread notification count for current user
                 if (isset($_SESSION['emp_id'])) {
-                    $database = new Database();
-                    $db = $database->getConnection();
+                    require_once 'leave_functions.php';
+                    $leaveFunctions = new LeaveFunctions();
                     
-                    $query = "SELECT COUNT(*) as unread_count FROM admin_notifications 
-                            WHERE admin_emp_id = ? AND is_read = 0";
-                    $stmt = $db->prepare($query);
-                    $stmt->bind_param("i", $_SESSION['emp_id']);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $count = $result->fetch_assoc()['unread_count'];
+                    // Check if user is admin and should see all notifications
+                    $user_role = $_SESSION['role'] ?? '';
+                    if ($user_role === 'admin') {
+                        // Admins see notifications for all leave requests
+                        $unread_count = $leaveFunctions->getAdminNotificationCount();
+                    } else {
+                        // Regular users see only their notifications
+                        $unread_count = $leaveFunctions->getUnreadNotificationCount($_SESSION['emp_id']);
+                    }
                     
-                    if ($count > 0) {
-                        echo '<span class="notification-badge" id="notificationCount">' . $count . '</span>';
+                    if ($unread_count > 0) {
+                        echo '<span class="notification-badge" id="notificationCount">' . $unread_count . '</span>';
+                    }
+                }
+
+                if (isset($_SESSION['emp_id'])) {
+                    $user_role = $_SESSION['role'] ?? '';
+                    if ($user_role === 'admin') {
+                        $notifications = $leaveFunctions->getAdminNotifications();
+                    } else {
+                        $notifications = $leaveFunctions->getUserNotifications($_SESSION['emp_id']);
                     }
                 }
                 ?>
@@ -128,38 +150,55 @@ if ($employee_id) {
                 <div class="notification-header">
                     <span>Notifications</span>
                     <span class="notification-count" id="notificationHeader">
-                        <?= isset($count) && $count > 0 ? $count . ' New' : 'No Notifications' ?>
+                        <?php 
+                        if (isset($unread_count)) {
+                            echo $unread_count > 0 ? $unread_count . ' New' : 'No Notifications';
+                        } else {
+                            echo 'No Notifications';
+                        }
+                        ?>
                     </span>
                 </div>
                 <div class="notification-list" id="notificationList">
                     <?php
-                    // ORIGINAL PHP CODE for notifications
                     if (isset($_SESSION['emp_id'])) {
-                        $query = "SELECT * FROM admin_notifications 
-                                WHERE admin_emp_id = ? 
-                                ORDER BY created_at DESC 
-                                LIMIT 10";
-                        $stmt = $db->prepare($query);
-                        $stmt->bind_param("i", $_SESSION['emp_id']);
-                        $stmt->execute();
-                        $result = $stmt->get_result();
+                        $user_role = $_SESSION['role'] ?? '';
                         
-                        if ($result->num_rows > 0) {
-                            while ($row = $result->fetch_assoc()) {
-                                $time_ago = time_elapsed_string($row['created_at']);
-                                $read_class = $row['is_read'] ? '' : 'unread';
+                        // Get notifications based on user role
+                        if ($user_role === 'admin') {
+                            $notifications = $leaveFunctions->getAdminNotifications();
+                        } else {
+                            $notifications = $leaveFunctions->getUserNotifications($_SESSION['emp_id']);
+                        }
+                        
+                        if (count($notifications) > 0) {
+                            foreach ($notifications as $notification) {
+                                $time_ago = time_elapsed_string($notification['created_at']);
+                                $read_class = $notification['is_read'] ? '' : 'unread';
+                                $link = $notification['link'] ?? '#'; 
                                 
-                                echo '<div class="notification-item ' . $read_class . '" data-notification-id="' . $row['id'] . '">
-                                        <div class="notification-content">
-                                            <div class="notification-icon">
-                                                <i class="fas fa-key"></i>
-                                            </div>
-                                            <div>
-                                                <div class="notification-text">' . htmlspecialchars_decode($row['message']) . '</div>
-                                                <div class="notification-time">' . $time_ago . '</div>
-                                            </div>
-                                        </div>
-                                        </div>';
+                                // Make sure the link is properly set for all roles
+                                if (empty($link) && strpos($notification['message'], 'leave request') !== false) {
+                                    // Extract leave ID from message for fallback
+                                    preg_match('/#(\d+)/', $notification['message'], $matches);
+                                    if (isset($matches[1])) {
+                                        $link = "leave_approval.php?leave_id=" . $matches[1];
+                                    }
+                                }
+                                
+                                echo '<a href="' . $link . '" class="notification-link" style="text-decoration: none; color: inherit;">';
+                                echo '<div class="notification-item ' . $read_class . '" data-notification-id="' . $notification['id'] . '">';
+                                echo '    <div class="notification-content">';
+                                echo '        <div class="notification-icon">';
+                                echo '            <i class="fas fa-key"></i>';
+                                echo '        </div>';
+                                echo '        <div>';
+                                echo '            <div class="notification-text">' . htmlspecialchars_decode($notification['message']) . '</div>';
+                                echo '            <div class="notification-time">' . $time_ago . '</div>';
+                                echo '        </div>';
+                                echo '    </div>';
+                                echo '</div>';
+                                echo '</a>';
                             }
                         } else {
                             echo '<div class="text-center py-4 text-muted">No notifications</div>';
@@ -199,10 +238,9 @@ if ($employee_id) {
                         <?php endif; ?>
                     </div>
                     <span class="profile-name d-none d-md-inline"><?= $employee_name ?: 'User' ?></span>
-                    <i class="fas fa-chevron-down d-none d-md-inline"></i>
                 </a>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i> My Profile</a></li>
+                    <li><a class="dropdown-item" href="profile.php" onclick="setProfileThemeWithCurrent()"><i class="fas fa-user"></i> My Profile</a></li>
                     <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
@@ -288,466 +326,7 @@ if ($employee_id) {
     </div>
 </div>
 
-<style>
-    :root {
-        --primary-color: #4361ee;
-        --secondary-color: #3f37c9;
-        --accent-color: #4895ef;
-        --light-color: #f8f9fa;
-        --dark-color: #212529;
-        --success-color: #4cc9f0;
-        --warning-color: #f72585;
-        --gray-color: #6c757d;
-        --light-gray: #e9ecef;
-        --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Profile Picture Styles */
-    .profile-avatar-img {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .profile-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--accent-color), var(--success-color));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        margin-right: 0.5rem;
-        overflow: hidden;
-        position: relative;
-    }
-
-    .profile-avatar span {
-        font-size: 0.8rem;
-        z-index: 2;
-    }
-    /* Fix dropdown z-index issues */
-    .navbar-nav .dropdown-menu {
-        z-index: 1030 !important;
-    }
-
-    /* Fix modal backdrop */
-    .modal-backdrop {
-        z-index: 1029 !important;
-    }
-
-    .modal {
-        z-index: 1030 !important;
-    }
-
-    /* Ensure proper sidebar functionality */
-    .sidebar-collapse .main-sidebar {
-        margin-left: -250px;
-    }
-
-    .main-sidebar {
-        transition: margin-left 0.3s ease-in-out;
-    }
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f5f7fb;
-    }
-
-    /* Modern Navbar */
-    .main-header {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
-        box-shadow: var(--shadow);
-        padding: 0.5rem 1rem;
-        transition: var(--transition);
-        border: none;
-    }
-    .main-header.theme-admin {
-        background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
-    }
-
-    .main-header.theme-service {
-        background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
-    }
-
-    .main-header.theme-inventory {
-        background: linear-gradient(135deg, #28a745, #20c997) !important;
-    }
-
-    .main-header.theme-file {
-        background: linear-gradient(135deg, #800020, #5a0a1d) !important;
-    }
-
-    /* Apps dropdown theming */
-    .apps-dropdown .app-item[data-theme="admin"] .app-icon {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-    }
-
-    .apps-dropdown .app-item[data-theme="service"] .app-icon {
-        background: linear-gradient(135deg, #ffc107, #fd7e14);
-    }
-
-    .apps-dropdown .app-item[data-theme="inventory"] .app-icon {
-        background: linear-gradient(135deg, #28a745, #20c997);
-    }
-
-    .apps-dropdown .app-item[data-theme="file"] .app-icon {
-        background: linear-gradient(135deg, #800020, #5a0a1d);
-    }
-    .navbar-brand {
-        color: white;
-        font-weight: 700;
-        font-size: 1.5rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .navbar-brand i {
-        margin-right: 0.5rem;
-        font-size: 1.8rem;
-    }
-
-    .nav-link {
-        color: rgba(255, 255, 255, 0.85) !important;
-        font-weight: 500;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.5rem;
-        transition: var(--transition);
-        position: relative;
-    }
-
-    .nav-link:hover, .nav-link:focus {
-        color: white !important;
-        background-color: rgba(255, 255, 255, 0.1);
-        transform: translateY(-2px);
-    }
-
-    .nav-link.active {
-        color: white !important;
-        background-color: rgba(255, 255, 255, 0.15);
-    }
-
-    /* Apps Dropdown */
-    .apps-dropdown .dropdown-toggle {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 0.5rem;
-        padding: 0.5rem 1rem;
-    }
-
-    .apps-dropdown .dropdown-menu {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        padding: 0.5rem;
-        width: 380px;
-        margin-top: 0.5rem;
-    }
-
-    .apps-dropdown .dropdown-header {
-        font-weight: 600;
-        color: var(--dark-color);
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--light-gray);
-    }
-
-    .app-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 1rem 0.5rem;
-        border-radius: 0.5rem;
-        transition: var(--transition);
-        text-decoration: none;
-        color: var(--dark-color);
-    }
-
-    .app-item:hover {
-        background-color: var(--light-gray);
-        transform: translateY(-3px);
-        box-shadow: var(--shadow);
-    }
-
-    .app-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-        color: white;
-    }
-
-    .app-name {
-        font-weight: 500;
-        font-size: 0.85rem;
-        text-align: center;
-    }
-
-    /* Notification Styles */
-    .notification-dropdown .dropdown-toggle {
-        position: relative;
-    }
-
-    .notification-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: linear-gradient(135deg, var(--warning-color), #b5179e);
-        color: white;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 600;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
-
-    .notification-dropdown .dropdown-menu {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        width: 380px;
-        padding: 0;
-        overflow: hidden;
-    }
-
-    .notification-header {
-        padding: 1rem;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .notification-count {
-        background-color: rgba(255, 255, 255, 0.2);
-        border-radius: 1rem;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.8rem;
-    }
-
-    .notification-list {
-        max-height: 350px;
-        overflow-y: auto;
-        padding: 0.5rem;
-    }
-
-    .notification-item {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
-        transition: var(--transition);
-        border-left: 3px solid transparent;
-        cursor: pointer;
-    }
-
-    .notification-item.unread {
-        background-color: rgba(67, 97, 238, 0.05);
-        border-left-color: var(--primary-color);
-        font-weight: 500;
-    }
-
-    .notification-item:hover {
-        background-color: var(--light-gray);
-    }
-
-    .notification-content {
-        display: flex;
-        align-items: flex-start;
-    }
-
-    .notification-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background-color: var(--light-gray);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 0.75rem;
-        flex-shrink: 0;
-        color: var(--primary-color);
-    }
-
-    .notification-text {
-        flex: 1;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        word-wrap: break-word;
-        white-space: normal;
-    }
-
-    .notification-time {
-        font-size: 0.75rem;
-        color: var(--gray-color);
-        margin-top: 0.25rem;
-    }
-
-    .notification-actions {
-        padding: 0.75rem;
-        border-top: 1px solid var(--light-gray);
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .btn-notification {
-        border-radius: 0.5rem;
-        font-size: 0.85rem;
-        padding: 0.4rem 0.75rem;
-        font-weight: 500;
-    }
-
-    /* Profile Dropdown */
-    .profile-dropdown .dropdown-toggle {
-        display: flex;
-        align-items: center;
-        padding: 0.25rem 0.5rem;
-        border-radius: 2rem;
-        background-color: rgba(255, 255, 255, 0.1);
-        transition: var(--transition);
-    }
-
-    .profile-dropdown .dropdown-toggle:hover {
-        background-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .profile-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--accent-color), var(--success-color));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        margin-right: 0.5rem;
-    }
-
-    .profile-name {
-        color: white;
-        font-weight: 500;
-        margin-right: 0.5rem;
-    }
-
-    .profile-dropdown .dropdown-menu {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        padding: 0.5rem;
-        min-width: 200px;
-    }
-
-    .profile-dropdown .dropdown-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        border-radius: 0.5rem;
-        color: var(--dark-color);
-        transition: var(--transition);
-    }
-
-    .profile-dropdown .dropdown-item i {
-        margin-right: 0.75rem;
-        width: 20px;
-        text-align: center;
-        color: var(--gray-color);
-    }
-
-    .profile-dropdown .dropdown-item:hover {
-        background-color: var(--light-gray);
-    }
-
-    /* Modal Styles */
-    .modal-content {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-    }
-
-    .modal-header {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
-        border-radius: 0.75rem 0.75rem 0 0;
-        padding: 1rem 1.5rem;
-    }
-
-    .modal-title {
-        font-weight: 600;
-    }
-
-    .modal-footer {
-        border-top: 1px solid var(--light-gray);
-        padding: 1rem 1.5rem;
-    }
-
-    /* Ensure links in notifications are clickable */
-    .notification-text a {
-        color: #007bff !important;
-        text-decoration: underline !important;
-        display: inline !important;
-        font-weight: 500;
-        pointer-events: auto !important;
-        z-index: 1000;
-        position: relative;
-    }
-
-    .notification-text a:hover {
-        color: #0056b3 !important;
-        text-decoration: none !important;
-        cursor: pointer !important;
-    }
-
-    /* Sidebar Toggle Animation */
-    .sidebar-collapse .main-sidebar {
-        margin-left: -250px;
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    .sidebar-collapse .content-wrapper,
-    .sidebar-collapse .main-footer {
-        margin-left: 0;
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    .main-sidebar {
-        margin-left: 0;
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-        .apps-dropdown .dropdown-menu {
-            width: 300px;
-        }
-        
-        .notification-dropdown .dropdown-menu {
-            width: 320px;
-        }
-        
-        .navbar-nav {
-            flex-direction: row;
-        }
-        
-        .sidebar-collapse .main-sidebar {
-            margin-left: -250px;
-        }
-    }
-    
-</style>
+<link rel="stylesheet" href="../css/mainheader.css">
 
 <script>
     $(document).ready(function() {
@@ -1031,28 +610,65 @@ if ($employee_id) {
             }
         });
 
-        // Update the notification click handler - FIXED
-        $(document).on('click', '.notification-item[data-notification-id]', function(e) {
-            // If click was on a link or within a link, do nothing
+
+
+        // Handle notification clicks - mark as read and allow navigation
+        $(document).on('click', '.notification-item', function(e) {
+            // Prevent default if clicking on a link inside the notification
             if ($(e.target).is('a') || $(e.target).closest('a').length) {
                 return;
             }
             
-            // Handle notification click for marking as read
+            e.preventDefault();
+            e.stopPropagation();
+            
             const notificationId = $(this).data('notification-id');
-            if (notificationId) {
+            const $notificationLink = $(this).closest('.notification-link');
+            const href = $notificationLink.attr('href');
+            
+            console.log('Notification clicked:', notificationId, 'Link:', href);
+            
+            if (notificationId && href && href !== '#') {
+                // Mark as read via AJAX
                 $.ajax({
                     url: baseUrl + 'mark_notification_read.php',
                     type: 'POST',
                     data: {id: notificationId},
                     success: function(response) {
+                        console.log('Mark as read response:', response);
                         if (response.success) {
                             $(this).removeClass('unread');
                             updateNotificationCount();
+                            
+                            // Navigate to the link after marking as read
+                            console.log('Navigating to:', href);
+                            window.location.href = href;
+                        } else {
+                            // Still navigate even if marking as read fails
+                            console.log('Mark as read failed, still navigating to:', href);
+                            window.location.href = href;
                         }
-                    }.bind(this)
+                    }.bind(this),
+                    error: function(xhr, status, error) {
+                        console.error('AJAX error:', error);
+                        // Still navigate even if AJAX fails
+                        console.log('AJAX failed, navigating to:', href);
+                        window.location.href = href;
+                    }
                 });
+            } else if (href && href !== '#') {
+                // If no notification ID but there's a valid href, just navigate
+                console.log('No notification ID, navigating to:', href);
+                window.location.href = href;
             }
+        });
+
+        // Make sure links within notifications work properly
+        $(document).on('click', '.notification-text a', function(e) {
+            console.log('Link in notification clicked');
+            e.stopPropagation();
+            // Allow default link behavior
+            return true;
         });
 
         // Initialize toastr
@@ -1105,6 +721,11 @@ if ($employee_id) {
                 header: 'linear-gradient(135deg, #800020, #5a0a1d)',
                 footer: 'linear-gradient(135deg, #800020, #5a0a1d)',
                 class: 'theme-file'
+            },
+            'ict': {
+                header: 'linear-gradient(135deg, #17a2b8, #138496)',
+                footer: 'linear-gradient(135deg, #17a2b8, #138496)',
+                class: 'theme-ict'
             }
         };
 
@@ -1150,23 +771,29 @@ if ($employee_id) {
             }
         });
 
-        // Set theme based on current page
-        function setThemeFromPage() {
-            const currentPage = window.location.pathname;
-            console.log('Current page:', currentPage);
-            let theme = 'admin'; // default
-            
-            if (currentPage.includes('service')) {
-                theme = 'service';
-            } else if (currentPage.includes('inventory')) {
-                theme = 'inventory';
-            } else if (currentPage.includes('file_management')) {
-                theme = 'file';
-            }
-            
-            console.log('Detected theme:', theme);
-            setTheme(theme);
+    // Enhanced theme detection function
+    function setThemeFromPage() {
+        const currentPage = window.location.pathname;
+        console.log('Current page:', currentPage);
+        let theme = 'admin'; // default
+        
+        // Comprehensive theme detection
+        if (currentPage.includes('ict_') || currentPage.includes('ict_inventory') || currentPage.includes('ict_equipment') || currentPage.includes('ict_my_equipment')) {
+            theme = 'ict';
+        } else if (currentPage.includes('service')) {
+            theme = 'service';
+        } else if (currentPage.includes('inventory') && !currentPage.includes('ict_')) {
+            theme = 'inventory';
+        } else if (currentPage.includes('file_management')) {
+            theme = 'file';
+        } else if (currentPage.includes('dashboard')) {
+            theme = 'admin';
         }
+        
+        console.log('Detected theme:', theme);
+        setTheme(theme);
+        return theme;
+    }
 
         // Set theme on page load with delay to ensure DOM is ready
         setTimeout(function() {
@@ -1210,11 +837,22 @@ $(window).on('load', function() {
             'admin': 'linear-gradient(135deg, #4361ee, #3f37c9)',
             'service': 'linear-gradient(135deg, #ffc107, #fd7e14)',
             'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
-            'file': 'linear-gradient(135deg, #800020, #5a0a1d)'
+            'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
+            'ict': 'linear-gradient(135deg, #17a2b8, #138496)'
         };
         
-        $('.main-header').css('background', themes[currentTheme]);
-        $('#mainFooter').css('background', themes[currentTheme]);
+        if (themes[currentTheme]) {
+            $('.main-header').css('background', themes[currentTheme]);
+            $('#mainFooter').css('background', themes[currentTheme]);
+            
+            // Also update theme classes
+            $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict')
+                            .addClass('theme-' + currentTheme);
+            $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict')
+                          .addClass('theme-' + currentTheme);
+            
+            console.log('Theme applied:', currentTheme);
+        }
     }, 200);
 });
 // Set module cookie based on current theme when profile is accessed from header
@@ -1294,6 +932,28 @@ document.addEventListener('visibilitychange', function() {
         $.post('../includes/chat_ajax.php', { action: 'update_online_status' });
     }
 });
+
+// Add this function to mainheader.php
+function setProfileThemeWithCurrent() {
+    const currentTheme = localStorage.getItem('currentTheme') || 'admin';
+    document.cookie = `current_module=${currentTheme}; path=/; max-age=300`;
+    localStorage.setItem('currentTheme', currentTheme);
+    console.log('Profile theme set to current:', currentTheme);
+}
+
+// Also update the existing setProfileTheme function
+function setProfileTheme(theme) {
+    document.cookie = `current_module=${theme}; path=/; max-age=300`;
+    localStorage.setItem('currentTheme', theme);
+    console.log('Profile theme set to:', theme);
+}
+
+// Update the existing setModuleCookie function to be more robust
+function setModuleCookie() {
+    const currentTheme = localStorage.getItem('currentTheme') || 'admin';
+    document.cookie = `current_module=${currentTheme}; path=/; max-age=300`; // 5 minutes
+    console.log('Module cookie set to:', currentTheme);
+}
 </script>
 
 <?php include '../includes/footer.php'; ?>
