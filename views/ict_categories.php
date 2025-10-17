@@ -2,12 +2,7 @@
 session_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
-require_once '../includes/header.php';
-
-if (!hasPermission('manage_ict_equipment')) {
-    header('Location: ../unauthorized.php');
-    exit();
-}
+// require_once '../includes/header.php';
 
 $database = new Database();
 $db = $database->getConnection();

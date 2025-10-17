@@ -83,15 +83,30 @@ if ($employee_id) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="ict_equipment_add.php" class="nav-link <?= $current_page == 'ict_equipment_add.php' ? 'active bg-info' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-plus-circle"></i>
-                        <p>Add Equipment</p>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="ict_categories.php" class="nav-link <?= $current_page == 'ict_categories.php' ? 'active bg-info' : 'text-white' ?>">
                         <i class="nav-icon fas fa-tags"></i>
                         <p>Categories</p>
+                    </a>
+                </li>
+                <?php endif; ?>
+
+                <!-- MAINTENANCE MANAGEMENT SECTION -->
+                <li class="nav-header text-light border-bottom pb-2 mt-3">MAINTENANCE</li>
+                
+                <!-- Employee Maintenance (Visible to all employees) -->
+                <li class="nav-item">
+                    <a href="ict_maintenance.php" class="nav-link <?= $current_page == 'ict_maintenance.php' ? 'active bg-info' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-tools"></i>
+                        <p>My Maintenance Requests</p>
+                    </a>
+                </li>
+
+                <!-- Maintenance Management (Visible to ICT staff) -->
+                <?php if (hasPermission('manage_ict_maintenance')): ?>
+                <li class="nav-item">
+                    <a href="ict_maintenance_management.php" class="nav-link <?= $current_page == 'ict_maintenance_management.php' ? 'active bg-info' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-cogs"></i>
+                        <p>Maintenance Management</p>
                     </a>
                 </li>
                 <?php endif; ?>
@@ -101,12 +116,6 @@ if ($employee_id) {
                     <a href="ict_my_equipment.php" class="nav-link <?= $current_page == 'ict_my_equipment.php' ? 'active bg-info' : 'text-white' ?>">
                         <i class="nav-icon fas fa-desktop"></i>
                         <p>Assigned Equipment</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="ict_maintenance.php" class="nav-link <?= $current_page == 'ict_maintenance.php' ? 'active bg-info' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-tools"></i>
-                        <p>Maintenance</p>
                     </a>
                 </li>
 

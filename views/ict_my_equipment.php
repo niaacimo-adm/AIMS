@@ -2,7 +2,6 @@
 session_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
-require_once '../includes/header.php';
 
 if (!isset($_SESSION['emp_id'])) {
     header('Location: ../login.php');
@@ -41,6 +40,60 @@ $employee = $emp_result->fetch_assoc();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My ICT Equipment - NIA ACIMO</title>
     <?php include '../includes/header.php'; ?>
+    <style>
+        .theme-ict {
+            background: linear-gradient(135deg, #17a2b8, #138496) !important;
+        }
+        .card-primary.ict-theme {
+            border-top: 3px solid #17a2b8;
+        }
+        .card-primary.ict-theme .card-header {
+            background: linear-gradient(135deg, #17a2b8, #138496) !important;
+            color: white;
+        }
+        .bg-ict {
+            background-color: #17a2b8 !important;
+        }
+        .text-ict {
+            color: #17a2b8 !important;
+        }
+        .btn-ict {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+            color: white;
+        }
+        .btn-ict:hover {
+            background-color: #138496;
+            border-color: #138496;
+            color: white;
+        }
+        .badge-ict {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .widget-user-header.bg-ict {
+            background: linear-gradient(135deg, #17a2b8, #138496) !important;
+            color: white;
+        }
+        .nav-link.active {
+            background-color: rgba(23, 162, 184, 0.2) !important;
+            border-left: 3px solid #17a2b8 !important;
+        }
+        /* Fix for text visibility */
+        .nav-link {
+            color: #495057 !important;
+        }
+        .nav-link strong {
+            color: #025967ff;
+        }
+        .widget-user-username {
+            color: white !important;
+            font-weight: bold;
+        }
+        .widget-user-desc {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -53,12 +106,12 @@ $employee = $emp_result->fetch_assoc();
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1>My ICT Equipment</h1>
+                        <h1 style="color: #17a2b8;">My ICT Equipment</h1>
                     </div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="ict_inventory.php">ICT Inventory</a></li>
-                            <li class="breadcrumb-item active">My Equipment</li>
+                            <li class="breadcrumb-item"><a href="ict_inventory.php" style="color: #17a2b8;">ICT Inventory</a></li>
+                            <li class="breadcrumb-item active" style="color: #138496;">My Equipment</li>
                         </ol>
                     </div>
                 </div>
@@ -70,40 +123,44 @@ $employee = $emp_result->fetch_assoc();
                 <div class="row">
                     <div class="col-md-12">
                         <!-- Employee Info Card -->
-                        <div class="card card-primary">
+                        <div class="card card-primary ict-theme">
                             <div class="card-header">
-                                <h3 class="card-title">Employee Information</h3>
+                                <h3 class="card-title"><i class="fas fa-user-circle mr-2"></i>Employee Information</h3>
                             </div>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <p><strong>Name:</strong> <?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></p>
-                                        <p><strong>Employee ID:</strong> <?= $_SESSION['emp_id'] ?></p>
+                                        <p><strong><i class="fas fa-user mr-2 text-ict"></i>Name:</strong> <?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></p>
+                                        <p><strong><i class="fas fa-id-card mr-2 text-ict"></i>Employee ID:</strong> <span class="badge badge-ict"><?= $_SESSION['emp_id'] ?></span></p>
                                     </div>
                                     <div class="col-md-6">
-                                        <p><strong>Total Assigned Equipment:</strong> <?= count($my_equipment) ?></p>
-                                        <p><strong>Department:</strong> <?= $_SESSION['role_name'] ?? 'N/A' ?></p>
+                                        <p><strong><i class="fas fa-laptop mr-2 text-ict"></i>Total Assigned Equipment:</strong> <span class="badge badge-ict"><?= count($my_equipment) ?></span></p>
+                                        <p><strong><i class="fas fa-building mr-2 text-ict"></i>Department:</strong> <span class="badge badge-info"><?= $_SESSION['role_name'] ?? 'N/A' ?></span></p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Equipment List -->
-                        <div class="card">
+                        <div class="card ict-theme">
                             <div class="card-header">
-                                <h3 class="card-title">Assigned Equipment</h3>
+                                <h3 class="card-title"><i class="fas fa-desktop mr-2"></i>Assigned Equipment</h3>
+                                <div class="card-tools">
+                                    <span class="badge badge-ict"><?= count($my_equipment) ?> items</span>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <?php if (empty($my_equipment)): ?>
-                                    <div class="alert alert-info">
-                                        <h5><i class="icon fas fa-info"></i> No Equipment Assigned</h5>
-                                        You don't have any ICT equipment assigned to you currently.
+                                    <div class="alert alert-info text-center">
+                                        <i class="fas fa-laptop fa-3x mb-3" style="color: #17a2b8;"></i>
+                                        <h4><i class="icon fas fa-info"></i> No Equipment Assigned</h4>
+                                        <p class="mb-0">You don't have any ICT equipment assigned to you currently.</p>
                                     </div>
                                 <?php else: ?>
                                     <div class="row">
                                         <?php foreach ($my_equipment as $equipment): ?>
-                                            <div class="col-md-6 col-lg-4">
-                                                <div class="card card-widget widget-user-2">
+                                            <div class="col-md-6 col-lg-4 mb-4">
+                                                <div class="card card-widget widget-user-2 shadow-sm">
                                                     <div class="widget-user-header bg-<?= 
                                                         $equipment['condition'] == 'Excellent' ? 'success' : 
                                                         ($equipment['condition'] == 'Good' ? 'primary' : 
@@ -118,31 +175,31 @@ $employee = $emp_result->fetch_assoc();
                                                         <ul class="nav flex-column">
                                                             <li class="nav-item">
                                                                 <span class="nav-link">
-                                                                    <strong>Asset Tag:</strong> 
-                                                                    <span class="float-right"><?= htmlspecialchars($equipment['asset_tag']) ?></span>
+                                                                    <strong><i class="fas fa-tag mr-2 text-ict"></i>Asset Tag:</strong> 
+                                                                    <span class="float-right badge badge-light"><?= htmlspecialchars($equipment['asset_tag']) ?></span>
                                                                 </span>
                                                             </li>
                                                             <li class="nav-item">
                                                                 <span class="nav-link">
-                                                                    <strong>Serial No:</strong> 
-                                                                    <span class="float-right"><?= htmlspecialchars($equipment['serial_number']) ?></span>
+                                                                    <strong><i class="fas fa-barcode mr-2 text-ict"></i>Serial No:</strong> 
+                                                                    <span class="float-right"><strong class="mr-2 text-ict"><?= htmlspecialchars($equipment['serial_number']) ?></strong></span>
                                                                 </span>
                                                             </li>
                                                             <li class="nav-item">
                                                                 <span class="nav-link">
-                                                                    <strong>Brand/Model:</strong> 
-                                                                    <span class="float-right"><?= htmlspecialchars($equipment['brand'] . ' ' . $equipment['model']) ?></span>
+                                                                    <strong><i class="fas fa-cube mr-2 text-ict"></i>Brand/Model:</strong> 
+                                                                    <span class="float-right"><strong class="mr-2 text-ict"><?= htmlspecialchars($equipment['brand'] . ' ' . $equipment['model']) ?></strong></span>
                                                                 </span>
                                                             </li>
                                                             <li class="nav-item">
                                                                 <span class="nav-link">
-                                                                    <strong>Assigned Date:</strong> 
-                                                                    <span class="float-right"><?= date('M d, Y', strtotime($equipment['assigned_date'])) ?></span>
+                                                                    <strong><i class="fas fa-calendar-alt mr-2 text-ict"></i>Assigned Date:</strong> 
+                                                                    <span class="float-right"><strong class="mr-2 text-ict"><?= date('M d, Y', strtotime($equipment['assigned_date'])) ?></strong></span>
                                                                 </span>
                                                             </li>
                                                             <li class="nav-item">
                                                                 <span class="nav-link">
-                                                                    <strong>Condition:</strong> 
+                                                                    <strong><i class="fas fa-heartbeat mr-2 text-ict"></i>Condition:</strong> 
                                                                     <span class="float-right badge badge-<?= 
                                                                         $equipment['condition'] == 'Excellent' ? 'success' : 
                                                                         ($equipment['condition'] == 'Good' ? 'primary' : 
@@ -154,10 +211,10 @@ $employee = $emp_result->fetch_assoc();
                                                             <?php if (!empty($equipment['specifications'])): ?>
                                                             <li class="nav-item">
                                                                 <span class="nav-link">
-                                                                    <strong>Specifications:</strong> 
+                                                                    <strong><i class="fas fa-list-alt mr-2 text-ict"></i>Specifications:</strong> 
                                                                     <span class="float-right">
-                                                                        <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#specsModal<?= $equipment['equipment_id'] ?>">
-                                                                            View
+                                                                        <button class="btn btn-sm btn-ict" data-toggle="modal" data-target="#specsModal<?= $equipment['equipment_id'] ?>">
+                                                                            <i class="fas fa-eye"></i> View
                                                                         </button>
                                                                     </span>
                                                                 </span>
@@ -167,12 +224,7 @@ $employee = $emp_result->fetch_assoc();
                                                     </div>
                                                     <div class="card-footer">
                                                         <div class="row">
-                                                            <div class="col-sm-6">
-                                                                <a href="ict_equipment_view.php?id=<?= $equipment['equipment_id'] ?>" class="btn btn-primary btn-sm btn-block">
-                                                                    <i class="fas fa-eye"></i> Details
-                                                                </a>
-                                                            </div>
-                                                            <div class="col-sm-6">
+                                                            <div class="col-sm-12">
                                                                 <a href="ict_maintenance.php?equipment_id=<?= $equipment['equipment_id'] ?>" class="btn btn-warning btn-sm btn-block">
                                                                     <i class="fas fa-tools"></i> Maintenance
                                                                 </a>
@@ -186,17 +238,17 @@ $employee = $emp_result->fetch_assoc();
                                                 <div class="modal fade" id="specsModal<?= $equipment['equipment_id'] ?>">
                                                     <div class="modal-dialog">
                                                         <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h4 class="modal-title">Specifications - <?= htmlspecialchars($equipment['equipment_name']) ?></h4>
-                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white;">
+                                                                <h4 class="modal-title"><i class="fas fa-list-alt mr-2"></i>Specifications - <?= htmlspecialchars($equipment['equipment_name']) ?></h4>
+                                                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                                     <span aria-hidden="true">&times;</span>
                                                                 </button>
                                                             </div>
                                                             <div class="modal-body">
-                                                                <pre style="white-space: pre-wrap; font-family: inherit;"><?= htmlspecialchars($equipment['specifications']) ?></pre>
+                                                                <pre style="white-space: pre-wrap; font-family: inherit; background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #17a2b8;"><?= htmlspecialchars($equipment['specifications']) ?></pre>
                                                             </div>
                                                             <div class="modal-footer">
-                                                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                                                <button type="button" class="btn btn-ict" data-dismiss="modal">Close</button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -218,7 +270,7 @@ $employee = $emp_result->fetch_assoc();
 </div>
 
 <?php include '../includes/footer.php'; ?>
-<!-- Add this to ICT pages -->
+<!-- ICT Theme Script -->
 <script>
 $(document).ready(function() {
     // Set and maintain ICT theme
@@ -228,7 +280,7 @@ $(document).ready(function() {
     }
     document.cookie = 'current_module=ict; path=/; max-age=300';
     
-    // Apply theme immediately
+    // Apply ICT theme colors
     const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
     $('.main-header').css('background', theme);
     $('#mainFooter').css('background', theme);
@@ -236,6 +288,13 @@ $(document).ready(function() {
     // Update theme classes
     $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
     $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
+    
+    // Add ICT styling to page elements
+    $('.content-header h1').css('color', '#17a2b8');
+    $('.breadcrumb-item a').css('color', '#17a2b8');
+    $('.breadcrumb-item.active').css('color', '#138496');
+    
+    console.log('ICT theme applied to My Equipment page');
 });
 </script>
 </body>
