@@ -156,145 +156,330 @@ $allPermissions = getAllPermissions();
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AdminLTE 3 | Role Management</title>
+  <title>Role Management | NIA-ACIMO</title>
   <?php include '../includes/header.php'; ?>
+  <style>
+    .role-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .role-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    
+    .role-header {
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        color: white;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 15px 20px;
+        border: none;
+    }
+    
+    .permission-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+        margin-top: 15px;
+    }
+    
+    .permission-item {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 15px;
+        transition: all 0.2s ease;
+    }
+    
+    .permission-item:hover {
+        background: #e9ecef;
+        border-color: #4361ee;
+    }
+    
+    .permission-item .form-check-label {
+        font-weight: 500;
+        color: #2d3748;
+    }
+    
+    .permission-item .text-muted {
+        font-size: 0.85em;
+        display: block;
+        margin-top: 4px;
+    }
+    
+    .role-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .role-actions .btn {
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 0.875rem;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0;
+    }
+    
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .accordion-button {
+        background: transparent;
+        border: none;
+        padding: 15px 20px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background: rgba(67, 97, 238, 0.1);
+        color: #4361ee;
+    }
+    
+    .modern-form .form-control {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 10px 15px;
+        transition: all 0.2s ease;
+    }
+    
+    .modern-form .form-control:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+    
+    .btn-modern {
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-modern-primary {
+        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        border: none;
+        color: white;
+    }
+    
+    .btn-modern-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+    
+    .section-title {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #4361ee;
+    }
+    
+    .role-badge {
+        background: rgba(67, 97, 238, 0.1);
+        color: #4361ee;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+  </style>
 </head>
-<body class="hold-transition sidebar-mini">
+<body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
     <?php include '../includes/mainheader.php'; ?>
-    <!-- Main Sidebar Container -->
     <?php include '../includes/sidebar.php'; ?>
-        <div class="content-wrapper">
-            <section class="content-header">
-                <div class="container-fluid">
-                    <h1>Role Management</h1>
+    
+    <div class="content-wrapper">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0 text-dark">Role Management</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
+                            <li class="breadcrumb-item active">Role Management</li>
+                        </ol>
+                    </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <section class="content">
+        <section class="content">
+            <div class="container-fluid">
                 <div class="row">
-                    <div class="col-md-4">
-                        <div class="card card-primary">
-                            <div class="card-header">
-                                <h3 class="card-title">Add New Role</h3>
+                    <div class="col-lg-4">
+                        <div class="card role-card">
+                            <div class="role-header">
+                                <h3 class="card-title mb-0">
+                                    <i class="fas fa-plus-circle mr-2"></i>Create New Role
+                                </h3>
                             </div>
-                            <form method="POST">
+                            <form method="POST" class="modern-form">
                                 <div class="card-body">
                                     <div class="form-group">
-                                        <label>Role Name</label>
-                                        <input type="text" class="form-control" name="name" required>
+                                        <label class="font-weight-bold">Role Name</label>
+                                        <input type="text" class="form-control" name="name" placeholder="Enter role name" required>
                                     </div>
                                     <div class="form-group">
-                                        <label>Description</label>
-                                        <textarea class="form-control" name="description" required></textarea>
+                                        <label class="font-weight-bold">Description</label>
+                                        <textarea class="form-control" name="description" rows="3" placeholder="Enter role description" required></textarea>
                                     </div>
                                 </div>
-                                <div class="card-footer">
-                                    <button type="submit" name="add_role" class="btn btn-primary">Add Role</button>
+                                <div class="card-footer bg-white border-top-0">
+                                    <button type="submit" name="add_role" class="btn btn-modern btn-modern-primary btn-block">
+                                        <i class="fas fa-plus mr-2"></i>Create Role
+                                    </button>
                                 </div>
                             </form>
                         </div>
                     </div>
-                    <div class="col-md-8">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Manage Roles and Permissions</h3>
+
+                    <div class="col-lg-8">
+                        <div class="card role-card">
+                            <div class="role-header">
+                                <h3 class="card-title mb-0">
+                                    <i class="fas fa-cogs mr-2"></i>Manage Roles & Permissions
+                                </h3>
                             </div>
                             <div class="card-body">
-                                <div class="accordion" id="rolesAccordion">
-                                    <?php foreach ($roles as $role): ?>
-                                    <div class="card">
-                                        <div class="card-header" id="heading<?= $role['id'] ?>">
-                                            <h2 class="mb-0 d-flex justify-content-between align-items-center">
-                                                <button class="btn btn-link" type="button" data-toggle="collapse" 
-                                                        data-target="#collapse<?= $role['id'] ?>" 
-                                                        aria-expanded="true" aria-controls="collapse<?= $role['id'] ?>">
-                                                    <?= htmlspecialchars($role['name']) ?>
-                                                </button>
-                                                <div class="btn-group">
-                                                    <button type="button" class="btn btn-sm btn-info" data-toggle="modal" 
-                                                            data-target="#editRoleModal<?= $role['id'] ?>">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-danger delete-role-btn" 
-                                                            data-id="<?= $role['id'] ?>" 
-                                                            data-name="<?= htmlspecialchars($role['name']) ?>">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </h2>
-                                        </div>
-                                        <div id="collapse<?= $role['id'] ?>" class="collapse" 
-                                            aria-labelledby="heading<?= $role['id'] ?>" data-parent="#rolesAccordion">
-                                            <div class="card-body">
-                                                <p><?= htmlspecialchars($role['description']) ?></p>
-                                                <form method="POST">
-                                                    <input type="hidden" name="role_id" value="<?= $role['id'] ?>">
-                                                    <div class="form-group">
-                                                        <label>Permissions</label>
-                                                        <?php 
-                                                        $rolePermissions = getRolePermissions($role['id']);
-                                                        foreach ($allPermissions as $permission): 
-                                                        ?>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" 
-                                                                name="permissions[]" value="<?= $permission['id'] ?>"
-                                                                <?= in_array($permission['id'], $rolePermissions) ? 'checked' : '' ?>>
-                                                            <label class="form-check-label">
-                                                                <?= htmlspecialchars($permission['name']) ?>
-                                                                <small class="text-muted"> - <?= htmlspecialchars($permission['description']) ?></small>
-                                                            </label>
-                                                        </div>
-                                                        <?php endforeach; ?>
-                                                    </div>
-                                                    <button type="submit" name="update_permissions" class="btn btn-primary">
-                                                        Update Permissions
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
+                                <?php if (empty($roles)): ?>
+                                    <div class="text-center py-5">
+                                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                        <h4 class="text-muted">No Roles Found</h4>
+                                        <p class="text-muted">Create your first role to get started.</p>
                                     </div>
-                                    
-                                    <!-- Edit Role Modal -->
-                                    <div class="modal fade" id="editRoleModal<?= $role['id'] ?>">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h4 class="modal-title">Edit Role</h4>
-                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
+                                <?php else: ?>
+                                    <div class="accordion" id="rolesAccordion">
+                                        <?php foreach ($roles as $index => $role): ?>
+                                        <div class="card mb-3 border-0">
+                                            <div class="card-header bg-white p-0 border-0" id="heading<?= $role['id'] ?>">
+                                                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                                                    <div class="d-flex align-items-center">
+                                                        <button class="btn btn-link text-decoration-none font-weight-bold text-dark p-0 mr-3" 
+                                                                type="button" data-toggle="collapse" 
+                                                                data-target="#collapse<?= $role['id'] ?>" 
+                                                                aria-expanded="<?= $index === 0 ? 'true' : 'false' ?>" 
+                                                                aria-controls="collapse<?= $role['id'] ?>">
+                                                            <i class="fas fa-chevron-down mr-2"></i>
+                                                            <?= htmlspecialchars($role['name']) ?>
+                                                        </button>
+                                                    </div>
+                                                    <div class="role-actions">
+                                                        <button type="button" class="btn btn-info btn-sm" data-toggle="modal" 
+                                                                data-target="#editRoleModal<?= $role['id'] ?>">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger btn-sm delete-role-btn" 
+                                                                data-id="<?= $role['id'] ?>" 
+                                                                data-name="<?= htmlspecialchars($role['name']) ?>">
+                                                            <i class="fas fa-trash"></i> Delete
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <form method="POST">
-                                                    <div class="modal-body">
+                                            </div>
+                                            
+                                            <div id="collapse<?= $role['id'] ?>" class="collapse <?= $index === 0 ? 'show' : '' ?>" 
+                                                aria-labelledby="heading<?= $role['id'] ?>" data-parent="#rolesAccordion">
+                                                <div class="card-body">
+                                                    <p class="text-muted mb-4"><?= htmlspecialchars($role['description']) ?></p>
+                                                    
+                                                    <h6 class="font-weight-bold mb-3">Role Permissions</h6>
+                                                    <form method="POST">
                                                         <input type="hidden" name="role_id" value="<?= $role['id'] ?>">
-                                                        <div class="form-group">
-                                                            <label>Role Name</label>
-                                                            <input type="text" class="form-control" name="name" 
-                                                                   value="<?= htmlspecialchars($role['name']) ?>" required>
+                                                        <div class="permission-grid">
+                                                            <?php 
+                                                            $rolePermissions = getRolePermissions($role['id']);
+                                                            foreach ($allPermissions as $permission): 
+                                                            ?>
+                                                            <div class="permission-item">
+                                                                <div class="form-check mb-0">
+                                                                    <input class="form-check-input" type="checkbox" 
+                                                                        name="permissions[]" value="<?= $permission['id'] ?>"
+                                                                        <?= in_array($permission['id'], $rolePermissions) ? 'checked' : '' ?>>
+                                                                    <label class="form-check-label">
+                                                                        <?= htmlspecialchars($permission['name']) ?>
+                                                                        <span class="text-muted"><?= htmlspecialchars($permission['description']) ?></span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <?php endforeach; ?>
                                                         </div>
-                                                        <div class="form-group">
-                                                            <label>Description</label>
-                                                            <textarea class="form-control" name="description" required><?= 
-                                                                htmlspecialchars($role['description']) ?></textarea>
+                                                        <div class="mt-4">
+                                                            <button type="submit" name="update_permissions" class="btn btn-modern btn-modern-primary">
+                                                                <i class="fas fa-save mr-2"></i>Update Permissions
+                                                            </button>
                                                         </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                                                        <button type="submit" name="update_role" class="btn btn-primary">Save Changes</button>
-                                                    </div>
-                                                </form>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </div>
+                                        
+                                        <!-- Edit Role Modal -->
+                                        <div class="modal fade" id="editRoleModal<?= $role['id'] ?>">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-primary text-white">
+                                                        <h4 class="modal-title">Edit Role</h4>
+                                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true">&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <form method="POST">
+                                                        <div class="modal-body">
+                                                            <input type="hidden" name="role_id" value="<?= $role['id'] ?>">
+                                                            <div class="form-group">
+                                                                <label class="font-weight-bold">Role Name</label>
+                                                                <input type="text" class="form-control" name="name" 
+                                                                       value="<?= htmlspecialchars($role['name']) ?>" required>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label class="font-weight-bold">Description</label>
+                                                                <textarea class="form-control" name="description" rows="3" required><?= 
+                                                                    htmlspecialchars($role['description']) ?></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                            <button type="submit" name="update_role" class="btn btn-modern btn-modern-primary">
+                                                                Save Changes
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
                                     </div>
-                                    <?php endforeach; ?>
-                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
                 </div>
-            </section>
-        </div>
+            </div>
+        </section>
+    </div>
+    
     <?php include '../includes/mainfooter.php'; ?>
 </div>
 <?php include '../includes/footer.php'; ?>
@@ -326,12 +511,13 @@ $(document).on('click', '.delete-role-btn', function(e) {
     
     Swal.fire({
         title: 'Delete Role?',
-        text: `Are you sure you want to delete "${roleName}"?`,
+        text: `Are you sure you want to delete "${roleName}"? This action cannot be undone.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
         confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
         showLoaderOnConfirm: true,
         preConfirm: () => {
             return fetch('delete_role.php', {
@@ -367,7 +553,6 @@ $(document).on('click', '.delete-role-btn', function(e) {
                     window.location.reload();
                 });
             } else {
-                // Enhanced error message with user count and list
                 let errorMessage = result.value.message;
                 
                 if (result.value.userCount > 0) {

@@ -201,51 +201,336 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
   <?php include '../includes/header.php'; ?>
   
   <style>
-    .status-badge {
-        font-size: 0.8rem;
-        padding: 4px 8px;
-        border-radius: 4px;
+    :root {
+      --primary: #4361ee;
+      --secondary: #3f37c9;
+      --success: #4cc9f0;
+      --info: #4895ef;
+      --warning: #f72585;
+      --danger: #e63946;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #6c757d;
+      --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --hover-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
     }
-    .status-complete { background-color: #28a745; color: white; }
-    .status-incomplete { background-color: #ffc107; color: black; }
-    .status-complete-late { background-color: #fd7e14; color: white; }
-    .status-not-submitted { background-color: #dc3545; color: white; }
     
-    .filing-badge {
-        font-size: 0.8rem;
-        padding: 4px 8px;
-        border-radius: 4px;
+    body {
+      background-color: #f5f7fb;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    .filing-forwarded { background-color: #17a2b8; color: white; }
-    .filing-not-forwarded { background-color: #6c757d; color: white; }
     
-    .monitoring-table th {
-        background-color: #f8f9fa;
-        position: sticky;
-        top: 0;
+    .content-wrapper {
+      background-color: #f5f7fb;
+    }
+    
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+    
+    .card:hover {
+      box-shadow: var(--hover-shadow);
+    }
+    
+    .card-header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border-radius: 12px 12px 0 0 !important;
+      padding: 15px 20px;
+      border-bottom: none;
+    }
+    
+    .card-header h3 {
+      margin: 0;
+      font-weight: 600;
+      font-size: 1.4rem;
+    }
+    
+    .small-box {
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      transition: all 0.3s ease;
+      border: none;
+      overflow: hidden;
+    }
+    
+    .small-box:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--hover-shadow);
+    }
+    
+    .small-box .inner {
+      padding: 20px;
+    }
+    
+    .small-box h3 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 10px 0;
+    }
+    
+    .small-box .icon {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 0;
+      font-size: 70px;
+      opacity: 0.3;
+      transition: all 0.3s ease;
+    }
+    
+    .small-box:hover .icon {
+      transform: scale(1.1);
+      opacity: 0.4;
+    }
+    
+    .btn {
+      border-radius: 8px;
+      font-weight: 500;
+      padding: 8px 16px;
+      transition: all 0.3s ease;
+      border: none;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.875rem;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #4cc9f0, #4895ef);
+    }
+    
+    .btn-info {
+      background: linear-gradient(135deg, #4cc9f0, #4361ee);
+    }
+    
+    .btn-warning {
+      background: linear-gradient(135deg, #f72585, #b51717ff);
+      color:white;  
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #e63946, #d00000);
     }
     
     .table-container {
-        max-height: 600px;
-        overflow-y: auto;
+      max-height: 600px;
+      overflow-y: auto;
+      border-radius: 8px;
+    }
+    
+    .monitoring-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    
+    .monitoring-table th {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      color: var(--dark);
+      font-weight: 600;
+      padding: 12px 15px;
+      border-bottom: 2px solid #dee2e6;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .monitoring-table td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #e9ecef;
+      vertical-align: middle;
+    }
+    
+    .monitoring-table tbody tr {
+      transition: all 0.2s ease;
+    }
+    
+    .monitoring-table tbody tr:hover {
+      background-color: rgba(67, 97, 238, 0.05);
+      transform: scale(1.002);
+    }
+    
+    .status-badge {
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .status-complete { 
+      background: linear-gradient(135deg, #4cc9f0, #4895ef); 
+      color: white; 
+    }
+    
+    .status-incomplete { 
+      background: linear-gradient(135deg, #ffc107, #ffaa00); 
+      color: black; 
+    }
+    
+    .status-complete-late { 
+      background: linear-gradient(135deg, #f72585, #b5179e); 
+      color: white; 
+    }
+    
+    .status-not-submitted { 
+      background: linear-gradient(135deg, #e63946, #d00000); 
+      color: white; 
+    }
+    
+    .filing-badge {
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .filing-forwarded { 
+      background: linear-gradient(135deg, #4cc9f0, #4895ef); 
+      color: white; 
+    }
+    
+    .filing-not-forwarded { 
+      background: linear-gradient(135deg, #6c757d, #495057); 
+      color: white; 
     }
     
     .appointment-badge {
-        font-size: 0.75rem;
-        padding: 3px 6px;
-        margin: 1px;
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background-color: #e9ecef;
+      color: #495057;
     }
+    
+    .form-control {
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      padding: 0px 12px;
+      transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+    }
+    
+    .modal-content {
+      border: none;
+      border-radius: 12px;
+      box-shadow: var(--hover-shadow);
+    }
+    
+    .modal-header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+      padding: 15px 20px;
+    }
+    
+    .modal-title {
+      font-weight: 600;
+    }
+    
+    .modal-footer {
+      border-top: 1px solid #e9ecef;
+      padding: 15px 20px;
+    }
+    
+    .breadcrumb {
+      background-color: transparent;
+      padding: 0;
+      margin-bottom: 0;
+    }
+    
+    .content-header h1 {
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 5px;
+    }
+    
+    .filter-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 20px;
+    }
+    
+    .filter-card h5 {
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
     .export-dropdown {
-    min-width: 250px;
+      min-width: 250px;
     }
 
     .export-period {
-        font-size: 0.9rem;
-        padding: 8px 15px;
+      font-size: 0.9rem;
+      padding: 8px 15px;
+      border-radius: 6px;
+      margin: 2px 0;
+      transition: all 0.2s ease;
     }
 
     .export-period:hover {
-        background-color: #f8f9fa;
+      background-color: #f8f9fa;
+      transform: translateX(5px);
+    }
+    
+    .bulk-actions-card {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 20px;
+    }
+    
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    
+    .table-actions .btn {
+      border-radius: 6px;
+      padding: 5px 10px;
+    }
+    
+    @media (max-width: 768px) {
+      .card-header .card-tools {
+        margin-top: 10px;
+        width: 100%;
+      }
+      
+      .card-header .card-tools .btn {
+        margin-bottom: 5px;
+      }
+      
+      .table-container {
+        overflow-x: auto;
+      }
     }
   </style>
 </head>
@@ -333,112 +618,126 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
           </div>
         </div>
 
+        <!-- Filters Card -->
+        <div class="filter-card">
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>Payroll Period</label>
+                <select id="periodFilter" class="form-control">
+                  <option value="">All Payroll Periods</option>
+                  <?php foreach ($payrollPeriods as $period): ?>
+                    <option value="<?= htmlspecialchars($period['payroll_period']) ?>">
+                      <?= htmlspecialchars($period['payroll_period']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Status</label>
+                <select id="statusFilter" class="form-control">
+                  <option value="">All Statuses</option>
+                  <option value="COMPLETE">Complete</option>
+                  <option value="INCOMPLETE">Incomplete</option>
+                  <option value="COMPLETE AND LATE">Complete & Late</option>
+                  <option value="NOT SUBMITTED">Not Submitted</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Filing Status</label>
+                <select id="filingFilter" class="form-control">
+                  <option value="">All Filing Status</option>
+                  <option value="FORWARDED">Forwarded</option>
+                  <option value="NOT FORWARDED">Not Forwarded</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="form-group">
+                <label>Search</label>
+                <input type="text" id="searchFilter" class="form-control" placeholder="Search employees...">
+              </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="button" class="btn btn-outline-secondary w-100" id="resetFilters">
+                <i class="fas fa-redo"></i> Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="row">
           <div class="col-12">
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title">Attachments Monitoring</h3>
                 <div class="card-tools">
+                  <div class="btn-group">
                     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addRecordModal">
-                        <i class="fas fa-plus"></i> Add Record
+                      <i class="fas fa-plus"></i> Add Record
                     </button>
                     <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#importModal">
-                        <i class="fas fa-file-import"></i> Import Excel
+                      <i class="fas fa-file-import"></i> Import
                     </button>
                     
                     <!-- Export Dropdown -->
                     <div class="btn-group">
-                        <button type="button" class="btn btn-info btn-sm" id="exportBtn">
-                            <i class="fas fa-file-export"></i> Export All Excel
-                        </button>
-                        <button type="button" class="btn btn-info btn-sm dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <span class="sr-only">Toggle Dropdown</span>
-                        </button>
-                        <div class="dropdown-menu">
-                            <h6 class="dropdown-header">Export by Payroll Period</h6>
-                            <?php foreach ($payrollPeriods as $period): ?>
-                                <a class="dropdown-item export-period" href="#" data-period="<?= htmlspecialchars($period['payroll_period']) ?>">
-                                    <i class="fas fa-download mr-2"></i><?= htmlspecialchars($period['payroll_period']) ?>
-                                </a>
-                            <?php endforeach; ?>
-                            <?php if (empty($payrollPeriods)): ?>
-                                <a class="dropdown-item disabled" href="#">No periods available</a>
-                            <?php endif; ?>
-                        </div>
+                      <button type="button" class="btn btn-info btn-sm" id="exportBtn">
+                        <i class="fas fa-file-export"></i> Export All
+                      </button>
+                      <button type="button" class="btn btn-info btn-sm dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="sr-only">Toggle Dropdown</span>
+                      </button>
+                      <div class="dropdown-menu export-dropdown">
+                        <h6 class="dropdown-header">Export by Payroll Period</h6>
+                        <?php foreach ($payrollPeriods as $period): ?>
+                          <a class="dropdown-item export-period" href="#" data-period="<?= htmlspecialchars($period['payroll_period']) ?>">
+                            <i class="fas fa-download mr-2"></i><?= htmlspecialchars($period['payroll_period']) ?>
+                          </a>
+                        <?php endforeach; ?>
+                        <?php if (empty($payrollPeriods)): ?>
+                          <a class="dropdown-item disabled" href="#">No periods available</a>
+                        <?php endif; ?>
+                      </div>
                     </div>
                     
                     <!-- Add Template Download Button -->
                     <button type="button" class="btn btn-warning btn-sm" id="templateBtn">
-                        <i class="fas fa-download"></i> Download Template
+                      <i class="fas fa-download"></i> Template
                     </button>
+                  </div>
                 </div>
               </div>
               <div class="card-body">
-                <!-- Filters -->
-                <div class="row mb-3">
-                  <div class="col-md-3">
-                    <select id="periodFilter" class="form-control">
-                      <option value="">All Payroll Periods</option>
-                      <?php foreach ($payrollPeriods as $period): ?>
-                        <option value="<?= htmlspecialchars($period['payroll_period']) ?>">
-                          <?= htmlspecialchars($period['payroll_period']) ?>
-                        </option>
-                      <?php endforeach; ?>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <select id="statusFilter" class="form-control">
-                      <option value="">All Statuses</option>
-                      <option value="COMPLETE">Complete</option>
-                      <option value="INCOMPLETE">Incomplete</option>
-                      <option value="COMPLETE AND LATE">Complete & Late</option>
-                      <option value="NOT SUBMITTED">Not Submitted</option>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <select id="filingFilter" class="form-control">
-                      <option value="">All Filing Status</option>
-                      <option value="FORWARDED">Forwarded</option>
-                      <option value="NOT FORWARDED">Not Forwarded</option>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <input type="text" id="searchFilter" class="form-control" placeholder="Search employees...">
+                <!-- Bulk Actions -->
+                <div class="bulk-actions-card">
+                  <div class="row align-items-center">
+                    <div class="col-md-6">
+                      <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="selectAll">
+                        <label class="form-check-label" for="selectAll">Select All Records</label>
+                      </div>
+                    </div>
+                    <div class="col-md-6 text-right">
+                      <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>
+                        <i class="fas fa-trash"></i> Delete Selected
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm" id="deleteAllBtn">
+                        <i class="fas fa-trash-alt"></i> Delete All
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div class="table-container">
-                    <!-- Bulk Actions -->
-                    <div class="row mb-3">
-                    <div class="col-md-12">
-                        <div class="card">
-                        <div class="card-body">
-                            <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="selectAll">
-                                <label class="form-check-label" for="selectAll">Select All</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 text-right">
-                                <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>
-                                    <i class="fas fa-trash"></i> Delete Selected
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm" id="deleteAllBtn">
-                                    <i class="fas fa-trash-alt"></i> Delete All
-                                </button>
-                            </div>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                    </div>
                   <table id="monitoringTable" class="table table-bordered table-striped monitoring-table">
                     <thead>
-                    <tr>
-                        <th width="30">
-                        <!-- <input type="checkbox" id="selectAllHeader"> -->
-                        </th>
+                      <tr>
+                        <th width="30"></th>
                         <th>Employee</th>
                         <th>ID Number</th>
                         <th>Appointment Status</th>
@@ -450,14 +749,14 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
                         <th>Remarks</th>
                         <th>Last Updated</th>
                         <th>Actions</th>
-                    </tr>
+                      </tr>
                     </thead>
                     <tbody>
                       <?php foreach ($monitoringRecords as $record): ?>
                         <tr>
-                            <td>
-                                <input type="checkbox" class="record-checkbox" name="record_ids[]" value="<?= $record['monitoring_id'] ?>">
-                            </td>
+                          <td>
+                            <input type="checkbox" class="record-checkbox" name="record_ids[]" value="<?= $record['monitoring_id'] ?>">
+                          </td>
                           <td><?= htmlspecialchars($record['employee_name']) ?></td>
                           <td><?= htmlspecialchars($record['id_number']) ?></td>
                           <td>
@@ -487,12 +786,12 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
                             ?>
                           </td>
                           <td><?= htmlspecialchars($record['payroll_period']) ?></td>
-                          <td>
+                          <td width="180">
                             <span class="status-badge status-<?= strtolower(str_replace(' ', '-', $record['status'])) ?>">
                               <?= htmlspecialchars($record['status']) ?>
                             </span>
                           </td>
-                          <td>
+                          <td width="180">
                             <span class="filing-badge filing-<?= strtolower(str_replace(' ', '-', $record['filing_status'])) ?>">
                               <?= htmlspecialchars($record['filing_status']) ?>
                             </span>
@@ -501,14 +800,16 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
                           <td><?= htmlspecialchars($record['remarks']) ?: 'N/A' ?></td>
                           <td><?= htmlspecialchars($record['updated_at']) ?></td>
                           <td>
-                            <button class="btn btn-sm btn-warning edit-record" 
-                                    data-id="<?= $record['monitoring_id'] ?>"
-                                    data-status="<?= $record['status'] ?>"
-                                    data-filing_status="<?= $record['filing_status'] ?>"
-                                    data-date="<?= $record['submission_date'] ?>"
-                                    data-remarks="<?= htmlspecialchars($record['remarks']) ?>">
-                              <i class="fas fa-edit"></i>
-                            </button>
+                            <div class="table-actions">
+                              <button class="btn btn-sm btn-warning edit-record" 
+                                      data-id="<?= $record['monitoring_id'] ?>"
+                                      data-status="<?= $record['status'] ?>"
+                                      data-filing_status="<?= $record['filing_status'] ?>"
+                                      data-date="<?= $record['submission_date'] ?>"
+                                      data-remarks="<?= htmlspecialchars($record['remarks']) ?>">
+                                <i class="fas fa-edit"></i>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       <?php endforeach; ?>
@@ -678,186 +979,56 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
 
 <script>
 $(document).ready(function() {
-  // Initialize DataTable
-  const dataTable = $('#monitoringTable').DataTable({
-    responsive: true,
-    pageLength: 10,
-    dom: '<"top"lf>rt<"bottom"ip>',
-    columnDefs: [
-      { orderable: false, targets: [0, 11] } // Disable sorting for checkbox and actions columns
-    ]
+  // Show toast notification if exists
+  <?php if (isset($_SESSION['toast'])): ?>
+    const toast = <?= json_encode($_SESSION['toast']) ?>;
+    showToast(toast.type, toast.message);
+    <?php unset($_SESSION['toast']); ?>
+  <?php endif; ?>
+  
+  // Table filtering
+  $('#periodFilter, #statusFilter, #filingFilter, #searchFilter').on('input change', function() {
+    filterTable();
   });
-
-  // Store existing employee-period combinations for client-side validation
-  const existingRecords = <?php echo json_encode(array_map(function($record) {
-      return [
-          'emp_id' => $record['emp_id'],
-          'payroll_period' => $record['payroll_period']
-      ];
-  }, $monitoringRecords)); ?>;
-
-  // Store all monitoring records for statistics calculation
-  const allMonitoringRecords = <?php echo json_encode($monitoringRecords); ?>;
-
-  // Function to check for duplicate on client side
-  function checkDuplicate(empId, periodStart, periodEnd) {
-    const payrollPeriod = formatPayrollPeriod(periodStart, periodEnd);
-    return existingRecords.some(record => 
-      record.emp_id == empId && record.payroll_period === payrollPeriod
-    );
-  }
-
-  // Function to format payroll period like PHP does
-  function formatPayrollPeriod(start, end) {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const startFormatted = months[startDate.getMonth()] + ' ' + startDate.getDate();
-    const endFormatted = months[endDate.getMonth()] + ' ' + endDate.getDate();
-    
-    return startFormatted + ' - ' + endFormatted;
-  }
-
-  // Function to update statistics based on filtered records
-  function updateStatistics(filteredRecords) {
-    // Calculate counts for each status
-    const completeCount = filteredRecords.filter(record => record.status === 'COMPLETE').length;
-    const completeLateCount = filteredRecords.filter(record => record.status === 'COMPLETE AND LATE').length;
-    const notSubmittedCount = filteredRecords.filter(record => record.status === 'NOT SUBMITTED').length;
-    const incompleteCount = filteredRecords.filter(record => record.status === 'INCOMPLETE').length;
-    
-    // Get unique employees from filtered records
-    const uniqueEmployees = [...new Set(filteredRecords.map(record => record.emp_id))];
-    const totalEmployees = uniqueEmployees.length;
-
-    // Update the statistics cards
-    $('.small-box.bg-info .inner h3').text(totalEmployees);
-    $('.small-box.bg-success .inner h3').text(completeCount);
-    $('.small-box.bg-warning .inner h3').text(completeLateCount);
-    $('.small-box.bg-danger .inner h3').text(notSubmittedCount);
-  }
-
-  // Function to apply custom filtering to DataTable
-  function applyCustomFilters() {
-    const periodFilter = $('#periodFilter').val().toLowerCase();
-    const statusFilter = $('#statusFilter').val().toLowerCase();
-    const filingFilter = $('#filingFilter').val().toLowerCase();
-    const searchFilter = $('#searchFilter').val().toLowerCase();
-
-    // Use DataTable's custom filtering
-    $.fn.dataTable.ext.search.push(
-      function(settings, data, dataIndex) {
-        if (settings.nTable !== document.getElementById('monitoringTable')) {
-          return true;
-        }
-
-        const rowPeriod = data[5].toLowerCase(); // Payroll Period column
-        const rowStatus = data[6].toLowerCase(); // Status column
-        const rowFiling = data[7].toLowerCase(); // Filing Status column
-        const rowText = data.join(' ').toLowerCase(); // All row text for search
-
-        const periodMatch = !periodFilter || rowPeriod.includes(periodFilter);
-        const statusMatch = !statusFilter || rowStatus.includes(statusFilter);
-        const filingMatch = !filingFilter || rowFiling.includes(filingFilter);
-        const searchMatch = !searchFilter || rowText.includes(searchFilter);
-
-        return periodMatch && statusMatch && filingMatch && searchMatch;
-      }
-    );
-
-    // Redraw the table
-    dataTable.draw();
-
-    // Remove the custom filter function to avoid stacking
-    $.fn.dataTable.ext.search.pop();
-  }
-
-  // Function to get filtered records based on current filters
-  function getFilteredRecords() {
-    const periodFilter = $('#periodFilter').val().toLowerCase();
-    const statusFilter = $('#statusFilter').val().toLowerCase();
-    const filingFilter = $('#filingFilter').val().toLowerCase();
-    const searchFilter = $('#searchFilter').val().toLowerCase();
-
-    return allMonitoringRecords.filter(record => {
-      const periodMatch = !periodFilter || record.payroll_period.toLowerCase().includes(periodFilter);
-      const statusMatch = !statusFilter || record.status.toLowerCase().includes(statusFilter);
-      const filingMatch = !filingFilter || record.filing_status.toLowerCase().includes(filingFilter);
-      const searchMatch = !searchFilter || 
-        record.employee_name.toLowerCase().includes(searchFilter) ||
-        record.id_number.toLowerCase().includes(searchFilter) ||
-        record.payroll_period.toLowerCase().includes(searchFilter);
-
-      return periodMatch && statusMatch && filingMatch && searchMatch;
-    });
-  }
-
-  // Function to update both table and statistics
-  function updateFilters() {
-    applyCustomFilters();
-    
-    // Update statistics based on filtered records
-    const filteredRecords = getFilteredRecords();
-    updateStatistics(filteredRecords);
-  }
-
-  // Apply filters when they change
-  $('#periodFilter, #statusFilter, #filingFilter, #searchFilter').on('change keyup', function() {
-    updateFilters();
+  
+  // Reset filters
+  $('#resetFilters').on('click', function() {
+    $('#periodFilter, #statusFilter, #filingFilter').val('');
+    $('#searchFilter').val('');
+    filterTable();
   });
-
-  // Initial statistics update
-  updateStatistics(allMonitoringRecords);
-
-  // Edit record functionality
-  $('.edit-record').click(function() {
+  
+  // Edit record modal
+  $('.edit-record').on('click', function() {
     const id = $(this).data('id');
     const status = $(this).data('status');
-    const filing_status = $(this).data('filing_status');
+    const filingStatus = $(this).data('filing_status');
     const date = $(this).data('date');
     const remarks = $(this).data('remarks');
-
+    
     $('#edit_monitoring_id').val(id);
     $('#edit_status').val(status);
-    $('#edit_filing_status').val(filing_status);
+    $('#edit_filing_status').val(filingStatus);
     $('#edit_submission_date').val(date);
     $('#edit_remarks').val(remarks);
-
+    
     $('#editRecordModal').modal('show');
   });
-
-  // Bulk delete functionality
-  $('#selectAll').change(function() {
+  
+  // Select all records
+  $('#selectAll').on('change', function() {
     $('.record-checkbox').prop('checked', this.checked);
     updateBulkDeleteButton();
   });
-
-  $('.record-checkbox').change(function() {
+  
+  // Update bulk delete button state
+  $('.record-checkbox').on('change', function() {
     updateBulkDeleteButton();
-    updateSelectAllCheckbox();
   });
-
-  function updateSelectAllCheckbox() {
-    const allChecked = $('.record-checkbox:checked').length === $('.record-checkbox').length;
-    $('#selectAll').prop('checked', allChecked);
-  }
-
-  function updateBulkDeleteButton() {
-    const anyChecked = $('.record-checkbox:checked').length > 0;
-    $('#bulkDeleteBtn').prop('disabled', !anyChecked);
-  }
-
-  $('#bulkDeleteBtn').click(function() {
-    const selectedCount = $('.record-checkbox:checked').length;
-    if (selectedCount === 0) {
-      alert('Please select at least one record to delete.');
-      return;
-    }
-
-    if (confirm(`Are you sure you want to delete ${selectedCount} selected record(s)?`)) {
-      // Create a form and submit it
+  
+  // Bulk delete
+  $('#bulkDeleteBtn').on('click', function() {
+    if (confirm('Are you sure you want to delete the selected records?')) {
       const form = $('<form>').attr({
         method: 'POST',
         action: ''
@@ -881,11 +1052,10 @@ $(document).ready(function() {
       form.submit();
     }
   });
-
-  // Delete All functionality
-  $('#deleteAllBtn').click(function() {
+  
+  // Delete all records
+  $('#deleteAllBtn').on('click', function() {
     if (confirm('Are you sure you want to delete ALL records? This action cannot be undone.')) {
-      // Create a form and submit it
       const form = $('<form>').attr({
         method: 'POST',
         action: ''
@@ -893,13 +1063,13 @@ $(document).ready(function() {
       
       form.append($('<input>').attr({
         type: 'hidden',
-        name: 'delete_all',
+        name: 'bulk_delete',
         value: '1'
       }));
       
       form.append($('<input>').attr({
         type: 'hidden',
-        name: 'bulk_delete',
+        name: 'delete_all',
         value: '1'
       }));
       
@@ -907,39 +1077,83 @@ $(document).ready(function() {
       form.submit();
     }
   });
-
-  // Export functionality
-  $('#exportBtn').click(function() {
-    window.location.href = 'attachments_export.php';
-  });
-
-  // Export by period functionality
-  $('.export-period').click(function(e) {
+  
+  // Export by period
+  $('.export-period').on('click', function(e) {
     e.preventDefault();
     const period = $(this).data('period');
-    window.location.href = 'attachments_export.php?period=' + encodeURIComponent(period);
+    alert('Export functionality for period: ' + period + ' would be implemented here');
+    // In a real implementation, this would redirect to an export script with the period parameter
   });
-
-  // Template download functionality
-  $('#templateBtn').click(function() {
-    window.location.href = 'attachments_template.php';
+  
+  // Template download
+  $('#templateBtn').on('click', function() {
+    alert('Template download would be implemented here');
+    // In a real implementation, this would download an Excel template file
   });
-
-  // Add Record Modal validation
-  $('#addRecordModal form').submit(function(e) {
-    const empId = $('select[name="emp_id"]').val();
-    const periodStart = $('input[name="period_start"]').val();
-    const periodEnd = $('input[name="period_end"]').val();
-
-    if (checkDuplicate(empId, periodStart, periodEnd)) {
-      e.preventDefault();
-      alert('A record for this employee and payroll period already exists. Please update the existing record instead.');
-      return false;
+  
+  // Export all
+  $('#exportBtn').on('click', function() {
+    alert('Export all functionality would be implemented here');
+    // In a real implementation, this would redirect to an export script
+  });
+  
+  function filterTable() {
+    const period = $('#periodFilter').val().toLowerCase();
+    const status = $('#statusFilter').val().toLowerCase();
+    const filing = $('#filingFilter').val().toLowerCase();
+    const search = $('#searchFilter').val().toLowerCase();
+    
+    $('#monitoringTable tbody tr').each(function() {
+      const rowPeriod = $(this).find('td:eq(5)').text().toLowerCase();
+      const rowStatus = $(this).find('td:eq(6)').text().toLowerCase();
+      const rowFiling = $(this).find('td:eq(7)').text().toLowerCase();
+      const rowText = $(this).text().toLowerCase();
+      
+      const periodMatch = !period || rowPeriod.includes(period);
+      const statusMatch = !status || rowStatus.includes(status);
+      const filingMatch = !filing || rowFiling.includes(filing);
+      const searchMatch = !search || rowText.includes(search);
+      
+      $(this).toggle(periodMatch && statusMatch && filingMatch && searchMatch);
+    });
+  }
+  
+  function updateBulkDeleteButton() {
+    const checkedCount = $('.record-checkbox:checked').length;
+    $('#bulkDeleteBtn').prop('disabled', checkedCount === 0);
+    if (checkedCount > 0) {
+      $('#bulkDeleteBtn').html('<i class="fas fa-trash"></i> Delete Selected (' + checkedCount + ')');
+    } else {
+      $('#bulkDeleteBtn').html('<i class="fas fa-trash"></i> Delete Selected');
     }
-  });
-
-  // Initialize tooltips
-  $('[data-toggle="tooltip"]').tooltip();
+  }
+  
+  function showToast(type, message) {
+    // Create toast element
+    const toast = $(`
+      <div class="toast align-items-center text-white bg-${type} border-0 position-fixed" 
+           style="top: 20px; right: 20px; z-index: 9999;" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            ${message}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    `);
+    
+    $('body').append(toast);
+    
+    // Initialize and show toast
+    const bsToast = new bootstrap.Toast(toast[0]);
+    bsToast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toast.on('hidden.bs.toast', function() {
+      $(this).remove();
+    });
+  }
 });
 </script>
 </body>

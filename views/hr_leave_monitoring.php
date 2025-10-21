@@ -5,7 +5,6 @@ require_once '../includes/auth.php';
 require_once '../config/database.php';
 require_once 'leave_functions.php';
 
-
 $database = new Database();
 $db = $database->getConnection();
 $leaveFunctions = new LeaveFunctions();
@@ -140,25 +139,215 @@ unset($_SESSION['success'], $_SESSION['error']);
     <?php include '../includes/header.php'; ?>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
     <style>
-        .stats-card {
-            transition: transform 0.2s;
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --secondary: #6b7280;
+            --light-bg: #f8fafc;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
         }
-        .stats-card:hover {
+
+        .modern-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
+            margin-bottom: 24px;
+        }
+
+        .modern-card:hover {
+            box-shadow: var(--hover-shadow);
             transform: translateY(-2px);
         }
-        .bulk-actions {
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
+
+        .stats-card {
+            border-radius: 12px;
+            border: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
+
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        }
+
+        .stats-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
         .filter-section {
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+            box-shadow: var(--card-shadow);
         }
+
+        .form-control-modern {
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 0px 15px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #ffffff;
+        }
+
+        .form-control-modern:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn-modern {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
+            color: white;
+        }
+
+        .section-title {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #eef2ff;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .bulk-actions {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-radius: 12px;
+            border-left: 4px solid var(--warning);
+        }
+
+        .table-modern {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+
+        .table-modern thead th {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 16px 12px;
+            font-weight: 600;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: #f8fafc;
+            transform: scale(1.01);
+        }
+
+        .badge-modern {
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        .action-buttons .btn {
+            border-radius: 6px;
+            margin: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .action-buttons .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .quick-action-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .quick-action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--hover-shadow);
+            border-color: var(--primary);
+        }
+
+        .quick-action-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
         .employee-balances {
             max-height: 400px;
             overflow-y: auto;
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .modal-modern .modal-content {
+            border-radius: 12px;
+            border: none;
+            box-shadow: var(--hover-shadow);
+        }
+
+        .modal-modern .modal-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            border: none;
         }
     </style>
 </head>
@@ -173,12 +362,13 @@ unset($_SESSION['success'], $_SESSION['error']);
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="m-0">HR Leave Monitoring</h1>
+                        <h1 class="m-0" style="color: var(--primary); font-weight: 700;">HR Leave Monitoring</h1>
+                        <p class="text-muted mt-1">Comprehensive leave management and monitoring system</p>
                     </div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                            <li class="breadcrumb-item active">HR Leave Monitoring</li>
+                            <li class="breadcrumb-item"><a href="dashboard.php" style="color: var(--secondary);">Home</a></li>
+                            <li class="breadcrumb-item active" style="color: var(--primary); font-weight: 600;">HR Leave Monitoring</li>
                         </ol>
                     </div>
                 </div>
@@ -188,65 +378,65 @@ unset($_SESSION['success'], $_SESSION['error']);
         <section class="content">
             <div class="container-fluid">
                 <?php if (isset($success)): ?>
-                    <div class="alert alert-success alert-dismissible">
+                    <div class="alert alert-success alert-dismissible modern-card">
                         <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                        <i class="icon fas fa-check"></i> <?php echo $success; ?>
+                        <i class="icon fas fa-check-circle"></i> <?php echo $success; ?>
                     </div>
                 <?php endif; ?>
 
                 <?php if (isset($error)): ?>
-                    <div class="alert alert-danger alert-dismissible">
+                    <div class="alert alert-danger alert-dismissible modern-card">
                         <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-                        <i class="icon fas fa-ban"></i> <?php echo $error; ?>
+                        <i class="icon fas fa-exclamation-triangle"></i> <?php echo $error; ?>
                     </div>
                 <?php endif; ?>
 
                 <!-- Statistics Cards -->
                 <div class="row mb-4">
                     <div class="col-md-2">
-                        <div class="card stats-card">
+                        <div class="card stats-card modern-card">
                             <div class="card-body text-center">
-                                <h3 class="text-primary"><?php echo $stats['total_leaves']; ?></h3>
-                                <p class="card-text">Total Leaves</p>
+                                <div class="stats-number text-primary"><?php echo $stats['total_leaves']; ?></div>
+                                <p class="card-text text-muted">Total Leaves</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
-                        <div class="card stats-card">
+                        <div class="card stats-card modern-card">
                             <div class="card-body text-center">
-                                <h3 class="text-warning"><?php echo $stats['pending_leaves']; ?></h3>
-                                <p class="card-text">Pending</p>
+                                <div class="stats-number text-warning"><?php echo $stats['pending_leaves']; ?></div>
+                                <p class="card-text text-muted">Pending</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
-                        <div class="card stats-card">
+                        <div class="card stats-card modern-card">
                             <div class="card-body text-center">
-                                <h3 class="text-success"><?php echo $stats['approved_leaves']; ?></h3>
-                                <p class="card-text">Approved</p>
+                                <div class="stats-number text-success"><?php echo $stats['approved_leaves']; ?></div>
+                                <p class="card-text text-muted">Approved</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
-                        <div class="card stats-card">
+                        <div class="card stats-card modern-card">
                             <div class="card-body text-center">
-                                <h3 class="text-danger"><?php echo $stats['rejected_leaves']; ?></h3>
-                                <p class="card-text">Rejected</p>
+                                <div class="stats-number text-danger"><?php echo $stats['rejected_leaves']; ?></div>
+                                <p class="card-text text-muted">Rejected</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
-                        <div class="card stats-card">
+                        <div class="card stats-card modern-card">
                             <div class="card-body text-center">
-                                <h3 class="text-secondary"><?php echo $stats['cancelled_leaves']; ?></h3>
-                                <p class="card-text">Cancelled</p>
+                                <div class="stats-number text-secondary"><?php echo $stats['cancelled_leaves']; ?></div>
+                                <p class="card-text text-muted">Cancelled</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2">
-                        <div class="card stats-card bg-primary">
+                        <div class="card stats-card modern-card" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);">
                             <div class="card-body text-center text-white">
-                                <h3><?php echo date('Y'); ?></h3>
+                                <div class="stats-number"><?php echo date('Y'); ?></div>
                                 <p class="card-text">Current Year</p>
                             </div>
                         </div>
@@ -256,12 +446,12 @@ unset($_SESSION['success'], $_SESSION['error']);
                 <!-- Filters Section -->
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="filter-section">
-                            <h5><i class="fas fa-filter"></i> Filter Leaves</h5>
-                            <form method="GET" class="form-inline">
-                                <div class="form-group mr-3">
-                                    <label for="year" class="mr-2">Year:</label>
-                                    <select class="form-control" id="year" name="year">
+                        <div class="filter-section modern-card">
+                            <h5 class="section-title"><i class="fas fa-filter mr-2"></i>Filter Leaves</h5>
+                            <form method="GET" class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="year" class="form-label">Year</label>
+                                    <select class="form-control form-control-modern" id="year" name="year">
                                         <?php for ($y = date('Y'); $y >= 2020; $y--): ?>
                                             <option value="<?php echo $y; ?>" <?php echo $y == $year ? 'selected' : ''; ?>>
                                                 <?php echo $y; ?>
@@ -269,9 +459,9 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         <?php endfor; ?>
                                     </select>
                                 </div>
-                                <div class="form-group mr-3">
-                                    <label for="status" class="mr-2">Status:</label>
-                                    <select class="form-control" id="status" name="status">
+                                <div class="col-md-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-control form-control-modern" id="status" name="status">
                                         <option value="">All Status</option>
                                         <option value="pending" <?php echo $status == 'pending' ? 'selected' : ''; ?>>Pending</option>
                                         <option value="approved" <?php echo $status == 'approved' ? 'selected' : ''; ?>>Approved</option>
@@ -279,9 +469,9 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         <option value="cancelled" <?php echo $status == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
                                     </select>
                                 </div>
-                                <div class="form-group mr-3">
-                                    <label for="section_id" class="mr-2">Section:</label>
-                                    <select class="form-control" id="section_id" name="section_id">
+                                <div class="col-md-3">
+                                    <label for="section_id" class="form-label">Section</label>
+                                    <select class="form-control form-control-modern" id="section_id" name="section_id">
                                         <option value="">All Sections</option>
                                         <?php while ($section = $sections_result->fetch_assoc()): ?>
                                             <option value="<?php echo $section['section_id']; ?>" 
@@ -291,9 +481,9 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
-                                <div class="form-group mr-3">
-                                    <label for="leave_type_id" class="mr-2">Leave Type:</label>
-                                    <select class="form-control" id="leave_type_id" name="leave_type_id">
+                                <div class="col-md-3">
+                                    <label for="leave_type_id" class="form-label">Leave Type</label>
+                                    <select class="form-control form-control-modern" id="leave_type_id" name="leave_type_id">
                                         <option value="">All Types</option>
                                         <?php foreach ($leave_types as $type): ?>
                                             <option value="<?php echo $type['leave_type_id']; ?>" 
@@ -303,38 +493,43 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-primary mr-2">
-                                    <i class="fas fa-search"></i> Filter
-                                </button>
-                                <a href="hr_leave_monitoring.php" class="btn btn-secondary">
-                                    <i class="fas fa-redo"></i> Reset
-                                </a>
+                                <div class="col-12 mt-3">
+                                    <button type="submit" class="btn btn-modern mr-2">
+                                        <i class="fas fa-search mr-2"></i> Apply Filters
+                                    </button>
+                                    <a href="hr_leave_monitoring.php" class="btn btn-outline-secondary">
+                                        <i class="fas fa-redo mr-2"></i> Reset Filters
+                                    </a>
+                                </div>
                             </form>
                         </div>
                     </div>
                 </div>
 
                 <!-- Bulk Actions -->
-                <div class="row mb-3">
+                <div class="row mb-4">
                     <div class="col-md-12">
-                        <div class="card bulk-actions">
+                        <div class="card bulk-actions modern-card">
                             <div class="card-body">
+                                <h6 class="card-title mb-3"><i class="fas fa-cogs mr-2"></i>Bulk Actions</h6>
                                 <form method="POST" id="bulkForm">
-                                    <div class="row">
+                                    <div class="row align-items-end">
                                         <div class="col-md-4">
-                                            <select class="form-control" name="bulk_action" required>
-                                                <option value="">Bulk Action</option>
+                                            <label class="form-label">Action</label>
+                                            <select class="form-control form-control-modern" name="bulk_action" required>
+                                                <option value="">Select Action</option>
                                                 <option value="approve">Approve Selected</option>
                                                 <option value="reject">Reject Selected</option>
                                             </select>
                                         </div>
                                         <div class="col-md-5">
-                                            <input type="text" class="form-control" name="bulk_remarks" 
-                                                   placeholder="Remarks for bulk action (optional)">
+                                            <label class="form-label">Remarks</label>
+                                            <input type="text" class="form-control form-control-modern" name="bulk_remarks" 
+                                                   placeholder="Enter remarks for bulk action (optional)">
                                         </div>
                                         <div class="col-md-3">
-                                            <button type="submit" class="btn btn-warning btn-block">
-                                                <i class="fas fa-cogs"></i> Process Selected
+                                            <button type="submit" class="btn btn-warning btn-modern btn-block">
+                                                <i class="fas fa-cogs mr-2"></i> Process Selected
                                             </button>
                                         </div>
                                     </div>
@@ -347,22 +542,24 @@ unset($_SESSION['success'], $_SESSION['error']);
                 <!-- Leaves Table -->
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">All Employee Leaves</h3>
+                        <div class="card modern-card">
+                            <div class="card-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 12px 12px 0 0;">
+                                <h3 class="card-title text-white mb-0">
+                                    <i class="fas fa-list-alt mr-2"></i>All Employee Leaves
+                                </h3>
                                 <div class="card-tools">
-                                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <button type="button" class="btn btn-tool text-white" data-card-widget="collapse">
                                         <i class="fas fa-minus"></i>
                                     </button>
                                 </div>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-striped table-hover" id="leavesTable">
-                                        <thead class="thead-light">
+                                    <table class="table table-bordered table-striped table-hover table-modern" id="leavesTable">
+                                        <thead>
                                             <tr>
                                                 <th width="30">
-                                                    <input type="checkbox" id="selectAll">
+                                                    <input type="checkbox" id="selectAll" class="form-check-input">
                                                 </th>
                                                 <th>Employee</th>
                                                 <th>Section</th>
@@ -377,36 +574,39 @@ unset($_SESSION['success'], $_SESSION['error']);
                                         <tbody>
                                             <?php if (empty($all_leaves)): ?>
                                                 <tr>
-                                                    <td colspan="9" class="text-center">No leave requests found</td>
+                                                    <td colspan="9" class="text-center py-4">
+                                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                                        <p class="text-muted">No leave requests found</p>
+                                                    </td>
                                                 </tr>
                                             <?php else: ?>
                                                 <?php foreach ($all_leaves as $leave): ?>
                                                     <tr>
                                                         <td>
                                                             <?php if ($leave['status'] == 'pending'): ?>
-                                                                <input type="checkbox" name="leave_ids[]" value="<?php echo $leave['leave_id']; ?>" class="leave-checkbox">
+                                                                <input type="checkbox" name="leave_ids[]" value="<?php echo $leave['leave_id']; ?>" class="form-check-input leave-checkbox">
                                                             <?php endif; ?>
                                                         </td>
                                                         <td>
-                                                            <strong><?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?></strong>
-                                                            <br>
+                                                            <strong class="d-block"><?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?></strong>
                                                             <small class="text-muted"><?php echo $leave['position_name'] ?? 'N/A'; ?></small>
                                                         </td>
-                                                        <td><?php echo $leave['section_name'] ?? 'N/A'; ?></td>
                                                         <td>
-                                                            <span class="badge badge-info"><?php echo $leave['leave_code']; ?></span>
-                                                            <br>
-                                                            <small><?php echo $leave['leave_name']; ?></small>
+                                                            <span class="badge badge-light border"><?php echo $leave['section_name'] ?? 'N/A'; ?></span>
                                                         </td>
                                                         <td>
-                                                            <?php echo date('M j, Y', strtotime($leave['start_date'])); ?>
-                                                            <br>
-                                                            <small>to</small>
-                                                            <br>
-                                                            <?php echo date('M j, Y', strtotime($leave['end_date'])); ?>
+                                                            <span class="badge badge-info badge-modern"><?php echo $leave['leave_code']; ?></span>
+                                                            <small class="d-block text-muted"><?php echo $leave['leave_name']; ?></small>
                                                         </td>
                                                         <td>
-                                                            <span class="badge badge-primary"><?php echo $leave['total_days']; ?> days</span>
+                                                            <div class="text-sm">
+                                                                <div><?php echo date('M j, Y', strtotime($leave['start_date'])); ?></div>
+                                                                <div class="text-muted">to</div>
+                                                                <div><?php echo date('M j, Y', strtotime($leave['end_date'])); ?></div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge badge-primary badge-modern"><?php echo $leave['total_days']; ?> days</span>
                                                         </td>
                                                         <td>
                                                             <?php 
@@ -417,7 +617,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                                                                 'cancelled' => 'secondary'
                                                             ];
                                                             ?>
-                                                            <span class="badge badge-<?php echo $badge_class[$leave['status']]; ?>">
+                                                            <span class="status-badge badge-<?php echo $badge_class[$leave['status']]; ?>">
                                                                 <?php echo ucfirst($leave['status']); ?>
                                                             </span>
                                                             <?php if ($leave['status'] == 'pending'): ?>
@@ -426,37 +626,42 @@ unset($_SESSION['success'], $_SESSION['error']);
                                                             <?php endif; ?>
                                                         </td>
                                                         <td>
-                                                            <?php echo date('M j, Y', strtotime($leave['applied_date'])); ?>
-                                                            <br>
-                                                            <small class="text-muted">
-                                                                <?php echo time_elapsed_string($leave['applied_date']); ?>
-                                                            </small>
+                                                            <div class="text-sm">
+                                                                <div><?php echo date('M j, Y', strtotime($leave['applied_date'])); ?></div>
+                                                                <small class="text-muted">
+                                                                    <?php echo time_elapsed_string($leave['applied_date']); ?>
+                                                                </small>
+                                                            </div>
                                                         </td>
                                                         <td>
-                                                            <div class="btn-group">
+                                                            <div class="action-buttons">
                                                                 <button type="button" class="btn btn-info btn-sm view-details" 
                                                                         data-toggle="modal" data-target="#detailsModal"
-                                                                        data-leave='<?php echo json_encode($leave); ?>'>
+                                                                        data-leave='<?php echo json_encode($leave); ?>'
+                                                                        title="View Details">
                                                                     <i class="fas fa-eye"></i>
                                                                 </button>
                                                                 <?php if ($leave['status'] == 'pending'): ?>
                                                                     <button type="button" class="btn btn-success btn-sm" 
                                                                             data-toggle="modal" data-target="#approveModal" 
                                                                             data-leaveid="<?php echo $leave['leave_id']; ?>"
-                                                                            data-employee="<?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?>">
+                                                                            data-employee="<?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?>"
+                                                                            title="Approve">
                                                                         <i class="fas fa-check"></i>
                                                                     </button>
                                                                     <button type="button" class="btn btn-danger btn-sm" 
                                                                             data-toggle="modal" data-target="#rejectModal" 
                                                                             data-leaveid="<?php echo $leave['leave_id']; ?>"
-                                                                            data-employee="<?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?>">
+                                                                            data-employee="<?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?>"
+                                                                            title="Reject">
                                                                         <i class="fas fa-times"></i>
                                                                     </button>
                                                                 <?php endif; ?>
                                                                 <button type="button" class="btn btn-warning btn-sm adjust-balance"
                                                                         data-toggle="modal" data-target="#adjustBalanceModal"
                                                                         data-empid="<?php echo $leave['emp_id']; ?>"
-                                                                        data-employee="<?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?>">
+                                                                        data-employee="<?php echo $leave['first_name'] . ' ' . $leave['last_name']; ?>"
+                                                                        title="Adjust Balance">
                                                                     <i class="fas fa-edit"></i>
                                                                 </button>
                                                             </div>
@@ -474,27 +679,28 @@ unset($_SESSION['success'], $_SESSION['error']);
 
                 <!-- Quick Balance Management -->
                 <div class="row mt-4">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Quick Balance Management</h3>
+                    <div class="col-md-6">
+                        <div class="quick-action-card">
+                            <div class="quick-action-icon">
+                                <i class="fas fa-cogs"></i>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <a href="leave_balance_management.php" class="btn btn-primary btn-lg btn-block mb-3">
-                                            <i class="fas fa-cogs"></i> Manage All Balances
-                                        </a>
-                                        <p class="text-muted">Update, reset, or adjust balances for all employees</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <a href="leave_balance_management.php?action=annual_reset" class="btn btn-warning btn-lg btn-block mb-3">
-                                            <i class="fas fa-redo"></i> Annual Balance Reset
-                                        </a>
-                                        <p class="text-muted">Reset all balances for the new year</p>
-                                    </div>
-                                </div>
+                            <h5>Manage All Balances</h5>
+                            <p class="text-muted mb-3">Update, reset, or adjust balances for all employees</p>
+                            <a href="leave_balance_management.php" class="btn btn-modern">
+                                <i class="fas fa-cogs mr-2"></i> Manage Balances
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="quick-action-card">
+                            <div class="quick-action-icon">
+                                <i class="fas fa-redo"></i>
                             </div>
+                            <h5>Annual Balance Reset</h5>
+                            <p class="text-muted mb-3">Reset all balances for the new year</p>
+                            <a href="leave_balance_management.php?action=annual_reset" class="btn btn-warning btn-modern">
+                                <i class="fas fa-redo mr-2"></i> Reset Balances
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -506,12 +712,12 @@ unset($_SESSION['success'], $_SESSION['error']);
 </div>
 
 <!-- Modals -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
+<div class="modal fade modal-modern" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="detailsModalLabel">Leave Request Details</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -526,12 +732,12 @@ unset($_SESSION['success'], $_SESSION['error']);
 </div>
 
 <!-- Approve Modal -->
-<div class="modal fade" id="approveModal" tabindex="-1" role="dialog" aria-labelledby="approveModalLabel" aria-hidden="true">
+<div class="modal fade modal-modern" id="approveModal" tabindex="-1" role="dialog" aria-labelledby="approveModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="approveModalLabel">Approve Leave Request</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -542,7 +748,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <input type="hidden" name="action" value="approve">
                     <div class="form-group">
                         <label for="approveRemarks">Remarks (Optional):</label>
-                        <textarea class="form-control" id="approveRemarks" name="remarks" rows="3"></textarea>
+                        <textarea class="form-control form-control-modern" id="approveRemarks" name="remarks" rows="3"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -555,12 +761,12 @@ unset($_SESSION['success'], $_SESSION['error']);
 </div>
 
 <!-- Reject Modal -->
-<div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
+<div class="modal fade modal-modern" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="rejectModalLabel">Reject Leave Request</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -571,7 +777,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                     <input type="hidden" name="action" value="reject">
                     <div class="form-group">
                         <label for="rejectRemarks">Reason for Rejection:</label>
-                        <textarea class="form-control" id="rejectRemarks" name="remarks" rows="3" required></textarea>
+                        <textarea class="form-control form-control-modern" id="rejectRemarks" name="remarks" rows="3" required></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -584,12 +790,12 @@ unset($_SESSION['success'], $_SESSION['error']);
 </div>
 
 <!-- Adjust Balance Modal -->
-<div class="modal fade" id="adjustBalanceModal" tabindex="-1" role="dialog" aria-labelledby="adjustBalanceModalLabel" aria-hidden="true">
+<div class="modal fade modal-modern" id="adjustBalanceModal" tabindex="-1" role="dialog" aria-labelledby="adjustBalanceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="adjustBalanceModalLabel">Adjust Leave Balance</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -609,7 +815,7 @@ unset($_SESSION['success'], $_SESSION['error']);
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="adjustLeaveType">Leave Type</label>
-                                <select class="form-control" id="adjustLeaveType" name="leave_type_id" required>
+                                <select class="form-control form-control-modern" id="adjustLeaveType" name="leave_type_id" required>
                                     <option value="">Select Leave Type</option>
                                     <?php foreach ($leave_types as $type): ?>
                                         <option value="<?php echo $type['leave_type_id']; ?>">
@@ -622,21 +828,21 @@ unset($_SESSION['success'], $_SESSION['error']);
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label for="adjustYear">Year</label>
-                                <input type="number" class="form-control" id="adjustYear" name="year" 
+                                <input type="number" class="form-control form-control-modern" id="adjustYear" name="year" 
                                        value="<?php echo date('Y'); ?>" required>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label for="newBalance">New Balance</label>
-                                <input type="number" class="form-control" id="newBalance" name="new_balance" 
+                                <input type="number" class="form-control form-control-modern" id="newBalance" name="new_balance" 
                                        step="0.5" min="0" required>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label for="adjustRemarks">Remarks</label>
-                                <input type="text" class="form-control" id="adjustRemarks" name="remarks">
+                                <input type="text" class="form-control form-control-modern" id="adjustRemarks" name="remarks">
                             </div>
                         </div>
                     </div>
@@ -681,7 +887,12 @@ $(document).ready(function() {
     // Initialize DataTable
     $('#leavesTable').DataTable({
         "pageLength": 25,
-        "order": [[7, 'desc']]
+        "order": [[7, 'desc']],
+        "language": {
+            "search": "Search leaves:",
+            "lengthMenu": "Show _MENU_ entries",
+            "info": "Showing _START_ to _END_ of _TOTAL_ entries"
+        }
     });
 
     // Select All functionality
@@ -710,7 +921,7 @@ $(document).ready(function() {
             <div class="row mt-3">
                 <div class="col-12">
                     <h6>Particulars</h6>
-                    <div class="border p-3 bg-light">
+                    <div class="border p-3 bg-light rounded">
                         ${leaveData.particulars ? leaveData.particulars.replace(/\n/g, '<br>') : 'No particulars provided'}
                     </div>
                 </div>
@@ -719,7 +930,7 @@ $(document).ready(function() {
             <div class="row mt-3">
                 <div class="col-12">
                     <h6>Employee Remarks</h6>
-                    <div class="border p-3 bg-light">
+                    <div class="border p-3 bg-light rounded">
                         ${leaveData.remarks.replace(/\n/g, '<br>')}
                     </div>
                 </div>

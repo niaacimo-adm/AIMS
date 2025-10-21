@@ -123,6 +123,32 @@ $manager_staff = [];
 while ($row = $result->fetch_assoc()) {
     $manager_staff[] = $row;
 }
+
+// Add this to your dashboard.php or profile.php after login
+function isUsingTemporaryPassword($emp_id, $db) {
+    $query = "SELECT u.password, e.id_number 
+              FROM users u 
+              JOIN employee e ON u.employee_id = e.emp_id 
+              WHERE u.employee_id = ?";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param("i", $emp_id);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    
+    if ($result) {
+        // Check if password matches the employee number (temporary password)
+        return password_verify($result['id_number'], $result['password']);
+    }
+    return false;
+}
+
+// Usage in your dashboard or profile:
+if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
+    $_SESSION['toast'] = [
+        'type' => 'warning',
+        'message' => 'You are using a temporary password. Please change your password for security.'
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -141,7 +167,7 @@ while ($row = $result->fetch_assoc()) {
     
     /* Manager Section Styles */
     .manager-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #667ceaff 0%, #4b5ea2ff 100%);
         color: white;
         padding: 15px;
         border-radius: 10px;

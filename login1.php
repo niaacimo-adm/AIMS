@@ -108,15 +108,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin: 0;
             background: linear-gradient(135deg, #1a3c2e 0%, #0f241b 100%);
             overflow: hidden;
+            perspective: 1000px;
+        }
+        
+        .scene {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: sceneRotate 20s infinite linear;
+        }
+        
+        @keyframes sceneRotate {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
         }
         
         .floating-shapes {
-            position: fixed;
+            position: absolute;
             width: 100%;
             height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 0;
+            transform-style: preserve-3d;
         }
         
         .shape {
@@ -165,24 +177,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         .login-container {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.2),
-                0 0 0 1px rgba(255, 255, 255, 0.1),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+                0 25px 50px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(36, 231, 143, 0.1),
+                0 0 50px rgba(36, 231, 143, 0.2);
             overflow: hidden;
             width: 100%;
             max-width: 1000px;
             position: relative;
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            transform-style: preserve-3d;
+            transform: rotateX(5deg) rotateY(-5deg);
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 1;
+        }
+        
+        .login-container:hover {
+            transform: rotateX(0deg) rotateY(0deg) translateY(-10px);
+            box-shadow: 
+                0 35px 70px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(36, 231, 143, 0.3),
+                0 0 80px rgba(36, 231, 143, 0.4);
         }
         
         .login-left {
-            background: linear-gradient(135deg, rgba(36, 231, 143, 0.7) 0%, rgba(42, 152, 99, 0.7) 100%);
+            background: linear-gradient(135deg, var(--nia-blue) 0%, var(--nia-light-blue) 100%);
             color: white;
             padding: 50px 40px;
             display: flex;
@@ -193,6 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             min-height: 500px;
             position: relative;
             overflow: hidden;
+            transform-style: preserve-3d;
         }
         
         .login-left::before {
@@ -208,21 +230,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             opacity: 0.3;
         }
         
+        .login-left::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        
         .logo-3d {
             width: 180px;
             height: 180px;
-            background: rgba(255, 255, 255, 0.9);
+            background: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 30px;
             box-shadow: 
-                0 15px 35px rgba(0, 0, 0, 0.2),
+                0 15px 35px rgba(0, 0, 0, 0.3),
                 inset 0 -5px 15px rgba(0, 0, 0, 0.1),
                 inset 0 5px 15px rgba(255, 255, 255, 0.8);
             position: relative;
             z-index: 1;
+            transform: translateZ(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .logo-3d:hover {
+            transform: translateZ(30px) scale(1.05);
         }
         
         .logo-3d img {
@@ -237,6 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative;
             z-index: 1;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            transform: translateZ(10px);
         }
         
         .login-left h3 {
@@ -246,16 +292,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative;
             z-index: 1;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            transform: translateZ(10px);
         }
         
         .login-right {
             padding: 50px 40px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.95);
             display: flex;
             flex-direction: column;
             justify-content: center;
             min-height: 500px;
             position: relative;
+            transform-style: preserve-3d;
         }
         
         .login-right::before {
@@ -266,19 +314,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             right: 0;
             bottom: 0;
             background: 
-                radial-gradient(circle at 10% 20%, rgba(36, 231, 143, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 90% 80%, rgba(42, 152, 99, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 10% 20%, rgba(36, 231, 143, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(42, 152, 99, 0.05) 0%, transparent 50%);
             z-index: 0;
         }
         
         .login-title {
-            color: white;
+            color: var(--nia-blue);
             font-weight: 700;
             margin-bottom: 40px;
             text-align: center;
             font-size: 1.8rem;
             position: relative;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            transform: translateZ(15px);
         }
         
         .login-title::after {
@@ -297,42 +345,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group {
             margin-bottom: 25px;
             position: relative;
+            transform-style: preserve-3d;
         }
         
         .form-group label {
             font-weight: 600;
-            color: white;
+            color: #495057;
             margin-bottom: 8px;
             display: block;
             font-size: 0.95rem;
-            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+            transform: translateZ(10px);
         }
         
         .input-container {
             max-width: 400px;
             margin: 0 auto;
+            transform-style: preserve-3d;
         }
         
         .input-group {
             box-shadow: 
-                0 5px 15px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                0 5px 15px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
             border-radius: 10px;
             overflow: hidden;
             transition: all 0.3s ease;
+            transform-style: preserve-3d;
             background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
         
         .input-group:focus-within {
             box-shadow: 
-                0 10px 25px rgba(36, 231, 143, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                0 10px 25px rgba(36, 231, 143, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transform: translateY(-5px) translateZ(10px);
             border-color: var(--nia-blue);
-            transform: translateY(-2px);
-            background: rgba(255, 255, 255, 0.95);
         }
         
         .form-control {
@@ -344,22 +392,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: auto;
             width: 100%;
             background: transparent;
-            color: #333;
-        }
-        
-        .form-control::placeholder {
-            color: rgba(0, 0, 0, 0.6);
+            transform: translateZ(5px);
         }
         
         .form-control:focus {
             outline: none;
             box-shadow: none;
-            color: #333;
-            background: transparent;
         }
         
         .input-group-text {
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
             border: none;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -368,11 +410,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #333;
+            transform: translateZ(5px);
         }
         
         .input-group-text:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+        }
+        
+        .password-toggle:hover {
+            transform: scale(1.1) translateZ(5px);
         }
         
         .btn-login {
@@ -395,17 +441,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 
                 0 10px 20px rgba(36, 231, 143, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateZ(15px);
         }
         
         .btn-login:hover {
-            transform: translateY(-3px);
+            transform: translateY(-5px) translateZ(20px);
             box-shadow: 
                 0 15px 30px rgba(36, 231, 143, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
         
         .btn-login:active {
-            transform: translateY(0);
+            transform: translateY(0) translateZ(15px);
+        }
+        
+        .btn-login::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn-login:hover::before {
+            left: 100%;
         }
         
         .alert {
@@ -417,12 +479,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             max-width: 400px;
             margin-left: auto;
             margin-right: auto;
-            background: rgba(220, 53, 69, 0.3);
-            color: white;
+            background: rgba(220, 53, 69, 0.1);
+            color: #721c24;
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.2);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateZ(10px);
         }
         
         .password-toggle {
@@ -430,15 +490,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         .footer-text {
-            color: rgba(255, 255, 255, 0.8);
+            color: #6c757d;
             font-size: 0.9rem;
             margin-top: 30px;
             text-align: center;
-            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+            transform: translateZ(5px);
         }
         
         .form-section {
             margin-bottom: 30px;
+            transform-style: preserve-3d;
         }
         
         .login-form-container {
@@ -447,121 +508,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             position: relative;
             z-index: 1;
-        }
-
-        /* Forgot Password Form Container */
-        .forgot-form-container {
-            max-width: 400px;
-            margin: 0 auto;
-            width: 100%;
-            position: relative;
-            z-index: 1;
-            display: none;
-        }
-        
-        /* Forgot Password Link Styles */
-        .forgot-password-container {
-            text-align: center;
-            margin-top: 20px;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        .forgot-password-link {
-            color: var(--nia-light-gold);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-        }
-        
-        .forgot-password-link:hover {
-            color: var(--nia-gold);
-            text-decoration: underline;
-            transform: translateY(-1px);
-        }
-
-        .back-to-login {
-            color: var(--nia-light-gold);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-
-        .back-to-login:hover {
-            color: var(--nia-gold);
-            text-decoration: underline;
-            transform: translateY(-1px);
-        }
-
-        .btn-reset {
-            background: linear-gradient(135deg, var(--nia-gold) 0%, #b8941f 100%);
-            border: none;
-            color: white;
-            padding: 15px;
-            font-weight: 600;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-            font-size: 1rem;
-            margin-top: 10px;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-            display: block;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 
-                0 10px 20px rgba(212, 175, 55, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        }
-
-        .btn-reset:hover {
-            transform: translateY(-3px);
-            box-shadow: 
-                0 15px 30px rgba(212, 175, 55, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        }
-
-        .forgot-title {
-            color: white;
-            font-weight: 700;
-            margin-bottom: 30px;
-            text-align: center;
-            font-size: 1.6rem;
-            position: relative;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .forgot-title::after {
-            content: "";
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 50px;
-            height: 3px;
-            background: linear-gradient(to right, var(--nia-gold), #b8941f);
-            border-radius: 2px;
-            box-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
-        }
-
-        .forgot-description {
-            color: rgba(255, 255, 255, 0.9);
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+            transform-style: preserve-3d;
         }
         
         /* Loader Styles */
@@ -579,6 +526,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
+            transform-style: preserve-3d;
         }
         
         .loader-overlay.active {
@@ -593,6 +541,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             justify-content: center;
             align-items: center;
+            transform-style: preserve-3d;
         }
         
         .nia-loader-logo {
@@ -610,6 +559,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             position: relative;
             z-index: 2;
             overflow: hidden;
+            transform: translateZ(30px);
         }
         
         .nia-loader-logo img {
@@ -627,6 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-top: 3px solid var(--nia-gold);
             border-radius: 50%;
             animation: spin 1.5s linear infinite;
+            transform-style: preserve-3d;
         }
         
         .nia-loader-ring:nth-child(2) {
@@ -649,6 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 16px;
             font-weight: 600;
             text-align: center;
+            transform: translateZ(20px);
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
@@ -659,6 +611,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 2px;
             margin-top: 15px;
             overflow: hidden;
+            transform: translateZ(15px);
         }
         
         .progress-fill {
@@ -674,11 +627,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             flex-direction: column;
             align-items: center;
+            transform-style: preserve-3d;
         }
         
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% { transform: rotate(0deg) translateZ(0); }
+            100% { transform: rotate(360deg) translateZ(0); }
         }
         
         @media (max-width: 768px) {
@@ -709,6 +663,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .btn-login,
             .alert {
                 max-width: 100%;
+            }
+            
+            .login-container {
+                transform: none;
+            }
+            
+            .login-container:hover {
+                transform: translateY(-5px);
             }
         }
         
@@ -753,15 +715,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 max-width: 110px;
             }
         }
-        
     </style>
 </head>
 <body>
-    <div class="floating-shapes">
-        <div class="shape"></div>
-        <div class="shape"></div>
-        <div class="shape"></div>
-        <div class="shape"></div>
+    <div class="scene">
+        <div class="floating-shapes">
+            <div class="shape"></div>
+            <div class="shape"></div>
+            <div class="shape"></div>
+            <div class="shape"></div>
+        </div>
     </div>
     
     <!-- Loader Overlay -->
@@ -775,7 +738,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <img src="dist/img/nialogo.png" alt="NIA Logo">
                 </div>
             </div>
-            <div class="nia-loader-text">Processing...</div>
+            <div class="nia-loader-text">Logging in...</div>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
@@ -792,8 +755,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h3>Albay-Catanduanes IMO</h3>
             </div>
             <div class="col-md-6 login-right">
-                <!-- Login Form Container -->
-                <div class="login-form-container" id="loginFormContainer">
+                <div class="login-form-container">
                     <h2 class="login-title">User Login</h2>
                     
                     <?php if (!empty($error)): ?>
@@ -834,54 +796,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         
                         <button type="submit" class="btn btn-login" id="loginButton">Login</button>
-                        
-                        <!-- Forgot Password Link -->
-                        <div class="forgot-password-container">
-                            <a class="forgot-password-link" id="forgotPasswordLink">
-                                <i class="fas fa-key"></i>Forgot Password?
-                            </a>
-                        </div>
-                    </form>
-                    
-                    <div class="footer-text">
-                        <p class="mb-0">ACIMO Intelligent Management Solution (AIMS)</p>
-                    </div>
-                </div>
-
-                <!-- Forgot Password Form Container -->
-                <div class="forgot-form-container" id="forgotFormContainer">
-                    <h2 class="forgot-title">Reset Password</h2>
-                    
-                    <div class="forgot-description">
-                        Enter your ID number to request a password reset. Administrators will be notified and will assist you with the reset process.
-                    </div>
-                    
-                    <form id="forgotPasswordForm">
-                        <div class="form-section">
-                            <div class="form-group">
-                                <label for="id_number">ID Number</label>
-                                <div class="input-container">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="id_number" name="id_number" 
-                                               placeholder="Enter your ID number" required>
-                                        <div class="input-group-append">
-                                            <span class="input-group-text">
-                                                <i class="fas fa-id-card"></i>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-reset" id="resetButton">Request Password Reset</button>
-                        
-                        <!-- Back to Login Link -->
-                        <div class="forgot-password-container">
-                            <a class="back-to-login" id="backToLoginLink">
-                                <i class="fas fa-arrow-left"></i>Back to Login
-                            </a>
-                        </div>
                     </form>
                     
                     <div class="footer-text">
@@ -915,7 +829,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             });
             
-            // Form validation and loader for login
+            // Form validation and loader
             $('#loginForm').on('submit', function(e) {
                 const username = $('#username').val().trim();
                 const password = $('#password').val();
@@ -935,75 +849,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     this.submit();
                 }, 3000);
             });
-
-            // Toggle between login and forgot password forms
-            $('#forgotPasswordLink').on('click', function() {
-                $('#loginFormContainer').fadeOut(300, function() {
-                    $('#forgotFormContainer').fadeIn(300);
-                });
-            });
-
-            $('#backToLoginLink').on('click', function() {
-                $('#forgotFormContainer').fadeOut(300, function() {
-                    $('#loginFormContainer').fadeIn(300);
-                });
-            });
-
-            // Handle forgot password form submission
-            $('#forgotPasswordForm').on('submit', function(e) {
-                e.preventDefault();
+            
+            // Add subtle mouse move effect for 3D
+            $(document).on('mousemove', function(e) {
+                const x = (e.clientX / window.innerWidth - 0.5) * 10;
+                const y = (e.clientY / window.innerHeight - 0.5) * 10;
                 
-                const idNumber = $('#id_number').val().trim();
-                
-                if (!idNumber) {
-                    showToast('error', 'Please enter your ID number.');
-                    return;
-                }
-
-                // Show loader
-                $('#loaderOverlay').addClass('active');
-                $('#progressFill').css('width', '100%');
-
-                // Make AJAX call to the API endpoint
-                $.ajax({
-                    url: 'ajax_forgot_password.php', // Use the dedicated API endpoint
-                    type: 'POST',
-                    data: {
-                        id_number: idNumber
-                    },
-                    success: function(response) {
-                        $('#loaderOverlay').removeClass('active');
-                        
-                        if (response.success) {
-                            showToast('success', response.message);
-                            
-                            // Reset form and go back to login
-                            $('#forgotPasswordForm')[0].reset();
-                            $('#forgotFormContainer').fadeOut(300, function() {
-                                $('#loginFormContainer').fadeIn(300);
-                            });
-                        } else {
-                            showToast('error', response.message);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        $('#loaderOverlay').removeClass('active');
-                        showToast('error', 'Network error. Please try again.');
-                        console.error('Forgot password error:', error);
-                    }
+                $('.login-container').css({
+                    'transform': `rotateX(${y}deg) rotateY(${x}deg) translateY(-10px)`
                 });
             });
-
-            // Toast notification function
-            function showToast(type, message) {
-                // You can use Toastr or create custom toast
-                if (typeof toastr !== 'undefined') {
-                    toastr[type](message);
-                } else {
-                    // Fallback alert
-                    alert(message);
-                }
-            }
+            
+            // Reset transform when mouse leaves
+            $('.login-container').on('mouseleave', function() {
+                $(this).css({
+                    'transform': 'rotateX(5deg) rotateY(-5deg)'
+                });
+            });
         });
     </script>
 </body>

@@ -101,9 +101,15 @@ if ($employee_id) {
               <p>Leave Request</p>
             </a>
           </li>
+          <li class="nav-item">
+              <a href="personal_locator_slip.php" class="nav-link <?= $current_page == 'personal_locator_slip.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <i class="fas fa-location-arrow nav-icon"></i>
+                  <p>Personal Locator Slip</p>
+              </a>
+          </li>
+          
           <?php if (hasPermission('manage_employees')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">EMPLOYEE MANAGEMENT</li>
-            <?php if (hasPermission('create_employees')): ?>
               <li class="nav-item">
                 <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="fas fa-user-plus nav-icon"></i>
@@ -116,18 +122,20 @@ if ($employee_id) {
                       <p>HR Leave Monitoring</p>
                   </a>
               </li>
-              <?php endif; ?>
-
-              <?php if (hasPermission('view_employees')): ?>
               <li class="nav-item">
                 <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="fas fa-users nav-icon"></i>
                   <p>Employee List</p>
                 </a>
               </li>
-              <?php endif; ?>
+              <li class="nav-item">
+                  <a href="../views/personal_locator_monitoring.php" class="nav-link <?= $current_page == 'personal_locator_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
+                      <i class="fas fa-clipboard-check nav-icon"></i>
+                      <p>Slip Monitoring</p>
+                  </a>
+              </li>
           <?php endif; ?>
-
+          
           <?php if (hasPermission('manage_settings')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">SETTINGS</li>
           

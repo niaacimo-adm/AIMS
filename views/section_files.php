@@ -884,6 +884,384 @@
     
     <?php include '../includes/header.php'; ?>
     <link rel="stylesheet" href="../css/section_files.css">
+    
+    <!-- Modern CSS Additions -->
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --success-color: #4cc9f0;
+            --info-color: #4895ef;
+            --warning-color: #f72585;
+            --danger-color: #e63946;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --sidebar-width: 280px;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        .modern-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            border: none;
+            transition: var(--transition);
+            margin-bottom: 1.5rem;
+        }
+
+        .modern-card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .modern-card .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+            border: none;
+            padding: 1.25rem 1.5rem;
+        }
+
+        .modern-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .btn-modern {
+            border-radius: 8px;
+            padding: 0.5rem 1.25rem;
+            font-weight: 600;
+            transition: var(--transition);
+            border: none;
+        }
+
+        .btn-modern-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .btn-modern-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
+        }
+
+        .file-explorer {
+            display: flex;
+            gap: 1.5rem;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .sidebar h5 {
+            color: var(--dark-color);
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            padding: 0.875rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            transition: var(--transition);
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .folder-item:hover {
+            background: rgba(67, 97, 238, 0.05);
+            border-color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .folder-item.locked {
+            background: rgba(230, 57, 70, 0.05);
+            border-color: rgba(230, 57, 70, 0.2);
+        }
+
+        .folder-icon {
+            font-size: 1.25rem;
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+        }
+
+        .folder-icon.locked {
+            color: var(--danger-color);
+        }
+
+        .folder-info {
+            flex: 1;
+        }
+
+        .folder-name {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .folder-stats {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .locked-badge, .no-access-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        .locked-badge {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .no-access-badge {
+            background: #6c757d;
+            color: white;
+        }
+
+        .folder-actions {
+            position: relative;
+        }
+
+        .folder-actions-btn {
+            background: none;
+            border: none;
+            color: #6c757d;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .folder-actions-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: var(--dark-color);
+        }
+
+        .folder-actions-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            padding: 0.5rem;
+            min-width: 180px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .folder-actions-menu.show {
+            display: block;
+        }
+
+        .folder-action-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            transition: var(--transition);
+            color: var(--dark-color);
+            font-size: 0.875rem;
+        }
+
+        .folder-action-item:hover {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+        }
+
+        .main-content {
+            flex: 1;
+        }
+
+        .current-folder {
+            background: white;
+            padding: 1.25rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .folder-item-grid {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 1.25rem;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .folder-item-grid:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary-color);
+        }
+
+        .folder-icon-grid {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--primary-color);
+        }
+
+        .table-modern {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+        }
+
+        .table-modern thead th {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-weight: 600;
+        }
+
+        .table-modern tbody td {
+            padding: 0.875rem;
+            border-color: #f1f3f4;
+            vertical-align: middle;
+        }
+
+        .table-modern tbody tr:hover {
+            background: rgba(67, 97, 238, 0.03);
+        }
+
+        .activity-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+            transition: var(--transition);
+            z-index: 1050;
+        }
+
+        .activity-panel.active {
+            right: 0;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+            background: #fafbfc;
+        }
+
+        .file-drop-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(67, 97, 238, 0.05);
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #f1f3f4;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .file-icon {
+            font-size: 1.25rem;
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+        }
+
+        .modal-modern .modal-content {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-modern .modal-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            border: none;
+        }
+
+        .form-control-modern {
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+            padding: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .form-control-modern:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+
+        @media (max-width: 768px) {
+            .file-explorer {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+            }
+            
+            .file-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            
+            .activity-panel {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -895,12 +1273,13 @@
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="m-0"><?= htmlspecialchars($section_name) ?> Files</h1>
+                        <h1 class="m-0 text-dark"><?= htmlspecialchars($section_name) ?> Files</h1>
+                        <p class="text-muted mb-0">Manage and organize your files efficiently</p>
                     </div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="file_management.php">File Management</a></li>
-                            <li class="breadcrumb-item active"><?= htmlspecialchars($section_name) ?></li>
+                            <li class="breadcrumb-item"><a href="file_management.php" class="text-decoration-none">File Management</a></li>
+                            <li class="breadcrumb-item active text-primary"><?= htmlspecialchars($section_name) ?></li>
                         </ol>
                     </div>
                 </div>
@@ -910,36 +1289,92 @@
         <section class="content">
             <div class="container-fluid">
                 <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success alert-dismissible">
+                    <div class="alert alert-success alert-dismissible modern-card">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span><?= $_SESSION['success'] ?></span>
+                        </div>
                         <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        <?= $_SESSION['success'] ?>
                     </div>
                     <?php unset($_SESSION['success']); ?>
                 <?php endif; ?>
                 
                 <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible">
+                    <div class="alert alert-danger alert-dismissible modern-card">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <span><?= $_SESSION['error'] ?></span>
+                        </div>
                         <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        <?= $_SESSION['error'] ?>
                     </div>
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">
+                <!-- Quick Actions Card -->
+                <div class="modern-card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5 class="card-title mb-4">
+                                    <i class="fas fa-rocket mr-2 text-primary"></i>
+                                    Quick Actions
+                                </h5>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button class="btn btn-modern btn-modern-primary mr-2" data-toggle="modal" data-target="#uploadFileModal">
+                                    <i class="fas fa-upload mr-1"></i> Upload File
+                                </button>
+                                <button class="btn btn-modern btn-success" data-toggle="modal" data-target="#createFolderModal">
+                                    <i class="fas fa-folder-plus mr-1"></i> New Folder
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fas fa-folder fa-2x text-primary mb-2"></i>
+                                    <h5 class="mb-1"><?= count($folders) ?></h5>
+                                    <small class="text-muted">Total Folders</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fas fa-file fa-2x text-success mb-2"></i>
+                                    <h5 class="mb-1"><?= count($files) ?></h5>
+                                    <small class="text-muted">Total Files</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fas fa-lock fa-2x text-warning mb-2"></i>
+                                    <h5 class="mb-1"><?= count(array_filter($folders, function($f) { return $f['is_locked']; })) ?></h5>
+                                    <small class="text-muted">Protected</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center p-3 border rounded">
+                                    <i class="fas fa-share-alt fa-2x text-info mb-2"></i>
+                                    <h5 class="mb-1"><?= count($folders) ?></h5>
+                                    <small class="text-muted">Shared</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main File Explorer -->
+                <div class="modern-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">
                             <i class="fas fa-folder mr-2"></i>
                             File Explorer
                         </h3>
                         <div class="card-tools">
-                            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#uploadFileModal">
-                                <i class="fas fa-upload mr-1"></i> Upload File
-                            </button>
-                            <button class="btn btn-success btn-sm ml-1" data-toggle="modal" data-target="#createFolderModal">
-                                <i class="fas fa-folder-plus mr-1"></i> New Folder
-                            </button>
-                            <button class="btn btn-info btn-sm ml-1" id="toggleActivityPanel">
+                            <button class="btn btn-sm btn-light mr-2" id="toggleActivityPanel">
                                 <i class="fas fa-history mr-1"></i> Activity Log
+                            </button>
+                            <button class="btn btn-sm btn-light" onclick="toggleView()">
+                                <i class="fas fa-th mr-1"></i> Toggle View
                             </button>
                         </div>
                     </div>
@@ -1019,17 +1454,19 @@
                             <!-- Main content area -->
                             <div class="main-content">
                                 <div class="current-folder">
-                                    <i class="fas fa-folder"></i> Root Directory
+                                    <i class="fas fa-folder text-primary mr-2"></i> Root Directory
+                                    <small class="text-muted ml-2"><?= count($folders) ?> folders, <?= count($files) ?> files</small>
                                 </div>
                                 
-                                <div class="file-grid">
+                                <!-- Folders Grid View -->
+                                <div class="file-grid" id="foldersGrid">
                                     <?php foreach ($folders as $folder): ?>
                                         <div class="folder-item-grid" 
                                             data-folder-id="<?= $folder['folder_id'] ?>"
                                             data-locked="<?= $folder['is_locked'] ?>">
-                                            <div class="folder-header" style="position: relative;">
+                                            <div class="folder-header position-relative">
                                                 <i class="fas fa-folder folder-icon-grid <?= $folder['is_locked'] ? 'text-danger' : '' ?>"></i>
-                                                <div class="folder-actions" style="position: absolute; top: 5px; right: 5px;">
+                                                <div class="folder-actions position-absolute" style="top: 10px; right: 10px;">
                                                     <button class="folder-actions-btn" onclick="toggleFolderMenu(this, event)">
                                                         <i class="fas fa-ellipsis-v"></i>
                                                     </button>
@@ -1059,105 +1496,121 @@
                                             <div class="folder-name">
                                                 <?= htmlspecialchars($folder['folder_name']) ?>
                                                 <?php if ($folder['is_locked']): ?>
-                                                    <br><span class="locked-badge">Locked</span>
+                                                    <br><span class="badge badge-danger mt-1">Locked</span>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="folder-stats small text-muted">
                                                 <?= $folder['file_count'] ?> files
+                                                <?php if ($folder['subfolder_count'] > 0): ?>
+                                                    <br><?= $folder['subfolder_count'] ?> subfolders
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
-                                <br>
-                                <br>
-                                
-                                <!-- Files Grid -->
-                                <h5 class="mt-4">Files (<?= count($files) ?>)</h5>
-                                
-                                <div class="card mb-3">
+
+                                <!-- Files Section -->
+                                <div class="modern-card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">
+                                            <i class="fas fa-file mr-2"></i>
+                                            Files (<?= count($files) ?>)
+                                        </h5>
+                                    </div>
                                     <div class="card-body">
-                                        <form id="searchForm" class="form-inline">
-                                            <div class="input-group w-100">
-                                                <input type="text" class="form-control" id="searchInput" placeholder="Search files by name, type, or description...">
-                                                <div class="input-group-append">
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="fas fa-search"></i> Search
-                                                    </button>
-                                                    <button type="button" id="clearSearch" class="btn btn-secondary">
-                                                        <i class="fas fa-times"></i> Clear
-                                                    </button>
+                                        <!-- Search Box -->
+                                        <div class="search-box">
+                                            <form id="searchForm" class="form-inline">
+                                                <div class="input-group w-100">
+                                                    <input type="text" class="form-control form-control-modern" id="searchInput" placeholder="Search files by name, type, or description...">
+                                                    <div class="input-group-append">
+                                                        <button type="submit" class="btn btn-modern btn-modern-primary">
+                                                            <i class="fas fa-search"></i> Search
+                                                        </button>
+                                                        <button type="button" id="clearSearch" class="btn btn-modern btn-light">
+                                                            <i class="fas fa-times"></i> Clear
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        <?php if (empty($files)): ?>
+                                            <div class="text-center py-5">
+                                                <i class="fas fa-file fa-4x text-muted mb-3"></i>
+                                                <h5 class="text-muted">No files in this directory</h5>
+                                                <p class="text-muted">Upload your first file to get started</p>
+                                                <button class="btn btn-modern btn-modern-primary" data-toggle="modal" data-target="#uploadFileModal">
+                                                    <i class="fas fa-upload mr-1"></i> Upload File
+                                                </button>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="table-modern">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <span>File Management</span>
+                                                    <div>
+                                                        <button type="button" class="btn btn-sm btn-danger" id="deleteSelectedFiles" style="display: none;">
+                                                            <i class="fas fa-trash mr-1"></i> Delete Selected
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover mb-0">
+                                                        <thead>
+                                                            <tr>
+                                                                <th width="30">
+                                                                    <input type="checkbox" id="selectAllFiles">
+                                                                </th>
+                                                                <th>File Name</th>
+                                                                <th>Type</th>
+                                                                <th>Size</th>
+                                                                <th>Uploaded By</th>
+                                                                <th>Date Uploaded</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php foreach ($files as $file): ?>
+                                                            <tr>
+                                                                <td>
+                                                                    <input type="checkbox" class="file-checkbox" value="<?= $file['file_id'] ?>">
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <i class="fas fa-file-<?= getFileIcon($file['file_type']) ?> text-primary mr-2"></i>
+                                                                        <div>
+                                                                            <div class="font-weight-bold"><?= htmlspecialchars($file['file_name']) ?></div>
+                                                                            <?php if (!empty($file['description'])): ?>
+                                                                                <small class="text-muted"><?= htmlspecialchars($file['description']) ?></small>
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td><span class="badge badge-light"><?= strtoupper($file['file_type']) ?></span></td>
+                                                                <td><?= formatFileSize($file['file_size']) ?></td>
+                                                                <td><?= htmlspecialchars($file['uploaded_by'] ?? 'Unknown') ?></td>
+                                                                <td><?= date('M j, Y H:i', strtotime($file['created_at'])) ?></td>
+                                                                <td>
+                                                                    <div class="btn-group">
+                                                                        <a href="view_file.php?id=<?= $file['file_id'] ?>" 
+                                                                            class="btn btn-sm btn-outline-primary" title="View">
+                                                                            <i class="fas fa-eye"></i>
+                                                                        </a>
+                                                                        <a href="download_file.php?id=<?= $file['file_id'] ?>" 
+                                                                            class="btn btn-sm btn-outline-success" title="Download">
+                                                                            <i class="fas fa-download"></i>
+                                                                        </a>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </div>
-                                        </form>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                                <?php if (empty($files)): ?>
-                                    <div class="alert alert-info text-center">
-                                        <i class="fas fa-info-circle mr-2"></i>
-                                        No files in this directory.
-                                    </div>
-                                <?php else: ?>
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span>File Management</span>
-                                                <div>
-                                                    <button type="button" class="btn btn-danger btn-sm" id="deleteSelectedFiles" style="display: none;">
-                                                        <i class="fas fa-trash mr-1"></i> Delete Selected
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="card-body p-0">
-                                            <div class="table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th width="30">
-                                                                <input type="checkbox" id="selectAllFiles">
-                                                            </th>
-                                                            <th>File Name</th>
-                                                            <th>Type</th>
-                                                            <th>Size</th>
-                                                            <th>Uploaded By</th>
-                                                            <th>Date Uploaded</th>
-                                                            <th>Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php foreach ($files as $file): ?>
-                                                        <tr>
-                                                            <td>
-                                                                <input type="checkbox" class="file-checkbox" value="<?= $file['file_id'] ?>">
-                                                            </td>
-                                                            <td>
-                                                                <i class="fas fa-file-<?= getFileIcon($file['file_type']) ?> text-primary mr-2"></i>
-                                                                <?= htmlspecialchars($file['file_name']) ?>
-                                                            </td>
-                                                            <td><?= strtoupper($file['file_type']) ?></td>
-                                                            <td><?= formatFileSize($file['file_size']) ?></td>
-                                                            <td><?= htmlspecialchars($file['uploaded_by'] ?? 'Unknown') ?></td>
-                                                            <td><?= date('M j, Y H:i', strtotime($file['created_at'])) ?></td>
-                                                            <td>
-                                                                <div class="btn-group">
-                                                                    <a href="view_file.php?id=<?= $file['file_id'] ?>" 
-                                                                        class="btn btn-info btn-sm" title="View">
-                                                                        <i class="fas fa-eye"></i>
-                                                                    </a>
-                                                                    <a href="download_file.php?id=<?= $file['file_id'] ?>" 
-                                                                        class="btn btn-success btn-sm" title="Download">
-                                                                        <i class="fas fa-download"></i>
-                                                                    </a>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -1168,6 +1621,7 @@
 
     <?php include '../includes/mainfooter.php'; ?>
 </div>
+
 
 <!-- Activity Panel -->
 <div class="activity-panel" id="activityPanel">
@@ -3038,6 +3492,50 @@ $(document).on('change', '.permission-select, .expiry-input', function() {
     // You can add auto-save functionality here if desired
     // For now, we'll just enable the update button
     row.find('.update-share').prop('disabled', false);
+});
+
+function toggleView() {
+    const foldersGrid = document.getElementById('foldersGrid');
+    const isGridView = foldersGrid.style.display !== 'none';
+    
+    if (isGridView) {
+        foldersGrid.style.display = 'none';
+        // Show list view (you would need to implement this)
+    } else {
+        foldersGrid.style.display = 'grid';
+    }
+}
+
+// Enhanced folder hover effects
+document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth animations
+    const folderItems = document.querySelectorAll('.folder-item, .folder-item-grid');
+    folderItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+
+    // Add loading states
+    const buttons = document.querySelectorAll('.btn-modern');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.type === 'submit' || this.getAttribute('type') === 'submit') {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading...';
+                this.disabled = true;
+                
+                // Revert after 3 seconds if still loading
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }, 3000);
+            }
+        });
+    });
 });
 </script>
 </body>

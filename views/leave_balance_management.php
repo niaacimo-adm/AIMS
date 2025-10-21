@@ -4,12 +4,6 @@ require_once '../includes/auth.php';
 require_once '../config/database.php';
 require_once 'leave_functions.php';
 
-// Check if user is admin
-if ($_SESSION['role'] !== 'admin') {
-    header('Location: ../unauthorized.php');
-    exit;
-}
-
 $database = new Database();
 $db = $database->getConnection();
 $leaveFunctions = new LeaveFunctions();

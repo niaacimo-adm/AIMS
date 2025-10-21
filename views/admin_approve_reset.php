@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_request'])) {
     
     if ($action === 'approve') {
         // Get the reset request details
-        $query = "SELECT prr.*, e.first_name, e.last_name, e.email, e.emp_id 
+        $query = "SELECT prr.*, e.first_name, e.last_name, e.email, e.emp_id, e.id_number 
                   FROM password_reset_requests prr 
                   JOIN employee e ON prr.emp_id = e.emp_id 
                   WHERE prr.id = ?";
@@ -33,11 +33,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_request'])) {
         $request = $stmt->get_result()->fetch_assoc();
         
         if ($request) {
-            // Send notification to the requester with reset link
-            $reset_link = "http://192.168.1.100/AIMS/views/reset_password.php?token=" . $request['reset_token'];
-
-            // Update the notification message to open in new tab
-$notification_message = "Your password reset request has been approved. <button onclick=\"window.open('" . $reset_link . "', '_blank')\" style='color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;'>Click here to reset your password</button>";
+            // Generate employee number as username and temporary password
+            $employee_number = $request['id_number']; // Use existing ID number
+            $temporary_password = password_hash($employee_number, PASSWORD_DEFAULT);
+            
+            // Check if user account exists
+            $user_query = "SELECT id FROM users WHERE employee_id = ?";
+            $user_stmt = $db->prepare($user_query);
+            $user_stmt->bind_param("i", $request['emp_id']);
+            $user_stmt->execute();
+            $user_result = $user_stmt->get_result();
+            
+            if ($user_result->num_rows === 1) {
+                // Update existing user with employee number as username and password
+                $update_user = "UPDATE users SET user = ?, password = ? WHERE employee_id = ?";
+                $update_stmt = $db->prepare($update_user);
+                $update_stmt->bind_param("ssi", $employee_number, $temporary_password, $request['emp_id']);
+                $update_stmt->execute();
+            } else {
+                // Create new user with employee number as credentials
+                $default_role_id = 3; // Regular User role - adjust as needed
+                $insert_user = "INSERT INTO users (user, password, role_id, employee_id) VALUES (?, ?, ?, ?)";
+                $insert_stmt = $db->prepare($insert_user);
+                $insert_stmt->bind_param("ssii", $employee_number, $temporary_password, $default_role_id, $request['emp_id']);
+                $insert_stmt->execute();
+            }
+            
+            // Send notification to the requester with new login credentials
+            $notification_message = "Your password reset has been approved. You can now login using your ID Number: <strong>{$employee_number}</strong> as both your username and temporary password. Please change your password after logging in for security.";
             $notification_type = "password_reset_approved";
             $is_read = 0;
             
@@ -56,7 +79,7 @@ $notification_message = "Your password reset request has been approved. <button 
             
             $_SESSION['toast'] = [
                 'type' => 'success',
-                'message' => 'Password reset approved. Notification sent to the requester.'
+                'message' => 'Password reset approved. User can now login with ID Number as both username and password.'
             ];
         }
     } elseif ($action === 'reject') {
