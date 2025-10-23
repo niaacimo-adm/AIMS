@@ -488,6 +488,90 @@ while ($row = $result->fetch_assoc()) {
         font-size: 1.3rem;
         font-weight: 600;
     }
+    .profile-actions .btn-danger {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+    }
+
+    .profile-actions .btn-danger:hover {
+        background: linear-gradient(135deg, #c82333, #a71e2a);
+        transform: scale(1.1);
+    }
+    /* SweetAlert validation input styling */
+    .swal2-popup .form-control {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+    }
+
+    .swal2-popup .form-control:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        outline: none;
+    }
+
+    .swal2-popup .form-label {
+        font-weight: 500;
+        color: #374151;
+        text-align: left;
+        display: block;
+    }
+
+    /* Validation states */
+    .swal2-popup .form-control.is-valid {
+        border-color: #28a745;
+    }
+
+    .swal2-popup .form-control.is-invalid {
+        border-color: #dc3545;
+    }
+
+    /* SweetAlert custom width */
+    .swal2-popup {
+        width: auto !important;
+        max-width: 500px !important;
+    }
+    /* SweetAlert custom styles for delete confirmation */
+    .swal2-popup-custom {
+        width: 500px !important;
+    }
+
+    .swal2-popup .input-group {
+        width: 100%;
+    }
+
+    .swal2-popup .input-group-append .btn {
+        height: 42px;
+        border: 1px solid #ddd;
+        border-left: none;
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+
+    .swal2-popup .input-group-append .btn:hover {
+        background-color: #e9ecef;
+    }
+
+    .swal2-popup #showIdNumber {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+
+    .swal2-popup #idNumberDisplay {
+        font-family: 'Arial', monospace;
+        font-weight: bold;
+    }
+
+    /* Password input styling */
+    .swal2-popup input[type="password"] {
+        font-family: 'Arial', monospace;
+        letter-spacing: 1px;
+    }
+
+    .swal2-popup input[type="text"] {
+        font-family: 'Arial', monospace;
+    }
 </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -673,17 +757,23 @@ while ($row = $result->fetch_assoc()) {
                             <?php endif; ?>
                         </td>
                         <td>
-                          <div class="btn-group">
-                            <a href="emp.assign.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-primary">
-                              <i class="fas fa-tasks"></i>
-                            </a>
-                            <a href="emp.edit.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-warning">
-                              <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="emp.profile.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-secondary">
-                              <i class="fas fa-user"></i>
-                            </a>
-                          </div>
+                            <div class="btn-group">
+                                <a href="emp.assign.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-primary">
+                                <i class="fas fa-tasks"></i>
+                                </a>
+                                <a href="emp.edit.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="emp.profile.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-user"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger delete-employee" 
+                                        data-emp-id="<?= $employee['emp_id'] ?>" 
+                                        data-emp-name="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>"
+                                        data-emp-id-number="<?= htmlspecialchars($employee['id_number']) ?>">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                       </tr>
                       <?php endforeach; ?>
@@ -778,14 +868,21 @@ while ($row = $result->fetch_assoc()) {
                             </div>
                             <div class="profile-actions">
                                 <a href="emp.assign.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-primary" title="Assign">
-                                <i class="fas fa-tasks"></i>
+                                    <i class="fas fa-tasks"></i>
                                 </a>
                                 <a href="emp.edit.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-warning" title="Edit">
-                                <i class="fas fa-edit"></i>
+                                    <i class="fas fa-edit"></i>
                                 </a>
                                 <a href="emp.profile.php?emp_id=<?= $employee['emp_id'] ?>" class="btn btn-sm btn-secondary" title="Profile">
-                                <i class="fas fa-user"></i>
+                                    <i class="fas fa-user"></i>
                                 </a>
+                                <button type="button" class="btn btn-sm btn-danger delete-employee" 
+                                        data-emp-id="<?= $employee['emp_id'] ?>" 
+                                        data-emp-name="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>"
+                                        data-emp-id-number="<?= htmlspecialchars($employee['id_number']) ?>"
+                                        title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                             </div>
                             <?php endforeach; ?>
@@ -1003,6 +1100,214 @@ $(document).ready(function() {
             $('#profileGrid .card-body').css('height', availableHeight + 'px');
         }
     });
+});
+// Delete employee function with SweetAlert and Employee ID validation
+function deleteEmployee(empId, empName, empIdNumber) {
+    Swal.fire({
+        title: 'Confirm Deletion',
+        html: `<strong>You are about to delete employee:</strong><br>${empName}<br><br>
+               <span class="text-danger">This action cannot be undone!</span>
+               <div class="mt-3">
+                   <label for="confirmEmpId" class="form-label text-left d-block">
+                       <small>Please enter the Employee ID to confirm deletion:</small>
+                   </label>
+                   <div class="input-group">
+                       <input type="password" id="confirmEmpId" class="form-control" 
+                              placeholder="Enter Employee ID" 
+                              style="border: 1px solid #ddd; border-radius: 4px 0 0 4px; padding: 8px;">
+                       <div class="input-group-append">
+                           <button type="button" id="toggleIdVisibility" class="btn btn-outline-secondary" 
+                                   style="border: 1px solid #ddd; border-left: none; border-radius: 0 4px 4px 0;">
+                               <i class="fas fa-eye"></i>
+                           </button>
+                       </div>
+                   </div>
+                   <div id="empIdError" class="text-danger small mt-1" style="display: none;">
+                       Employee ID does not match!
+                   </div>
+               </div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Delete Employee',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-danger',
+            cancelButton: 'btn btn-secondary',
+            popup: 'swal2-popup-custom'
+        },
+        buttonsStyling: false,
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            const enteredId = document.getElementById('confirmEmpId').value.trim();
+            const errorDiv = document.getElementById('empIdError');
+            
+            if (!enteredId) {
+                errorDiv.textContent = 'Please enter the Employee ID';
+                errorDiv.style.display = 'block';
+                return false;
+            }
+            
+            // Compare with the actual Employee ID number (id_number from database)
+            if (enteredId !== empIdNumber.toString()) {
+                errorDiv.textContent = 'Employee ID does not match! Please try again.';
+                errorDiv.style.display = 'block';
+                return false;
+            }
+            
+            errorDiv.style.display = 'none';
+            return true;
+        },
+        didOpen: () => {
+            // Focus on the input field when modal opens
+            const input = document.getElementById('confirmEmpId');
+            input.focus();
+            
+            // Toggle password visibility
+            const toggleBtn = document.getElementById('toggleIdVisibility');
+            toggleBtn.addEventListener('click', function() {
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+            
+            // Show ID number toggle
+            const showIdBtn = document.getElementById('showIdNumber');
+            const idDisplay = document.getElementById('idNumberDisplay');
+            showIdBtn.addEventListener('click', function() {
+                if (idDisplay.style.display === 'none') {
+                    idDisplay.style.display = 'inline';
+                    this.innerHTML = '<i class="fas fa-times"></i> Hide ID Number';
+                    this.classList.remove('btn-outline-info');
+                    this.classList.add('btn-outline-warning');
+                } else {
+                    idDisplay.style.display = 'none';
+                    this.innerHTML = '<i class="fas fa-question-circle"></i> Show ID Number';
+                    this.classList.remove('btn-outline-warning');
+                    this.classList.add('btn-outline-info');
+                }
+            });
+            
+            // Add real-time validation
+            input.addEventListener('input', function() {
+                const errorDiv = document.getElementById('empIdError');
+                const enteredId = this.value.trim();
+                
+                if (enteredId && enteredId === empIdNumber.toString()) {
+                    errorDiv.style.display = 'none';
+                    input.style.borderColor = '#28a745';
+                } else if (enteredId) {
+                    input.style.borderColor = '#dc3545';
+                } else {
+                    input.style.borderColor = '#ddd';
+                    errorDiv.style.display = 'none';
+                }
+            });
+            
+            // Allow Enter key to confirm if ID matches
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const confirmButton = Swal.getConfirmButton();
+                    if (this.value.trim() === empIdNumber.toString()) {
+                        confirmButton.click();
+                    }
+                }
+            });
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            Swal.fire({
+                title: 'Deleting Employee...',
+                html: 'Please wait while we remove the employee record',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Perform AJAX delete request
+            $.ajax({
+                url: 'emp.delete.php',
+                type: 'POST',
+                data: {
+                    emp_id: empId
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response && typeof response === 'object') {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: response.message,
+                                confirmButtonColor: '#3085d6',
+                                timer: 3000,
+                                showConfirmButton: true,
+                                showClass: {
+                                    popup: 'animate__animated animate__fadeInDown'
+                                },
+                                hideClass: {
+                                    popup: 'animate__animated animate__fadeOutUp'
+                                }
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Delete Failed!',
+                                text: 'Failed to delete employee: ' + response.message,
+                                confirmButtonColor: '#3085d6'
+                            });
+                        }
+                    } else {
+                        console.error('Invalid JSON response:', response);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Invalid response from server. Please try again.',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', {
+                        status: status,
+                        error: error,
+                        response: xhr.responseText
+                    });
+                    
+                    let errorMessage = 'Failed to delete employee. ';
+                    
+                    if (xhr.status === 0) {
+                        errorMessage += 'Network error. Please check your connection.';
+                    } else if (xhr.status === 500) {
+                        errorMessage += 'Server error. Please try again later.';
+                    } else {
+                        errorMessage += 'Please try again.';
+                    }
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: errorMessage,
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            });
+        }
+    });
+}
+
+// Add event listeners for delete buttons
+$(document).on('click', '.delete-employee', function() {
+    const empId = $(this).data('emp-id');
+    const empName = $(this).data('emp-name');
+    const empIdNumber = $(this).data('emp-id-number');
+    deleteEmployee(empId, empName, empIdNumber);
 });
 </script>
 </body>

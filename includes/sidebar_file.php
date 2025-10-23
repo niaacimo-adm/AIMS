@@ -83,7 +83,7 @@ ob_end_clean();
 </aside>
 
 <style>
-.main-sidebar.sidebar-dark-maroon {
+/* .main-sidebar.sidebar-dark-maroon {
     background-color: #5a0a1d !important;
     position: fixed !important;
     top: 0 !important;
@@ -91,7 +91,7 @@ ob_end_clean();
     height: 100vh !important;
     z-index: 1030 !important;
     width: 250px !important;
-}
+} */
 
 .sidebar-dark-maroon .nav-sidebar > .nav-item > .nav-link {
     color: #c2c7d0 !important;

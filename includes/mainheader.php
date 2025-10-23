@@ -104,6 +104,14 @@ if ($employee_id) {
                             <span class="app-name">ICT Equipment Inventory</span>
                         </a>
                     </div>
+                    <div class="col-6">
+                        <a href="document_dashboard.php" class="app-item" data-theme="document">
+                            <div class="app-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <span class="app-name">Document Monitoring Records</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </li>
@@ -726,6 +734,11 @@ if ($employee_id) {
                 header: 'linear-gradient(135deg, #17a2b8, #138496)',
                 footer: 'linear-gradient(135deg, #17a2b8, #138496)',
                 class: 'theme-ict'
+            },
+            'document': {
+                header: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
+                footer: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
+                class: 'theme-document'
             }
         };
 
@@ -771,7 +784,6 @@ if ($employee_id) {
             }
         });
 
-    // Enhanced theme detection function
     function setThemeFromPage() {
         const currentPage = window.location.pathname;
         console.log('Current page:', currentPage);
@@ -786,6 +798,8 @@ if ($employee_id) {
             theme = 'inventory';
         } else if (currentPage.includes('file_management')) {
             theme = 'file';
+        } else if (currentPage.includes('document_') || currentPage.includes('documents_')) {
+            theme = 'document';
         } else if (currentPage.includes('dashboard')) {
             theme = 'admin';
         }

@@ -609,4 +609,7 @@ $(window).on('beforeunload', () => {
 .main-footer.theme-ict {
     background: linear-gradient(135deg, #17a2b8, #138496) !important;
 }
+.main-footer.theme-document {
+    background: linear-gradient(135deg, #556b2f, #2b2b2b) !important;
+}
 </style>

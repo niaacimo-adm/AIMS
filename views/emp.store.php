@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Handle file upload
         $picturePath = '';
-        if (isset($_FILES['picture'])) {
+        if (isset($_FILES['picture']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK) {
             $targetDir = "../dist/img/employees/";
             if (!is_dir($targetDir)) {
                 mkdir($targetDir, 0777, true);
@@ -47,8 +47,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $db->prepare($query);
 
-        // Bind parameters
-        $stmt->bind_param("sssssssssssiiii", 
+        if (!$stmt) {
+            throw new Exception("Failed to prepare statement: " . $db->error);
+        }
+
+        // Convert IDs to integers
+        $employment_status_id = (int)$_POST['employment_status_id'];
+        $appointment_status_id = (int)$_POST['appointment_status_id'];
+        $section_id = (int)$_POST['section_id'];
+        $office_id = (int)$_POST['office_id'];
+        $position_id = (int)$_POST['position_id'];
+
+        // Bind parameters - use 's' for strings and 'i' for integers
+        $stmt->bind_param("sssssssssssiiiii", 
             $picturePath,
             $_POST['id_number'],
             $_POST['first_name'],
@@ -60,11 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['bday'],
             $_POST['email'],
             $_POST['phone_number'],
-            $_POST['employment_status_id'],
-            $_POST['appointment_status_id'],
-            $_POST['section_id'],
-            $_POST['office_id'],
-            $_POST['position_id']
+            $employment_status_id,
+            $appointment_status_id,
+            $section_id,
+            $office_id,
+            $position_id
         );
 
         // Execute query

@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     <!-- Bootstrap CSS -->
-    <!-- <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback"> -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="plugins/fontawesome-free/css/all.min.css">
     <!-- Theme style -->
@@ -90,13 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             --nia-light-blue: #2a9863ff;
             --nia-gold: #d4af37;
             --nia-light-gold: #f4e4a6;
-            --nia-dark: #1a3c2e;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
         }
         
         body {
@@ -106,100 +99,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             justify-content: center;
             margin: 0;
-            background: linear-gradient(135deg, #1a3c2e 0%, #0f241b 100%);
-            overflow: hidden;
-            perspective: 1000px;
-        }
-        
-        .scene {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-            animation: sceneRotate 20s infinite linear;
-        }
-        
-        @keyframes sceneRotate {
-            0% { transform: rotateY(0deg); }
-            100% { transform: rotateY(360deg); }
-        }
-        
-        .floating-shapes {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-        }
-        
-        .shape {
-            position: absolute;
-            background: rgba(36, 231, 143, 0.1);
-            border: 1px solid rgba(36, 231, 143, 0.3);
-            border-radius: 10px;
-            animation: float 15s infinite ease-in-out;
-        }
-        
-        .shape:nth-child(1) {
-            width: 100px;
-            height: 100px;
-            top: 10%;
-            left: 10%;
-            animation-delay: 0s;
-        }
-        
-        .shape:nth-child(2) {
-            width: 150px;
-            height: 150px;
-            top: 60%;
-            left: 80%;
-            animation-delay: -5s;
-        }
-        
-        .shape:nth-child(3) {
-            width: 80px;
-            height: 80px;
-            top: 80%;
-            left: 20%;
-            animation-delay: -10s;
-        }
-        
-        .shape:nth-child(4) {
-            width: 120px;
-            height: 120px;
-            top: 20%;
-            left: 70%;
-            animation-delay: -7s;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
         }
         
         .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(36, 231, 143, 0.1),
-                0 0 50px rgba(36, 231, 143, 0.2);
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             overflow: hidden;
             width: 100%;
             max-width: 1000px;
+            border: none;
             position: relative;
-            transform-style: preserve-3d;
-            transform: rotateX(5deg) rotateY(-5deg);
-            transition: transform 0.5s ease, box-shadow 0.5s ease;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .login-container:hover {
-            transform: rotateX(0deg) rotateY(0deg) translateY(-10px);
-            box-shadow: 
-                0 35px 70px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(36, 231, 143, 0.3),
-                0 0 80px rgba(36, 231, 143, 0.4);
         }
         
         .login-left {
@@ -214,7 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             min-height: 500px;
             position: relative;
             overflow: hidden;
-            transform-style: preserve-3d;
         }
         
         .login-left::before {
@@ -224,55 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 0;
             right: 0;
             bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
-            opacity: 0.3;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><path fill="rgba(255,255,255,0.05)" d="M100,0 C155.228,0 200,44.772 200,100 C200,155.228 155.228,200 100,200 C44.772,200 0,155.228 0,100 C0,44.772 44.772,0 100,0 Z M100,30 C72.386,30 50,52.386 50,80 C50,107.614 72.386,130 100,130 C127.614,130 150,107.614 150,80 C150,52.386 127.614,30 100,30 Z"/></svg>');
+            background-size: 200px 200px;
+            background-position: center;
+            opacity: 0.1;
         }
         
-        .login-left::after {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            animation: shine 3s infinite;
-        }
-        
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-        }
-        
-        .logo-3d {
-            width: 180px;
-            height: 180px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 30px;
-            box-shadow: 
-                0 15px 35px rgba(0, 0, 0, 0.3),
-                inset 0 -5px 15px rgba(0, 0, 0, 0.1),
-                inset 0 5px 15px rgba(255, 255, 255, 0.8);
+        .login-left img {
+            max-width: 230px;
+            margin-bottom: 25px;
             position: relative;
             z-index: 1;
-            transform: translateZ(20px);
-            transition: transform 0.3s ease;
-        }
-        
-        .logo-3d:hover {
-            transform: translateZ(30px) scale(1.05);
-        }
-        
-        .logo-3d img {
-            max-width: 140px;
-            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
         }
         
         .login-left h2 {
@@ -281,8 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 1.8rem;
             position: relative;
             z-index: 1;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            transform: translateZ(10px);
         }
         
         .login-left h3 {
@@ -291,32 +160,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 600;
             position: relative;
             z-index: 1;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            transform: translateZ(10px);
         }
         
         .login-right {
             padding: 50px 40px;
-            background: rgba(255, 255, 255, 0.95);
+            background-color: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
             min-height: 500px;
-            position: relative;
-            transform-style: preserve-3d;
-        }
-        
-        .login-right::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 10% 20%, rgba(36, 231, 143, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 90% 80%, rgba(42, 152, 99, 0.05) 0%, transparent 50%);
-            z-index: 0;
         }
         
         .login-title {
@@ -326,7 +178,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
             font-size: 1.8rem;
             position: relative;
-            transform: translateZ(15px);
         }
         
         .login-title::after {
@@ -339,13 +190,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 3px;
             background: linear-gradient(to right, var(--nia-blue), var(--nia-light-blue));
             border-radius: 2px;
-            box-shadow: 0 2px 10px rgba(36, 231, 143, 0.5);
         }
         
         .form-group {
             margin-bottom: 25px;
-            position: relative;
-            transform-style: preserve-3d;
         }
         
         .form-group label {
@@ -354,80 +202,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 8px;
             display: block;
             font-size: 0.95rem;
-            transform: translateZ(10px);
         }
         
         .input-container {
             max-width: 400px;
             margin: 0 auto;
-            transform-style: preserve-3d;
-        }
-        
-        .input-group {
-            box-shadow: 
-                0 5px 15px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
-            border-radius: 10px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            transform-style: preserve-3d;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        
-        .input-group:focus-within {
-            box-shadow: 
-                0 10px 25px rgba(36, 231, 143, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
-            transform: translateY(-5px) translateZ(10px);
-            border-color: var(--nia-blue);
         }
         
         .form-control {
-            border-radius: 10px;
-            padding: 15px 20px;
-            border: none;
+            border-radius: 5px;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
             transition: all 0.3s ease;
             font-size: 0.95rem;
             height: auto;
             width: 100%;
-            background: transparent;
-            transform: translateZ(5px);
         }
         
         .form-control:focus {
-            outline: none;
-            box-shadow: none;
+            border-color: var(--nia-blue);
+            box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .input-group {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-radius: 5px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .input-group:focus-within {
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.1);
+            transform: translateY(-2px);
         }
         
         .input-group-text {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border: none;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-left: none;
             cursor: pointer;
             transition: all 0.3s ease;
-            padding: 0 20px;
-            min-width: 50px;
+            padding: 0 15px;
+            min-width: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transform: translateZ(5px);
         }
         
         .input-group-text:hover {
-            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            background-color: #e9ecef;
         }
         
         .password-toggle:hover {
-            transform: scale(1.1) translateZ(5px);
+            transform: scale(1.05);
+        }
+        
+        .input-group .form-control:not(:last-child) {
+            border-right: none;
         }
         
         .btn-login {
             background: linear-gradient(135deg, var(--nia-blue) 0%, var(--nia-light-blue) 100%);
             border: none;
             color: white;
-            padding: 15px;
+            padding: 12px;
             font-weight: 600;
-            border-radius: 10px;
+            border-radius: 5px;
             transition: all 0.3s ease;
             font-size: 1rem;
             margin-top: 10px;
@@ -438,51 +279,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%;
             position: relative;
             overflow: hidden;
-            box-shadow: 
-                0 10px 20px rgba(36, 231, 143, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transform: translateZ(15px);
         }
         
         .btn-login:hover {
-            transform: translateY(-5px) translateZ(20px);
-            box-shadow: 
-                0 15px 30px rgba(36, 231, 143, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
         }
         
         .btn-login:active {
-            transform: translateY(0) translateZ(15px);
+            transform: translateY(0);
         }
         
-        .btn-login::before {
+        .btn-login::after {
             content: "";
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s ease;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
         }
         
-        .btn-login:hover::before {
-            left: 100%;
+        .btn-login:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
         }
         
         .alert {
-            border-radius: 10px;
+            border-radius: 5px;
             border: none;
             font-weight: 500;
             margin-bottom: 25px;
-            padding: 15px 20px;
+            padding: 12px 15px;
             max-width: 400px;
             margin-left: auto;
             margin-right: auto;
-            background: rgba(220, 53, 69, 0.1);
-            color: #721c24;
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.2);
-            transform: translateZ(10px);
         }
         
         .password-toggle {
@@ -494,21 +339,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 0.9rem;
             margin-top: 30px;
             text-align: center;
-            transform: translateZ(5px);
         }
         
         .form-section {
             margin-bottom: 30px;
-            transform-style: preserve-3d;
         }
         
         .login-form-container {
             max-width: 400px;
             margin: 0 auto;
             width: 100%;
-            position: relative;
-            z-index: 1;
-            transform-style: preserve-3d;
         }
         
         /* Loader Styles */
@@ -518,7 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(26, 60, 46, 0.95);
+            background: rgba(30, 60, 114, 0.95);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -526,7 +366,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
-            transform-style: preserve-3d;
         }
         
         .loader-overlay.active {
@@ -541,7 +380,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             justify-content: center;
             align-items: center;
-            transform-style: preserve-3d;
         }
         
         .nia-loader-logo {
@@ -552,21 +390,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 
-                0 15px 35px rgba(0, 0, 0, 0.3),
-                inset 0 -5px 15px rgba(0, 0, 0, 0.1),
-                inset 0 5px 15px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
             position: relative;
             z-index: 2;
             overflow: hidden;
-            transform: translateZ(30px);
         }
         
         .nia-loader-logo img {
             width: 100px;
             height: auto;
             object-fit: contain;
-            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
         }
         
         .nia-loader-ring {
@@ -577,7 +410,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-top: 3px solid var(--nia-gold);
             border-radius: 50%;
             animation: spin 1.5s linear infinite;
-            transform-style: preserve-3d;
         }
         
         .nia-loader-ring:nth-child(2) {
@@ -600,8 +432,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 16px;
             font-weight: 600;
             text-align: center;
-            transform: translateZ(20px);
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
         .progress-bar {
@@ -611,7 +441,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 2px;
             margin-top: 15px;
             overflow: hidden;
-            transform: translateZ(15px);
         }
         
         .progress-fill {
@@ -620,19 +449,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--nia-gold);
             border-radius: 2px;
             transition: width 3s linear;
-            box-shadow: 0 0 10px var(--nia-gold);
         }
         
         .loader-content {
             display: flex;
             flex-direction: column;
             align-items: center;
-            transform-style: preserve-3d;
         }
         
         @keyframes spin {
-            0% { transform: rotate(0deg) translateZ(0); }
-            100% { transform: rotate(360deg) translateZ(0); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         @media (max-width: 768px) {
@@ -664,14 +491,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .alert {
                 max-width: 100%;
             }
-            
-            .login-container {
-                transform: none;
-            }
-            
-            .login-container:hover {
-                transform: translateY(-5px);
-            }
         }
         
         @media (max-width: 576px) {
@@ -680,7 +499,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             .login-container {
-                border-radius: 15px;
+                border-radius: 8px;
             }
             
             .login-left, .login-right {
@@ -705,28 +524,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .nia-loader-logo img {
                 width: 75px;
             }
-            
-            .logo-3d {
-                width: 140px;
-                height: 140px;
-            }
-            
-            .logo-3d img {
-                max-width: 110px;
-            }
         }
     </style>
 </head>
 <body>
-    <div class="scene">
-        <div class="floating-shapes">
-            <div class="shape"></div>
-            <div class="shape"></div>
-            <div class="shape"></div>
-            <div class="shape"></div>
-        </div>
-    </div>
-    
     <!-- Loader Overlay -->
     <div class="loader-overlay" id="loaderOverlay">
         <div class="loader-content">
@@ -748,9 +549,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="login-container">
         <div class="row no-gutters">
             <div class="col-md-6 login-left">
-                <div class="logo-3d">
-                    <img src="dist/img/nialogo.png" alt="NIA Logo">
-                </div>
+                <img src="dist/img/nialogo.png" alt="NIA Logo">
                 <h2>National Irrigation Administration</h2>
                 <h3>Albay-Catanduanes IMO</h3>
             </div>
@@ -848,23 +647,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Submit the form after 3 seconds
                     this.submit();
                 }, 3000);
-            });
-            
-            // Add subtle mouse move effect for 3D
-            $(document).on('mousemove', function(e) {
-                const x = (e.clientX / window.innerWidth - 0.5) * 10;
-                const y = (e.clientY / window.innerHeight - 0.5) * 10;
-                
-                $('.login-container').css({
-                    'transform': `rotateX(${y}deg) rotateY(${x}deg) translateY(-10px)`
-                });
-            });
-            
-            // Reset transform when mouse leaves
-            $('.login-container').on('mouseleave', function() {
-                $(this).css({
-                    'transform': 'rotateX(5deg) rotateY(-5deg)'
-                });
             });
         });
     </script>

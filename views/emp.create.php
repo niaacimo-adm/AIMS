@@ -157,7 +157,7 @@ if (session_status() === PHP_SESSION_NONE) {
     .modern-select {
         border-radius: 8px;
         border: 1px solid #e2e8f0;
-        padding: 12px 15px;
+        padding: 0px 15px;
         font-size: 14px;
         transition: all 0.3s ease;
         background: #ffffff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") right 12px center no-repeat;
@@ -167,6 +167,38 @@ if (session_status() === PHP_SESSION_NONE) {
     .modern-select:focus {
         border-color: #4f46e5;
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    .btn-default-image {
+        background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        color: white;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        margin-top: 10px;
+        width: 100%;
+    }
+    .btn-default-image:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: white;
+    }
+    .default-image-active {
+        border: 3px solid #10b981 !important;
+        background: #f0fdf4 !important;
+    }
+    .validation-error {
+        color: #ef4444;
+        font-size: 12px;
+        margin-top: 5px;
+        display: none;
+    }
+    .image-upload-area.error {
+        border-color: #ef4444 !important;
+        background: #fef2f2 !important;
     }
   </style>
 </head>
@@ -218,11 +250,11 @@ if (session_status() === PHP_SESSION_NONE) {
                   </div>
 
                   <div class="row">
-                    <!-- Image Upload -->
                     <div class="col-md-4 mb-4">
                       <label class="form-label required-field">Profile Picture</label>
-                      <div class="image-upload-area" onclick="document.getElementById('picture').click()">
-                        <input type="file" class="d-none" id="picture" name="picture" required onchange="previewImage(this)">
+                      <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('picture').click()">
+                        <input type="file" class="d-none" id="picture" name="picture" onchange="previewImage(this)">
+                        <input type="hidden" id="use_default_image" name="use_default_image" value="0">
                         <div id="uploadPlaceholder">
                           <i class="fas fa-cloud-upload-alt fa-3x mb-3" style="color: #9ca3af;"></i>
                           <p class="mb-1" style="color: #6b7280; font-weight: 500;">Click to upload photo</p>
@@ -236,6 +268,26 @@ if (session_status() === PHP_SESSION_NONE) {
                             <i class="fas fa-trash mr-1"></i> Remove Photo
                           </button>
                         </div>
+                      </div>
+                      <!-- Validation Error Message -->
+                      <div id="pictureError" class="validation-error">
+                        <i class="fas fa-exclamation-circle mr-1"></i>Please upload a profile picture or use the default image
+                      </div>
+                      <!-- Default Image Button -->
+                      <button type="button" class="btn btn-default-image" id="defaultImageBtn" onclick="useDefaultImage()">
+                        <i class="fas fa-user-circle mr-2"></i>Use Default Image
+                      </button>
+                      <!-- Default Image Preview -->
+                      <div id="defaultImagePreview" style="display: none; margin-top: 15px;">
+                        <div class="image-preview-container">
+                          <img src="../dist/img/nialogo.png" alt="Default Profile" class="img-fluid rounded">
+                        </div>
+                        <p class="text-success text-center mt-2 mb-0" style="font-weight: 600;">
+                          <i class="fas fa-check-circle mr-1"></i>Using Default Image
+                        </p>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="removeDefaultImage()">
+                          <i class="fas fa-times mr-1"></i> Remove Default
+                        </button>
                       </div>
                     </div>
 
@@ -268,7 +320,7 @@ if (session_status() === PHP_SESSION_NONE) {
                       <div class="row">
                         <div class="col-md-6 mb-3">
                           <label for="gender" class="form-label required-field">Gender</label>
-                          <select id="gender" name="gender" class="form-control" required>
+                          <select id="gender" name="gender" class="form-control modern-select" required>
                             <option value="">Select Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -318,7 +370,7 @@ if (session_status() === PHP_SESSION_NONE) {
                   <div class="row">
                     <div class="col-md-3 mb-3">
                       <label for="employment_status_id" class="form-label required-field">Employment Status</label>
-                      <select id="employment_status_id" name="employment_status_id" class="form-control" required>
+                      <select id="employment_status_id" name="employment_status_id" class="form-control modern-select" required>
                         <?php if (!empty($employmentStatuses)): ?>
                           <?php foreach ($employmentStatuses as $status): ?>
                             <option value="<?= htmlspecialchars($status['status_id']) ?>">
@@ -332,7 +384,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     </div>
                     <div class="col-md-3 mb-3">
                       <label for="appointment_status_id" class="form-label required-field">Appointment Status</label>
-                      <select id="appointment_status_id" name="appointment_status_id" class="form-control" required>
+                      <select id="appointment_status_id" name="appointment_status_id" class="form-control modern-select" required>
                         <?php if (!empty($appointmentStatuses)): ?>
                           <?php foreach ($appointmentStatuses as $status): ?>
                             <option value="<?= htmlspecialchars($status['appointment_id']) ?>">
@@ -346,7 +398,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     </div>
                     <div class="col-md-3 mb-3">
                       <label for="position_id" class="form-label required-field">Position</label>
-                      <select id="position_id" name="position_id" class="form-control" required>
+                      <select id="position_id" name="position_id" class="form-control modern-select" required>
                         <option value="" disabled selected>Select Position</option>
                         <?php if (!empty($positions)): ?>
                           <?php foreach ($positions as $position): ?>
@@ -361,7 +413,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     </div>
                     <div class="col-md-3 mb-3">
                       <label for="section_id" class="form-label required-field">Section</label>
-                      <select id="section_id" name="section_id" class="form-control" required>
+                      <select id="section_id" name="section_id" class="form-control modern-select" required>
                         <?php if (!empty($sections)): ?>
                           <?php foreach ($sections as $section): ?>
                             <option value="<?= htmlspecialchars($section['section_id']) ?>">
@@ -430,6 +482,11 @@ function previewImage(input) {
     const preview = document.getElementById('preview');
     const imagePreview = document.getElementById('imagePreview');
     const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const defaultImagePreview = document.getElementById('defaultImagePreview');
+    const defaultImageBtn = document.getElementById('defaultImageBtn');
+    const useDefaultImageInput = document.getElementById('use_default_image');
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    const pictureError = document.getElementById('pictureError');
     
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -438,6 +495,14 @@ function previewImage(input) {
             preview.src = e.target.result;
             imagePreview.style.display = 'block';
             uploadPlaceholder.style.display = 'none';
+            defaultImagePreview.style.display = 'none';
+            defaultImageBtn.style.display = 'block';
+            useDefaultImageInput.value = '0';
+            imageUploadArea.classList.remove('default-image-active');
+            
+            // Hide error message when image is selected
+            pictureError.style.display = 'none';
+            imageUploadArea.classList.remove('error');
         }
         
         reader.readAsDataURL(input.files[0]);
@@ -450,11 +515,86 @@ function removeImage() {
     const preview = document.getElementById('preview');
     const imagePreview = document.getElementById('imagePreview');
     const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const defaultImageBtn = document.getElementById('defaultImageBtn');
     
     fileInput.value = '';
     preview.src = '#';
     imagePreview.style.display = 'none';
     uploadPlaceholder.style.display = 'block';
+    defaultImageBtn.style.display = 'block';
+}
+
+// Use default image function
+function useDefaultImage() {
+    const fileInput = document.getElementById('picture');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const defaultImagePreview = document.getElementById('defaultImagePreview');
+    const defaultImageBtn = document.getElementById('defaultImageBtn');
+    const useDefaultImageInput = document.getElementById('use_default_image');
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    const pictureError = document.getElementById('pictureError');
+    
+    // Clear any uploaded file
+    fileInput.value = '';
+    
+    // Hide upload area and show default image
+    imagePreview.style.display = 'none';
+    uploadPlaceholder.style.display = 'none';
+    defaultImagePreview.style.display = 'block';
+    defaultImageBtn.style.display = 'none';
+    
+    // Set the flag to use default image
+    useDefaultImageInput.value = '1';
+    
+    // Add visual indicator
+    imageUploadArea.classList.add('default-image-active');
+    
+    // Hide error message when default image is selected
+    pictureError.style.display = 'none';
+    imageUploadArea.classList.remove('error');
+}
+
+// Remove default image function
+function removeDefaultImage() {
+    const fileInput = document.getElementById('picture');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const defaultImagePreview = document.getElementById('defaultImagePreview');
+    const defaultImageBtn = document.getElementById('defaultImageBtn');
+    const useDefaultImageInput = document.getElementById('use_default_image');
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    
+    // Reset everything
+    fileInput.value = '';
+    imagePreview.style.display = 'none';
+    uploadPlaceholder.style.display = 'block';
+    defaultImagePreview.style.display = 'none';
+    defaultImageBtn.style.display = 'block';
+    useDefaultImageInput.value = '0';
+    imageUploadArea.classList.remove('default-image-active');
+}
+
+// Check if profile picture is provided
+function validateProfilePicture() {
+    const fileInput = document.getElementById('picture');
+    const useDefaultImageInput = document.getElementById('use_default_image');
+    const pictureError = document.getElementById('pictureError');
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    
+    // Check if either a file is uploaded OR default image is selected
+    const hasFile = fileInput.files && fileInput.files.length > 0;
+    const hasDefaultImage = useDefaultImageInput.value === '1';
+    
+    if (!hasFile && !hasDefaultImage) {
+        pictureError.style.display = 'block';
+        imageUploadArea.classList.add('error');
+        return false;
+    } else {
+        pictureError.style.display = 'none';
+        imageUploadArea.classList.remove('error');
+        return true;
+    }
 }
 
 // Show existing image in edit mode
@@ -463,10 +603,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const preview = document.getElementById('preview');
     const imagePreview = document.getElementById('imagePreview');
     const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const defaultImagePreview = document.getElementById('defaultImagePreview');
+    const defaultImageBtn = document.getElementById('defaultImageBtn');
     
     preview.src = '../assets/images/employees/<?= $employee['picture'] ?>';
     imagePreview.style.display = 'block';
     uploadPlaceholder.style.display = 'none';
+    defaultImagePreview.style.display = 'none';
+    defaultImageBtn.style.display = 'block';
 });
 <?php endif; ?>
 
@@ -478,6 +622,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let isValid = true;
         const requiredFields = form.querySelectorAll('[required]');
         
+        // Validate required fields
         requiredFields.forEach(field => {
             if (!field.value.trim()) {
                 isValid = false;
@@ -486,12 +631,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // Validate profile picture
+        const pictureValid = validateProfilePicture();
+        if (!pictureValid) {
+            isValid = false;
+            
+            // Scroll to the profile picture section
+            document.getElementById('imageUploadArea').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }
+        
         if (!isValid) {
             e.preventDefault();
             Swal.fire({
                 icon: 'warning',
                 title: 'Missing Information',
-                text: 'Please fill in all required fields marked with *',
+                text: 'Please fill in all required fields including profile picture',
                 confirmButtonColor: '#4f46e5'
             });
         }
@@ -512,6 +669,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.style.boxShadow = 'none';
             }
         });
+    });
+    
+    // Validate profile picture when interacting with the image area
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    const defaultImageBtn = document.getElementById('defaultImageBtn');
+    
+    imageUploadArea.addEventListener('click', function() {
+        // This will trigger when user clicks to upload, validation will happen on file selection
+    });
+    
+    defaultImageBtn.addEventListener('click', function() {
+        // Validation will be handled in the useDefaultImage function
     });
 });
 </script>
