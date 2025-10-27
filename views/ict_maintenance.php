@@ -32,11 +32,11 @@ if ($equipment_id) {
 
     if ($equipment) {
         // Get maintenance history for this equipment
-        $maintenance_query = "SELECT m.*, e.first_name, e.last_name 
-                             FROM ict_maintenance m 
-                             LEFT JOIN employee e ON m.reported_by = e.emp_id 
-                             WHERE m.equipment_id = ? 
-                             ORDER BY m.report_date DESC";
+        $maintenance_query = "SELECT m.*, e.first_name, e.last_name, m.assigned_technician
+                            FROM ict_maintenance m 
+                            LEFT JOIN employee e ON m.reported_by = e.emp_id 
+                            WHERE m.equipment_id = ? 
+                            ORDER BY m.report_date DESC";
         $maintenance_stmt = $db->prepare($maintenance_query);
         $maintenance_stmt->bind_param("i", $equipment_id);
         $maintenance_stmt->execute();
@@ -269,6 +269,7 @@ $equipment_list = $equipment_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                                                     <th>Description</th>
                                                     <th>Priority</th>
                                                     <th>Status</th>
+                                                    <th>Assigned Technician</th>
                                                     <th>Reported By</th>
                                                 </tr>
                                             </thead>
@@ -293,6 +294,22 @@ $equipment_list = $equipment_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                                                                 ($record['status'] == 'Pending' ? 'warning' : 'secondary')) ?>">
                                                                 <?= $record['status'] ?>
                                                             </span>
+                                                        </td>
+                                                        <td>
+                                                            <?php if (!empty($record['assigned_technician'])): ?>
+                                                                <?php 
+                                                                // Get technician name if assigned
+                                                                $tech_query = "SELECT first_name, last_name FROM employee WHERE emp_id = ?";
+                                                                $tech_stmt = $db->prepare($tech_query);
+                                                                $tech_stmt->bind_param("i", $record['assigned_technician']);
+                                                                $tech_stmt->execute();
+                                                                $tech_result = $tech_stmt->get_result();
+                                                                $technician = $tech_result->fetch_assoc();
+                                                                echo htmlspecialchars($technician['first_name'] . ' ' . $technician['last_name']);
+                                                                ?>
+                                                            <?php else: ?>
+                                                                <span class="text-muted">Not assigned</span>
+                                                            <?php endif; ?>
                                                         </td>
                                                         <td><?= htmlspecialchars($record['first_name'] . ' ' . $record['last_name']) ?></td>
                                                     </tr>

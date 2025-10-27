@@ -1,31 +1,102 @@
 <?php
+// Start output buffering at the very beginning
+if (ob_get_level() == 0) {
+    ob_start();
+}
+
 session_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
 
+// Enable error reporting for debugging (remove in production)
+// ini_set('display_errors', 0);
+// error_reporting(0);
+
 if (!hasPermission('manage_ict_maintenance')) {
-    header('Location: ../unauthorized.php');
-    exit();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+        // Clean all output buffers
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+        exit();
+    } else {
+        // Clean buffers before redirect
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Location: ../unauthorized.php');
+        exit();
+    }
 }
 
 $database = new Database();
 $db = $database->getConnection();
 
+// Check database connection
+if ($db->connect_error) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $db->connect_error]);
+        exit();
+    }
+    // Clean buffers before dying
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    die('Database connection failed');
+}
+
 // Handle AJAX requests for maintenance operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Clean all output buffers completely
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // Set JSON header
     header('Content-Type: application/json');
     
-    switch ($_POST['action']) {
-        case 'update_maintenance_status':
-            echo updateMaintenanceStatus($db);
-            exit();
-        case 'add_maintenance_note':
-            echo addMaintenanceNote($db);
-            exit();
-        case 'assign_technician':
-            echo assignTechnician($db);
-            exit();
+    try {
+        $response = '';
+        switch ($_POST['action']) {
+            case 'update_maintenance_status':
+                $response = updateMaintenanceStatus($db);
+                break;
+            case 'add_maintenance_note':
+                $response = addMaintenanceNote($db);
+                break;
+            case 'assign_technician':
+                $response = assignTechnician($db);
+                break;
+            case 'delete_maintenance':
+                $response = deleteMaintenance($db);
+                break;
+            default:
+                $response = json_encode(['success' => false, 'message' => 'Invalid action']);
+                break;
+        }
+        
+        // Ensure response is valid JSON
+        if ($response === false || $response === null) {
+            $response = json_encode(['success' => false, 'message' => 'Invalid response from server function']);
+        }
+        
+        echo $response;
+        
+    } catch (Exception $e) {
+        // Ensure clean output before error response
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
     }
+    
+    exit();
 }
 
 function updateMaintenanceStatus($db) {
@@ -37,28 +108,40 @@ function updateMaintenanceStatus($db) {
         return json_encode(['success' => false, 'message' => 'Maintenance ID and status are required']);
     }
     
-    if ($status === 'Completed') {
-        $query = "UPDATE ict_maintenance SET status = ?, resolution_notes = ?, resolved_date = NOW() WHERE maintenance_id = ?";
-        $stmt = $db->prepare($query);
-        $stmt->bind_param("ssi", $status, $resolution_notes, $maintenance_id);
-    } else {
-        $query = "UPDATE ict_maintenance SET status = ?, resolution_notes = ? WHERE maintenance_id = ?";
-        $stmt = $db->prepare($query);
-        $stmt->bind_param("ssi", $status, $resolution_notes, $maintenance_id);
-    }
-    
-    if ($stmt->execute()) {
-        // Update equipment status if maintenance is completed
+    try {
         if ($status === 'Completed') {
-            $equipment_query = "UPDATE ict_equipment SET status = 'Available' WHERE equipment_id = (SELECT equipment_id FROM ict_maintenance WHERE maintenance_id = ?)";
-            $equipment_stmt = $db->prepare($equipment_query);
-            $equipment_stmt->bind_param("i", $maintenance_id);
-            $equipment_stmt->execute();
+            $query = "UPDATE ict_maintenance SET status = ?, resolution_notes = ?, resolved_date = NOW() WHERE maintenance_id = ?";
+            $stmt = $db->prepare($query);
+            if (!$stmt) {
+                return json_encode(['success' => false, 'message' => 'Database prepare error: ' . $db->error]);
+            }
+            $stmt->bind_param("ssi", $status, $resolution_notes, $maintenance_id);
+        } else {
+            $query = "UPDATE ict_maintenance SET status = ?, resolution_notes = ? WHERE maintenance_id = ?";
+            $stmt = $db->prepare($query);
+            if (!$stmt) {
+                return json_encode(['success' => false, 'message' => 'Database prepare error: ' . $db->error]);
+            }
+            $stmt->bind_param("ssi", $status, $resolution_notes, $maintenance_id);
         }
         
-        return json_encode(['success' => true, 'message' => 'Maintenance status updated successfully']);
-    } else {
-        return json_encode(['success' => false, 'message' => 'Failed to update maintenance status: ' . $db->error]);
+        if ($stmt->execute()) {
+            // Update equipment status if maintenance is completed
+            if ($status === 'Completed') {
+                $equipment_query = "UPDATE ict_equipment SET status = 'Available' WHERE equipment_id = (SELECT equipment_id FROM ict_maintenance WHERE maintenance_id = ?)";
+                $equipment_stmt = $db->prepare($equipment_query);
+                if ($equipment_stmt) {
+                    $equipment_stmt->bind_param("i", $maintenance_id);
+                    $equipment_stmt->execute();
+                }
+            }
+            
+            return json_encode(['success' => true, 'message' => 'Maintenance status updated successfully']);
+        } else {
+            return json_encode(['success' => false, 'message' => 'Failed to update maintenance status: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        return json_encode(['success' => false, 'message' => 'Error updating status: ' . $e->getMessage()]);
     }
 }
 
@@ -71,14 +154,21 @@ function addMaintenanceNote($db) {
         return json_encode(['success' => false, 'message' => 'Maintenance ID and note are required']);
     }
     
-    $query = "INSERT INTO ict_maintenance_notes (maintenance_id, note, added_by) VALUES (?, ?, ?)";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("isi", $maintenance_id, $note, $added_by);
-    
-    if ($stmt->execute()) {
-        return json_encode(['success' => true, 'message' => 'Note added successfully']);
-    } else {
-        return json_encode(['success' => false, 'message' => 'Failed to add note: ' . $db->error]);
+    try {
+        $query = "INSERT INTO ict_maintenance_notes (maintenance_id, note, added_by) VALUES (?, ?, ?)";
+        $stmt = $db->prepare($query);
+        if (!$stmt) {
+            return json_encode(['success' => false, 'message' => 'Database prepare error: ' . $db->error]);
+        }
+        $stmt->bind_param("isi", $maintenance_id, $note, $added_by);
+        
+        if ($stmt->execute()) {
+            return json_encode(['success' => true, 'message' => 'Note added successfully']);
+        } else {
+            return json_encode(['success' => false, 'message' => 'Failed to add note: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        return json_encode(['success' => false, 'message' => 'Error adding note: ' . $e->getMessage()]);
     }
 }
 
@@ -90,14 +180,61 @@ function assignTechnician($db) {
         return json_encode(['success' => false, 'message' => 'Maintenance ID and technician are required']);
     }
     
-    $query = "UPDATE ict_maintenance SET assigned_technician = ?, assigned_date = NOW(), status = 'In Progress' WHERE maintenance_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("ii", $technician_id, $maintenance_id);
+    try {
+        $query = "UPDATE ict_maintenance SET assigned_technician = ?, assigned_date = NOW(), status = 'In Progress' WHERE maintenance_id = ?";
+        $stmt = $db->prepare($query);
+        if (!$stmt) {
+            return json_encode(['success' => false, 'message' => 'Database prepare error: ' . $db->error]);
+        }
+        $stmt->bind_param("ii", $technician_id, $maintenance_id);
+        
+        if ($stmt->execute()) {
+            return json_encode(['success' => true, 'message' => 'Technician assigned successfully']);
+        } else {
+            return json_encode(['success' => false, 'message' => 'Failed to assign technician: ' . $stmt->error]);
+        }
+    } catch (Exception $e) {
+        return json_encode(['success' => false, 'message' => 'Error assigning technician: ' . $e->getMessage()]);
+    }
+}
+
+function deleteMaintenance($db) {
+    $maintenance_id = $_POST['maintenance_id'] ?? '';
     
-    if ($stmt->execute()) {
-        return json_encode(['success' => true, 'message' => 'Technician assigned successfully']);
-    } else {
-        return json_encode(['success' => false, 'message' => 'Failed to assign technician: ' . $db->error]);
+    if (empty($maintenance_id)) {
+        return json_encode(['success' => false, 'message' => 'Maintenance ID is required']);
+    }
+    
+    // Start transaction
+    $db->begin_transaction();
+    
+    try {
+        // First delete related notes
+        $delete_notes_query = "DELETE FROM ict_maintenance_notes WHERE maintenance_id = ?";
+        $delete_notes_stmt = $db->prepare($delete_notes_query);
+        if (!$delete_notes_stmt) {
+            throw new Exception('Failed to prepare notes deletion: ' . $db->error);
+        }
+        $delete_notes_stmt->bind_param("i", $maintenance_id);
+        $delete_notes_stmt->execute();
+        
+        // Then delete the maintenance record
+        $delete_query = "DELETE FROM ict_maintenance WHERE maintenance_id = ?";
+        $delete_stmt = $db->prepare($delete_query);
+        if (!$delete_stmt) {
+            throw new Exception('Failed to prepare maintenance deletion: ' . $db->error);
+        }
+        $delete_stmt->bind_param("i", $maintenance_id);
+        
+        if ($delete_stmt->execute()) {
+            $db->commit();
+            return json_encode(['success' => true, 'message' => 'Maintenance record deleted successfully']);
+        } else {
+            throw new Exception('Failed to execute deletion: ' . $delete_stmt->error);
+        }
+    } catch (Exception $e) {
+        $db->rollback();
+        return json_encode(['success' => false, 'message' => 'Error deleting maintenance record: ' . $e->getMessage()]);
     }
 }
 
@@ -112,7 +249,9 @@ $query = "SELECT m.maintenance_id,
                  m.status,
                  m.report_date,
                  m.assigned_technician,
-                 m.description
+                 m.description,
+                 m.resolution_notes,
+                 m.resolved_date
           FROM ict_maintenance m
           LEFT JOIN ict_equipment e ON m.equipment_id = e.equipment_id
           LEFT JOIN ict_equipment_categories c ON e.category_id = c.category_id
@@ -130,6 +269,11 @@ $tech_query = "SELECT e.emp_id, e.first_name, e.last_name
                WHERE u.role_id IN (1, 20)"; // Administrator (1) and Focal Person (ICT) (20)
 $tech_result = $db->query($tech_query);
 $technicians = $tech_result ? $tech_result->fetch_all(MYSQLI_ASSOC) : [];
+
+// Clean any output buffers before HTML output
+while (ob_get_level() > 1) {
+    ob_end_clean();
+}
 ?>
 
 <!DOCTYPE html>
@@ -139,8 +283,6 @@ $technicians = $tech_result ? $tech_result->fetch_all(MYSQLI_ASSOC) : [];
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ICT Maintenance Management - NIA ACIMO</title>
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css"/>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap4.min.css"/>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -244,6 +386,12 @@ $technicians = $tech_result ? $tech_result->fetch_all(MYSQLI_ASSOC) : [];
                                                         <i class="fas fa-sync-alt"></i>
                                                     </button>
                                                 <?php endif; ?>
+                                                <button class="btn btn-danger btn-sm delete-maintenance" 
+                                                        data-id="<?= $request['maintenance_id'] ?>"
+                                                        data-equipment="<?= htmlspecialchars($request['equipment_name']) ?>"
+                                                        data-toggle="tooltip" title="Delete Request">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -348,8 +496,29 @@ $technicians = $tech_result ? $tech_result->fetch_all(MYSQLI_ASSOC) : [];
 
 <?php include '../includes/footer.php'; ?>
 
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+
 <script>
 $(document).ready(function() {
+    // Check if SweetAlert2 is loaded
+    if (typeof Swal === 'undefined') {
+        console.error('SweetAlert2 is not loaded properly');
+        // Fallback to basic alerts
+        window.showSweetAlert = function(icon, message) {
+            alert(message);
+        };
+    } else {
+        console.log('SweetAlert2 loaded successfully');
+    }
+
     // Initialize DataTable if there are records
     <?php if (!empty($maintenance_requests)): ?>
     $('#maintenanceTable').DataTable({
@@ -387,7 +556,8 @@ $(document).ready(function() {
                 $('#maintenanceDetails').html(response);
                 $('#viewMaintenanceModal').modal('show');
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('Error loading maintenance details:', error);
                 $('#maintenanceDetails').html('<div class="alert alert-danger">Error loading maintenance details. Please try again.</div>');
                 $('#viewMaintenanceModal').modal('show');
             }
@@ -401,11 +571,44 @@ $(document).ready(function() {
         $('#assignTechnicianModal').modal('show');
     });
 
-    // Update Status
+    // Update Status with SweetAlert Confirmation
     $(document).on('click', '.update-status', function() {
         const maintenanceId = $(this).data('id');
+        const equipmentName = $(this).closest('tr').find('td:eq(1) strong').text().trim();
+        const currentStatus = $(this).closest('tr').find('td:eq(4) .badge').text().trim();
+        
+        // Set the maintenance ID and pre-select current status
         $('#status_maintenance_id').val(maintenanceId);
+        
+        // Pre-select the current status in the dropdown
+        $('#updateStatusModal select[name="status"]').val(currentStatus);
+        
+        // Store equipment name for reference (optional)
+        $('#updateStatusModal').data('equipment-name', equipmentName);
+        
         $('#updateStatusModal').modal('show');
+    });
+
+    // Delete Maintenance
+    $(document).on('click', '.delete-maintenance', function() {
+        const maintenanceId = $(this).data('id');
+        const equipmentName = $(this).data('equipment');
+        
+        Swal.fire({
+            title: 'Are you sure?',
+            html: `You are about to delete the maintenance request for <strong>"${equipmentName}"</strong>. This action cannot be undone!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteMaintenanceRequest(maintenanceId);
+            }
+        });
     });
 
     // Assign Technician Form
@@ -414,65 +617,209 @@ $(document).ready(function() {
         const formData = new FormData(this);
         formData.append('action', 'assign_technician');
         
+        // Show loading state
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Assigning...').prop('disabled', true);
+        
         $.ajax({
-            url: '',
+            url: 'ict_maintenance_management.php',
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
             success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    $('#assignTechnicianModal').modal('hide');
-                    showAlert('success', result.message);
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showAlert('error', result.message);
+                console.log('Assign Technician Response:', response);
+                
+                try {
+                    const result = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (result.success) {
+                        $('#assignTechnicianModal').modal('hide');
+                        showSweetAlert('success', result.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showSweetAlert('error', result.message);
+                    }
+                } catch (e) {
+                    console.error('JSON Parse Error:', e);
+                    console.error('Response was:', response);
+                    showSweetAlert('error', 'Invalid response from server. Please check console for details.');
                 }
+                submitBtn.html(originalText).prop('disabled', false);
             },
-            error: function() {
-                showAlert('error', 'Error assigning technician. Please try again.');
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                console.error('Response Text:', xhr.responseText);
+                showSweetAlert('error', 'Error assigning technician: ' + error);
+                submitBtn.html(originalText).prop('disabled', false);
             }
         });
     });
 
-    // Update Status Form
+    // Update Status Form with SweetAlert on submission
     $('#updateStatusForm').on('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
-        formData.append('action', 'update_maintenance_status');
+        const newStatus = formData.get('status');
+        const resolutionNotes = formData.get('resolution_notes');
+        const equipmentName = $('#updateStatusModal').data('equipment-name') || 'the equipment';
+        
+        // Show confirmation SweetAlert before submitting
+        Swal.fire({
+            title: 'Confirm Status Update',
+            html: `Are you sure you want to update the status for <strong>"${equipmentName}"</strong> to <span class="badge badge-info">${newStatus}</span>?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#17a2b8',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Update Status',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Proceed with the AJAX request
+                submitStatusUpdate(formData);
+            }
+        });
+    });
+
+ // Function to handle status update submission
+    function submitStatusUpdate(formData) {
+        // Show loading state
+        const submitBtn = $('#updateStatusForm').find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Updating...').prop('disabled', true);
         
         $.ajax({
-            url: '',
+            url: 'ict_maintenance_management.php',
             type: 'POST',
             data: formData,
             processData: false,
             contentType: false,
             success: function(response) {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    $('#updateStatusModal').modal('hide');
-                    showAlert('success', result.message);
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showAlert('error', result.message);
+                console.log('Update Status Response:', response);
+                
+                try {
+                    const result = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (result.success) {
+                        $('#updateStatusModal').modal('hide');
+                        showSweetAlert('success', result.message, 'Status Updated Successfully');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showSweetAlert('error', result.message);
+                    }
+                } catch (e) {
+                    console.error('JSON Parse Error:', e);
+                    console.error('Response was:', response);
+                    showSweetAlert('error', 'Invalid response from server. Please check console for details.');
                 }
+                submitBtn.html(originalText).prop('disabled', false);
             },
-            error: function() {
-                showAlert('error', 'Error updating status. Please try again.');
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                console.error('Response Text:', xhr.responseText);
+                showSweetAlert('error', 'Error updating status: ' + error);
+                submitBtn.html(originalText).prop('disabled', false);
             }
         });
+    }
+    // Delete Maintenance Function
+    function deleteMaintenanceRequest(maintenanceId) {
+        // Show loading SweetAlert
+        Swal.fire({
+            title: 'Deleting...',
+            text: 'Please wait while we delete the maintenance request.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        const formData = new FormData();
+        formData.append('action', 'delete_maintenance');
+        formData.append('maintenance_id', maintenanceId);
+        
+        $.ajax({
+            url: 'ict_maintenance_management.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                Swal.close();
+                console.log('Delete Response:', response);
+                
+                try {
+                    const result = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (result.success) {
+                        showSweetAlert('success', result.message, 'Deleted Successfully');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showSweetAlert('error', result.message);
+                    }
+                } catch (e) {
+                    console.error('JSON Parse Error:', e);
+                    console.error('Response was:', response);
+                    showSweetAlert('error', 'Invalid response from server. Please check console for details.');
+                }
+            },
+            error: function(xhr, status, error) {
+                Swal.close();
+                console.error('AJAX Error:', status, error);
+                console.error('Response Text:', xhr.responseText);
+                showSweetAlert('error', 'Error deleting maintenance request: ' + error);
+            }
+        });
+    }
+
+    // SweetAlert function for success/error messages
+    function showSweetAlert(icon, message, title = '') {
+        // Fallback if SweetAlert2 is not loaded
+        if (typeof Swal === 'undefined') {
+            alert((title || (icon === 'success' ? 'Success!' : 'Error!')) + ': ' + message);
+            return;
+        }
+
+        const alertTitle = title || (icon === 'success' ? 'Success!' : 'Error!');
+        const confirmButtonColor = icon === 'success' ? '#28a745' : '#dc3545';
+        
+        Swal.fire({
+            title: alertTitle,
+            text: message,
+            icon: icon,
+            confirmButtonColor: confirmButtonColor,
+            confirmButtonText: 'OK',
+            timer: icon === 'success' ? 2000 : 4000,
+            timerProgressBar: true,
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp'
+            }
+        });
+    }
+
+    // Initialize tooltips
+    $('[data-toggle="tooltip"]').tooltip();
+
+    // Reset form and clear resolution notes when modal is closed
+    $('#updateStatusModal').on('hidden.bs.modal', function () {
+        $(this).find('form')[0].reset();
+        // Clear resolution notes specifically
+        $(this).find('textarea[name="resolution_notes"]').val('');
     });
 
-    function showAlert(type, message) {
-        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-        const alertHtml = `<div class="alert ${alertClass} alert-dismissible">
-            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-            ${message}
-        </div>`;
-        $('.content-wrapper').prepend(alertHtml);
-        setTimeout(() => $('.alert').alert('close'), 5000);
-    }
+    // Clear resolution notes when status changes from "Completed" to something else
+    $('#updateStatusModal select[name="status"]').on('change', function() {
+        if ($(this).val() !== 'Completed') {
+            $('#updateStatusModal textarea[name="resolution_notes"]').val('');
+        }
+    });
+
+    $('#assignTechnicianModal').on('hidden.bs.modal', function () {
+        $(this).find('form')[0].reset();
+    });
 });
 </script>
 </body>
