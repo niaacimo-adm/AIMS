@@ -112,6 +112,14 @@ if ($employee_id) {
                             <span class="app-name">Document Monitoring Records</span>
                         </a>
                     </div>
+                    <div class="col-6">
+                        <a href="scrum.php" class="app-item" data-theme="scrum">
+                            <div class="app-icon">
+                                <i class="fas fa-scroll"></i>
+                            </div>
+                            <span class="app-name">Scrum Board</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </li>
@@ -739,6 +747,11 @@ if ($employee_id) {
                 header: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
                 footer: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
                 class: 'theme-document'
+            },
+            'scrum': {
+                header: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                footer: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                class: 'theme-scrum'
             }
         };
 
@@ -800,6 +813,8 @@ if ($employee_id) {
             theme = 'file';
         } else if (currentPage.includes('document_') || currentPage.includes('documents_')) {
             theme = 'document';
+        } else if (currentPage.includes('scrum') || currentPage.includes('scrumboard')) {
+            theme = 'scrum';
         } else if (currentPage.includes('dashboard')) {
             theme = 'admin';
         }
@@ -852,7 +867,9 @@ $(window).on('load', function() {
             'service': 'linear-gradient(135deg, #ffc107, #fd7e14)',
             'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
             'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
-            'ict': 'linear-gradient(135deg, #17a2b8, #138496)'
+            'ict': 'linear-gradient(135deg, #17a2b8, #138496)',
+            'document': 'linear-gradient(135deg, #556b2f, #2b2b2b)',
+            'scrum': 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
         };
         
         if (themes[currentTheme]) {
@@ -860,9 +877,9 @@ $(window).on('load', function() {
             $('#mainFooter').css('background', themes[currentTheme]);
             
             // Also update theme classes
-            $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict')
+            $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum')
                             .addClass('theme-' + currentTheme);
-            $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict')
+            $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum')
                           .addClass('theme-' + currentTheme);
             
             console.log('Theme applied:', currentTheme);

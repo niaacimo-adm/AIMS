@@ -612,4 +612,7 @@ $(window).on('beforeunload', () => {
 .main-footer.theme-document {
     background: linear-gradient(135deg, #556b2f, #2b2b2b) !important;
 }
+.main-footer.theme-scrum {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED) !important;
+}
 </style>
