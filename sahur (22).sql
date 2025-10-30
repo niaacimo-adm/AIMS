@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 28, 2025 at 09:55 AM
+-- Generation Time: Oct 30, 2025 at 08:57 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -965,6 +965,62 @@ INSERT INTO `iar_records` (`id`, `iar_number`, `pr_number`, `po_number`, `po_dat
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `ia_officers`
+--
+
+CREATE TABLE `ia_officers` (
+  `id` int(11) NOT NULL,
+  `ia_profile_id` int(11) DEFAULT NULL,
+  `officer_name` varchar(255) DEFAULT NULL,
+  `position` varchar(100) DEFAULT NULL,
+  `contact_number` varchar(20) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ia_profiles`
+--
+
+CREATE TABLE `ia_profiles` (
+  `id` int(11) NOT NULL,
+  `ia_name` varchar(255) NOT NULL,
+  `ia_code` varchar(50) DEFAULT NULL,
+  `mailing_address` text DEFAULT NULL,
+  `president_name` varchar(255) DEFAULT NULL,
+  `contact_number` varchar(20) DEFAULT NULL,
+  `date_organized` date DEFAULT NULL,
+  `sec_registration_date` date DEFAULT NULL,
+  `sec_registration_number` varchar(100) DEFAULT NULL,
+  `ia_tin` varchar(50) DEFAULT NULL,
+  `service_area_ha` decimal(10,4) DEFAULT NULL,
+  `fusa_ha` decimal(10,4) DEFAULT NULL,
+  `farmer_beneficiaries` int(11) DEFAULT NULL,
+  `actual_ia_members` int(11) DEFAULT NULL,
+  `tsags_count` int(11) DEFAULT NULL,
+  `existing_contract` varchar(100) DEFAULT NULL,
+  `contract_effectivity_date` date DEFAULT NULL,
+  `canal_length_km` decimal(8,3) DEFAULT NULL,
+  `male_members` int(11) DEFAULT NULL,
+  `female_members` int(11) DEFAULT NULL,
+  `congressional_district` varchar(50) DEFAULT NULL,
+  `region` varchar(50) DEFAULT NULL,
+  `province` varchar(50) DEFAULT NULL,
+  `imo` varchar(100) DEFAULT NULL,
+  `nis` varchar(100) DEFAULT NULL,
+  `status` enum('operational','non-operational') DEFAULT 'operational',
+  `assigned_employee_id` int(11) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `ict_equipment`
 --
 
@@ -1615,7 +1671,7 @@ CREATE TABLE `projects` (
 --
 
 INSERT INTO `projects` (`project_id`, `project_name`, `project_description`, `project_code`, `created_by`, `created_at`, `updated_at`, `status`, `start_date`, `end_date`, `color`) VALUES
-(7, '1st Project', 'My 1st Project', '1st', 32, '2025-10-28 08:23:28', '2025-10-28 08:23:28', 'active', '2025-10-28', '2026-10-28', '#007bff');
+(8, '1st Project', 'My 1st Project', '1st', 32, '2025-10-30 05:20:13', '2025-10-30 05:20:13', 'active', '2025-10-30', '2026-11-30', '#007bff');
 
 -- --------------------------------------------------------
 
@@ -1639,11 +1695,12 @@ CREATE TABLE `project_boards` (
 --
 
 INSERT INTO `project_boards` (`board_id`, `project_id`, `board_name`, `board_description`, `board_order`, `board_color`, `created_at`, `updated_at`) VALUES
-(21, 7, 'Backlog', 'Tasks that are planned but not yet started', 1, '#6B7280', '2025-10-28 08:23:28', '2025-10-28 08:23:28'),
-(22, 7, 'To Do', 'Tasks ready to be worked on', 2, '#3B82F6', '2025-10-28 08:23:28', '2025-10-28 08:23:28'),
-(23, 7, 'In Progress', 'Tasks currently being worked on', 3, '#F59E0B', '2025-10-28 08:23:28', '2025-10-28 08:23:28'),
-(24, 7, 'Review', 'Tasks awaiting review', 4, '#8B5CF6', '2025-10-28 08:23:28', '2025-10-28 08:23:28'),
-(25, 7, 'Done', 'Completed tasks', 5, '#10B981', '2025-10-28 08:23:28', '2025-10-28 08:23:28');
+(32, 8, 'Backlog', 'Tasks that are planned but not yet started', 1, '#6b7280', '2025-10-30 05:20:13', '2025-10-30 06:30:18'),
+(33, 8, 'To Do', 'Tasks ready to be worked on', 2, '#3B82F6', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
+(34, 8, 'In Progress', 'Tasks currently being worked on', 3, '#F59E0B', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
+(35, 8, 'Review', 'Tasks awaiting review', 4, '#8B5CF6', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
+(36, 8, 'Done', 'Completed tasks', 5, '#10B981', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
+(38, 8, '1', '1', 5, '#007bff', '2025-10-30 07:50:05', '2025-10-30 07:50:05');
 
 -- --------------------------------------------------------
 
@@ -1665,7 +1722,7 @@ CREATE TABLE `project_members` (
 --
 
 INSERT INTO `project_members` (`id`, `project_id`, `emp_id`, `role`, `added_by`, `added_at`) VALUES
-(4, 7, 32, 'owner', 32, '2025-10-28 08:23:28');
+(5, 8, 32, 'owner', 32, '2025-10-30 05:20:13');
 
 -- --------------------------------------------------------
 
@@ -2031,6 +2088,7 @@ INSERT INTO `system_modules` (`id`, `module_name`, `module_description`, `is_und
 CREATE TABLE `tasks` (
   `task_id` int(11) NOT NULL,
   `project_id` int(11) DEFAULT NULL,
+  `board_id` int(11) DEFAULT NULL,
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `status` enum('backlog','todo','inprogress','review','done') DEFAULT 'backlog',
@@ -2043,6 +2101,16 @@ CREATE TABLE `tasks` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `position` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `tasks`
+--
+
+INSERT INTO `tasks` (`task_id`, `project_id`, `board_id`, `title`, `description`, `status`, `priority`, `labels`, `due_date`, `assigned_to`, `created_by`, `created_at`, `updated_at`, `position`) VALUES
+(4, 8, 34, '1', '1', 'inprogress', 'low', 'review', '2025-10-30', 143, 32, '2025-10-30 06:41:20', '2025-10-30 07:48:05', 0),
+(5, 8, 36, '1', '1', 'done', 'medium', 'design', '2025-10-30', NULL, 32, '2025-10-30 06:47:25', '2025-10-30 07:55:59', 0),
+(6, 8, 38, '1', '1', 'backlog', 'low', 'design', '2025-10-21', NULL, 32, '2025-10-30 06:47:34', '2025-10-30 07:56:10', 0),
+(7, 8, 33, '1', '1', 'todo', 'medium', '', '2025-10-11', NULL, 32, '2025-10-30 06:47:42', '2025-10-30 07:48:14', 0);
 
 -- --------------------------------------------------------
 
@@ -2133,7 +2201,7 @@ CREATE TABLE `user_online_status` (
 --
 
 INSERT INTO `user_online_status` (`id`, `emp_id`, `is_online`, `last_seen`) VALUES
-(1, 32, 1, '2025-10-28 08:55:25'),
+(1, 32, 1, '2025-10-30 07:56:53'),
 (4984, 27, 0, '2025-10-28 06:26:31'),
 (9161, 31, 0, '2025-10-28 06:26:31'),
 (61299, 100, 0, '2025-10-28 06:26:31'),
@@ -2461,6 +2529,22 @@ ALTER TABLE `iar_records`
   ADD KEY `created_by` (`created_by`);
 
 --
+-- Indexes for table `ia_officers`
+--
+ALTER TABLE `ia_officers`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ia_profile_id` (`ia_profile_id`);
+
+--
+-- Indexes for table `ia_profiles`
+--
+ALTER TABLE `ia_profiles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `ia_code` (`ia_code`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `fk_ia_profiles_assigned_unit` (`assigned_employee_id`);
+
+--
 -- Indexes for table `ict_equipment`
 --
 ALTER TABLE `ict_equipment`
@@ -2726,7 +2810,8 @@ ALTER TABLE `tasks`
   ADD PRIMARY KEY (`task_id`),
   ADD KEY `project_id` (`project_id`),
   ADD KEY `assigned_to` (`assigned_to`),
-  ADD KEY `created_by` (`created_by`);
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `board_id` (`board_id`);
 
 --
 -- Indexes for table `unit_section`
@@ -2958,6 +3043,18 @@ ALTER TABLE `iar_records`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
+-- AUTO_INCREMENT for table `ia_officers`
+--
+ALTER TABLE `ia_officers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ia_profiles`
+--
+ALTER TABLE `ia_profiles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
 -- AUTO_INCREMENT for table `ict_equipment`
 --
 ALTER TABLE `ict_equipment`
@@ -3069,19 +3166,19 @@ ALTER TABLE `position`
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `project_boards`
 --
 ALTER TABLE `project_boards`
-  MODIFY `board_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `board_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `project_members`
 --
 ALTER TABLE `project_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `ris_items`
@@ -3147,7 +3244,7 @@ ALTER TABLE `system_modules`
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `task_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `task_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `unit_section`
@@ -3165,7 +3262,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `user_online_status`
 --
 ALTER TABLE `user_online_status`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=84783;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85221;
 
 --
 -- AUTO_INCREMENT for table `user_roles`
@@ -3331,6 +3428,19 @@ ALTER TABLE `iar_items`
 --
 ALTER TABLE `iar_records`
   ADD CONSTRAINT `iar_records_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `ia_officers`
+--
+ALTER TABLE `ia_officers`
+  ADD CONSTRAINT `ia_officers_ibfk_1` FOREIGN KEY (`ia_profile_id`) REFERENCES `ia_profiles` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `ia_profiles`
+--
+ALTER TABLE `ia_profiles`
+  ADD CONSTRAINT `fk_ia_profiles_assigned_employee` FOREIGN KEY (`assigned_employee_id`) REFERENCES `employee` (`emp_id`),
+  ADD CONSTRAINT `ia_profiles_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `employee` (`emp_id`);
 
 --
 -- Constraints for table `ict_equipment`
@@ -3523,7 +3633,8 @@ ALTER TABLE `supply_request_items`
 ALTER TABLE `tasks`
   ADD CONSTRAINT `tasks_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `tasks_ibfk_2` FOREIGN KEY (`assigned_to`) REFERENCES `employee` (`emp_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `tasks_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `employee` (`emp_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `tasks_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `employee` (`emp_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `tasks_ibfk_4` FOREIGN KEY (`board_id`) REFERENCES `project_boards` (`board_id`);
 
 --
 -- Constraints for table `unit_section`

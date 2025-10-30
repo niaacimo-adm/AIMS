@@ -295,6 +295,103 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
         margin: 0;
         font-size: 0.9rem;
     }
+    /* Fix for aria-hidden accessibility warning */
+
+    body.modal-open {
+        overflow: hidden;
+        padding-right: 0 !important;
+    }
+    /* View Task Modal Styles */
+    #viewTaskModal .modal-header {
+      background: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+      padding: 1rem 1.5rem;
+    }
+
+    #viewTaskModal .modal-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    #viewTaskKey {
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+
+
+    .task-description {
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .detail-item label {
+      font-weight: 500;
+      display: block;
+    }
+
+    .activity-timeline {
+      position: relative;
+    }
+
+    .activity-item {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #f1f3f4;
+      position: relative;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #007bff;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.8rem;
+    }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-meta {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .comment-input {
+      border-bottom: 1px solid #f1f3f4;
+      padding-bottom: 1rem;
+    }
+
+    /* Status badges */
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: #6b7280;
+        color: white;
+    }
+
+    /* Priority styles */
+    .priority-badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .priority-urgent { background: #dc2626; color: white; }
+    .priority-high { background: #ea580c; color: white; }
+    .priority-medium { background: #ca8a04; color: white; }
+    .priority-low { background: #16a34a; color: white; }
   </style>
 </head>
 <body class="hold-transition sidebar-mini theme-scrum">
@@ -317,9 +414,9 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
               <!-- Projects will be loaded here -->
             </div>
           </div>
-          <button class="btn btn-outline-secondary ml-2" id="boardSettingsBtn">
-              <i class="fas fa-columns mr-1"></i> Board Settings
-          </button>
+          <button class="btn btn-outline-secondary ml-2" id="addNewBoardBtn">
+              <i class="fas fa-plus mr-2"></i>Add New Board 
+            </button>
         </div>
         <div class="d-flex align-items-center">
           <div class="input-group mr-3" style="width: 300px;">
@@ -632,7 +729,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
 </div>
 
 <!-- Board Settings Dropdown -->
-<div class="modal fade" id="boardSettingsModal" tabindex="-1" role="dialog">
+<!-- <div class="modal fade" id="boardSettingsModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -656,7 +753,155 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
       </div>
     </div>
   </div>
+</div> -->
+<!-- View Task Modal -->
+<div class="modal fade" id="viewTaskModal" tabindex="-1" role="dialog" aria-labelledby="viewTaskModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewTaskModalLabel">
+          <span id="viewTaskKey" class="text-muted mr-2"></span>
+          <span id="viewTaskTitle"></span>
+        </h5>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline-secondary btn-sm mr-2" id="editTaskBtn">
+            <i class="fas fa-edit mr-1"></i> Edit
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <!-- Left Column - Main Content -->
+          <div class="col-md-8">
+            <!-- Description -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="fas fa-align-left mr-2"></i>Description
+                </h6>
+              </div>
+              <div class="card-body">
+                <div id="viewTaskDescription" class="task-description">
+                  <!-- Description content will be loaded here -->
+                </div>
+                <div id="noDescription" class="text-muted" style="display: none;">
+                  <em>No description provided</em>
+                </div>
+              </div>
+            </div>
+
+            <!-- Activity/Comments Section -->
+            <div class="card">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="fas fa-comments mr-2"></i>Activity
+                </h6>
+              </div>
+              <div class="card-body">
+                <!-- Comment Input -->
+                <div class="comment-input mb-4">
+                  <textarea class="form-control" id="commentText" rows="3" placeholder="Add a comment..."></textarea>
+                  <div class="mt-2 text-right">
+                    <button class="btn btn-primary btn-sm" id="addCommentBtn">
+                      <i class="fas fa-paper-plane mr-1"></i> Comment
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Activity Timeline -->
+                <div id="activityTimeline" class="activity-timeline">
+                  <!-- Activity items will be loaded here -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column - Sidebar -->
+          <div class="col-md-4">
+            <!-- Task Details Card -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">Details</h6>
+              </div>
+              <div class="card-body">
+                <div class="detail-item mb-3">
+                  <label class="text-muted small mb-1">Status</label>
+                  <div id="viewTaskStatus" class="font-weight-bold"></div>
+                </div>
+                <div class="detail-item mb-3">
+                  <label class="text-muted small mb-1">Assignee</label>
+                  <div id="viewTaskAssignee" class="d-flex align-items-center">
+                    <!-- Assignee info will be loaded here -->
+                  </div>
+                </div>
+                <div class="detail-item mb-3">
+                  <label class="text-muted small mb-1">Reporter</label>
+                  <div id="viewTaskReporter" class="d-flex align-items-center">
+                    <!-- Reporter info will be loaded here -->
+                  </div>
+                </div>
+                <div class="detail-item mb-3">
+                  <label class="text-muted small mb-1">Priority</label>
+                  <div id="viewTaskPriority"></div>
+                </div>
+                <div class="detail-item mb-3">
+                  <label class="text-muted small mb-1">Due Date</label>
+                  <div id="viewTaskDueDate"></div>
+                </div>
+                <div class="detail-item mb-3">
+                  <label class="text-muted small mb-1">Created</label>
+                  <div id="viewTaskCreated" class="small text-muted"></div>
+                </div>
+                <div class="detail-item">
+                  <label class="text-muted small mb-1">Updated</label>
+                  <div id="viewTaskUpdated" class="small text-muted"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Labels Card -->
+            <div class="card mb-4">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">Labels</h6>
+              </div>
+              <div class="card-body">
+                <div id="viewTaskLabels" class="task-labels">
+                  <!-- Labels will be loaded here -->
+                </div>
+                <div id="noLabels" class="text-muted small" style="display: none;">
+                  <em>No labels</em>
+                </div>
+              </div>
+            </div>
+
+            <!-- Project Info Card -->
+            <div class="card">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">Project</h6>
+              </div>
+              <div class="card-body">
+                <div class="detail-item">
+                  <label class="text-muted small mb-1">Project</label>
+                  <div id="viewTaskProject" class="font-weight-bold"></div>
+                </div>
+                <div class="detail-item mt-2">
+                  <label class="text-muted small mb-1">Board</label>
+                  <div id="viewTaskBoard" class="d-flex align-items-center">
+                    <!-- Board info will be loaded here -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
 <script>
 class Scrumboard {
     constructor() {
@@ -666,7 +911,7 @@ class Scrumboard {
         this.tasks = [];
         this.boards = [];
         this.canAssignTasks = <?php echo $canAssignTasks ? 'true' : 'false'; ?>;
-        this.selectedBoardId = null; // Add this line
+        this.selectedBoardId = null;
         this.init();
     }
     
@@ -678,37 +923,34 @@ class Scrumboard {
     }
     
     handleUrlParameters() {
-        // Get project_id from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const projectId = urlParams.get('project_id');
         
         if (projectId) {
-            // Store the project ID to select after projects are loaded
             this.pendingProjectId = projectId;
         }
     }
     
     setupEventListeners() {
-        // New project button
+        // Project buttons
         $('#newProjectBtn').click(() => this.showNewProjectModal());
         $('#saveProjectBtn').click(() => this.createProject());
         
-        // Add task button
+        // Task buttons
         $('#addTaskBtn').click(() => this.showAddTaskModal());
         $('#saveTaskBtn').click(() => this.createTask());
         
-        // Projects monitoring
+        // Navigation buttons
         $('#projectsMonitoringBtn').click(() => this.toggleProjectsMonitoring());
-        
-        // My tasks
         $('#viewMyTasksBtn').click(() => this.toggleMyTasks());
         
-        // Task search
+        // Search
         $('#searchBtn').click(() => this.searchTasks());
         $('#taskSearch').on('keypress', (e) => {
             if (e.which === 13) this.searchTasks();
         });
-        // Board management
+        
+        // Board settings
         $('#boardSettingsBtn').click(() => this.showBoardSettings());
         $('#addNewBoardBtn').click(() => this.showAddBoardModal());
         $('#manageBoardsBtn').click(() => this.showManageBoards());
@@ -716,6 +958,7 @@ class Scrumboard {
         $('#saveBoardBtn').click(() => this.saveBoard());
         $('#deleteBoardBtn').click(() => this.deleteBoard());
 
+        // Board actions
         $(document).on('click', '.board-settings', (e) => {
             const boardId = $(e.currentTarget).data('board-id');
             const board = this.boards.find(b => b.board_id == boardId);
@@ -724,12 +967,162 @@ class Scrumboard {
             }
         });
         
+        // Task card click handler - KEEP THIS ONE
+        $(document).on('click', '.task-card', (e) => {
+            if ($(e.target).closest('.task-priority, .task-label').length) {
+                return;
+            }
+            
+            const taskId = $(e.currentTarget).data('task-id');
+            this.viewTask(taskId);
+        });
+
+        $('#editTaskBtn').click(() => this.editCurrentTask());
+        
+        $('#addTaskModal').on('show.bs.modal', function () {
+            $(this).removeAttr('aria-hidden');
+            $('body').addClass('modal-open');
+        });
+
+        $('#addTaskModal').on('hide.bs.modal', function () {
+            $(this).attr('aria-hidden', 'true');
+            $('body').removeClass('modal-open');
+        });
+
+        $('#addTaskModal').on('shown.bs.modal', function () {
+            $('#taskTitle').trigger('focus');
+        });
+
+        // Update the add task button handlers
         $(document).on('click', '.add-task-to-board', (e) => {
             const boardId = $(e.currentTarget).data('board-id');
-            this.showAddTaskModal(boardId);
+            this.selectedBoardId = boardId;
+            this.showAddTaskModal();
         });
     }
-    
+
+    toggleProjectsMonitoring() {
+        const monitoringSection = $('#projectsMonitoring');
+        const isVisible = monitoringSection.is(':visible');
+        
+        if (isVisible) {
+            monitoringSection.hide();
+            $('#scrumBoardContent').show();
+        } else {
+            monitoringSection.show();
+            $('#scrumBoardContent').hide();
+            $('#myTasksSection').hide();
+            this.loadProjectsMonitoring();
+        }
+    }
+
+    toggleMyTasks() {
+        const myTasksSection = $('#myTasksSection');
+        const isVisible = myTasksSection.is(':visible');
+        
+        if (isVisible) {
+            myTasksSection.hide();
+            $('#scrumBoardContent').show();
+        } else {
+            myTasksSection.show();
+            $('#scrumBoardContent').hide();
+            $('#projectsMonitoring').hide();
+            this.loadMyTasks();
+        }
+    }
+
+    searchTasks() {
+        const searchTerm = $('#taskSearch').val().toLowerCase();
+        
+        $('.task-card').each(function() {
+            const taskTitle = $(this).find('.task-title').text().toLowerCase();
+            if (taskTitle.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    }
+
+    async loadProjectsMonitoring() {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'get_projects_monitoring'
+            });
+            
+            if (response.success) {
+                this.renderProjectsMonitoring(response.projects);
+            }
+        } catch (error) {
+            console.error('Error loading projects monitoring:', error);
+        }
+    }
+
+    async loadMyTasks() {
+        try {
+            const response = await $.post('../includes/task_ajax.php', {
+                action: 'get_my_tasks'
+            });
+            
+            if (response.success) {
+                this.renderMyTasks(response.tasks);
+            }
+        } catch (error) {
+            console.error('Error loading my tasks:', error);
+        }
+    }
+
+    renderProjectsMonitoring(projects) {
+        const tbody = $('#projectsTableBody');
+        tbody.empty();
+        
+        projects.forEach(project => {
+            const row = `
+                <tr>
+                    <td>${project.project_code}</td>
+                    <td>${project.project_name}</td>
+                    <td>${project.start_date || 'Not set'}</td>
+                    <td>${project.end_date || 'Not set'}</td>
+                    <td><span class="badge ${this.getStatusBadgeClass(project.status)}">${project.status}</span></td>
+                    <td>${project.task_count || 0}</td>
+                    <td>${project.member_count || 0}</td>
+                    <td>${project.created_by_name || 'Unknown'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="scrumboard.selectProject(${project.project_id})">
+                            View Board
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
+    }
+
+    renderMyTasks(tasks) {
+        const tbody = $('#myTasksTableBody');
+        tbody.empty();
+        
+        tasks.forEach(task => {
+            const statusDisplay = this.getStatusDisplayText(task.status);
+            const row = `
+                <tr>
+                    <td>${task.title}</td>
+                    <td>${task.project_name}</td>
+                    <td><span class="status-badge">${statusDisplay}</span></td>
+                    <td><span class="priority-badge priority-${task.priority}">${task.priority}</span></td>
+                    <td>${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set'}</td>
+                    <td>${task.creator_name || 'Unknown'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="scrumboard.viewTask(${task.task_id})">
+                            View
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
+    }
+
     setupDragAndDrop() {
         $(document).on('dragstart', '.task-card', function(e) {
             const taskId = $(this).data('task-id');
@@ -761,37 +1154,35 @@ class Scrumboard {
     
     async loadProjects() {
         try {
-            console.log('Loading projects for user...');
             const response = await $.post('../includes/project_ajax.php', {
                 action: 'get_user_projects'
             });
             
-            console.log('Projects response:', response);
-            
             if (response.success) {
                 this.projects = response.projects;
-                console.log('Loaded projects:', this.projects);
                 this.renderProjectsDropdown();
                 
-                // If we have a pending project ID from URL, select it
+                let projectToSelect = null;
+                
                 if (this.pendingProjectId) {
-                    this.selectProject(this.pendingProjectId);
+                    projectToSelect = this.projects.find(p => p.project_id == this.pendingProjectId);
                     this.pendingProjectId = null;
-                } else if (this.projects.length > 0 && !this.currentProjectId) {
-                    // Otherwise select the first project as default
-                    console.log('Selecting first project:', this.projects[0].project_id);
-                    this.selectProject(this.projects[0].project_id);
+                }
+                
+                if (!projectToSelect && this.projects.length > 0) {
+                    projectToSelect = this.projects[0];
+                }
+                
+                if (projectToSelect) {
+                    await this.selectProject(projectToSelect.project_id);
                 } else {
-                    console.log('No projects to select');
                     this.showNoProjectsMessage();
                 }
             } else {
-                console.error('Failed to load projects:', response.error);
                 this.showError('Failed to load projects: ' + (response.error || 'Unknown error'));
                 this.showNoProjectsMessage();
             }
         } catch (error) {
-            console.error('Error loading projects:', error);
             this.showError('Failed to load projects: ' + error.message);
             this.showNoProjectsMessage();
         }
@@ -807,43 +1198,8 @@ class Scrumboard {
                 <button class="btn btn-primary" onclick="scrumboard.showNewProjectModal()">
                     <i class="fas fa-plus mr-1"></i> Create Your First Project
                 </button>
-                <button class="btn btn-outline-secondary ml-2" onclick="scrumboard.testConnection()">
-                    <i class="fas fa-bug mr-1"></i> Debug Connection
-                </button>
             </div>
         `);
-    }
-
-    async testConnection() {
-        try {
-            console.log('Testing connection...');
-            const response = await $.post('../includes/project_ajax.php', {
-                action: 'test_connection'
-            });
-            
-            console.log('Connection test result:', response);
-            
-            if (response.success) {
-                Swal.fire({
-                    title: 'Connection Test',
-                    html: `
-                        <div class="text-left">
-                            <p><strong>Total Projects:</strong> ${response.debug.projects_total}</p>
-                            <p><strong>Total Members:</strong> ${response.debug.members_total}</p>
-                            <p><strong>Your Projects:</strong> ${response.debug.user_projects}</p>
-                            <p><strong>Your User ID:</strong> ${response.debug.session_emp_id}</p>
-                            <p><strong>Session Status:</strong> ${response.debug.session_status}</p>
-                        </div>
-                    `,
-                    icon: 'info'
-                });
-            } else {
-                this.showError('Connection test failed: ' + response.error);
-            }
-        } catch (error) {
-            console.error('Connection test error:', error);
-            this.showError('Connection test failed: ' + error.message);
-        }
     }
     
     renderProjectsDropdown() {
@@ -875,8 +1231,14 @@ class Scrumboard {
     
     async selectProject(projectId) {
         try {
-            this.currentProjectId = projectId;
             this.currentProject = this.projects.find(p => p.project_id == projectId);
+            
+            if (!this.currentProject) {
+                this.showError('Project not found or you do not have access to it');
+                return;
+            }
+            
+            this.currentProjectId = projectId;
             
             // Update UI
             $('#currentProjectTitle').text(this.currentProject.project_name);
@@ -896,7 +1258,6 @@ class Scrumboard {
             $('#scrumBoardContent').show();
             
         } catch (error) {
-            console.error('Error selecting project:', error);
             this.showError('Failed to load project');
         }
     }
@@ -923,7 +1284,6 @@ class Scrumboard {
                 this.renderTasks();
             }
         } catch (error) {
-            console.error('Error loading tasks:', error);
             this.showError('Failed to load tasks');
         }
     }
@@ -932,19 +1292,30 @@ class Scrumboard {
         // Clear all task containers first
         $('.tasks-container').empty();
         
+        console.log('All tasks:', this.tasks); // Debug log
+        console.log('All boards:', this.boards); // Debug log
+        
         // Group tasks by board_id
         const tasksByBoard = {};
         this.tasks.forEach(task => {
-            if (!tasksByBoard[task.board_id]) {
-                tasksByBoard[task.board_id] = [];
+            const boardId = task.board_id;
+            if (!tasksByBoard[boardId]) {
+                tasksByBoard[boardId] = [];
             }
-            tasksByBoard[task.board_id].push(task);
+            tasksByBoard[boardId].push(task);
         });
+        
+        console.log('Tasks grouped by board:', tasksByBoard); // Debug log
         
         // Render tasks for each board
         this.boards.forEach(board => {
-            const container = $(`[data-board-id="${board.board_id}"]`);
+            const container = $(`.tasks-container[data-board-id="${board.board_id}"]`);
             const boardTasks = tasksByBoard[board.board_id] || [];
+            
+            console.log(`Board ${board.board_id} (${board.board_name}) has ${boardTasks.length} tasks`); // Debug log
+            
+            // Always clear the container first
+            container.empty();
             
             if (boardTasks.length === 0) {
                 container.append(`
@@ -961,7 +1332,8 @@ class Scrumboard {
             }
             
             // Update task count for this board
-            $(`[data-board-id="${board.board_id}"]`).closest('.column').find('.task-count').text(boardTasks.length);
+            const column = $(`.column[data-board-id="${board.board_id}"]`);
+            column.find('.task-count').text(boardTasks.length);
         });
     }
     
@@ -980,7 +1352,7 @@ class Scrumboard {
                         `<span class="task-label label-${label}">${label.charAt(0).toUpperCase() + label.slice(1)}</span>`
                     ).join('')}
                 </div>
-                <div class="task-title">${this.escapeHtml(task.title)}</div>
+                <div class="task-title" style="cursor: pointer;">${this.escapeHtml(task.title)}</div>
                 <div class="task-meta">
                     <span><i class="far fa-calendar mr-1"></i> ${dueDate}</span>
                     <span><i class="far fa-user mr-1"></i> ${assigneeName}</span>
@@ -1017,471 +1389,17 @@ class Scrumboard {
         }
     }
     
-    showNewProjectModal() {
-        $('#newProjectModal').modal('show');
-    }
-    
-    async createProject() {
-        const formData = {
-            project_name: $('#projectName').val().trim(),
-            project_code: $('#projectCode').val().trim(),
-            project_description: $('#projectDescription').val().trim(),
-            start_date: $('#projectStartDate').val(),
-            end_date: $('#projectEndDate').val(),
-            color: $('#projectColor').val(),
-            created_by: <?= $_SESSION['emp_id'] ?>
-        };
-        
-        console.log('Sending project data:', formData); // Add this line for debugging
-        
-        if (!formData.project_name || !formData.project_code) {
-            this.showError('Please fill in all required fields');
-            return;
-        }
-        
-        try {
-            const response = await $.post('../includes/project_ajax.php', {
-                action: 'create_project',
-                ...formData
-            });
-            
-            console.log('Server response:', response); // Add this line for debugging
-            
-            if (response.success) {
-                $('#newProjectModal').modal('hide');
-                $('#projectForm')[0].reset();
-                await this.loadProjects();
-                this.showSuccess('Project created successfully');
-                
-                // Select the new project
-                if (response.project_id) {
-                    this.selectProject(response.project_id);
-                }
-            } else {
-                this.showError(response.error || 'Failed to create project');
-            }
-        } catch (error) {
-            console.error('Error creating project:', error);
-            this.showError('Failed to create project');
-        }
-    }
-    
-    showAddTaskModal() {
-        if (!this.currentProjectId) {
-            this.showError('Please select a project first');
-            return;
-        }
-        $('#addTaskModal').modal('show');
-    }
-    
-    async createTask() {
-        const labels = [];
-        if ($('#labelRevise').is(':checked')) labels.push('revise');
-        if ($('#labelUrgent').is(':checked')) labels.push('urgent');
-        if ($('#labelDesign').is(':checked')) labels.push('design');
-        if ($('#labelDevelopment').is(':checked')) labels.push('development');
-        if ($('#labelReview').is(':checked')) labels.push('review');
-        
-        // Use selected board or first board as default
-        const boardId = this.selectedBoardId || (this.boards.length > 0 ? this.boards[0].board_id : null);
-        
-        const formData = {
-            project_id: this.currentProjectId,
-            title: $('#taskTitle').val().trim(),
-            description: $('#taskDescription').val().trim(),
-            board_id: boardId, // Use the board ID here
-            priority: $('#taskPriority').val(),
-            labels: labels,
-            due_date: $('#taskDueDate').val(),
-            assigned_to: $('#taskAssignee').val(),
-            created_by: <?= $_SESSION['emp_id'] ?>
-        };
-        
-        if (!formData.title) {
-            this.showError('Please enter a task title');
-            return;
-        }
-        
-        if (!formData.board_id) {
-            this.showError('No boards available. Please create a board first.');
-            return;
-        }
-        
-        try {
-            const response = await $.post('../includes/task_ajax.php', {
-                action: 'create_task',
-                ...formData
-            });
-            
-            if (response.success) {
-                $('#addTaskModal').modal('hide');
-                $('#taskForm')[0].reset();
-                this.selectedBoardId = null; // Reset selected board
-                await this.loadProjectTasks();
-                this.showSuccess('Task created successfully');
-            } else {
-                this.showError(response.error || 'Failed to create task');
-            }
-        } catch (error) {
-            console.error('Error creating task:', error);
-            this.showError('Failed to create task');
-        }
-    }
-    
-    async updateTaskStatus(taskId, newStatus) {
-        try {
-            const response = await $.post('../includes/task_ajax.php', {
-                action: 'update_task_status',
-                task_id: taskId,
-                status: newStatus
-            });
-            
-            if (response.success) {
-                // Reload tasks to reflect the change
-                await this.loadProjectTasks();
-            } else {
-                this.showError('Failed to update task status');
-            }
-        } catch (error) {
-            console.error('Error updating task status:', error);
-            this.showError('Failed to update task status');
-        }
-    }
-    
-    async toggleProjectsMonitoring() {
-        const monitoringSection = $('#projectsMonitoring');
-        if (monitoringSection.is(':visible')) {
-            monitoringSection.hide();
-            $('#scrumBoardContent').show();
-        } else {
-            await this.loadProjectsMonitoring();
-            monitoringSection.show();
-            $('#scrumBoardContent').hide();
-            $('#myTasksSection').hide();
-        }
-    }
-    
-    async loadProjectsMonitoring() {
-        try {
-            const response = await $.post('../includes/project_ajax.php', {
-                action: 'get_projects_monitoring'
-            });
-            
-            if (response.success) {
-                this.renderProjectsMonitoring(response.projects);
-            }
-        } catch (error) {
-            console.error('Error loading projects monitoring:', error);
-            this.showError('Failed to load projects monitoring');
-        }
-    }
-    
-    renderProjectsMonitoring(projects) {
-        const tbody = $('#projectsTableBody');
-        tbody.empty();
-        
-        if (projects.length === 0) {
-            tbody.append('<tr><td colspan="9" class="text-center py-4 text-muted">No projects found</td></tr>');
-            return;
-        }
-        
-        projects.forEach(project => {
-            const createdBy = project.creator_first ? 
-                `${project.creator_first} ${project.creator_last}` : 'Unknown';
-                
-            const row = $(`
-                <tr>
-                    <td><strong>${project.project_code}</strong></td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="project-color-badge" style="background-color: ${project.color}"></div>
-                            ${project.project_name}
-                        </div>
-                    </td>
-                    <td>${project.start_date || 'Not set'}</td>
-                    <td>${project.end_date || 'Not set'}</td>
-                    <td>
-                        <span class="badge ${this.getStatusBadgeClass(project.status)}">
-                            ${project.status.replace('_', ' ').toUpperCase()}
-                        </span>
-                    </td>
-                    <td>${project.task_count || 0}</td>
-                    <td>${project.member_count || 0}</td>
-                    <td>${createdBy}</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary view-project" data-project-id="${project.project_id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-success select-project" data-project-id="${project.project_id}">
-                            <i class="fas fa-play"></i>
-                        </button>
-                    </td>
-                </tr>
-            `);
-            
-            tbody.append(row);
-        });
-        
-        // Add event listeners
-        $('.view-project').off().click((e) => {
-            const projectId = $(e.currentTarget).data('project-id');
-            this.viewProjectDetails(projectId);
-        });
-        
-        $('.select-project').off().click((e) => {
-            const projectId = $(e.currentTarget).data('project-id');
-            this.selectProject(projectId);
-        });
-    }
-    
-    async viewProjectDetails(projectId) {
-        try {
-            const response = await $.post('../includes/project_ajax.php', {
-                action: 'get_project_details',
-                project_id: projectId
-            });
-            
-            if (response.success) {
-                const project = response.project;
-                let membersHtml = '';
-                
-                if (project.members && project.members.length > 0) {
-                    membersHtml = project.members.map(member => 
-                        `<li>${member.first_name} ${member.last_name} (${member.role})</li>`
-                    ).join('');
-                } else {
-                    membersHtml = '<li>No members</li>';
-                }
-                
-                Swal.fire({
-                    title: project.project_name,
-                    html: `
-                        <div class="text-left">
-                            <p><strong>Code:</strong> ${project.project_code}</p>
-                            <p><strong>Description:</strong> ${project.project_description || 'No description'}</p>
-                            <p><strong>Status:</strong> <span class="badge ${this.getStatusBadgeClass(project.status)}">${project.status.toUpperCase()}</span></p>
-                            <p><strong>Dates:</strong> ${project.start_date || 'Not set'} to ${project.end_date || 'Not set'}</p>
-                            <p><strong>Members:</strong></p>
-                            <ul>${membersHtml}</ul>
-                        </div>
-                    `,
-                    icon: 'info',
-                    confirmButtonText: 'OK'
-                });
-            } else {
-                this.showError('Failed to load project details');
-            }
-        } catch (error) {
-            console.error('Error viewing project details:', error);
-            this.showError('Failed to load project details');
-        }
-    }
-    
-    async toggleMyTasks() {
-        const myTasksSection = $('#myTasksSection');
-        if (myTasksSection.is(':visible')) {
-            myTasksSection.hide();
-            $('#scrumBoardContent').show();
-        } else {
-            await this.loadMyTasks();
-            myTasksSection.show();
-            $('#scrumBoardContent').hide();
-            $('#projectsMonitoring').hide();
-        }
-    }
-    
-    async loadMyTasks() {
-        try {
-            const response = await $.post('../includes/task_ajax.php', {
-                action: 'get_user_tasks',
-                project_id: this.currentProjectId || null
-            });
-            
-            if (response.success) {
-                this.renderMyTasks(response.tasks);
-            }
-        } catch (error) {
-            console.error('Error loading my tasks:', error);
-            this.showError('Failed to load your tasks');
-        }
-    }
-    
-    renderMyTasks(tasks) {
-        const tbody = $('#myTasksTableBody');
-        tbody.empty();
-        
-        if (tasks.length === 0) {
-            tbody.append('<tr><td colspan="7" class="text-center py-4 text-muted">No tasks assigned to you</td></tr>');
-            return;
-        }
-        
-        tasks.forEach(task => {
-            const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set';
-            const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
-            
-            const row = $(`
-                <tr>
-                    <td>${this.escapeHtml(task.title)}</td>
-                    <td>${task.project_name} (${task.project_code})</td>
-                    <td>
-                        <span class="badge badge-${this.getTaskStatusBadgeClass(task.status)}">
-                            ${task.status.replace('_', ' ').toUpperCase()}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge priority-${task.priority}">
-                            ${task.priority.toUpperCase()}
-                        </span>
-                    </td>
-                    <td>${dueDate}</td>
-                    <td>${creatorName}</td>
-                    <td>
-                        <button class="btn btn-sm btn-info view-task" data-task-id="${task.task_id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-            `);
-            
-            tbody.append(row);
-        });
-        
-        // Add event listeners for task viewing
-        $('.view-task').off().click((e) => {
-            const taskId = $(e.currentTarget).data('task-id');
-            this.viewTaskDetails(taskId);
-        });
-    }
-    
-    getTaskStatusBadgeClass(status) {
-        const classes = {
-            'backlog': 'secondary',
-            'todo': 'warning',
-            'inprogress': 'info',
-            'review': 'primary',
-            'done': 'success'
-        };
-        return classes[status] || 'secondary';
-    }
-    
-    async viewTaskDetails(taskId) {
-        const task = this.tasks.find(t => t.task_id == taskId) || 
-                    (await this.loadTaskDetails(taskId));
-        
-        if (task) {
-            const labels = task.labels ? task.labels.split(',') : [];
-            const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set';
-            const assigneeName = task.assigned_to ? `${task.first_name} ${task.last_name}` : 'Unassigned';
-            const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
-            
-            Swal.fire({
-                title: task.title,
-                html: `
-                    <div class="text-left">
-                        <p><strong>Description:</strong> ${task.description || 'No description'}</p>
-                        <p><strong>Status:</strong> <span class="badge ${this.getTaskStatusBadgeClass(task.status)}">${task.status.toUpperCase()}</span></p>
-                        <p><strong>Priority:</strong> <span class="badge priority-${task.priority}">${task.priority.toUpperCase()}</span></p>
-                        <p><strong>Due Date:</strong> ${dueDate}</p>
-                        <p><strong>Assigned To:</strong> ${assigneeName}</p>
-                        <p><strong>Created By:</strong> ${creatorName}</p>
-                        ${labels.length > 0 ? `
-                            <p><strong>Labels:</strong> 
-                                ${labels.map(label => `<span class="badge label-${label}">${label.toUpperCase()}</span>`).join(' ')}
-                            </p>
-                        ` : ''}
-                    </div>
-                `,
-                icon: 'info',
-                confirmButtonText: 'OK'
-            });
-        }
-    }
-    
-    async loadTaskDetails(taskId) {
-        try {
-            // In a real implementation, you might have a separate endpoint for this
-            // For now, we'll search in current tasks or all tasks
-            const response = await $.post('../includes/task_ajax.php', {
-                action: 'get_all_tasks',
-                task_id: taskId
-            });
-            
-            if (response.success && response.tasks.length > 0) {
-                return response.tasks[0];
-            }
-        } catch (error) {
-            console.error('Error loading task details:', error);
-        }
-        return null;
-    }
-    
-    searchTasks() {
-        const searchTerm = $('#taskSearch').val().toLowerCase();
-        
-        $('.task-card').each(function() {
-            const title = $(this).find('.task-title').text().toLowerCase();
-            const description = $(this).find('.task-description')?.text().toLowerCase() || '';
-            
-            if (title.includes(searchTerm) || description.includes(searchTerm)) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        });
-    }
-    
-    showSuccess(message) {
-        Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: message,
-            timer: 3000,
-            showConfirmButton: false
-        });
-    }
-    
-    showError(message) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: message
-        });
-    }
-    async updateTaskBoard(taskId, newBoardId) {
-        try {
-            const response = await $.post('../includes/task_ajax.php', {
-                action: 'update_task_board',
-                task_id: taskId,
-                board_id: newBoardId
-            });
-            
-            if (response.success) {
-                await this.loadProjectTasks();
-                this.showSuccess('Task moved successfully');
-            } else {
-                this.showError('Failed to move task');
-            }
-        } catch (error) {
-            console.error('Error moving task:', error);
-            this.showError('Failed to move task');
-        }
-    }
     async loadProjectBoards() {
         try {
-            console.log('Loading boards for project:', this.currentProjectId);
             const response = await $.post('../includes/board_ajax.php', {
                 action: 'get_project_boards',
                 project_id: this.currentProjectId
             });
             
-            console.log('Boards response:', response);
-            
             if (response.success) {
                 this.boards = response.boards;
-                console.log('Loaded boards:', this.boards);
                 this.renderBoards();
             } else {
-                console.error('Failed to load boards:', response.error);
                 this.boards = [];
                 this.renderBoards();
             }
@@ -1493,21 +1411,15 @@ class Scrumboard {
     }
 
     renderBoards() {
-        const container = $('.columns-container');
+        const container = $('#dynamicColumnsContainer');
         container.empty();
         
         if (this.boards.length === 0) {
-            container.append(`
-                <div class="col-12 text-center py-5">
-                    <i class="fas fa-columns fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">No boards found. Create your first board to get started.</p>
-                    <button class="btn btn-primary" onclick="scrumboard.showAddBoardModal()">
-                        <i class="fas fa-plus mr-1"></i> Create First Board
-                    </button>
-                </div>
-            `);
+            $('#noBoardsMessage').show();
             return;
         }
+
+        $('#noBoardsMessage').hide();
 
         // Sort boards by order
         const sortedBoards = this.boards.sort((a, b) => a.board_order - b.board_order);
@@ -1532,12 +1444,10 @@ class Scrumboard {
                     <div class="column-actions">
                         <span class="task-count">${taskCount}</span>
                         ${this.canAssignTasks ? `
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-outline-secondary board-settings" 
-                                        data-board-id="${board.board_id}" title="Board Settings">
-                                    <i class="fas fa-cog"></i>
-                                </button>
-                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary board-settings" 
+                                    data-board-id="${board.board_id}" title="Board Settings">
+                                <i class="fas fa-cog"></i>
+                            </button>
                         ` : ''}
                     </div>
                 </div>
@@ -1575,7 +1485,6 @@ class Scrumboard {
         $('#boardOrder').val(board ? board.board_order : this.boards.length);
         $('#deleteBoardBtn').toggle(!!board);
         
-        $('#boardSettingsModal').modal('hide');
         $('#addBoardModal').modal('show');
     }
 
@@ -1649,6 +1558,16 @@ class Scrumboard {
         });
     }
 
+    showManageBoards() {
+        $('#boardSettingsModal').modal('hide');
+        // For now, just show the first board for editing
+        if (this.boards.length > 0) {
+            this.showAddBoardModal(this.boards[0]);
+        } else {
+            this.showAddBoardModal();
+        }
+    }
+
     async resetBoards() {
         Swal.fire({
             title: 'Reset Boards?',
@@ -1680,18 +1599,395 @@ class Scrumboard {
             }
         });
     }
-}
 
-// Initialize scrumboard when document is ready
-$(document).ready(function() {
-    // Set scrumboard theme
-    localStorage.setItem('currentTheme', 'scrumboard');
-    $('.main-header').css('background', 'linear-gradient(135deg, #8B5CF6, #7C3AED)');
-    $('#mainFooter').css('background', 'linear-gradient(135deg, #8B5CF6, #7C3AED)');
+    showNewProjectModal() {
+        $('#newProjectModal').modal('show');
+    }
     
-    window.scrumboard = new Scrumboard();
-});
-// Initialize scrumboard when document is ready
+    async createProject() {
+        const formData = {
+            project_name: $('#projectName').val().trim(),
+            project_code: $('#projectCode').val().trim(),
+            project_description: $('#projectDescription').val().trim(),
+            start_date: $('#projectStartDate').val(),
+            end_date: $('#projectEndDate').val(),
+            color: $('#projectColor').val(),
+            created_by: <?= $_SESSION['emp_id'] ?>
+        };
+        
+        if (!formData.project_name || !formData.project_code) {
+            this.showError('Please fill in all required fields');
+            return;
+        }
+        
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'create_project',
+                ...formData
+            });
+            
+            if (response.success) {
+                $('#newProjectModal').modal('hide');
+                $('#projectForm')[0].reset();
+                await this.loadProjects();
+                this.showSuccess('Project created successfully');
+                
+                if (response.project_id) {
+                    this.selectProject(response.project_id);
+                }
+            } else {
+                this.showError(response.error || 'Failed to create project');
+            }
+        } catch (error) {
+            console.error('Error creating project:', error);
+            this.showError('Failed to create project');
+        }
+    }
+    
+    showAddTaskModal() {
+        if (!this.currentProjectId) {
+            this.showError('Please select a project first');
+            return;
+        }
+        $('#addTaskModal').modal('show');
+    }
+    
+    async createTask() {
+        // Get the selected board ID - prioritize the board where "Add Task" was clicked
+        const boardId = this.selectedBoardId || (this.boards.length > 0 ? this.boards[0].board_id : null);
+        
+        if (!boardId) {
+            this.showError('No boards available. Please create a board first.');
+            return;
+        }
+
+        const labels = [];
+        if ($('#labelRevise').is(':checked')) labels.push('revise');
+        if ($('#labelUrgent').is(':checked')) labels.push('urgent');
+        if ($('#labelDesign').is(':checked')) labels.push('design');
+        if ($('#labelDevelopment').is(':checked')) labels.push('development');
+        if ($('#labelReview').is(':checked')) labels.push('review');
+        
+        const formData = {
+            action: 'create_task',
+            project_id: this.currentProjectId,
+            title: $('#taskTitle').val().trim(),
+            description: $('#taskDescription').val().trim(),
+            board_id: boardId,
+            priority: $('#taskPriority').val(),
+            labels: labels.join(','),
+            due_date: $('#taskDueDate').val(),
+            assigned_to: $('#taskAssignee').val() || null,
+            created_by: <?= $_SESSION['emp_id'] ?>
+        };
+        
+        // Validation
+        if (!formData.title) {
+            this.showError('Please enter a task title');
+            return;
+        }
+        
+        if (!formData.project_id) {
+            this.showError('Please select a project first');
+            return;
+        }
+        
+        try {
+            console.log('Creating task with data:', formData);
+            
+            const response = await $.ajax({
+                url: '../includes/task_ajax.php',
+                method: 'POST',
+                data: formData,
+                dataType: 'json'
+            });
+
+            console.log('Task creation response:', response);
+
+            if (response.success) {
+                $('#addTaskModal').modal('hide');
+                $('#taskForm')[0].reset();
+                this.selectedBoardId = null;
+                await this.loadProjectTasks();
+                this.showSuccess('Task created successfully');
+            } else {
+                this.showError(response.error || 'Failed to create task');
+            }
+        } catch (error) {
+            console.error('Error creating task:', error);
+            console.error('Error status:', error.status);
+            console.error('Error response text:', error.responseText);
+            
+            let errorMessage = 'Failed to create task: ';
+            if (error.responseJSON && error.responseJSON.error) {
+                errorMessage += error.responseJSON.error;
+            } else if (error.statusText) {
+                errorMessage += error.statusText;
+            } else {
+                errorMessage += 'Unknown error occurred';
+            }
+            
+            this.showError(errorMessage);
+        }
+    }
+    
+    async updateTaskBoard(taskId, newBoardId) {
+        try {
+            const response = await $.post('../includes/task_ajax.php', {
+                action: 'update_task_board',
+                task_id: taskId,
+                board_id: newBoardId
+            });
+            
+            if (response.success) {
+                await this.loadProjectTasks();
+                this.showSuccess('Task moved successfully');
+            } else {
+                this.showError('Failed to move task');
+            }
+        } catch (error) {
+            console.error('Error moving task:', error);
+            this.showError('Failed to move task');
+        }
+    }
+    
+    showSuccess(message) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: message,
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
+    
+    showError(message) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: message
+        });
+    }
+    // Add these methods to the Scrumboard class
+    async viewTask(taskId) {
+        try {
+            const task = this.tasks.find(t => t.task_id == taskId);
+            if (!task) {
+                this.showError('Task not found');
+                return;
+            }
+
+            // Populate modal with task data
+            this.populateTaskModal(task);
+            $('#viewTaskModal').modal('show');
+            
+        } catch (error) {
+            console.error('Error loading task:', error);
+            this.showError('Failed to load task details');
+        }
+    }
+
+    populateTaskModal(task) {
+        // Store current task for editing
+        this.currentViewingTask = task;
+
+        // Basic info
+        $('#viewTaskKey').text(`TASK-${task.task_id}`);
+        $('#viewTaskTitle').text(task.title);
+        
+        // Description
+        if (task.description && task.description.trim()) {
+            $('#viewTaskDescription').text(task.description).show();
+            $('#noDescription').hide();
+        } else {
+            $('#viewTaskDescription').hide();
+            $('#noDescription').show();
+        }
+
+        // Status
+        const statusText = this.getStatusDisplayText(task.status);
+        $('#viewTaskStatus').html(`<span class="status-badge status-${task.status}">${statusText}</span>`);
+
+        // Assignee
+        if (task.assigned_to) {
+            const assigneeName = `${task.first_name || ''} ${task.last_name || ''}`.trim();
+            $('#viewTaskAssignee').html(`
+                <div class="activity-avatar mr-2">
+                    ${assigneeName.charAt(0).toUpperCase()}
+                </div>
+                <span>${assigneeName}</span>
+            `);
+        } else {
+            $('#viewTaskAssignee').html('<span class="text-muted">Unassigned</span>');
+        }
+
+        // Reporter (creator)
+        const reporterName = `${task.creator_first || ''} ${task.creator_last || ''}`.trim();
+        $('#viewTaskReporter').html(`
+            <div class="activity-avatar mr-2" style="background: #10b981;">
+                ${reporterName.charAt(0).toUpperCase()}
+            </div>
+            <span>${reporterName}</span>
+        `);
+
+        // Priority
+        $('#viewTaskPriority').html(`<span class="priority-badge priority-${task.priority}">${task.priority}</span>`);
+
+        // Dates
+        $('#viewTaskDueDate').text(task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set');
+        $('#viewTaskCreated').text(new Date(task.created_at).toLocaleString());
+        $('#viewTaskUpdated').text(new Date(task.updated_at || task.created_at).toLocaleString());
+
+        // Labels
+        const labelsContainer = $('#viewTaskLabels');
+        labelsContainer.empty();
+        
+        if (task.labels) {
+            const labels = task.labels.split(',');
+            if (labels.length > 0 && labels[0] !== '') {
+                labels.forEach(label => {
+                    if (label.trim()) {
+                        labelsContainer.append(`<span class="task-label label-${label} mr-1 mb-1">${label.charAt(0).toUpperCase() + label.slice(1)}</span>`);
+                    }
+                });
+                $('#noLabels').hide();
+            } else {
+                $('#noLabels').show();
+            }
+        } else {
+            $('#noLabels').show();
+        }
+
+        // Project and Board
+        $('#viewTaskProject').text(this.currentProject?.project_name || 'Unknown');
+        
+        const board = this.boards.find(b => b.board_id == task.board_id);
+        if (board) {
+            $('#viewTaskBoard').html(`
+                <div class="board-color-badge mr-2" style="background-color: ${board.board_color}"></div>
+                <span>${board.board_name}</span>
+            `);
+        } else {
+            $('#viewTaskBoard').text('Unknown');
+        }
+
+        // Load activity/comments
+        this.loadTaskActivity(task.task_id);
+    }
+
+    getStatusDisplayText(status) {
+        // If status starts with 'board_', it's a custom board - get the board name
+        if (status.startsWith('board_')) {
+            const boardId = status.replace('board_', '');
+            const board = this.boards.find(b => b.board_id == boardId);
+            return board ? board.board_name : status;
+        }
+        
+        // Convert default status like 'inprogress' to 'In Progress' for display
+        const statusMap = {
+            'backlog': 'Backlog',
+            'todo': 'To Do',
+            'inprogress': 'In Progress',
+            'review': 'Review',
+            'done': 'Done'
+        };
+        
+        // If it's a known status, use the mapped display text
+        if (statusMap[status]) {
+            return statusMap[status];
+        }
+        
+        // For custom statuses, convert from 'customstatus' to 'Custom Status'
+        let displayText = status
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/_/g, ' ')
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .trim();
+        
+        // Capitalize first letter of each word
+        displayText = displayText.replace(/\b\w/g, l => l.toUpperCase());
+        
+        return displayText || status;
+    }
+
+    async loadTaskActivity(taskId) {
+        try {
+            // For now, we'll create a simple activity log
+            // In a real implementation, you'd fetch this from the server
+            const activityTimeline = $('#activityTimeline');
+            activityTimeline.empty();
+
+            // Add creation activity
+            activityTimeline.append(`
+                <div class="activity-item d-flex">
+                    <div class="activity-avatar mr-3" style="background: #10b981;">
+                        ${this.currentViewingTask.creator_first?.charAt(0) || 'U'}
+                    </div>
+                    <div class="activity-content">
+                        <div class="font-weight-bold">
+                            ${this.currentViewingTask.creator_first ? `${this.currentViewingTask.creator_first} ${this.currentViewingTask.creator_last}` : 'User'}
+                        </div>
+                        <div class="text-muted">created this task</div>
+                        <div class="activity-meta">
+                            ${new Date(this.currentViewingTask.created_at).toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+            `);
+
+            // Add status change activity if applicable
+            if (this.currentViewingTask.updated_at !== this.currentViewingTask.created_at) {
+                activityTimeline.prepend(`
+                    <div class="activity-item d-flex">
+                        <div class="activity-avatar mr-3" style="background: #3b82f6;">
+                            ${this.currentViewingTask.creator_first?.charAt(0) || 'U'}
+                        </div>
+                        <div class="activity-content">
+                            <div class="font-weight-bold">
+                                ${this.currentViewingTask.creator_first ? `${this.currentViewingTask.creator_first} ${this.currentViewingTask.creator_last}` : 'User'}
+                            </div>
+                            <div class="text-muted">updated this task</div>
+                            <div class="activity-meta">
+                                ${new Date(this.currentViewingTask.updated_at).toLocaleString()}
+                            </div>
+                        </div>
+                    </div>
+                `);
+            }
+
+        } catch (error) {
+            console.error('Error loading activity:', error);
+        }
+    }
+
+    editCurrentTask() {
+        if (!this.currentViewingTask) return;
+        
+        // Close view modal
+        $('#viewTaskModal').modal('hide');
+        
+        // For now, we'll just show a message
+        // In a real implementation, you'd open an edit modal
+        this.showInfo('Edit functionality will be implemented in the next phase');
+        
+        // You can implement edit functionality like this:
+        // this.showEditTaskModal(this.currentViewingTask);
+    }
+
+    // Optional: Add info message method
+    showInfo(message) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Information',
+            text: message,
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
+    
+  }
+
+// Fix the duplicate initialization - remove one of these
 $(document).ready(function() {
     // Set scrumboard theme
     localStorage.setItem('currentTheme', 'scrum');
