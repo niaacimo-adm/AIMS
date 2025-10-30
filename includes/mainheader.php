@@ -15,6 +15,8 @@ if (strpos($current_page, 'service') !== false) {
     $current_theme = 'file';
 } elseif (strpos($current_page, 'ict_') !== false) {
     $current_theme = 'ict';
+} elseif (strpos($current_page, 'ia_profile') !== false || strpos($current_page, 'ia_profiles') !== false) {
+    $current_theme = 'ia';
 }
 
 
@@ -102,6 +104,14 @@ if ($employee_id) {
                                 <i class="fas fa-desktop"></i>
                             </div>
                             <span class="app-name">ICT Equipment Inventory</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="ia_profiles.php" class="app-item" data-theme="ia">
+                            <div class="app-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <span class="app-name">IA Profiles</span>
                         </a>
                     </div>
                     <div class="col-6">
@@ -743,6 +753,11 @@ if ($employee_id) {
                 footer: 'linear-gradient(135deg, #17a2b8, #138496)',
                 class: 'theme-ict'
             },
+            'ia': {
+                header: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
+                footer: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
+                class: 'theme-ia'
+            },
             'document': {
                 header: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
                 footer: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
@@ -765,7 +780,7 @@ if ($employee_id) {
             const header = $('.main-header');
             if (header.length) {
                 header.css('background', theme.header);
-                header.removeClass('theme-admin theme-service theme-inventory theme-file');
+                header.removeClass('theme-admin theme-service theme-inventory theme-file theme-ia');
                 header.addClass(theme.class);
                 console.log('Header updated');
             }
@@ -774,7 +789,7 @@ if ($employee_id) {
             const footer = $('#mainFooter');
             if (footer.length) {
                 footer.css('background', theme.footer);
-                footer.removeClass('theme-admin theme-service theme-inventory theme-file');
+                footer.removeClass('theme-admin theme-service theme-inventory theme-file theme-ia');
                 footer.addClass(theme.class);
                 console.log('Footer updated');
             }
@@ -811,6 +826,8 @@ if ($employee_id) {
             theme = 'inventory';
         } else if (currentPage.includes('file_management')) {
             theme = 'file';
+        } else if (currentPage.includes('ia_profile') || currentPage.includes('ia_profiles')) {
+            theme = 'ia';
         } else if (currentPage.includes('document_') || currentPage.includes('documents_')) {
             theme = 'document';
         } else if (currentPage.includes('scrum') || currentPage.includes('scrumboard')) {
@@ -868,6 +885,7 @@ $(window).on('load', function() {
             'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
             'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
             'ict': 'linear-gradient(135deg, #17a2b8, #138496)',
+            'ia': 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
             'document': 'linear-gradient(135deg, #556b2f, #2b2b2b)',
             'scrum': 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
         };
@@ -877,9 +895,9 @@ $(window).on('load', function() {
             $('#mainFooter').css('background', themes[currentTheme]);
             
             // Also update theme classes
-            $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum')
+            $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
                             .addClass('theme-' + currentTheme);
-            $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum')
+            $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
                           .addClass('theme-' + currentTheme);
             
             console.log('Theme applied:', currentTheme);
@@ -890,101 +908,20 @@ $(window).on('load', function() {
 function setModuleCookie() {
     const currentTheme = localStorage.getItem('currentTheme') || 'admin';
     document.cookie = `current_module=${currentTheme}; path=/; max-age=300`; // 5 minutes
+    console.log('Module cookie set:', currentTheme);
 }
 
-// Call this when profile link is clicked in header
+// Update profile link to set module cookie
 $(document).ready(function() {
-    $('.profile-dropdown a[href="profile.php"]').on('click', function(e) {
+    $('a[href="profile.php"]').on('click', function(e) {
         setModuleCookie();
-        // Allow normal navigation to proceed
     });
-    
-    // Also set cookie on page load if we're on profile page
-    if (window.location.pathname.includes('profile.php')) {
-        setModuleCookie();
-    }
-});
-// Sync theme when profile page is loaded
-function syncProfileTheme() {
-    if (window.location.pathname.includes('profile.php')) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const theme = urlParams.get('theme') || localStorage.getItem('currentTheme') || 'admin';
-        setTheme(theme);
-    }
-}
-
-// Call this on page load
-$(document).ready(function() {
-    syncProfileTheme();
-});
-// Add this function to handle logout properly
-function logoutUser() {
-    // First set user offline via AJAX
-    $.ajax({
-        url: '../includes/chat_ajax.php',
-        type: 'POST',
-        async: false, // Make it synchronous to ensure it completes
-        data: { action: 'set_offline' },
-        success: function(response) {
-            console.log('User set offline successfully');
-        },
-        error: function(xhr, status, error) {
-            console.error('Error setting offline status:', error);
-        }
-    });
-    
-    // Then redirect to logout.php
-    window.location.href = '../logout.php';
-}
-$(window).on('beforeunload', function() {
-    if (<?php echo isset($_SESSION['emp_id']) ? 'true' : 'false'; ?>) {
-        // Use synchronous AJAX to ensure the request completes
-        $.ajax({
-            url: '../includes/chat_ajax.php',
-            type: 'POST',
-            async: false, // Make it synchronous
-            data: {
-                action: 'set_offline'
-            },
-            success: function(response) {
-                console.log('User set offline on page unload');
-            },
-            error: function(xhr, status, error) {
-                console.error('Error setting offline status on unload:', error);
-            }
-        });
-    }
 });
 
-// Also handle page visibility changes (tab switching)
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden && <?php echo isset($_SESSION['emp_id']) ? 'true' : 'false'; ?>) {
-        // User switched tabs or minimized window - update status
-        $.post('../includes/chat_ajax.php', { action: 'update_online_status' });
-    }
-});
-
-// Add this function to mainheader.php
+// Function to set profile theme with current module
 function setProfileThemeWithCurrent() {
     const currentTheme = localStorage.getItem('currentTheme') || 'admin';
     document.cookie = `current_module=${currentTheme}; path=/; max-age=300`;
-    localStorage.setItem('currentTheme', currentTheme);
-    console.log('Profile theme set to current:', currentTheme);
-}
-
-// Also update the existing setProfileTheme function
-function setProfileTheme(theme) {
-    document.cookie = `current_module=${theme}; path=/; max-age=300`;
-    localStorage.setItem('currentTheme', theme);
-    console.log('Profile theme set to:', theme);
-}
-
-// Update the existing setModuleCookie function to be more robust
-function setModuleCookie() {
-    const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-    document.cookie = `current_module=${currentTheme}; path=/; max-age=300`; // 5 minutes
-    console.log('Module cookie set to:', currentTheme);
+    console.log('Profile theme set to:', currentTheme);
 }
 </script>
-
-<?php include '../includes/footer.php'; ?>
