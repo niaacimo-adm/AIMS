@@ -91,8 +91,8 @@ if (isset($_GET['id'])) {
             }
 
             // CORRECTED: C22 = Section head name, C23 = Section name
-            $worksheet->setCellValue('C22', strtoupper($sectionHeadName)); // Section head name
-            $worksheet->setCellValue('C23', $slip['section_name'] ?? ''); // Section name
+            $worksheet->setCellValue('C22', strtoupper($sectionHeadName )); // Section head name
+            $worksheet->setCellValue('B23', 'Acting Section Head: '. $slip['section_name'] ?? ''); // Section name
             
             // Also update the second form (C62 and C63)
             $worksheet->setCellValue('C62', strtoupper($sectionHeadName)); // Section head name in second form

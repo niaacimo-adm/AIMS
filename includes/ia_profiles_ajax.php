@@ -1,6 +1,8 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once 'ia_history_logger.php';
+require_once 'ia_generate_excel.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -22,6 +24,9 @@ error_log("IA Profiles AJAX Action: " . $action);
 switch ($action) {
     case 'add':
         addIaProfile($db);
+        break;
+    case 'update': // ADD THIS CASE
+        updateIaProfile($db);
         break;
     case 'view':
         viewIaProfile($db);
@@ -53,6 +58,12 @@ switch ($action) {
     case 'get_assigned_employee':
         getAssignedEmployee($db);
         break;
+    case 'generate_report':
+        generateIAReport($db);
+        break;
+    case 'import_profiles':
+        importIAProfiles($db);
+        break;
     default:
         // For non-JSON responses, don't set JSON header
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,7 +73,79 @@ switch ($action) {
             echo 'Invalid action: ' . $action;
         }
 }
+// In the generateIAReport function in ia_profiles_ajax.php
+function generateIAReport($db) {
+    header('Content-Type: application/json');
+    
+    if (!hasPermission('manage_ia_profiles')) {
+        echo json_encode(['success' => false, 'message' => 'Permission denied']);
+        return;
+    }
+    
+    try {
+        require_once 'ia_generate_excel.php';
+        
+        $filters = [
+            'region' => $_POST['region'] ?? '',
+            'province' => $_POST['province'] ?? '',
+            'congressional_district' => $_POST['congressional_district'] ?? '',
+            'status' => $_POST['status'] ?? '',
+            'report_period' => $_POST['report_period'] ?? '',
+            'date_organized_from' => $_POST['date_organized_from'] ?? '',
+            'date_organized_to' => $_POST['date_organized_to'] ?? ''
+        ];
+        
+        // Use absolute path to template
+        $templatePath = __DIR__ . '/../templates/R5_IA-PROFILE_Template.xlsx';
+        
+        // Check if template exists, if not use basic generation
+        if (!file_exists($templatePath)) {
+            error_log("Template file not found: " . $templatePath);
+            // Continue without template - will use basic creation
+        }
+        
+        $reportGenerator = new ExcelReportGenerator($db, $templatePath);
+        $spreadsheet = $reportGenerator->generateIAProfilesReport($filters);
+        
+        $filename = 'IA_Profiles_Report_' . date('Y-m-d_His') . '.xlsx';
+        $reportGenerator->exportToBrowser($spreadsheet, $filename);
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
 
+function importIAProfiles($db) {
+    header('Content-Type: application/json');
+    
+    if (!hasPermission('add_ia_profile')) {
+        echo json_encode(['success' => false, 'message' => 'Permission denied']);
+        return;
+    }
+    
+    try {
+        if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('Please select a valid Excel file to import');
+        }
+        
+        $file = $_FILES['import_file'];
+        $filePath = $file['tmp_name'];
+        
+        // Validate file type
+        $fileType = pathinfo($file['name'], PATHINFO_EXTENSION);
+        if (!in_array(strtolower($fileType), ['xlsx', 'xls'])) {
+            throw new Exception('Please upload a valid Excel file (.xlsx or .xls)');
+        }
+        
+        $reportGenerator = new ExcelReportGenerator($db);
+        $result = $reportGenerator->importIAProfiles($filePath);
+        
+        echo json_encode($result);
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
 function getIduEmployees($db) {
     header('Content-Type: application/json');
     
@@ -120,7 +203,23 @@ function assignEmployeeToIa($db) {
         return;
     }
 
-    try {
+     try {
+        // Get current assignment and profile name
+        $current_query = "SELECT ip.ia_name, ip.assigned_employee_id, e.first_name, e.last_name 
+                         FROM ia_profiles ip 
+                         LEFT JOIN employee e ON ip.assigned_employee_id = e.emp_id 
+                         WHERE ip.id = ?";
+        $current_stmt = $db->prepare($current_query);
+        $current_stmt->bind_param('i', $ia_profile_id);
+        $current_stmt->execute();
+        $current_result = $current_stmt->get_result();
+        $current_data = $current_result->fetch_assoc();
+        
+        if (!$current_data) {
+            echo json_encode(['success' => false, 'message' => 'Profile not found']);
+            return;
+        }
+
         // If emp_id is empty or 0, remove the assignment
         if (empty($emp_id)) {
             $query = "UPDATE ia_profiles SET assigned_employee_id = NULL WHERE id = ?";
@@ -137,12 +236,145 @@ function assignEmployeeToIa($db) {
         }
         
         if ($stmt->execute()) {
+            // Log the assignment
+            $logger = new IAHistoryLogger();
+            
+            // Get employee name
+            $employee_name = 'Unassigned';
+            if (!empty($emp_id)) {
+                $emp_query = "SELECT CONCAT(first_name, ' ', last_name) as full_name FROM employee WHERE emp_id = ?";
+                $emp_stmt = $db->prepare($emp_query);
+                $emp_stmt->bind_param('i', $emp_id);
+                $emp_stmt->execute();
+                $emp_result = $emp_stmt->get_result();
+                $emp_data = $emp_result->fetch_assoc();
+                $employee_name = $emp_data['full_name'] ?? 'Unknown Employee';
+            }
+            
+            $action_type = empty($emp_id) ? 'unassigned' : 'assigned';
+            $logger->logAssignment($ia_profile_id, $current_data['ia_name'], $employee_name, $action_type);
+            
             echo json_encode(['success' => true, 'message' => 'Employee assigned successfully']);
         } else {
             throw new Exception("Execute failed: " . $stmt->error);
         }
     } catch (Exception $e) {
         error_log("Error assigning employee to IA: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+}
+
+function updateIaProfile($db) {
+    header('Content-Type: application/json');
+    
+    if (!hasPermission('edit_ia_profile')) {
+        echo json_encode(['success' => false, 'message' => 'Permission denied']);
+        return;
+    }
+
+    try {
+        $id = $_POST['id'] ?? 0;
+        
+        if (empty($id)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid profile ID']);
+            return;
+        }
+
+        // Get current data for comparison
+        $current_query = "SELECT * FROM ia_profiles WHERE id = ?";
+        $current_stmt = $db->prepare($current_query);
+        $current_stmt->bind_param('i', $id);
+        $current_stmt->execute();
+        $current_result = $current_stmt->get_result();
+        $current_data = $current_result->fetch_assoc();
+        
+        if (!$current_data) {
+            echo json_encode(['success' => false, 'message' => 'Profile not found']);
+            return;
+        }
+
+        $new_data = [
+            'ia_name' => $_POST['ia_name'] ?? '',
+            'ia_code' => $_POST['ia_code'] ?? '',
+            'mailing_address' => $_POST['mailing_address'] ?? '',
+            'president_name' => $_POST['president_name'] ?? '',
+            'contact_number' => $_POST['contact_number'] ?? '',
+            'date_organized' => $_POST['date_organized'] ?? null,
+            'sec_registration_date' => $_POST['sec_registration_date'] ?? null,
+            'sec_registration_number' => $_POST['sec_registration_number'] ?? '',
+            'ia_tin' => $_POST['ia_tin'] ?? '',
+            'service_area_ha' => $_POST['service_area_ha'] ?? 0,
+            'fusa_ha' => $_POST['fusa_ha'] ?? 0,
+            'farmer_beneficiaries' => $_POST['farmer_beneficiaries'] ?? 0,
+            'actual_ia_members' => $_POST['actual_ia_members'] ?? 0,
+            'tsags_count' => $_POST['tsags_count'] ?? 0,
+            'existing_contract' => $_POST['existing_contract'] ?? '',
+            'contract_effectivity_date' => $_POST['contract_effectivity_date'] ?? null,
+            'canal_length_km' => $_POST['canal_length_km'] ?? 0,
+            'male_members' => $_POST['male_members'] ?? 0,
+            'female_members' => $_POST['female_members'] ?? 0,
+            'congressional_district' => $_POST['district_text'] ?? '',
+            'region' => $_POST['region_text'] ?? '',
+            'province' => $_POST['province_text'] ?? '',
+            'imo' => $_POST['imo'] ?? '',
+            'status' => $_POST['status'] ?? 'operational',
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+
+        $logger = new IAHistoryLogger();
+        $changes = $logger->findChanges($current_data, $new_data);
+
+        // Convert empty strings to NULL for date fields
+        if (empty($data['date_organized'])) $data['date_organized'] = null;
+        if (empty($data['sec_registration_date'])) $data['sec_registration_date'] = null;
+        if (empty($data['contract_effectivity_date'])) $data['contract_effectivity_date'] = null;
+
+        // Build SET clause for update
+        $setClause = [];
+        $values = [];
+        $types = '';
+        
+        foreach ($data as $key => $value) {
+            $setClause[] = "{$key} = ?";
+            $values[] = $value;
+            if (is_float($value)) {
+                $types .= 'd';
+            } elseif (is_int($value)) {
+                $types .= 'i';
+            } else {
+                $types .= 's';
+            }
+        }
+        
+        // Add ID to values
+        $values[] = $id;
+        $types .= 'i';
+        
+        $setClauseStr = implode(', ', $setClause);
+        $query = "UPDATE ia_profiles SET {$setClauseStr} WHERE id = ?";
+        
+        error_log("Update Query: " . $query);
+        
+        $stmt = $db->prepare($query);
+        
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $db->error);
+        }
+
+        $stmt->bind_param($types, ...$values);
+        
+        if ($stmt->execute()) {
+            // Log the update with changes
+            if (!empty($changes)) {
+                $logger->logUpdate($id, $current_data['ia_name'], $changes);
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'IA Profile updated successfully']);
+        } else {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+    } catch (Exception $e) {
+        error_log("Error updating IA Profile: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 }
@@ -576,8 +808,14 @@ function addIaProfile($db) {
 
         $stmt->bind_param($types, ...$values);
         
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'IA Profile added successfully']);
+         if ($stmt->execute()) {
+            $new_id = $db->insert_id;
+            
+            // Log the creation
+            $logger = new IAHistoryLogger();
+            $logger->logCreation($new_id, $data['ia_name']);
+            
+            echo json_encode(['success' => true, 'message' => 'IA Profile added successfully', 'id' => $new_id]);
         } else {
             throw new Exception("Execute failed: " . $stmt->error);
         }
@@ -817,6 +1055,7 @@ function viewIaProfile($db) {
     }
 }
 
+// Update the deleteIaProfile function
 function deleteIaProfile($db) {
     header('Content-Type: application/json');
     
@@ -833,6 +1072,14 @@ function deleteIaProfile($db) {
     }
 
     try {
+        // Get profile name before deletion for logging
+        $name_query = "SELECT ia_name FROM ia_profiles WHERE id = ?";
+        $name_stmt = $db->prepare($name_query);
+        $name_stmt->bind_param('i', $id);
+        $name_stmt->execute();
+        $name_result = $name_stmt->get_result();
+        $profile_data = $name_result->fetch_assoc();
+        
         $query = "DELETE FROM ia_profiles WHERE id = ?";
         $stmt = $db->prepare($query);
         
@@ -843,6 +1090,12 @@ function deleteIaProfile($db) {
         $stmt->bind_param('i', $id);
         
         if ($stmt->execute()) {
+            // Log the deletion
+            if ($profile_data) {
+                $logger = new IAHistoryLogger();
+                $logger->logDeletion($id, $profile_data['ia_name']);
+            }
+            
             echo json_encode(['success' => true, 'message' => 'IA Profile deleted successfully']);
         } else {
             throw new Exception("Execute failed: " . $stmt->error);
@@ -871,6 +1124,49 @@ if ($assignedEmployee && $assignedEmployee['first_name']) {
     
     echo '<div class="row mt-3">';
     echo '<div class="col-12"><strong>Assigned IDU Employee:</strong> ' . htmlspecialchars(trim($assignedName)) . '</div>';
-    echo '</div>';
+    echo '</div>
+    ';
+}
+if ($_POST['action'] == 'generate_report') {
+    try {
+        require_once '../includes/ia_generate_excel.php';
+        
+        // Get filters from POST data
+        $filters = [
+            'region' => $_POST['region'] ?? '',
+            'province' => $_POST['province'] ?? '',
+            'congressional_district' => $_POST['congressional_district'] ?? '',
+            'status' => $_POST['status'] ?? '',
+            'report_period' => $_POST['report_period'] ?? '',
+            'date_organized_from' => $_POST['date_organized_from'] ?? '',
+            'date_organized_to' => $_POST['date_organized_to'] ?? ''
+        ];
+        
+        // Initialize database connection
+        $database = new Database();
+        $db = $database->getConnection();
+        
+        // Create Excel generator
+        $excelGenerator = new ExcelReportGenerator($db);
+        
+        // Generate report
+        $spreadsheet = $excelGenerator->generateIAProfilesReport($filters);
+        
+        // Generate filename
+        $filename = 'IA_Profile_Report_' . date('Y-m-d') . '.xlsx';
+        
+        // Export to browser
+        $excelGenerator->exportToBrowser($spreadsheet, $filename);
+        
+    } catch (Exception $e) {
+        // Return JSON error for proper handling
+        header('Content-Type: application/json');
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+        exit;
+    }
 }
 ?>

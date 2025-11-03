@@ -345,7 +345,7 @@ $page_title = "IA Profile - " . htmlspecialchars($profile['ia_name']);
                                 <?php endif; ?>
                             </div>
                             <div class="card-body">
-                                <div class="table-responsive">
+                                <!-- <div class="table-responsive"> -->
                                     <table id="officersTable" class="table table-striped table-hover">
                                         <thead class="thead-light">
                                             <tr>
@@ -411,7 +411,7 @@ $page_title = "IA Profile - " . htmlspecialchars($profile['ia_name']);
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
-                                </div>
+                                <!-- </div> -->
                             </div>
                         </div>
                     </div>
@@ -457,8 +457,8 @@ $page_title = "IA Profile - " . htmlspecialchars($profile['ia_name']);
                     <div class="form-group">
                         <label for="is_active" class="font-weight-bold">Status</label>
                         <select class="form-control form-control-lg" id="is_active" name="is_active">
-                            <option value="1">🟢 Active</option>
-                            <option value="0">🔴 Inactive</option>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
                         </select>
                     </div>
                 </div>

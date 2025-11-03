@@ -37,6 +37,7 @@ $page_title = "IA Profiles";
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        
         .assignment-badge {
             font-size: 12px;
             padding: 4px 8px;
@@ -46,8 +47,130 @@ $page_title = "IA Profiles";
             border: 1px solid #bbdefb;
         }
 
-        .assign-btn {
-            cursor: pointer;
+        /* Modern Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-action {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .btn-action:active {
+            transform: translateY(0);
+        }
+
+        .btn-view {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: linear-gradient(135deg, #138496, #117a8b);
+            color: white;
+        }
+
+        .btn-history {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+        }
+
+        .btn-history:hover {
+            background: linear-gradient(135deg, #5a6268, #545b62);
+            color: white;
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #007bff, #0069d9);
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #0069d9, #0062cc);
+            color: white;
+        }
+
+        .btn-assign {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #212529;
+        }
+
+        .btn-assign:hover {
+            background: linear-gradient(135deg, #e0a800, #d39e00);
+            color: #212529;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            color: white;
+        }
+
+        .btn-icon {
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        /* Table responsive improvements */
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background-color: #f8f9fa;
+        }
+
+        .table td {
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        /* Card header improvements */
+        .card-header {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        /* Badge improvements */
+        .badge {
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        /* Hover effects for table rows */
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.04);
+            transform: scale(1.002);
+            transition: all 0.2s ease;
         }
     </style>
 </head>
@@ -154,13 +277,13 @@ $page_title = "IA Profiles";
                         <div class="card">
                             <div class="card-header">
                                 <h3 class="card-title">Irrigators' Association Profiles</h3>
-                                <?php if (hasPermission('add_ia_profile')): ?>
                                 <div class="card-tools">
-                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addIaProfileModal">
+                                    <?php if (hasPermission('add_ia_profile')): ?>
+                                    <a href="ia_profile_add.php" class="btn btn-primary">
                                         <i class="fas fa-plus"></i> Add IA Profile
-                                    </button>
+                                    </a>
+                                    <?php endif; ?>
                                 </div>
-                                <?php endif; ?>
                             </div>
                             <div class="card-body">
                                 <table id="iaProfilesTable" class="table table-bordered table-striped">
@@ -189,31 +312,44 @@ $page_title = "IA Profiles";
                                             while ($row = $result->fetch_assoc()):
                                         ?>
                                         <tr>
-                                            <td><?= htmlspecialchars($row['ia_name']) ?></td>
-                                            <td><?= htmlspecialchars($row['president_name'] ?? '') ?></td>
-                                            <td><?= htmlspecialchars($row['contact_number'] ?? '') ?></td>
-                                            <td><?= number_format($row['service_area_ha'] ?? 0, 2) ?></td>
-                                            <td><?= $row['actual_ia_members'] ?? 0 ?></td>
-                                            <td><?= $row['tsags_count'] ?? 0 ?></td>
+                                            <td><strong><?= htmlspecialchars($row['ia_name']) ?></strong></td>
+                                            <td><?= htmlspecialchars($row['president_name'] ?? '') ?: '<span class="text-muted">N/A</span>' ?></td>
+                                            <td><?= htmlspecialchars($row['contact_number'] ?? '') ?: '<span class="text-muted">N/A</span>' ?></td>
+                                            <td><strong><?= number_format($row['service_area_ha'] ?? 0, 2) ?></strong></td>
+                                            <td><?= $row['actual_ia_members'] ? '<span class="badge badge-info">' . $row['actual_ia_members'] . '</span>' : '<span class="text-muted">0</span>' ?></td>
+                                            <td><?= $row['tsags_count'] ? '<span class="badge badge-secondary">' . $row['tsags_count'] . '</span>' : '<span class="text-muted">0</span>' ?></td>
                                             <td>
                                                 <span class="badge badge-<?= $row['status'] == 'active' ? 'success' : 'danger' ?>">
                                                     <?= ucfirst($row['status']) ?>
                                                 </span>
                                             </td>
                                             <td>
-                                                <button class="btn btn-info btn-sm view-profile" data-id="<?= $row['id'] ?>">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <?php if (hasPermission('edit_ia_profile')): ?>
-                                                <button class="btn btn-primary btn-sm edit-profile" data-id="<?= $row['id'] ?>">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <?php endif; ?>
-                                                <?php if (hasPermission('delete_ia_profile')): ?>
-                                                <button class="btn btn-danger btn-sm delete-profile" data-id="<?= $row['id'] ?>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                                <?php endif; ?>
+                                                <div id="assigned-employee-<?= $row['id'] ?>">
+                                                    <span class="text-muted">Loading...</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="action-buttons">
+                                                    <button class="btn-action btn-view view-profile" data-id="<?= $row['id'] ?>" title="View Profile">
+                                                        <i class="fas fa-eye btn-icon"></i>
+                                                    </button>
+                                                    <a href="ia_profile_history.php?id=<?= $row['id'] ?>" class="btn-action btn-history" title="View History">
+                                                        <i class="fas fa-history btn-icon"></i>
+                                                    </a>
+                                                    <?php if (hasPermission('edit_ia_profile')): ?>
+                                                    <button class="btn-action btn-edit edit-profile" data-id="<?= $row['id'] ?>" title="Edit Profile">
+                                                        <i class="fas fa-edit btn-icon"></i>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                    <button class="btn-action btn-assign assign-employee" data-id="<?= $row['id'] ?>" title="Assign Employee">
+                                                        <i class="fas fa-user-plus btn-icon"></i>
+                                                    </button>
+                                                    <?php if (hasPermission('delete_ia_profile')): ?>
+                                                    <button class="btn-action btn-delete delete-profile" data-id="<?= $row['id'] ?>" title="Delete Profile">
+                                                        <i class="fas fa-trash btn-icon"></i>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                         <?php 
@@ -221,7 +357,10 @@ $page_title = "IA Profiles";
                                         else:
                                         ?>
                                         <tr>
-                                            <td colspan="8" class="text-center">No IA Profiles found</td>
+                                            <td colspan="9" class="text-center py-4">
+                                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                                <p class="text-muted">No IA Profiles found</p>
+                                            </td>
                                         </tr>
                                         <?php endif; ?>
                                     </tbody>
@@ -234,194 +373,6 @@ $page_title = "IA Profiles";
         </section>
     </div>
    <?php include '../includes/mainfooter.php'; ?>
-</div>
-<!-- Add IA Profile Modal -->
-<div class="modal fade" id="addIaProfileModal" tabindex="-1" role="dialog" aria-labelledby="addIaProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addIaProfileModalLabel">Add IA Profile</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="addIaProfileForm">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="ia_name">IA Name *</label>
-                                <input type="text" class="form-control" id="ia_name" name="ia_name" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="status">Status *</label>
-                                <select class="form-control" id="status" name="status" required>
-                                    <option value="operational">Operational</option>
-                                    <option value="non-operational">Non-operational</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="ia_code">IA Code</label>
-                                <input type="text" class="form-control" id="ia_code" name="ia_code">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="region">Region *</label>
-                                <select class="form-control" id="region" name="region" required>
-                                    <option value="">Select Region</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="province">Province *</label>
-                                <select class="form-control" id="province" name="province" required>
-                                    <option value="">Select Province</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="district">District *</label>
-                                <select class="form-control" id="district" name="district" required>
-                                    <option value="">Select District</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="mailing_address">Mailing Address</label>
-                        <textarea class="form-control" id="mailing_address" name="mailing_address" rows="2"></textarea>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="president_name">President Name</label>
-                                <input type="text" class="form-control" id="president_name" name="president_name">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="contact_number">Contact Number</label>
-                                <input type="text" class="form-control" id="contact_number" name="contact_number">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="date_organized">Date Organized</label>
-                                <input type="date" class="form-control" id="date_organized" name="date_organized">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="sec_registration_date">SEC Registration Date</label>
-                                <input type="date" class="form-control" id="sec_registration_date" name="sec_registration_date">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="sec_registration_number">SEC Registration Number</label>
-                                <input type="text" class="form-control" id="sec_registration_number" name="sec_registration_number">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="service_area_ha">Service Area (ha)</label>
-                                <input type="number" step="0.01" class="form-control" id="service_area_ha" name="service_area_ha">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="fusa_ha">FUSA (ha)</label>
-                                <input type="number" step="0.01" class="form-control" id="fusa_ha" name="fusa_ha">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="ia_tin">IA TIN</label>
-                                <input type="text" class="form-control" id="ia_tin" name="ia_tin">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="farmer_beneficiaries">Farmer Beneficiaries</label>
-                                <input type="number" class="form-control" id="farmer_beneficiaries" name="farmer_beneficiaries">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="actual_ia_members">Actual IA Members</label>
-                                <input type="number" class="form-control" id="actual_ia_members" name="actual_ia_members">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="tsags_count">No. of TSAGs</label>
-                                <input type="number" class="form-control" id="tsags_count" name="tsags_count">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="existing_contract">Existing Contract</label>
-                                <input type="text" class="form-control" id="existing_contract" name="existing_contract">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="contract_effectivity_date">Contract Effectivity Date</label>
-                                <input type="date" class="form-control" id="contract_effectivity_date" name="contract_effectivity_date">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="canal_length_km">Canal Length (km)</label>
-                                <input type="number" step="0.001" class="form-control" id="canal_length_km" name="canal_length_km">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="male_members">Male Members</label>
-                                <input type="number" class="form-control" id="male_members" name="male_members">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="female_members">Female Members</label>
-                                <input type="number" class="form-control" id="female_members" name="female_members">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save IA Profile</button>
-                </div>
-            </form>
-        </div>
-    </div>
 </div>
 <!-- Assign Employee Modal -->
 <div class="modal fade" id="assignEmployeeModal" tabindex="-1" role="dialog" aria-labelledby="assignEmployeeModalLabel" aria-hidden="true">
@@ -460,11 +411,11 @@ $page_title = "IA Profiles";
 <script>
 $(document).ready(function() {
     
-     $('#iaProfilesTable').DataTable({
+    $('#iaProfilesTable').DataTable({
         "responsive": true,
         "autoWidth": false,
         "processing": true,
-        "serverSide": false, // Change to false since we're handling data manually
+        "serverSide": false,
         "ajax": {
             "url": "../includes/ia_profiles_ajax.php",
             "type": "POST",
@@ -480,17 +431,42 @@ $(document).ready(function() {
             }
         },
         "columns": [
-            { "data": "ia_name" },
-            { "data": "president_name" },
-            { "data": "contact_number" },
+            { 
+                "data": "ia_name",
+                "render": function(data, type, row) {
+                    return '<strong>' + data + '</strong>';
+                }
+            },
+            { 
+                "data": "president_name",
+                "render": function(data, type, row) {
+                    return data || '<span class="text-muted">N/A</span>';
+                }
+            },
+            { 
+                "data": "contact_number",
+                "render": function(data, type, row) {
+                    return data || '<span class="text-muted">N/A</span>';
+                }
+            },
             { 
                 "data": "service_area_ha",
                 "render": function(data, type, row) {
-                    return data ? parseFloat(data).toFixed(2) : '0.00';
+                    return data ? '<strong>' + parseFloat(data).toFixed(2) + '</strong>' : '<span class="text-muted">0.00</span>';
                 }
             },
-            { "data": "actual_ia_members" },
-            { "data": "tsags_count" },
+            { 
+                "data": "actual_ia_members",
+                "render": function(data, type, row) {
+                    return data ? '<span class="badge badge-info">' + data + '</span>' : '<span class="text-muted">0</span>';
+                }
+            },
+            { 
+                "data": "tsags_count",
+                "render": function(data, type, row) {
+                    return data ? '<span class="badge badge-secondary">' + data + '</span>' : '<span class="text-muted">0</span>';
+                }
+            },
             { 
                 "data": "status",
                 "render": function(data, type, row) {
@@ -503,31 +479,59 @@ $(document).ready(function() {
             { 
                 "data": "id",
                 "render": function(data, type, row) {
-                    // This will be populated via AJAX
-                    return '<div id="assigned-employee-' + data + '">Loading...</div>';
+                    // Create a container for the assigned employee
+                    return '<div id="assigned-employee-' + data + '"><span class="text-muted">Loading...</span></div>';
                 }
             },
             {
                 "data": "id",
                 "render": function(data, type, row) {
-                    let buttons = '<button class="btn btn-info btn-sm view-profile" data-id="' + data + '"><i class="fas fa-eye"></i></button>';
+                    let buttons = '<div class="action-buttons">';
+                    
+                    // View button
+                    buttons += '<button class="btn-action btn-view view-profile" data-id="' + data + '" title="View Profile">';
+                    buttons += '<i class="fas fa-eye btn-icon"></i>';
+                    buttons += '</button>';
+                    
+                    // History button
+                    buttons += '<a href="ia_profile_history.php?id=' + data + '" class="btn-action btn-history" title="View History">';
+                    buttons += '<i class="fas fa-history btn-icon"></i>';
+                    buttons += '</a>';
+                    
                     <?php if (hasPermission('edit_ia_profile')): ?>
-                    buttons += ' <button class="btn btn-primary btn-sm edit-profile" data-id="' + data + '"><i class="fas fa-edit"></i></button>';
+                    // Edit button
+                    buttons += '<button class="btn-action btn-edit edit-profile" data-id="' + data + '" title="Edit Profile">';
+                    buttons += '<i class="fas fa-edit btn-icon"></i>';
+                    buttons += '</button>';
                     <?php endif; ?>
-                    // Add assign button
-                    buttons += ' <button class="btn btn-warning btn-sm assign-employee" data-id="' + data + '" title="Assign Employee"><i class="fas fa-user-plus"></i></button>';
+                    
+                    // Assign button
+                    buttons += '<button class="btn-action btn-assign assign-employee" data-id="' + data + '" title="Assign Employee">';
+                    buttons += '<i class="fas fa-user-plus btn-icon"></i>';
+                    buttons += '</button>';
+                    
                     <?php if (hasPermission('delete_ia_profile')): ?>
-                    buttons += ' <button class="btn btn-danger btn-sm delete-profile" data-id="' + data + '"><i class="fas fa-trash"></i></button>';
+                    // Delete button
+                    buttons += '<button class="btn-action btn-delete delete-profile" data-id="' + data + '" title="Delete Profile">';
+                    buttons += '<i class="fas fa-trash btn-icon"></i>';
+                    buttons += '</button>';
                     <?php endif; ?>
+                    
+                    buttons += '</div>';
                     return buttons;
                 },
                 "orderable": false,
-                "searchable": false
+                "searchable": false,
+                "width": "180px"
             }
         ],
         "language": {
             "emptyTable": "No IA Profiles found",
             "zeroRecords": "No matching records found"
+        },
+        "initComplete": function(settings, json) {
+            // Load assigned employees after table is initialized
+            loadAllAssignedEmployees();
         }
     });
 
@@ -555,85 +559,12 @@ $(document).ready(function() {
         }
     });
 
-    // Add IA Profile Form Submission
-    $('#addIaProfileForm').submit(function(e) {
-        e.preventDefault();
-        
-        // Get the actual values from dropdowns
-        const regionSelect = document.getElementById('region');
-        const provinceSelect = document.getElementById('province');
-        const districtSelect = document.getElementById('district');
-        
-        const regionText = regionSelect.options[regionSelect.selectedIndex].text;
-        const provinceText = provinceSelect.options[provinceSelect.selectedIndex].text;
-        const districtText = districtSelect.options[districtSelect.selectedIndex].text;
-        
-        // Create hidden inputs or modify form data
-        let formData = $(this).serialize();
-        formData += '&region_text=' + encodeURIComponent(regionText);
-        formData += '&province_text=' + encodeURIComponent(provinceText); // ADD THIS LINE
-        formData += '&district_text=' + encodeURIComponent(districtText);
-        
-        $.ajax({
-            url: '../includes/ia_profiles_ajax.php',
-            type: 'POST',
-            data: formData + '&action=add',
-            dataType: 'json',
-            success: function(response) {
-                console.log('Add response:', response);
-                if (response.success) {
-                    toastr.success('IA Profile added successfully');
-                    $('#addIaProfileModal').modal('hide');
-                    // Reload the page to show new data
-                    setTimeout(function() {
-                        location.reload();
-                    }, 1000);
-                } else {
-                    toastr.error('Error adding IA Profile: ' + response.message);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                toastr.error('Error adding IA Profile. Please check console for details.');
-            }
-        });
-    });
-
     // View IA Profile - Redirect to new page
     $(document).on('click', '.view-profile', function() {
         var profileId = $(this).data('id');
         window.location.href = 'ia_profile_view.php?id=' + profileId;
     });
 
-    // Delete IA Profile
-    $(document).on('click', '.delete-profile', function() {
-        var profileId = $(this).data('id');
-        
-        if (confirm('Are you sure you want to delete this IA Profile?')) {
-            $.ajax({
-                url: '../includes/ia_profiles_ajax.php',
-                type: 'POST',
-                data: {action: 'delete', id: profileId},
-                dataType: 'json',
-                success: function(response) {
-                    console.log('Delete response:', response);
-                    if (response.success) {
-                        toastr.success('IA Profile deleted successfully');
-                        // Reload the page to reflect changes
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
-                    } else {
-                        toastr.error('Error deleting IA Profile: ' + response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
-                    toastr.error('Error deleting IA Profile. Please check console for details.');
-                }
-            });
-        }
-    });
 });
 
 function loadRegions() {
@@ -732,14 +663,96 @@ function loadDistricts(provinceCode) {
 
 // Load assigned employees for all profiles
 function loadAllAssignedEmployees() {
-    $('#iaProfilesTable tbody tr').each(function() {
-        const profileId = $(this).find('.assign-employee').data('id');
+    const table = $('#iaProfilesTable').DataTable();
+    const data = table.rows().data();
+    
+    data.each(function (value, index) {
+        const profileId = value.id;
         if (profileId) {
             loadAssignedEmployee(profileId);
         }
     });
 }
+// Edit IA Profile - Redirect to edit page
+$(document).on('click', '.edit-profile', function() {
+    var profileId = $(this).data('id');
+    
+    Swal.fire({
+        title: 'Edit IA Profile',
+        text: 'You are about to edit this IA Profile. Continue?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, Edit it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Redirect to edit page (you'll need to create ia_profile_edit.php)
+            window.location.href = 'ia_profile_edit.php?id=' + profileId;
+        }
+    });
+});
 
+// Delete IA Profile with SweetAlert
+$(document).on('click', '.delete-profile', function() {
+    var profileId = $(this).data('id');
+    var profileName = $(this).closest('tr').find('td:first').text();
+    
+    Swal.fire({
+        title: 'Are you sure?',
+        html: `<strong>${profileName}</strong><br>This action cannot be undone!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return new Promise((resolve) => {
+                $.ajax({
+                    url: '../includes/ia_profiles_ajax.php',
+                    type: 'POST',
+                    data: {action: 'delete', id: profileId},
+                    dataType: 'json',
+                    success: function(response) {
+                        resolve(response);
+                    },
+                    error: function(xhr, status, error) {
+                        Swal.showValidationMessage(
+                            `Request failed: ${error}`
+                        );
+                    }
+                });
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (result.value.success) {
+                Swal.fire({
+                    title: 'Deleted!',
+                    text: 'IA Profile has been deleted.',
+                    icon: 'success',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    // Reload the page to reflect changes
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: result.value.message || 'Failed to delete IA Profile',
+                    icon: 'error',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            }
+        }
+    });
+});
 // Load assigned employee for a specific profile
 function loadAssignedEmployee(profileId) {
     $.ajax({

@@ -171,6 +171,27 @@ function addIaOfficer($db) {
         $stmt->bind_param($types, ...$values);
         
         if ($stmt->execute()) {
+            // Log the officer addition
+            $logger = new IAHistoryLogger();
+            
+            // Get IA Profile name
+            $profile_query = "SELECT ia_name FROM ia_profiles WHERE id = ?";
+            $profile_stmt = $db->prepare($profile_query);
+            $profile_stmt->bind_param('i', $data['ia_profile_id']);
+            $profile_stmt->execute();
+            $profile_result = $profile_stmt->get_result();
+            $profile_data = $profile_result->fetch_assoc();
+            
+            if ($profile_data) {
+                $logger->logOfficerActivity(
+                    $data['ia_profile_id'], 
+                    $profile_data['ia_name'], 
+                    $data['officer_name'], 
+                    'officer_added',
+                    $data['position']
+                );
+            }
+            
             error_log("Officer added successfully");
             echo json_encode(['success' => true, 'message' => 'Officer added successfully']);
         } else {
@@ -182,6 +203,7 @@ function addIaOfficer($db) {
     }
 }
 
+// Update the deleteIaOfficer function
 function deleteIaOfficer($db) {
     header('Content-Type: application/json');
     
@@ -198,6 +220,22 @@ function deleteIaOfficer($db) {
     }
 
     try {
+        // Get officer and profile info before deletion
+        $info_query = "SELECT io.officer_name, io.position, io.ia_profile_id, ip.ia_name 
+                      FROM ia_officers io 
+                      JOIN ia_profiles ip ON io.ia_profile_id = ip.id 
+                      WHERE io.id = ?";
+        $info_stmt = $db->prepare($info_query);
+        $info_stmt->bind_param('i', $id);
+        $info_stmt->execute();
+        $info_result = $info_stmt->get_result();
+        $officer_data = $info_result->fetch_assoc();
+        
+        if (!$officer_data) {
+            echo json_encode(['success' => false, 'message' => 'Officer not found']);
+            return;
+        }
+
         $query = "DELETE FROM ia_officers WHERE id = ?";
         $stmt = $db->prepare($query);
         
@@ -208,6 +246,15 @@ function deleteIaOfficer($db) {
         $stmt->bind_param('i', $id);
         
         if ($stmt->execute()) {
+            // Log the deletion
+            $logger = new IAHistoryLogger();
+            $logger->logOfficerActivity(
+                $officer_data['ia_profile_id'], 
+                $officer_data['ia_name'], 
+                $officer_data['officer_name'], 
+                'officer_deleted'
+            );
+            
             echo json_encode(['success' => true, 'message' => 'Officer deleted successfully']);
         } else {
             throw new Exception("Execute failed: " . $stmt->error);
