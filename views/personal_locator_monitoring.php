@@ -111,6 +111,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['error_message'] = "Please fill in all required fields.";
             error_log("VALIDATION FAILED: Missing required fields");
         } else {
+            // Validate personal matter frequency (once per week)
+            if ($purpose_type === 'personal') {
+                // Get the start and end of the current week (Monday to Sunday)
+                $current_date = new DateTime($date);
+                $week_start = clone $current_date;
+                $week_start->modify('this week'); // Gets Monday of current week
+                $week_start->setTime(0, 0, 0);
+                
+                $week_end = clone $week_start;
+                $week_end->modify('next week')->modify('-1 day'); // Gets Sunday of current week
+                $week_end->setTime(23, 59, 59);
+                
+                // Check if employee already has a personal matter slip this week
+                $frequency_query = "SELECT COUNT(*) as slip_count 
+                                FROM personal_locator_slips 
+                                WHERE employee_id = ? 
+                                AND purpose_type = 'personal' 
+                                AND date BETWEEN ? AND ? 
+                                AND status != 'rejected'";
+                
+                $freq_stmt = $db->prepare($frequency_query);
+                $freq_stmt->bind_param("iss", $employee_id, $week_start->format('Y-m-d'), $week_end->format('Y-m-d'));
+                $freq_stmt->execute();
+                $freq_result = $freq_stmt->get_result();
+                $slip_count = $freq_result->fetch_assoc()['slip_count'];
+                
+                if ($slip_count > 0) {
+                    $_SESSION['error_message'] = "This employee can only submit one personal matter locator slip per week. They already have a personal matter slip for this week (".$week_start->format('M j')." - ".$week_end->format('M j, Y').").";
+                    error_log("VALIDATION FAILED: Employee already has personal matter slip this week");
+                    // Don't proceed with insertion - use return instead of continue
+                    $isValid = false;
+                }
+            }
+
             // Validate time constraints based on purpose type
             if (!$no_return && $expected_return) {
                 $leave_timestamp = strtotime($leave_time);
@@ -124,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['error_message'] = "For official business, the return time must be within the same day.";
                     error_log("VALIDATION FAILED: Official business exceeds same day limit");
                 } else {
+                    // Proceed with insertion
                     $query = "INSERT INTO personal_locator_slips (employee_id, date, leave_time, purpose_type, purpose_details, no_return, expected_return, status, created_at) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
                     $stmt = $db->prepare($query);
@@ -181,7 +216,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         error_log("=== MANUAL SLIP CREATION COMPLETED ===");
     }
-
     // Handle slip update
     if (isset($_POST['update_slip'])) {
         $slip_id = $_POST['slip_id'];
@@ -698,6 +732,80 @@ $employees_result = $db->query($employees_query);
             margin-bottom: 25px;
             border: 1px solid #feb2b2;
         }
+
+        /* NEW STYLES FOR MINIMALIST BULK ACTIONS */
+        .bulk-actions-minimal {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .bulk-btn-minimal {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            color: white;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .bulk-btn-minimal:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .bulk-btn-minimal.approve {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .bulk-btn-minimal.reject {
+            background: linear-gradient(135deg, #dc3545, #e83e8c);
+        }
+
+        .bulk-btn-minimal.delete {
+            background: linear-gradient(135deg, #6c757d, #495057);
+        }
+
+        .bulk-btn-minimal.delete-all {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+
+        .bulk-actions-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            margin-right: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-actions-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .select-all-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-right: 8px;
+        }
+
+        .select-all-label {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.9);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -799,237 +907,221 @@ $employees_result = $db->query($employees_query);
                     </form>
                 </div>
 
-                <!-- Bulk Actions -->
-                <?php if ($status_filter == 'pending' || $status_filter == 'all'): ?>
-                <div class="bulk-actions">
-                    <form method="POST" action="" id="bulkForm">
-                        <div class="row align-items-center">
-                            <div class="col-md-6">
-                                <div class="form-check mb-0">
-                                    <input type="checkbox" class="form-check-input checkbox-modern" id="selectAll">
-                                    <label class="form-check-label font-weight-semibold" for="selectAll">
-                                        Select All Pending Requests
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 text-right">
-                                <button type="button" id="bulkApproveBtn" class="btn btn-modern btn-success">
-                                    <i class="fas fa-check mr-2"></i> Approve Selected
-                                </button>
-                                <button type="button" id="bulkRejectBtn" class="btn btn-modern btn-danger ml-2">
-                                    <i class="fas fa-times mr-2"></i> Reject Selected
-                                </button>
-                                <button type="button" id="bulkDeleteBtn" class="btn btn-modern btn-dark ml-2">
-                                    <i class="fas fa-trash mr-2"></i> Delete Selected
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                <!-- Success/Error Messages -->
+                <?php if ($success_message): ?>
+                    <div class="alert alert-success alert-modern alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <?= $success_message ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
                 <?php endif; ?>
 
-                <!-- Delete All Section -->
-                <div class="delete-all-section">
-                    <form method="POST" action="" id="deleteAllForm">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h6 class="font-weight-bold text-danger mb-0">
-                                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                                    Danger Zone
-                                </h6>
-                                <p class="text-muted mb-0 mt-1">
-                                    Delete all <?= $status_filter ?> slips matching current filters
-                                </p>
-                            </div>
-                            <div class="col-md-4 text-right">
-                                <button type="button" id="deleteAllBtn" class="btn btn-modern btn-danger">
-                                    <i class="fas fa-trash mr-2"></i> Delete All (<?= $slips_result->num_rows ?>)
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                <?php if ($error_message): ?>
+                    <div class="alert alert-danger alert-modern alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <?= $error_message ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                <?php endif; ?>
 
-                <!-- Slips Table -->
+                <!-- Main Card -->
                 <div class="modern-card">
+                    <!-- Card Header -->
                     <div class="modern-header">
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="card-title mb-0 font-weight-bold">
                                 <i class="fas fa-list-alt mr-2"></i>
                                 <?= ucfirst($status_filter) ?> Requests
                             </h3>
-                            <span class="badge-counter"><?= $slips_result->num_rows ?> requests</span>
+                            <div class="header-actions-container">
+                                <div class="select-all-container">
+                                    <input type="checkbox" id="select-all" class="checkbox-modern">
+                                    <label class="select-all-label mb-0">Select All</label>
+                                </div>
+                                <div class="bulk-actions-minimal">
+                                    <span class="bulk-actions-label">Bulk Actions:</span>
+                                    <button type="submit" name="bulk_approve" class="bulk-btn-minimal approve" title="Approve Selected">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="submit" name="bulk_reject" class="bulk-btn-minimal reject" title="Reject Selected">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <button type="submit" name="bulk_delete" class="bulk-btn-minimal delete" title="Delete Selected">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <button type="submit" name="delete_all" class="bulk-btn-minimal delete-all" title="Delete All">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                                <span class="badge-counter"><?= $slips_result->num_rows ?> requests</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table modern-table">
-                                <thead>
-                                    <tr>
-                                        <?php if ($status_filter == 'pending' || $status_filter == 'all'): ?>
-                                        <th width="50" class="text-center">
-                                            <input type="checkbox" class="checkbox-modern" id="selectAllHeader">
-                                        </th>
-                                        <?php endif; ?>
-                                        <th>Date</th>
-                                        <th>Employee</th>
-                                        <th>Section</th>
-                                        <th>Leave Time</th>
-                                        <th>Purpose</th>
-                                        <th>Expected Return</th>
-                                        <th>Status</th>
-                                        <th>Submitted</th>
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while ($slip = $slips_result->fetch_assoc()): 
-                                        $initials = substr($slip['first_name'], 0, 1) . substr($slip['last_name'], 0, 1);
-                                        $picturePath = '../dist/img/employees/' . htmlspecialchars($slip['picture']);
-                                        $hasPicture = !empty($slip['picture']) && file_exists($picturePath);
-                                    ?>
+
+                    <!-- Card Body -->
+                    <div class="card-body">
+                        <form method="POST" action="" id="bulkForm">
+                            <div class="table-responsive">
+                                <table class="table modern-table">
+                                    <thead>
                                         <tr>
-                                            <?php if ($status_filter == 'pending' || $status_filter == 'all'): ?>
-                                            <td class="text-center">
-                                                <?php if ($slip['status'] == 'pending'): ?>
-                                                    <input type="checkbox" class="checkbox-modern slip-checkbox" name="slip_ids[]" value="<?= $slip['id'] ?>">
-                                                <?php endif; ?>
-                                            </td>
-                                            <?php endif; ?>
-                                            <td>
-                                                <div class="font-weight-semibold text-dark">
-                                                    <?= date('M j, Y', strtotime($slip['date'])) ?>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <!-- UPDATED EMPLOYEE COLUMN WITH PICTURE -->
-                                                <div class="employee-with-picture">
-                                                    <?php if ($hasPicture): ?>
-                                                        <img src="<?= $picturePath ?>" 
-                                                             class="employee-picture" 
-                                                             alt="<?= htmlspecialchars($slip['first_name'] . ' ' . $slip['last_name']) ?>"
-                                                             title="<?= htmlspecialchars($slip['first_name'] . ' ' . $slip['last_name']) ?>"
-                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                        <div class="employee-picture-placeholder" style="<?= $hasPicture ? 'display: none;' : '' ?>" 
-                                                             title="<?= htmlspecialchars($slip['first_name'] . ' ' . $slip['last_name']) ?>">
-                                                            <?= strtoupper($initials) ?>
-                                                        </div>
-                                                    <?php else: ?>
-                                                        <div class="employee-picture-placeholder" title="<?= htmlspecialchars($slip['first_name'] . ' ' . $slip['last_name']) ?>">
-                                                            <?= strtoupper($initials) ?>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                    <div class="employee-details">
-                                                        <div class="employee-name">
-                                                            <?= htmlspecialchars($slip['first_name'] . ' ' . $slip['last_name']) ?>
-                                                        </div>
-                                                        <div class="employee-position">
-                                                            <?= htmlspecialchars($slip['position_name'] ?? 'N/A') ?>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="text-muted"><?= htmlspecialchars($slip['section_name'] ?? 'N/A') ?></span>
-                                            </td>
-                                            <td>
-                                                <span class="font-weight-semibold text-dark">
-                                                    <?= date('g:i A', strtotime($slip['leave_time'])) ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="text-muted small">
-                                                    <strong class="text-dark"><?= ucfirst($slip['purpose_type']) ?>:</strong><br>
-                                                    <?= nl2br(htmlspecialchars(substr($slip['purpose_details'], 0, 50))) ?><?= strlen($slip['purpose_details']) > 50 ? '...' : '' ?>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <?php if ($slip['no_return']): ?>
-                                                    <span class="badge badge-secondary status-badge">No Return</span>
-                                                <?php else: ?>
-                                                    <span class="font-weight-semibold text-dark">
-                                                        <?= date('g:i A', strtotime($slip['expected_return'])) ?>
-                                                    </span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <span class="badge badge-<?= 
-                                                    $slip['status'] == 'approved' ? 'success' : 
-                                                    ($slip['status'] == 'rejected' ? 'danger' : 'warning')
-                                                ?> status-badge">
-                                                    <?= ucfirst($slip['status']) ?>
-                                                </span>
-                                                <?php if ($slip['approved_by']): ?>
-                                                    <br>
-                                                    <small class="text-muted">by <?= htmlspecialchars($slip['approver_first'] . ' ' . $slip['approver_last']) ?></small>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <small class="text-muted"><?= date('M j, g:i A', strtotime($slip['created_at'])) ?></small>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons justify-content-center">
-                                                    <button type="button" class="btn btn-sm btn-info action-btn" 
-                                                            onclick="viewSlipDetails(<?= $slip['id'] ?>)" 
-                                                            title="View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <?php if ($slip['status'] == 'pending'): ?>
-                                                        <button type="button" class="btn btn-sm btn-success action-btn approve-btn" 
-                                                                data-slip-id="<?= $slip['id'] ?>"
-                                                                title="Approve">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-danger action-btn reject-btn"
-                                                                data-slip-id="<?= $slip['id'] ?>"
-                                                                title="Reject">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
-                                                    <?php endif; ?>
-                                                    <button type="button" class="btn btn-sm btn-warning action-btn excel-btn" 
-                                                            data-slip-id="<?= $slip['id'] ?>"
-                                                            title="Generate Excel">
-                                                        <i class="fas fa-file-excel"></i>
-                                                    </button>
-                                                    <!-- Edit Button - Only show for pending slips -->
-                                                    <?php if ($slip['status'] == 'pending'): ?>
-                                                        <button type="button" class="btn btn-sm btn-primary action-btn edit-btn" 
-                                                                data-slip-id="<?= $slip['id'] ?>"
-                                                                title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                    <?php endif; ?>
-                                                    <!-- Delete Button - Show for ALL statuses -->
-                                                    <button type="button" class="btn btn-sm btn-dark action-btn delete-btn"
-                                                            data-slip-id="<?= $slip['id'] ?>"
-                                                            data-slip-status="<?= $slip['status'] ?>"
-                                                            title="Delete">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            <th width="40">#</th>
+                                            <th>Employee</th>
+                                            <th>Date</th>
+                                            <th>Leave Time</th>
+                                            <th>Expected Return</th>
+                                            <th>Purpose</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
                                         </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        <?php if ($slips_result->num_rows > 0): ?>
+                                            <?php $counter = 1; ?>
+                                            <?php while ($slip = $slips_result->fetch_assoc()): ?>
+                                                <tr>
+                                                    <td>
+                                                        <input type="checkbox" name="slip_ids[]" value="<?= $slip['id'] ?>" class="slip-checkbox checkbox-modern">
+                                                    </td>
+                                                    <td>
+                                                        <div class="employee-with-picture">
+                                                            <?php if (!empty($slip['picture'])): ?>
+                                                                <img src="../dist/img/employees/<?= htmlspecialchars($slip['picture']) ?>" 
+                                                                     alt="<?= htmlspecialchars($slip['first_name']) ?>" 
+                                                                     class="employee-picture">
+                                                            <?php else: ?>
+                                                                <div class="employee-picture-placeholder">
+                                                                    <?= substr($slip['first_name'], 0, 1) . substr($slip['last_name'], 0, 1) ?>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                            <div class="employee-details">
+                                                                <div class="employee-name">
+                                                                    <?= htmlspecialchars($slip['first_name'] . ' ' . $slip['last_name']) ?>
+                                                                    <?= $slip['ext_name'] ? htmlspecialchars($slip['ext_name']) : '' ?>
+                                                                </div>
+                                                                <div class="employee-position">
+                                                                    <?= htmlspecialchars($slip['position_name'] ?? 'N/A') ?> • 
+                                                                    <?= htmlspecialchars($slip['section_name'] ?? 'N/A') ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td><?= date('M j, Y', strtotime($slip['date'])) ?></td>
+                                                    <td><?= date('g:i A', strtotime($slip['leave_time'])) ?></td>
+                                                    <td>
+                                                        <?php if ($slip['no_return']): ?>
+                                                            <span class="badge badge-warning status-badge">No Return</span>
+                                                        <?php else: ?>
+                                                            <?= $slip['expected_return'] ? date('g:i A', strtotime($slip['expected_return'])) : 'N/A' ?>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <strong class="text-capitalize"><?= $slip['purpose_type'] ?></strong>
+                                                        <?php if ($slip['purpose_details']): ?>
+                                                            <br><small class="text-muted"><?= htmlspecialchars($slip['purpose_details']) ?></small>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php
+                                                        $status_class = '';
+                                                        switch ($slip['status']) {
+                                                            case 'approved':
+                                                                $status_class = 'badge-success';
+                                                                break;
+                                                            case 'rejected':
+                                                                $status_class = 'badge-danger';
+                                                                break;
+                                                            default:
+                                                                $status_class = 'badge-warning';
+                                                        }
+                                                        ?>
+                                                        <span class="badge status-badge <?= $status_class ?>">
+                                                            <?= ucfirst($slip['status']) ?>
+                                                        </span>
+                                                        <?php if ($slip['approved_by']): ?>
+                                                            <br><small class="text-muted">by <?= htmlspecialchars($slip['approver_first'] . ' ' . $slip['approver_last']) ?></small>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <div class="action-buttons">
+                                                            <?php if ($slip['status'] == 'pending'): ?>
+                                                                <form method="POST" action="" style="display: inline;">
+                                                                    <input type="hidden" name="slip_id" value="<?= $slip['id'] ?>">
+                                                                    <button type="submit" name="approve_slip" class="btn btn-success btn-sm action-btn" title="Approve">
+                                                                        <i class="fas fa-check"></i>
+                                                                    </button>
+                                                                </form>
+                                                                <form method="POST" action="" style="display: inline;">
+                                                                    <input type="hidden" name="slip_id" value="<?= $slip['id'] ?>">
+                                                                    <button type="submit" name="reject_slip" class="btn btn-danger btn-sm action-btn" title="Reject">
+                                                                        <i class="fas fa-times"></i>
+                                                                    </button>
+                                                                </form>
+                                                            <?php endif; ?>
+                                                            <button type="button" class="btn btn-info btn-sm action-btn view-slip" 
+                                                                    data-toggle="modal" data-target="#viewSlipModal" 
+                                                                    data-slip='<?= json_encode($slip) ?>' title="View Details">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                            <?php if ($slip['status'] == 'pending'): ?>
+                                                                <button type="button" class="btn btn-warning btn-sm action-btn edit-slip" 
+                                                                        data-toggle="modal" data-target="#editSlipModal" 
+                                                                        data-slip='<?= json_encode($slip) ?>' title="Edit">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </button>
+                                                            <?php endif; ?>
+                                                            <form method="POST" action="" style="display: inline;">
+                                                                <input type="hidden" name="slip_id" value="<?= $slip['id'] ?>">
+                                                                <button type="submit" name="delete_slip" class="btn btn-danger btn-sm action-btn" title="Delete">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <?php $counter++; ?>
+                                            <?php endwhile; ?>
+                                        <?php else: ?>
+                                            <tr>
+                                                <td colspan="8" class="text-center py-5">
+                                                    <div class="text-muted">
+                                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                                        <h5>No personal locator slips found</h5>
+                                                        <p>No requests match your current filters.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
         </section>
+        <!-- /.content -->
     </div>
-    
-    <?php include '../includes/mainfooter.php'; ?>
+    <!-- /.content-wrapper -->
+
+    <!-- Footer -->
+    <?php include '../includes/footer.php'; ?>
+
 </div>
+<!-- ./wrapper -->
 
 <!-- Create Slip Modal -->
-<div class="modal fade" id="createSlipModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content modern-card">
-            <div class="modern-header">
-                <h4 class="modal-title mb-0 font-weight-bold">
-                    <i class="fas fa-plus-circle mr-2"></i>Create Personal Locator Slip
-                </h4>
+<div class="modal fade" id="createSlipModal" tabindex="-1" role="dialog" aria-labelledby="createSlipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header modern-header">
+                <h5 class="modal-title font-weight-bold" id="createSlipModalLabel">
+                    <i class="fas fa-plus-circle mr-2"></i>Create Manual Personal Locator Slip
+                </h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -1043,13 +1135,14 @@ $employees_result = $db->query($employees_query);
                                 <select class="form-control form-control-modern" name="employee_id" required>
                                     <option value="">Select Employee</option>
                                     <?php 
+                                    // Reset employees result pointer
                                     $employees_result->data_seek(0);
-                                    while ($employee = $employees_result->fetch_assoc()): 
-                                        $fullName = $employee['first_name'] . ' ' . $employee['last_name'] . 
-                                                   ($employee['middle_name'] ? ' ' . $employee['middle_name'] : '') . 
-                                                   ($employee['ext_name'] ? ' ' . $employee['ext_name'] : '');
-                                    ?>
-                                        <option value="<?= $employee['emp_id'] ?>"><?= htmlspecialchars($fullName) ?></option>
+                                    while ($employee = $employees_result->fetch_assoc()): ?>
+                                        <option value="<?= $employee['emp_id'] ?>">
+                                            <?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>
+                                            <?= $employee['ext_name'] ? htmlspecialchars($employee['ext_name']) : '' ?>
+                                            (<?= $employee['emp_id'] ?>)
+                                        </option>
                                     <?php endwhile; ?>
                                 </select>
                             </div>
@@ -1057,7 +1150,7 @@ $employees_result = $db->query($employees_query);
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="font-weight-semibold">Date *</label>
-                                <input type="date" class="form-control form-control-modern" name="date" value="<?= date('Y-m-d') ?>" required>
+                                <input type="date" class="form-control form-control-modern" name="date" required value="<?= date('Y-m-d') ?>">
                             </div>
                         </div>
                     </div>
@@ -1066,15 +1159,15 @@ $employees_result = $db->query($employees_query);
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="font-weight-semibold">Leave Time *</label>
-                                <input type="time" class="form-control form-control-modern" name="leave_time" id="leaveTimeInput" required>
+                                <input type="time" class="form-control form-control-modern" name="leave_time" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="font-weight-semibold">Purpose Type *</label>
-                                <select class="form-control form-control-modern" name="purpose_type" id="purposeTypeSelect" required>
+                                <select class="form-control form-control-modern" name="purpose_type" required>
                                     <option value="">Select Purpose</option>
-                                    <option value="personal">Personal</option>
+                                    <option value="personal">Personal Matter</option>
                                     <option value="official">Official Business</option>
                                 </select>
                             </div>
@@ -1085,7 +1178,7 @@ $employees_result = $db->query($employees_query);
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label class="font-weight-semibold">Purpose Details *</label>
-                                <textarea class="form-control form-control-modern" name="purpose_details" rows="3" placeholder="Enter detailed purpose..." required></textarea>
+                                <textarea class="form-control form-control-modern" name="purpose_details" rows="3" placeholder="Enter specific details about the purpose..." required></textarea>
                             </div>
                         </div>
                     </div>
@@ -1094,25 +1187,23 @@ $employees_result = $db->query($employees_query);
                         <div class="col-md-6">
                             <div class="form-group">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="no_return" id="noReturnCheckbox">
-                                    <label class="form-check-label font-weight-semibold" for="noReturnCheckbox">
-                                        No Return Today
-                                    </label>
+                                    <input type="checkbox" class="form-check-input" id="no_return" name="no_return">
+                                    <label class="form-check-label font-weight-semibold" for="no_return">No Return Expected</label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group" id="expectedReturnGroup">
-                                <label class="font-weight-semibold">Expected Return Time *</label>
-                                <input type="time" class="form-control form-control-modern" name="expected_return" id="expectedReturnInput">
-                                <div id="timeValidationMessage" class="time-validation-message"></div>
+                            <div class="form-group">
+                                <label class="font-weight-semibold">Expected Return Time</label>
+                                <input type="time" class="form-control form-control-modern" name="expected_return" id="expected_return">
+                                <div class="time-validation-message" id="time_validation"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-modern btn-light" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="create_slip" class="btn btn-modern btn-primary">
+                    <button type="button" class="btn btn-light btn-modern" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="create_slip" class="btn btn-primary btn-modern">
                         <i class="fas fa-save mr-2"></i>Create Slip
                     </button>
                 </div>
@@ -1121,188 +1212,509 @@ $employees_result = $db->query($employees_query);
     </div>
 </div>
 
-<!-- Modal for viewing slip details -->
-<div class="modal fade" id="slipDetailsModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content modern-card">
-            <div class="modern-header">
-                <h4 class="modal-title mb-0 font-weight-bold">
-                    <i class="fas fa-file-alt mr-2"></i>Personal Locator Slip Details
-                </h4>
+<!-- View Slip Modal -->
+<div class="modal fade" id="viewSlipModal" tabindex="-1" role="dialog" aria-labelledby="viewSlipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header modern-header">
+                <h5 class="modal-title font-weight-bold" id="viewSlipModalLabel">
+                    <i class="fas fa-eye mr-2"></i>Personal Locator Slip Details
+                </h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" id="slipDetailsContent">
-                <!-- Details will be loaded here via AJAX -->
+            <div class="modal-body" id="viewSlipModalBody">
+                <!-- Content will be loaded via JavaScript -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-modern btn-light" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-light btn-modern" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal for editing slip -->
-<div class="modal fade" id="editSlipModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content modern-card">
-            <div class="modern-header">
-                <h4 class="modal-title mb-0 font-weight-bold">
+<!-- Edit Slip Modal -->
+<div class="modal fade" id="editSlipModal" tabindex="-1" role="dialog" aria-labelledby="editSlipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header modern-header">
+                <h5 class="modal-title font-weight-bold" id="editSlipModalLabel">
                     <i class="fas fa-edit mr-2"></i>Edit Personal Locator Slip
-                </h4>
+                </h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" id="editSlipContent">
-                <!-- Edit form will be loaded here via AJAX -->
-            </div>
+            <form method="POST" action="" id="editSlipForm">
+                <input type="hidden" name="slip_id" id="edit_slip_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-semibold">Date *</label>
+                                <input type="date" class="form-control form-control-modern" name="date" id="edit_date" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-semibold">Leave Time *</label>
+                                <input type="time" class="form-control form-control-modern" name="leave_time" id="edit_leave_time" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-semibold">Purpose Type *</label>
+                                <select class="form-control form-control-modern" name="purpose_type" id="edit_purpose_type" required>
+                                    <option value="personal">Personal Matter</option>
+                                    <option value="official">Official Business</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-semibold">Purpose Details *</label>
+                                <textarea class="form-control form-control-modern" name="purpose_details" id="edit_purpose_details" rows="2" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="edit_no_return" name="no_return">
+                                    <label class="form-check-label font-weight-semibold" for="edit_no_return">No Return Expected</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-semibold">Expected Return Time</label>
+                                <input type="time" class="form-control form-control-modern" name="expected_return" id="edit_expected_return">
+                                <div class="time-validation-message" id="edit_time_validation"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-modern" data-dismiss="modal">Cancel</button>
+                    <button type="submit" name="update_slip" class="btn btn-primary btn-modern">
+                        <i class="fas fa-save mr-2"></i>Update Slip
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
+<!-- Scripts -->
 <?php include '../includes/footer.php'; ?>
 
 <!-- SweetAlert2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
 <script>
 $(document).ready(function() {
-    // Close modal if flag is set
+    // Handle no return checkbox
+    $('#no_return').change(function() {
+        if ($(this).is(':checked')) {
+            $('#expected_return').prop('disabled', true).val('');
+        } else {
+            $('#expected_return').prop('disabled', false);
+        }
+    });
+
+    // Handle edit no return checkbox
+    $('#edit_no_return').change(function() {
+        if ($(this).is(':checked')) {
+            $('#edit_expected_return').prop('disabled', true).val('');
+        } else {
+            $('#edit_expected_return').prop('disabled', false);
+        }
+    });
+
+    // Time validation for create form
+    function validateTime() {
+        const leaveTime = $('input[name="leave_time"]').val();
+        const returnTime = $('input[name="expected_return"]').val();
+        const purposeType = $('select[name="purpose_type"]').val();
+        const noReturn = $('#no_return').is(':checked');
+        
+        if (noReturn || !leaveTime || !returnTime) {
+            $('#time_validation').hide();
+            return;
+        }
+        
+        const leave = new Date(`2000-01-01T${leaveTime}`);
+        const return_ = new Date(`2000-01-01T${returnTime}`);
+        const diffHours = (return_ - leave) / (1000 * 60 * 60);
+        
+        let isValid = true;
+        let message = '';
+        
+        if (purposeType === 'personal') {
+            if (diffHours > 1) {
+                isValid = false;
+                message = 'Personal matters are limited to 1 hour maximum.';
+            } else {
+                message = 'Time within 1 hour limit ✓';
+            }
+        } else if (purposeType === 'official') {
+            if (diffHours > 24) {
+                isValid = false;
+                message = 'Official business must be within the same day.';
+            } else {
+                message = 'Time within same day limit ✓';
+            }
+        }
+        
+        const validationDiv = $('#time_validation');
+        validationDiv.text(message);
+        validationDiv.removeClass('valid invalid');
+        validationDiv.addClass(isValid ? 'valid' : 'invalid');
+        validationDiv.show();
+    }
+    
+    $('input[name="leave_time"], input[name="expected_return"], select[name="purpose_type"]').on('change input', validateTime);
+
+    // Time validation for edit form
+    function validateEditTime() {
+        const leaveTime = $('#edit_leave_time').val();
+        const returnTime = $('#edit_expected_return').val();
+        const purposeType = $('#edit_purpose_type').val();
+        const noReturn = $('#edit_no_return').is(':checked');
+        
+        if (noReturn || !leaveTime || !returnTime) {
+            $('#edit_time_validation').hide();
+            return;
+        }
+        
+        const leave = new Date(`2000-01-01T${leaveTime}`);
+        const return_ = new Date(`2000-01-01T${returnTime}`);
+        const diffHours = (return_ - leave) / (1000 * 60 * 60);
+        
+        let isValid = true;
+        let message = '';
+        
+        if (purposeType === 'personal') {
+            if (diffHours > 1) {
+                isValid = false;
+                message = 'Personal matters are limited to 1 hour maximum.';
+            } else {
+                message = 'Time within 1 hour limit ✓';
+            }
+        } else if (purposeType === 'official') {
+            if (diffHours > 24) {
+                isValid = false;
+                message = 'Official business must be within the same day.';
+            } else {
+                message = 'Time within same day limit ✓';
+            }
+        }
+        
+        const validationDiv = $('#edit_time_validation');
+        validationDiv.text(message);
+        validationDiv.removeClass('valid invalid');
+        validationDiv.addClass(isValid ? 'valid' : 'invalid');
+        validationDiv.show();
+    }
+    
+    $('#edit_leave_time, #edit_expected_return, #edit_purpose_type').on('change input', validateEditTime);
+
+    // View slip modal
+    $('.view-slip').click(function() {
+        const slip = $(this).data('slip');
+        const modalBody = $('#viewSlipModalBody');
+        
+        // Format dates and times
+        const date = new Date(slip.date).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        const leaveTime = new Date(`2000-01-01T${slip.leave_time}`).toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        const expectedReturn = slip.expected_return ? 
+            new Date(`2000-01-01T${slip.expected_return}`).toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            }) : 'No Return';
+        
+        const statusClass = slip.status === 'approved' ? 'badge-success' : 
+                          slip.status === 'rejected' ? 'badge-danger' : 'badge-warning';
+        
+        modalBody.html(`
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="employee-picture-container text-center mb-3">
+                        ${slip.picture ? 
+                            `<img src="../uploads/employee_pictures/${slip.picture}" alt="${slip.first_name}" class="employee-picture" style="width: 120px; height: 120px;">` :
+                            `<div class="employee-picture-placeholder mx-auto" style="width: 120px; height: 120px; font-size: 2em;">
+                                ${slip.first_name.charAt(0)}${slip.last_name.charAt(0)}
+                            </div>`
+                        }
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <h6 class="font-weight-bold text-primary">Employee Information</h6>
+                    <table class="table table-borderless table-sm">
+                        <tr>
+                            <td width="30%"><strong>Name:</strong></td>
+                            <td>${slip.first_name} ${slip.last_name} ${slip.ext_name || ''}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Position:</strong></td>
+                            <td>${slip.position_name || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Section:</strong></td>
+                            <td>${slip.section_name || 'N/A'}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <hr>
+            
+            <h6 class="font-weight-bold text-primary">Slip Details</h6>
+            <table class="table table-borderless table-sm">
+                <tr>
+                    <td width="30%"><strong>Date:</strong></td>
+                    <td>${date}</td>
+                </tr>
+                <tr>
+                    <td><strong>Leave Time:</strong></td>
+                    <td>${leaveTime}</td>
+                </tr>
+                <tr>
+                    <td><strong>Expected Return:</strong></td>
+                    <td>${expectedReturn}</td>
+                </tr>
+                <tr>
+                    <td><strong>Purpose Type:</strong></td>
+                    <td class="text-capitalize">${slip.purpose_type}</td>
+                </tr>
+                <tr>
+                    <td><strong>Purpose Details:</strong></td>
+                    <td>${slip.purpose_details || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Status:</strong></td>
+                    <td><span class="badge ${statusClass} status-badge">${slip.status.charAt(0).toUpperCase() + slip.status.slice(1)}</span></td>
+                </tr>
+                ${slip.approved_by ? `
+                <tr>
+                    <td><strong>Approved By:</strong></td>
+                    <td>${slip.approver_first} ${slip.approver_last}</td>
+                </tr>
+                ` : ''}
+                <tr>
+                    <td><strong>Created At:</strong></td>
+                    <td>${new Date(slip.created_at).toLocaleString()}</td>
+                </tr>
+            </table>
+        `);
+    });
+
+    // Edit slip modal
+    $('.edit-slip').click(function() {
+        const slip = $(this).data('slip');
+        
+        $('#edit_slip_id').val(slip.id);
+        $('#edit_date').val(slip.date);
+        $('#edit_leave_time').val(slip.leave_time);
+        $('#edit_purpose_type').val(slip.purpose_type);
+        $('#edit_purpose_details').val(slip.purpose_details);
+        
+        if (slip.no_return) {
+            $('#edit_no_return').prop('checked', true);
+            $('#edit_expected_return').prop('disabled', true).val('');
+        } else {
+            $('#edit_no_return').prop('checked', false);
+            $('#edit_expected_return').prop('disabled', false).val(slip.expected_return || '');
+        }
+        
+        // Trigger validation
+        validateEditTime();
+    });
+
+    // Select all functionality
+    $('#select-all').change(function() {
+        $('.slip-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    // Individual checkbox change
+    $('.slip-checkbox').change(function() {
+        if ($('.slip-checkbox:checked').length === $('.slip-checkbox').length) {
+            $('#select-all').prop('checked', true);
+        } else {
+            $('#select-all').prop('checked', false);
+        }
+    });
+
+    // Auto-close alerts after 5 seconds
+    $('.alert').delay(5000).fadeOut(400);
+
+    // Handle modal close flag from session
     <?php if (isset($_SESSION['close_modal']) && $_SESSION['close_modal']): ?>
         $('#createSlipModal').modal('hide');
         <?php unset($_SESSION['close_modal']); ?>
     <?php endif; ?>
 
-    // Select all functionality
-    $('#selectAllHeader').change(function() {
-        $('.slip-checkbox').prop('checked', $(this).prop('checked'));
-    });
-    
-    $('#selectAll').change(function() {
-        $('.slip-checkbox').prop('checked', $(this).prop('checked'));
-        $('#selectAllHeader').prop('checked', $(this).prop('checked'));
-    });
-
-    // Individual checkbox change
-    $('.slip-checkbox').change(function() {
-        if (!$('.slip-checkbox:checked').length) {
-            $('#selectAllHeader').prop('checked', false);
-            $('#selectAll').prop('checked', false);
-        } else if ($('.slip-checkbox:checked').length === $('.slip-checkbox').length) {
-            $('#selectAllHeader').prop('checked', true);
-            $('#selectAll').prop('checked', true);
-        }
-    });
-
-    // No return checkbox functionality
-    $('#noReturnCheckbox').change(function() {
-        if ($(this).is(':checked')) {
-            $('#expectedReturnGroup').hide();
-            $('#expectedReturnInput').prop('required', false);
-        } else {
-            $('#expectedReturnGroup').show();
-            $('#expectedReturnInput').prop('required', true);
-        }
-    });
-
-    // Initialize the expected return field
-    if ($('#noReturnCheckbox').is(':checked')) {
-        $('#expectedReturnGroup').hide();
-        $('#expectedReturnInput').prop('required', false);
-    }
-
-    // Individual approve button with SweetAlert
-    $('.approve-btn').click(function() {
-        const slipId = $(this).data('slip-id');
-        Swal.fire({
-            title: 'Approve Slip?',
-            text: "Are you sure you want to approve this personal locator slip?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, approve it!',
-            cancelButtonText: 'Cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                submitSlipAction(slipId, 'approve_slip');
-            }
-        });
-    });
-
-    // Individual reject button with SweetAlert
-    $('.reject-btn').click(function() {
-        const slipId = $(this).data('slip-id');
-        Swal.fire({
-            title: 'Reject Slip?',
-            text: "Are you sure you want to reject this personal locator slip?",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, reject it!',
-            cancelButtonText: 'Cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                submitSlipAction(slipId, 'reject_slip');
-            }
-        });
-    });
-
-    $(document).on('click', '.edit-btn', function() {
-        const slipId = $(this).data('slip-id');
-        const status = $(this).closest('tr').find('.status-badge').text().toLowerCase().trim();
+    // Form submission handling
+    $('#createSlipForm').submit(function(e) {
+        const noReturn = $('#no_return').is(':checked');
+        const expectedReturn = $('input[name="expected_return"]').val();
+        const purposeType = $('select[name="purpose_type"]').val();
         
-        console.log('Edit clicked - Slip ID:', slipId, 'Status:', status);
-        
-        // Additional safety check
-        if (status !== 'pending') {
+        if (!noReturn && !expectedReturn) {
+            e.preventDefault();
             Swal.fire({
-                title: 'Cannot Edit',
-                text: 'Only pending slips can be edited.',
                 icon: 'warning',
+                title: 'Validation Error',
+                text: 'Please either set an expected return time or check "No Return Expected".',
                 confirmButtonColor: '#4361ee'
             });
-            return;
+            return false;
         }
         
-        editSlip(slipId);
-    });
-
-    // Delete button with SweetAlert - Now works for ALL statuses
-    $('.delete-btn').click(function() {
-        const slipId = $(this).data('slip-id');
-        const slipStatus = $(this).data('slip-status');
-        
-        let title = 'Delete Slip?';
-        let text = "Are you sure you want to delete this personal locator slip? This action cannot be undone.";
-        
-        if (slipStatus === 'approved' || slipStatus === 'rejected') {
-            title = `Delete ${slipStatus.charAt(0).toUpperCase() + slipStatus.slice(1)} Slip?`;
-            text = `Are you sure you want to delete this ${slipStatus} slip? This action cannot be undone.`;
-        }
-
-        Swal.fire({
-            title: title,
-            text: text,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                submitSlipAction(slipId, 'delete_slip');
+        // Additional time validation
+        if (!noReturn && expectedReturn) {
+            const leaveTime = $('input[name="leave_time"]').val();
+            const leave = new Date(`2000-01-01T${leaveTime}`);
+            const return_ = new Date(`2000-01-01T${expectedReturn}`);
+            const diffHours = (return_ - leave) / (1000 * 60 * 60);
+            
+            if (purposeType === 'personal' && diffHours > 1) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Time Limit Exceeded',
+                    text: 'For personal matters, the maximum allowed time is 1 hour.',
+                    confirmButtonColor: '#4361ee'
+                });
+                return false;
             }
-        });
+            
+            if (purposeType === 'official' && diffHours > 24) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Time Limit Exceeded',
+                    text: 'For official business, the return time must be within the same day.',
+                    confirmButtonColor: '#4361ee'
+                });
+                return false;
+            }
+        }
     });
 
-    // Bulk approve with SweetAlert
-    $('#bulkApproveBtn').click(function() {
+    // Edit form submission handling
+    $('#editSlipForm').submit(function(e) {
+        const noReturn = $('#edit_no_return').is(':checked');
+        const expectedReturn = $('#edit_expected_return').val();
+        const purposeType = $('#edit_purpose_type').val();
+        
+        if (!noReturn && !expectedReturn) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Validation Error',
+                text: 'Please either set an expected return time or check "No Return Expected".',
+                confirmButtonColor: '#4361ee'
+            });
+            return false;
+        }
+        
+        // Additional time validation
+        if (!noReturn && expectedReturn) {
+            const leaveTime = $('#edit_leave_time').val();
+            const leave = new Date(`2000-01-01T${leaveTime}`);
+            const return_ = new Date(`2000-01-01T${expectedReturn}`);
+            const diffHours = (return_ - leave) / (1000 * 60 * 60);
+            
+            if (purposeType === 'personal' && diffHours > 1) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Time Limit Exceeded',
+                    text: 'For personal matters, the maximum allowed time is 1 hour.',
+                    confirmButtonColor: '#4361ee'
+                });
+                return false;
+            }
+            
+            if (purposeType === 'official' && diffHours > 24) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Time Limit Exceeded',
+                    text: 'For official business, the return time must be within the same day.',
+                    confirmButtonColor: '#4361ee'
+                });
+                return false;
+            }
+        }
+    });
+});// SweetAlert for success messages
+    <?php if ($success_message): ?>
+        Swal.fire({
+            title: 'Success!',
+            text: '<?= addslashes($success_message) ?>',
+            icon: 'success',
+            confirmButtonColor: '#4361ee',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    <?php endif; ?>
+
+    // SweetAlert for error messages
+    <?php if ($error_message): ?>
+        Swal.fire({
+            title: 'Error!',
+            text: '<?= addslashes($error_message) ?>',
+            icon: 'error',
+            confirmButtonColor: '#4361ee'
+        });
+    <?php endif; ?>
+
+    // SweetAlert for individual delete actions
+    $(document).on('submit', 'form[action=""]', function(e) {
+        const submitButton = $(this).find('button[type="submit"][name="delete_slip"]');
+        if (submitButton.length > 0) {
+            e.preventDefault();
+            const form = this;
+            
+            Swal.fire({
+                title: 'Delete Slip?',
+                text: "Are you sure you want to delete this personal locator slip? This action cannot be undone.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        }
+    });
+
+    // SweetAlert for bulk approve
+    $(document).on('click', 'button[name="bulk_approve"]', function(e) {
+        e.preventDefault();
         const selectedSlips = $('.slip-checkbox:checked');
+        
         if (selectedSlips.length === 0) {
             Swal.fire({
                 title: 'No Selection',
@@ -1336,9 +1748,11 @@ $(document).ready(function() {
         });
     });
 
-    // Bulk reject with SweetAlert
-    $('#bulkRejectBtn').click(function() {
+    // SweetAlert for bulk reject
+    $(document).on('click', 'button[name="bulk_reject"]', function(e) {
+        e.preventDefault();
         const selectedSlips = $('.slip-checkbox:checked');
+        
         if (selectedSlips.length === 0) {
             Swal.fire({
                 title: 'No Selection',
@@ -1372,9 +1786,11 @@ $(document).ready(function() {
         });
     });
 
-    // Bulk delete with SweetAlert
-    $('#bulkDeleteBtn').click(function() {
+    // SweetAlert for bulk delete
+    $(document).on('click', 'button[name="bulk_delete"]', function(e) {
+        e.preventDefault();
         const selectedSlips = $('.slip-checkbox:checked');
+        
         if (selectedSlips.length === 0) {
             Swal.fire({
                 title: 'No Selection',
@@ -1408,8 +1824,9 @@ $(document).ready(function() {
         });
     });
 
-    // Delete All with SweetAlert
-    $('#deleteAllBtn').click(function() {
+    // SweetAlert for delete all
+    $(document).on('click', 'button[name="delete_all"]', function(e) {
+        e.preventDefault();
         const totalSlips = <?= $slips_result->num_rows ?>;
         const statusFilter = '<?= $status_filter ?>';
         
@@ -1449,364 +1866,41 @@ $(document).ready(function() {
                 deleteAllInput.name = 'delete_all';
                 deleteAllInput.value = '1';
                 
-                $('#deleteAllForm').append(deleteAllInput);
-                $('#deleteAllForm').submit();
+                $('#bulkForm').append(deleteAllInput);
+                $('#bulkForm').submit();
             }
         });
     });
 
-    // Excel generation with loader
-    $('.excel-btn').click(function() {
-        const slipId = $(this).data('slip-id');
-        generateExcelSlip(slipId);
-    });
-});
-
-function submitSlipAction(slipId, action) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '';
-    
-    const slipIdInput = document.createElement('input');
-    slipIdInput.type = 'hidden';
-    slipIdInput.name = 'slip_id';
-    slipIdInput.value = slipId;
-    
-    const actionInput = document.createElement('input');
-    actionInput.type = 'hidden';
-    actionInput.name = action;
-    actionInput.value = '1';
-    
-    form.appendChild(slipIdInput);
-    form.appendChild(actionInput);
-    document.body.appendChild(form);
-    form.submit();
-}
-
-function viewSlipDetails(slipId) {
-    $.ajax({
-        url: 'get_slip_details.php',
-        type: 'GET',
-        data: { id: slipId },
-        success: function(response) {
-            $('#slipDetailsContent').html(response);
-            $('#slipDetailsModal').modal('show');
-        },
-        error: function() {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Failed to load slip details.',
-                icon: 'error',
-                confirmButtonColor: '#4361ee'
-            });
-        }
-    });
-}
-
-function editSlip(slipId) {
-    console.log('Editing slip:', slipId);
-    
-    // Show loading in modal
-    $('#editSlipContent').html(`
-        <div class="text-center p-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
-            </div>
-            <p class="mt-2">Loading edit form...</p>
-        </div>
-    `);
-    $('#editSlipModal').modal('show');
-    
-    $.ajax({
-        url: 'get_edit_slip_form.php',
-        type: 'GET',
-        data: { id: slipId },
-        success: function(response) {
-            $('#editSlipContent').html(response);
-            console.log('Edit form loaded successfully');
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX Error:', status, error);
-            $('#editSlipContent').html(`
-                <div class="text-center p-4">
-                    <i class="fas fa-exclamation-triangle text-danger fa-2x mb-3"></i>
-                    <h5>Error Loading Form</h5>
-                    <p>Failed to load edit form. Please try again.</p>
-                    <button type="button" class="btn btn-modern btn-light" data-dismiss="modal">Close</button>
-                </div>
-            `);
-            
-            Swal.fire({
-                title: 'Error!',
-                text: 'Failed to load edit form. Please try again.',
-                icon: 'error',
-                confirmButtonColor: '#4361ee'
-            });
-        }
-    });
-}
-
-function generateExcelSlip(slipId) {
-    // Show SweetAlert loader
-    Swal.fire({
-        title: 'Generating Excel File',
-        text: 'Please wait while we prepare your download...',
-        icon: 'info',
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        allowEnterKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Create a hidden iframe for download
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-    
-    // Set the iframe source to trigger download
-    iframe.src = `generate_excel_slip.php?id=${slipId}`;
-    
-    // Hide loader after 2 seconds and show success message
-    setTimeout(() => {
-        Swal.close();
-        document.body.removeChild(iframe);
-        
-        Swal.fire({
-            title: 'Success!',
-            text: 'Excel file download started.',
-            icon: 'success',
-            confirmButtonColor: '#4361ee',
-            timer: 1500,
-            showConfirmButton: false
-        });
-    }, 1500);
-    
-    // Error handling
-    iframe.onerror = function() {
-        Swal.close();
-        document.body.removeChild(iframe);
-        
-        Swal.fire({
-            title: 'Error!',
-            text: 'Failed to generate Excel file.',
-            icon: 'error',
-            confirmButtonColor: '#4361ee'
-        });
-    };
-}
-
-// Handle SweetAlert messages for success and error
-<?php if (isset($success_message) && !empty($success_message)): ?>
-$(document).ready(function() {
-    Swal.fire({
-        title: 'Success!',
-        text: '<?= addslashes($success_message) ?>',
-        icon: 'success',
-        confirmButtonColor: '#4361ee',
-        timer: 3000,
-        showConfirmButton: false
-    });
-});
-<?php endif; ?>
-
-<?php if (isset($error_message) && !empty($error_message)): ?>
-$(document).ready(function() {
-    Swal.fire({
-        title: 'Error!',
-        text: '<?= addslashes($error_message) ?>',
-        icon: 'error',
-        confirmButtonColor: '#4361ee'
-    });
-});
-<?php endif; ?>
-
-    // Time validation based on purpose type
-    function validateTimeConstraints() {
-        const purposeType = $('#purposeTypeSelect').val();
-        const leaveTime = $('#leaveTimeInput').val();
-        const expectedReturn = $('#expectedReturnInput').val();
-        const noReturn = $('#noReturnCheckbox').is(':checked');
-        
-        if (noReturn || !leaveTime || !expectedReturn || !purposeType) {
-            $('#timeValidationMessage').hide();
-            return true;
-        }
-        
-        const leaveTimestamp = new Date('1970-01-01T' + leaveTime + 'Z').getTime();
-        const returnTimestamp = new Date('1970-01-01T' + expectedReturn + 'Z').getTime();
-        const timeDifference = (returnTimestamp - leaveTimestamp) / (1000 * 60 * 60); // Convert to hours
-        
-        const messageElement = $('#timeValidationMessage');
-        
-        if (purposeType === 'personal') {
-            if (timeDifference > 1) {
-                messageElement.removeClass('valid').addClass('invalid');
-                messageElement.text('For personal matters, maximum allowed time is 1 hour.');
-                messageElement.show();
-                return false;
-            } else {
-                messageElement.removeClass('invalid').addClass('valid');
-                messageElement.text('Time duration is within 1 hour limit.');
-                messageElement.show();
-                return true;
-            }
-        } else if (purposeType === 'official') {
-            if (timeDifference > 24) {
-                messageElement.removeClass('valid').addClass('invalid');
-                messageElement.text('For official business, return time must be within the same day.');
-                messageElement.show();
-                return false;
-            } else {
-                messageElement.removeClass('invalid').addClass('valid');
-                messageElement.text('Return time is within same day.');
-                messageElement.show();
-                return true;
-            }
-        }
-        
-        messageElement.hide();
-        return true;
-    }
-
-    // Add event listeners for time validation
-    $('#purposeTypeSelect, #leaveTimeInput, #expectedReturnInput, #noReturnCheckbox').on('change input', function() {
-        validateTimeConstraints();
-    });
-
-    // Enhanced form validation for create slip
-    $('#createSlipForm').on('submit', function(e) {
-        // Basic client-side validation
-        const employeeId = $('select[name="employee_id"]').val();
-        const purposeType = $('select[name="purpose_type"]').val();
-        const leaveTime = $('input[name="leave_time"]').val();
-        const purposeDetails = $('textarea[name="purpose_details"]').val();
-        const noReturn = $('#noReturnCheckbox').is(':checked');
-        const expectedReturn = $('input[name="expected_return"]').val();
-        
-        if (!employeeId || !purposeType || !leaveTime || !purposeDetails) {
-            Swal.fire({
-                title: 'Validation Error!',
-                text: 'Please fill in all required fields.',
-                icon: 'error',
-                confirmButtonColor: '#4361ee'
-            });
-            e.preventDefault();
-            return false;
-        }
-        
-        if (!noReturn && !expectedReturn) {
-            Swal.fire({
-                title: 'Validation Error!',
-                text: 'Please provide expected return time or check "No Return Today".',
-                icon: 'error',
-                confirmButtonColor: '#4361ee'
-            });
-            e.preventDefault();
-            return false;
-        }
-        
-        // Time constraint validation
-        if (!noReturn && expectedReturn) {
-            const isValidTime = validateTimeConstraints();
-            if (!isValidTime) {
-                Swal.fire({
-                    title: 'Time Validation Error!',
-                    text: $('#timeValidationMessage').text(),
-                    icon: 'error',
-                    confirmButtonColor: '#4361ee'
-                });
-                e.preventDefault();
-                return false;
-            }
-        }
-        
-        // Show loading message
-        Swal.fire({
-            title: 'Creating Slip',
-            text: 'Please wait...',
-            icon: 'info',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-    });
-
-    // Enhanced form validation for edit slip
-    $(document).on('submit', '#editSlipForm', function(e) {
+    // SweetAlert for individual approve/reject actions
+    $(document).on('click', 'button[name="approve_slip"], button[name="reject_slip"]', function(e) {
         e.preventDefault();
-        
-        const formData = new FormData(this);
-        const noReturn = $('#editNoReturnCheckbox').is(':checked');
-        const expectedReturn = $('#editExpectedReturnInput').val();
-        
-        if (!noReturn && !expectedReturn) {
-            Swal.fire({
-                title: 'Validation Error!',
-                text: 'Please provide expected return time or check "No Return Today".',
-                icon: 'error',
-                confirmButtonColor: '#4361ee'
-            });
-            return false;
-        }
-        
-        // Additional time validation can be added here for edit form
+        const form = $(this).closest('form');
+        const action = $(this).attr('name');
+        const actionText = action === 'approve_slip' ? 'approve' : 'reject';
         
         Swal.fire({
-            title: 'Updating Slip',
-            text: 'Please wait...',
-            icon: 'info',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        fetch('', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.text())
-        .then(data => {
-            Swal.close();
-            
-            if (data.includes('successfully') || <?= isset($success_message) ? 'true' : 'false' ?>) {
-                Swal.fire({
-                    title: 'Success!',
-                    text: 'Slip updated successfully!',
-                    icon: 'success',
-                    confirmButtonColor: '#4361ee'
-                }).then((result) => {
-                    $('#editSlipModal').modal('hide');
-                    location.reload();
-                });
-            } else {
-                throw new Error('Update failed');
-            }
-        })
-        .catch(error => {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Failed to update slip. Please try again.',
-                icon: 'error',
-                confirmButtonColor: '#4361ee'
-            });
-        });
-    });
-    
-    $(document).ready(function() {
-        $('tr').each(function() {
-            const statusCell = $(this).find('.status-badge');
-            if (statusCell.length && statusCell.text().toLowerCase() === 'rejected') {
-                $(this).find('.excel-btn').hide();
+            title: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Slip?`,
+            text: `Are you sure you want to ${actionText} this personal locator slip?`,
+            icon: action === 'approve_slip' ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: action === 'approve_slip' ? '#28a745' : '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Yes, ${actionText} it!`,
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
             }
         });
     });
+
+    // Remove the old confirm dialogs since we're using SweetAlert now
+    $(document).on('click', 'button[onclick*="confirm"]', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
 </script>
 </body>
 </html>

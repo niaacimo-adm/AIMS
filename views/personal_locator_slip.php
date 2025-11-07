@@ -53,6 +53,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
+        // Validate personal matter frequency (once per week)
+        if ($purpose_type === 'personal') {
+            // Get the start and end of the current week (Monday to Sunday)
+            $current_date = new DateTime($date);
+            $week_start = clone $current_date;
+            $week_start->modify('this week'); // Gets Monday of current week
+            $week_start->setTime(0, 0, 0);
+            
+            $week_end = clone $week_start;
+            $week_end->modify('next week')->modify('-1 day'); // Gets Sunday of current week
+            $week_end->setTime(23, 59, 59);
+            
+            // Store formatted dates in variables
+            $week_start_formatted = $week_start->format('Y-m-d');
+            $week_end_formatted = $week_end->format('Y-m-d');
+            
+            // Check if employee already has a personal matter slip this week
+            $frequency_query = "SELECT COUNT(*) as slip_count 
+                            FROM personal_locator_slips 
+                            WHERE employee_id = ? 
+                            AND purpose_type = 'personal' 
+                            AND date BETWEEN ? AND ? 
+                            AND status != 'rejected'";
+            
+            $freq_stmt = $db->prepare($frequency_query);
+            $freq_stmt->bind_param("iss", $employee_id, $week_start_formatted, $week_end_formatted);
+            $freq_stmt->execute();
+            $freq_result = $freq_stmt->get_result();
+            $slip_count = $freq_result->fetch_assoc()['slip_count'];
+            
+            if ($slip_count > 0) {
+                $isValid = false;
+                $validationError = "You can only submit one personal matter locator slip per week. You already have a personal matter slip for this week (".$week_start->format('M j')." - ".$week_end->format('M j, Y').").";
+            }
+        }
+
         if ($isValid) {
             // Insert into database
             $query = "INSERT INTO personal_locator_slips 
