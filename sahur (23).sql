@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 30, 2025 at 08:57 AM
+-- Generation Time: Nov 07, 2025 at 06:30 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -36,20 +36,6 @@ CREATE TABLE `admin_notifications` (
   `is_read` tinyint(1) DEFAULT 0,
   `created_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `admin_notifications`
---
-
-INSERT INTO `admin_notifications` (`id`, `admin_emp_id`, `message`, `link`, `type`, `is_read`, `created_at`) VALUES
-(182, 64, 'Password reset requested for Ella  RINGAD (ID: 921488). <button onclick=\"window.location.href=\'admin_approve_reset.php\'\" style=\'color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;\'>Click to review</button>', NULL, 'password_reset_request', 0, '2025-10-20 14:37:53'),
-(183, 26, 'Your password reset has been approved. You can now login using your ID Number: <strong>921488</strong> as both your username and temporary password. Please change your password after logging in for security.', NULL, 'password_reset_approved', 1, '2025-10-20 14:38:04'),
-(185, 64, 'Password reset requested for Walter EUSEBIO (ID: 655711). <button onclick=\"window.location.href=\'admin_approve_reset.php\'\" style=\'color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;\'>Click to review</button>', NULL, 'password_reset_request', 0, '2025-10-20 14:40:24'),
-(187, 64, 'Password reset requested for Reese BONAPOS (ID: 677630). <button onclick=\"window.location.href=\'admin_approve_reset.php\'\" style=\'color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;\'>Click to review</button>', NULL, 'password_reset_request', 0, '2025-10-20 14:40:55'),
-(190, 64, 'Password changed for Reese BONAPOS (ID: 677630)', NULL, 'password_change', 0, '2025-10-20 14:42:51'),
-(192, 64, 'Password reset requested for Reese BONAPOS (ID: 677630). <button onclick=\"window.location.href=\'admin_approve_reset.php\'\" style=\'color: #007bff; background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0;\'>Click to review</button>', NULL, 'password_reset_request', 0, '2025-10-20 14:44:36'),
-(194, 59, 'Your password reset request has been rejected. Please contact administrators for assistance.', NULL, 'password_reset_rejected', 0, '2025-10-20 14:47:01'),
-(196, 64, 'Password changed for Reese BONAPOS (ID: 677630)', NULL, 'password_change', 0, '2025-10-20 14:47:18');
 
 -- --------------------------------------------------------
 
@@ -300,6 +286,41 @@ INSERT INTO `company_info` (`id`, `section_name`, `content`, `is_active`, `updat
 (2, 'VISION', 'By 2023, NIA is an advanced and innovative irrigation agency enabling highly competitive and sustainable Philippine farming communities', 1, '2025-09-29 06:23:49'),
 (3, 'CORE VALUES', 'INTEGREGITY\r\nINNOVATION\r\nCOMMITMET\r\nEXCELLENCE', 1, '2025-10-11 02:34:21'),
 (4, 'INTEGRATED MANAGEMENT SYSTEM POLICY', 'We commit to provide efficient, effective, and sustainable irrigation services aimed towards the highest satisfaction of the Filipino farmers.\r\n\r\nWe strive for the attainment of our strategic themes of Technical and Operational Excellence, and Good Governance through partnership with the farmers and other relevant interested parties.\r\n\r\nWe commit to establish programs that prevent work-related injury and ill health, and encourage participation and consultation of workers within the Agency.\r\n\r\nWe abide with applicable legal and international requirements and we remain dedicated to the core values of Integrity, Innovation, Commitment and Excellence, to continually improve the NIA’s Integrated Management System.', 1, '2025-10-11 02:34:19');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `congressional_districts`
+--
+
+CREATE TABLE `congressional_districts` (
+  `id` int(11) NOT NULL,
+  `province_code` varchar(10) NOT NULL,
+  `district_code` varchar(10) NOT NULL,
+  `district_name` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `congressional_districts`
+--
+
+INSERT INTO `congressional_districts` (`id`, `province_code`, `district_code`, `district_name`) VALUES
+(1, 'ALB', 'ALB-1', 'Albay 1st District'),
+(2, 'ALB', 'ALB-2', 'Albay 2nd District'),
+(3, 'ALB', 'ALB-3', 'Albay 3rd District'),
+(4, 'CAN', 'CAN-1', 'Camarines Norte 1st District'),
+(5, 'CAN', 'CAN-2', 'Camarines Norte 2nd District'),
+(6, 'CAS', 'CAS-1', 'Camarines Sur 1st District'),
+(7, 'CAS', 'CAS-2', 'Camarines Sur 2nd District'),
+(8, 'CAS', 'CAS-3', 'Camarines Sur 3rd District'),
+(9, 'CAS', 'CAS-4', 'Camarines Sur 4th District'),
+(10, 'CAS', 'CAS-5', 'Camarines Sur 5th District'),
+(11, 'CAT', 'CAT-1', 'Catanduanes Lone District'),
+(12, 'MAS', 'MAS-1', 'Masbate 1st District'),
+(13, 'MAS', 'MAS-2', 'Masbate 2nd District'),
+(14, 'MAS', 'MAS-3', 'Masbate 3rd District'),
+(15, 'SOR', 'SOR-1', 'Sorsogon 1st District'),
+(16, 'SOR', 'SOR-2', 'Sorsogon 2nd District');
 
 -- --------------------------------------------------------
 
@@ -979,6 +1000,13 @@ CREATE TABLE `ia_officers` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `ia_officers`
+--
+
+INSERT INTO `ia_officers` (`id`, `ia_profile_id`, `officer_name`, `position`, `contact_number`, `email`, `is_active`, `created_at`) VALUES
+(1, 10, '1', '1', '12121', '', 1, '2025-11-02 18:26:26');
+
 -- --------------------------------------------------------
 
 --
@@ -1014,8 +1042,36 @@ CREATE TABLE `ia_profiles` (
   `status` enum('operational','non-operational') DEFAULT 'operational',
   `assigned_employee_id` int(11) DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
+  `updated_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `ia_profiles`
+--
+
+INSERT INTO `ia_profiles` (`id`, `ia_name`, `ia_code`, `mailing_address`, `president_name`, `contact_number`, `date_organized`, `sec_registration_date`, `sec_registration_number`, `ia_tin`, `service_area_ha`, `fusa_ha`, `farmer_beneficiaries`, `actual_ia_members`, `tsags_count`, `existing_contract`, `contract_effectivity_date`, `canal_length_km`, `male_members`, `female_members`, `congressional_district`, `region`, `province`, `imo`, `nis`, `status`, `assigned_employee_id`, `created_by`, `updated_by`, `created_at`, `updated_at`) VALUES
+(10, 'LIGAO-OAS CONSOLIDATED IRRIGATORS\' ASSOCIATION, (LOCIA) INC.', 'LOCIA', 'LIGAO', 'RAMON S. REGILME', '09507214286', NULL, NULL, 'CN200251352', '1', 1.0000, 1.0000, 1, 1, 1, 'Under IMT', NULL, 1.000, 1, 1, 'Albay 3rd District', 'Region V - Bicol Region', 'Albay', '', NULL, 'operational', 121, 32, NULL, '2025-11-02 17:45:05', '2025-11-03 03:56:39');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ia_profile_history`
+--
+
+CREATE TABLE `ia_profile_history` (
+  `id` int(11) NOT NULL,
+  `ia_profile_id` int(11) NOT NULL,
+  `action` enum('created','updated','deleted','assigned','officer_added','officer_updated','officer_deleted') NOT NULL,
+  `field_name` varchar(100) DEFAULT NULL,
+  `old_value` text DEFAULT NULL,
+  `new_value` text DEFAULT NULL,
+  `description` text NOT NULL,
+  `performed_by` int(11) NOT NULL,
+  `performed_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -1443,7 +1499,8 @@ INSERT INTO `notifications` (`notification_id`, `emp_id`, `title`, `message`, `t
 (42, 52, 'New Role Assignment', 'You have been assigned as head of unit CASHIER UNIT', 'role_change', 0, '2025-10-03 05:39:23', NULL),
 (43, 104, 'New Role Assignment', 'You have been assigned as head of unit OPERATION UNIT', 'role_change', 0, '2025-10-03 06:33:06', NULL),
 (44, 56, 'New Role Assignment', 'You have been assigned as head of unit PLANNING & DESIGN UNIT', 'role_change', 0, '2025-10-11 01:23:12', NULL),
-(45, 98, 'New Assignment', 'You have been assigned to unit CONSTRUCTION UNIT', '', 0, '2025-10-12 05:29:49', NULL);
+(45, 98, 'New Assignment', 'You have been assigned to unit CONSTRUCTION UNIT', '', 0, '2025-10-12 05:29:49', NULL),
+(46, 52, 'New Role Assignment', 'You have been assigned as head of section Finance Section', 'role_change', 0, '2025-11-05 03:42:09', NULL);
 
 -- --------------------------------------------------------
 
@@ -1583,12 +1640,12 @@ CREATE TABLE `personal_locator_slips` (
 
 INSERT INTO `personal_locator_slips` (`id`, `employee_id`, `date`, `leave_time`, `purpose_type`, `purpose_details`, `expected_return`, `no_return`, `status`, `approved_by`, `approved_at`, `created_at`, `updated_at`) VALUES
 (24, 100, '2025-10-21', '15:47:00', 'personal', 'asdasda', '16:47:00', 0, 'rejected', 32, '2025-10-27 11:47:48', '2025-10-21 07:48:02', '2025-10-27 03:47:48'),
-(25, 100, '2025-10-21', '15:48:00', 'official', 'asdsadas', '18:48:00', 0, 'approved', 32, '2025-10-21 15:48:44', '2025-10-21 07:48:37', '2025-10-21 07:48:44'),
-(26, 27, '2025-10-21', '16:00:00', 'official', 'awawawaw', '17:00:00', 0, 'rejected', 32, '2025-10-21 15:50:26', '2025-10-21 07:50:14', '2025-10-21 07:50:26'),
-(27, 27, '2025-10-21', '15:56:00', 'personal', 'dsvdsvfv', '16:56:00', 0, 'approved', 32, '2025-10-21 16:03:51', '2025-10-21 07:56:13', '2025-10-21 08:03:51'),
-(28, 27, '2025-10-21', '16:04:00', 'personal', 'asdasd', '17:04:00', 0, 'approved', 31, '2025-10-21 16:18:38', '2025-10-21 08:04:25', '2025-10-21 08:18:38'),
 (29, 160, '2025-10-22', '09:00:00', 'official', 'Go to notary for notarization of docs', '12:00:00', 0, 'approved', 32, '2025-10-22 08:58:21', '2025-10-22 00:58:09', '2025-10-22 00:58:21'),
-(30, 160, '2025-10-22', '15:00:00', 'official', 'Go to Post Office ', '17:00:00', 0, 'approved', 32, '2025-10-22 15:19:29', '2025-10-22 07:19:25', '2025-10-22 07:19:29');
+(30, 160, '2025-10-22', '15:00:00', 'official', 'Go to Post Office ', '17:00:00', 0, 'approved', 32, '2025-10-22 15:19:29', '2025-10-22 07:19:25', '2025-10-22 07:19:29'),
+(31, 32, '2025-11-03', '14:00:00', 'personal', 'Go to Landback', '15:00:00', 0, 'approved', 32, '2025-11-03 13:47:58', '2025-11-03 05:47:51', '2025-11-03 05:47:58'),
+(32, 40, '2025-11-04', '08:18:00', 'official', 'Go to aleco', '17:18:00', 0, 'approved', 32, '2025-11-04 08:18:25', '2025-11-04 00:18:22', '2025-11-04 00:18:25'),
+(33, 53, '2025-11-05', '14:00:00', 'official', 'Go to Landbank to deposit cash', '15:00:00', 0, 'approved', 32, '2025-11-05 11:41:18', '2025-11-05 03:41:12', '2025-11-05 03:41:18'),
+(34, 160, '2025-11-07', '13:00:00', 'official', 'to pay utility bills (ALECO, PNB, Water District)', '17:00:00', 0, 'approved', 31, '2025-11-07 12:09:35', '2025-11-07 04:09:25', '2025-11-07 04:09:35');
 
 -- --------------------------------------------------------
 
@@ -1671,7 +1728,8 @@ CREATE TABLE `projects` (
 --
 
 INSERT INTO `projects` (`project_id`, `project_name`, `project_description`, `project_code`, `created_by`, `created_at`, `updated_at`, `status`, `start_date`, `end_date`, `color`) VALUES
-(8, '1st Project', 'My 1st Project', '1st', 32, '2025-10-30 05:20:13', '2025-10-30 05:20:13', 'active', '2025-10-30', '2026-11-30', '#007bff');
+(10, 'SOLAR PROJECT', 'SOLAR PROJECT LEGAZPI CITYY', 'SPIP', 32, '2025-11-03 08:51:42', '2025-11-03 08:51:42', 'active', '2025-11-01', '2026-11-03', '#007bff'),
+(11, '1st Project', '1', '1st', 32, '2025-11-04 05:31:42', '2025-11-04 05:31:42', 'active', '2025-11-01', '2025-11-04', '#000000');
 
 -- --------------------------------------------------------
 
@@ -1695,12 +1753,17 @@ CREATE TABLE `project_boards` (
 --
 
 INSERT INTO `project_boards` (`board_id`, `project_id`, `board_name`, `board_description`, `board_order`, `board_color`, `created_at`, `updated_at`) VALUES
-(32, 8, 'Backlog', 'Tasks that are planned but not yet started', 1, '#6b7280', '2025-10-30 05:20:13', '2025-10-30 06:30:18'),
-(33, 8, 'To Do', 'Tasks ready to be worked on', 2, '#3B82F6', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
-(34, 8, 'In Progress', 'Tasks currently being worked on', 3, '#F59E0B', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
-(35, 8, 'Review', 'Tasks awaiting review', 4, '#8B5CF6', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
-(36, 8, 'Done', 'Completed tasks', 5, '#10B981', '2025-10-30 05:20:13', '2025-10-30 05:20:13'),
-(38, 8, '1', '1', 5, '#007bff', '2025-10-30 07:50:05', '2025-10-30 07:50:05');
+(45, 10, 'Backlog', 'Tasks that are planned but not yet started', 1, '#6B7280', '2025-11-03 08:51:42', '2025-11-03 08:51:42'),
+(46, 10, 'To Do', 'Tasks ready to be worked on', 2, '#3B82F6', '2025-11-03 08:51:42', '2025-11-03 08:51:42'),
+(47, 10, 'In Progress', 'Tasks currently being worked on', 3, '#F59E0B', '2025-11-03 08:51:42', '2025-11-03 08:51:42'),
+(48, 10, 'Review', 'Tasks awaiting review', 4, '#8B5CF6', '2025-11-03 08:51:42', '2025-11-03 08:51:42'),
+(49, 10, 'Done', 'Completed tasks', 5, '#10B981', '2025-11-03 08:51:42', '2025-11-03 08:51:42'),
+(50, 10, '1', '1', 6, '#007bff', '2025-11-04 02:32:23', '2025-11-04 02:32:23'),
+(51, 11, 'Backlog', 'Tasks that are planned but not yet started', 1, '#6B7280', '2025-11-04 05:31:42', '2025-11-04 05:31:42'),
+(52, 11, 'To Do', 'Tasks ready to be worked on', 2, '#3B82F6', '2025-11-04 05:31:42', '2025-11-04 05:31:42'),
+(53, 11, 'In Progress', 'Tasks currently being worked on', 3, '#F59E0B', '2025-11-04 05:31:42', '2025-11-04 05:31:42'),
+(54, 11, 'Review', 'Tasks awaiting review', 4, '#8B5CF6', '2025-11-04 05:31:42', '2025-11-04 05:31:42'),
+(55, 11, 'Done', 'Completed tasks', 5, '#10B981', '2025-11-04 05:31:42', '2025-11-04 05:31:42');
 
 -- --------------------------------------------------------
 
@@ -1722,7 +1785,52 @@ CREATE TABLE `project_members` (
 --
 
 INSERT INTO `project_members` (`id`, `project_id`, `emp_id`, `role`, `added_by`, `added_at`) VALUES
-(5, 8, 32, 'owner', 32, '2025-10-30 05:20:13');
+(7, 10, 32, 'owner', 32, '2025-11-03 08:51:42'),
+(8, 11, 32, 'owner', 32, '2025-11-04 05:31:42');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `provinces`
+--
+
+CREATE TABLE `provinces` (
+  `id` int(11) NOT NULL,
+  `region_code` varchar(10) NOT NULL,
+  `province_code` varchar(10) NOT NULL,
+  `province_name` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `provinces`
+--
+
+INSERT INTO `provinces` (`id`, `region_code`, `province_code`, `province_name`) VALUES
+(1, 'V', 'ALB', 'Albay'),
+(2, 'V', 'CAN', 'Camarines Norte'),
+(3, 'V', 'CAS', 'Camarines Sur'),
+(4, 'V', 'CAT', 'Catanduanes'),
+(5, 'V', 'MAS', 'Masbate'),
+(6, 'V', 'SOR', 'Sorsogon');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `regions`
+--
+
+CREATE TABLE `regions` (
+  `id` int(11) NOT NULL,
+  `region_code` varchar(10) NOT NULL,
+  `region_name` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `regions`
+--
+
+INSERT INTO `regions` (`id`, `region_code`, `region_name`) VALUES
+(1, 'V', 'Region V - Bicol Region');
 
 -- --------------------------------------------------------
 
@@ -1869,10 +1977,9 @@ CREATE TABLE `section` (
 
 INSERT INTO `section` (`section_id`, `office_id`, `section_name`, `section_code`, `created_at`, `updated_at`, `head_emp_id`, `default_status_id`) VALUES
 (1, 1, 'Administrative Section', 'ADM', '2025-05-20 03:03:25', '2025-08-05 03:01:15', 105, NULL),
-(2, 1, 'Finance Section', 'FIN', '2025-05-20 03:03:30', '2025-10-08 07:04:10', NULL, NULL),
+(2, 1, 'Finance Section', 'FIN', '2025-05-20 03:03:30', '2025-11-05 03:42:09', 52, NULL),
 (3, 1, 'Engineering Section', 'ENG', '2025-05-20 03:03:57', '2025-08-05 02:59:42', 54, NULL),
-(4, 1, 'Operation and Maintenance Section', 'OMS', '2025-05-20 03:04:00', '2025-08-05 05:16:54', 105, NULL),
-(5, 1, 'IMO Office', 'IMO', '2025-10-23 03:05:06', '2025-10-23 03:05:06', 23, NULL);
+(4, 1, 'Operation and Maintenance Section', 'OMS', '2025-05-20 03:04:00', '2025-08-05 05:16:54', 105, NULL);
 
 -- --------------------------------------------------------
 
@@ -2052,7 +2159,7 @@ CREATE TABLE `system_modules` (
 --
 
 INSERT INTO `system_modules` (`id`, `module_name`, `module_description`, `is_under_maintenance`, `created_at`, `updated_at`) VALUES
-(1, 'Admin Dashboard', 'Main administrative dashboard and overview', 0, '2025-10-11 14:07:08', '2025-10-20 12:41:22'),
+(1, 'Admin Dashboard', 'Main administrative dashboard and overview', 0, '2025-10-11 14:07:08', '2025-11-07 11:11:48'),
 (2, 'Attachment Monitoring', 'Monitor and process document attachments', 0, '2025-10-11 14:07:08', '2025-10-18 12:40:56'),
 (3, 'Calendar System', 'Company calendar and event management', 0, '2025-10-11 14:07:08', '2025-10-11 14:09:42'),
 (4, 'Employee Management', 'Manage employee records and information', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
@@ -2060,7 +2167,7 @@ INSERT INTO `system_modules` (`id`, `module_name`, `module_description`, `is_und
 (6, 'Employee Directory', 'View and manage employee list', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
 (7, 'Module Maintenance', 'System module maintenance control', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
 (8, 'Content Management', 'Manage website content and information', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
-(9, 'Appointment Settings', 'Configure appointment status and types', 0, '2025-10-11 14:07:08', '2025-10-20 11:54:47'),
+(9, 'Appointment Settings', 'Configure appointment status and types', 0, '2025-10-11 14:07:08', '2025-11-07 11:11:57'),
 (10, 'Position Management', 'Manage employee positions and roles', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
 (11, 'Section Management', 'Manage organizational sections', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
 (12, 'Office Management', 'Manage office locations and details', 0, '2025-10-11 14:07:08', '2025-10-11 14:07:08'),
@@ -2107,10 +2214,9 @@ CREATE TABLE `tasks` (
 --
 
 INSERT INTO `tasks` (`task_id`, `project_id`, `board_id`, `title`, `description`, `status`, `priority`, `labels`, `due_date`, `assigned_to`, `created_by`, `created_at`, `updated_at`, `position`) VALUES
-(4, 8, 34, '1', '1', 'inprogress', 'low', 'review', '2025-10-30', 143, 32, '2025-10-30 06:41:20', '2025-10-30 07:48:05', 0),
-(5, 8, 36, '1', '1', 'done', 'medium', 'design', '2025-10-30', NULL, 32, '2025-10-30 06:47:25', '2025-10-30 07:55:59', 0),
-(6, 8, 38, '1', '1', 'backlog', 'low', 'design', '2025-10-21', NULL, 32, '2025-10-30 06:47:34', '2025-10-30 07:56:10', 0),
-(7, 8, 33, '1', '1', 'todo', 'medium', '', '2025-10-11', NULL, 32, '2025-10-30 06:47:42', '2025-10-30 07:48:14', 0);
+(8, 10, 47, 'ASADA', 'ADASD', '', 'low', 'urgent', '2025-11-08', 32, 32, '2025-11-03 08:52:09', '2025-11-04 02:47:13', 0),
+(9, 10, 50, '1212', '212', '', 'medium', 'review', '2025-11-04', 32, 32, '2025-11-04 01:15:17', '2025-11-04 02:32:29', 0),
+(11, 11, 53, '1', '1', '', 'high', 'development', '2025-11-20', 32, 32, '2025-11-04 05:32:15', '2025-11-04 05:32:29', 0);
 
 -- --------------------------------------------------------
 
@@ -2201,16 +2307,16 @@ CREATE TABLE `user_online_status` (
 --
 
 INSERT INTO `user_online_status` (`id`, `emp_id`, `is_online`, `last_seen`) VALUES
-(1, 32, 1, '2025-10-30 07:56:53'),
-(4984, 27, 0, '2025-10-28 06:26:31'),
-(9161, 31, 0, '2025-10-28 06:26:31'),
+(1, 32, 1, '2025-11-07 05:30:36'),
+(4984, 27, 1, '2025-11-04 06:11:37'),
+(9161, 31, 1, '2025-11-07 05:30:45'),
 (61299, 100, 0, '2025-10-28 06:26:31'),
 (61608, 85, 0, '2025-10-13 00:38:22'),
 (61969, 23, 0, '2025-10-12 07:05:15'),
 (62442, 59, 0, '2025-10-18 03:53:46'),
 (62977, 56, 0, '2025-10-20 07:18:14'),
 (63127, 54, 0, '2025-10-20 07:18:14'),
-(72181, 26, 0, '2025-10-28 06:26:31'),
+(72181, 26, 1, '2025-10-30 08:34:26'),
 (79043, 55, 0, '2025-10-28 06:26:31');
 
 -- --------------------------------------------------------
@@ -2354,6 +2460,13 @@ ALTER TABLE `company_forms`
 --
 ALTER TABLE `company_info`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `congressional_districts`
+--
+ALTER TABLE `congressional_districts`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `province_code` (`province_code`);
 
 --
 -- Indexes for table `delivery_items`
@@ -2542,7 +2655,18 @@ ALTER TABLE `ia_profiles`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `ia_code` (`ia_code`),
   ADD KEY `created_by` (`created_by`),
-  ADD KEY `fk_ia_profiles_assigned_unit` (`assigned_employee_id`);
+  ADD KEY `fk_ia_profiles_assigned_unit` (`assigned_employee_id`),
+  ADD KEY `fk_ia_profiles_updated_by` (`updated_by`);
+
+--
+-- Indexes for table `ia_profile_history`
+--
+ALTER TABLE `ia_profile_history`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ia_profile_id` (`ia_profile_id`),
+  ADD KEY `performed_by` (`performed_by`),
+  ADD KEY `action` (`action`),
+  ADD KEY `performed_at` (`performed_at`);
 
 --
 -- Indexes for table `ict_equipment`
@@ -2713,6 +2837,19 @@ ALTER TABLE `project_members`
   ADD KEY `project_id` (`project_id`),
   ADD KEY `emp_id` (`emp_id`),
   ADD KEY `added_by` (`added_by`);
+
+--
+-- Indexes for table `provinces`
+--
+ALTER TABLE `provinces`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `region_code` (`region_code`);
+
+--
+-- Indexes for table `regions`
+--
+ALTER TABLE `regions`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `ris_items`
@@ -2923,6 +3060,12 @@ ALTER TABLE `company_info`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT for table `congressional_districts`
+--
+ALTER TABLE `congressional_districts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+
+--
 -- AUTO_INCREMENT for table `delivery_items`
 --
 ALTER TABLE `delivery_items`
@@ -3046,13 +3189,19 @@ ALTER TABLE `iar_records`
 -- AUTO_INCREMENT for table `ia_officers`
 --
 ALTER TABLE `ia_officers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `ia_profiles`
 --
 ALTER TABLE `ia_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `ia_profile_history`
+--
+ALTER TABLE `ia_profile_history`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `ict_equipment`
@@ -3130,7 +3279,7 @@ ALTER TABLE `managers_office_staff`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `office`
@@ -3154,7 +3303,7 @@ ALTER TABLE `permissions`
 -- AUTO_INCREMENT for table `personal_locator_slips`
 --
 ALTER TABLE `personal_locator_slips`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT for table `position`
@@ -3166,19 +3315,31 @@ ALTER TABLE `position`
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `project_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `project_boards`
 --
 ALTER TABLE `project_boards`
-  MODIFY `board_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `board_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
 
 --
 -- AUTO_INCREMENT for table `project_members`
 --
 ALTER TABLE `project_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `provinces`
+--
+ALTER TABLE `provinces`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `regions`
+--
+ALTER TABLE `regions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `ris_items`
@@ -3244,7 +3405,7 @@ ALTER TABLE `system_modules`
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `task_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `task_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `unit_section`
@@ -3262,7 +3423,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `user_online_status`
 --
 ALTER TABLE `user_online_status`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85221;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87682;
 
 --
 -- AUTO_INCREMENT for table `user_roles`
@@ -3440,7 +3601,15 @@ ALTER TABLE `ia_officers`
 --
 ALTER TABLE `ia_profiles`
   ADD CONSTRAINT `fk_ia_profiles_assigned_employee` FOREIGN KEY (`assigned_employee_id`) REFERENCES `employee` (`emp_id`),
+  ADD CONSTRAINT `fk_ia_profiles_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `employee` (`emp_id`),
   ADD CONSTRAINT `ia_profiles_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `employee` (`emp_id`);
+
+--
+-- Constraints for table `ia_profile_history`
+--
+ALTER TABLE `ia_profile_history`
+  ADD CONSTRAINT `ia_profile_history_ibfk_1` FOREIGN KEY (`ia_profile_id`) REFERENCES `ia_profiles` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `ia_profile_history_ibfk_2` FOREIGN KEY (`performed_by`) REFERENCES `employee` (`emp_id`);
 
 --
 -- Constraints for table `ict_equipment`

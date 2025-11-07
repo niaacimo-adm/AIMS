@@ -144,5 +144,56 @@ class TaskManager {
         $row = $result->fetch_assoc();
         return $row['max_position'];
     }
+
+    // Update task
+    public function updateTask($task_id, $data) {
+        $query = "UPDATE tasks SET 
+                title = ?, description = ?, status = ?, priority = ?, 
+                labels = ?, due_date = ?, assigned_to = ?, updated_at = NOW() 
+                WHERE task_id = ?";
+        
+        $stmt = $this->db->prepare($query);
+        $labels = isset($data['labels']) ? implode(',', $data['labels']) : null;
+        
+        $stmt->bind_param("ssssssii", 
+            $data['title'],
+            $data['description'],
+            $data['status'],
+            $data['priority'],
+            $labels,
+            $data['due_date'],
+            $data['assigned_to'],
+            $task_id
+        );
+        
+        return $stmt->execute();
+    }
+
+    // Delete task
+    public function deleteTask($task_id) {
+        $query = "DELETE FROM tasks WHERE task_id = ?";
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("i", $task_id);
+        return $stmt->execute();
+    }
+
+    // Get task by ID
+    public function getTask($task_id) {
+        $query = "SELECT t.*, 
+                e.first_name, e.last_name, e.picture,
+                creator.first_name as creator_first, creator.last_name as creator_last,
+                p.project_name, p.project_code
+                FROM tasks t 
+                LEFT JOIN employee e ON t.assigned_to = e.emp_id 
+                LEFT JOIN employee creator ON t.created_by = creator.emp_id 
+                LEFT JOIN projects p ON t.project_id = p.project_id 
+                WHERE t.task_id = ?";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("i", $task_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_assoc();
+    }
 }
 ?>

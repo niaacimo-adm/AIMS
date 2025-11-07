@@ -392,6 +392,80 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
     .priority-high { background: #ea580c; color: white; }
     .priority-medium { background: #ca8a04; color: white; }
     .priority-low { background: #16a34a; color: white; }
+    /* View Task Modal Fixes */
+    #viewTaskModal .modal-dialog {
+      max-width: 50%;
+      margin: 1.75rem auto;
+    }
+
+    #viewTaskModal .modal-content {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+    }
+
+    #viewTaskModal .modal-header {
+      border-radius: 12px 12px 0 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    #viewTaskModal .modal-body {
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    #viewTaskModal .border-right {
+      border-right: 1px solid #e9ecef;
+    }
+
+    /* Responsive fixes */
+    @media (max-width: 992px) {
+      #viewTaskModal .border-right {
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+      }
+      
+      #viewTaskModal .modal-dialog {
+        max-width: 98%;
+        margin: 0.5rem auto;
+      }
+    }
+
+    /* Better scrollbar for modal */
+    #viewTaskModal .modal-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #viewTaskModal .modal-body::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+
+    #viewTaskModal .modal-body::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+    }
+
+    #viewTaskModal .modal-body::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    /* Card improvements */
+    #viewTaskModal .card {
+      border: 1px solid #e3e6f0;
+      border-radius: 8px;
+    }
+
+    #viewTaskModal .card-header {
+      background: #f8f9fc;
+      border-bottom: 1px solid #e3e6f0;
+      padding: 0.75rem 1.25rem;
+    }
+
+    #viewTaskModal .card-body {
+      padding: 1.25rem;
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini theme-scrum">
@@ -636,7 +710,105 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
     </div>
   </div>
 </div>
-
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editTaskModalLabel">Edit Task</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="editTaskForm">
+          <input type="hidden" id="editTaskId" value="">
+          <input type="hidden" id="editProjectId" value="">
+          <div class="row">
+            <div class="col-md-8">
+              <div class="form-group">
+                <label for="editTaskTitle">Task Title *</label>
+                <input type="text" class="form-control" id="editTaskTitle" placeholder="Enter task title" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="editTaskPriority">Priority</label>
+                <select class="form-control" id="editTaskPriority">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="editTaskDescription">Description</label>
+            <textarea class="form-control" id="editTaskDescription" rows="3" placeholder="Enter task description"></textarea>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="editTaskAssignee">Assignee</label>
+                <select class="form-control" id="editTaskAssignee">
+                  <option value="">Unassigned</option>
+                  <!-- Assignable employees will be loaded here -->
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="editTaskDueDate">Due Date</label>
+                <input type="date" class="form-control" id="editTaskDueDate">
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="editTaskBoard">Board</label>
+            <select class="form-control" id="editTaskBoard">
+              <!-- Boards will be loaded here -->
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Labels</label>
+            <div class="d-flex flex-wrap">
+              <div class="custom-control custom-checkbox mr-3 mb-2">
+                <input type="checkbox" class="custom-control-input" id="editLabelRevise" value="revise">
+                <label class="custom-control-label" for="editLabelRevise">Revise</label>
+              </div>
+              <div class="custom-control custom-checkbox mr-3 mb-2">
+                <input type="checkbox" class="custom-control-input" id="editLabelUrgent" value="urgent">
+                <label class="custom-control-label" for="editLabelUrgent">Urgent</label>
+              </div>
+              <div class="custom-control custom-checkbox mr-3 mb-2">
+                <input type="checkbox" class="custom-control-input" id="editLabelDesign" value="design">
+                <label class="custom-control-label" for="editLabelDesign">Design</label>
+              </div>
+              <div class="custom-control custom-checkbox mr-3 mb-2">
+                <input type="checkbox" class="custom-control-input" id="editLabelDevelopment" value="development">
+                <label class="custom-control-label" for="editLabelDevelopment">Development</label>
+              </div>
+              <div class="custom-control custom-checkbox mr-3 mb-2">
+                <input type="checkbox" class="custom-control-input" id="editLabelReview" value="review">
+                <label class="custom-control-label" for="editLabelReview">Review</label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger mr-auto" id="deleteTaskBtn">Delete Task</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="updateTaskBtn">Update Task</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- New Project Modal -->
 <div class="modal fade" id="newProjectModal" tabindex="-1" role="dialog" aria-labelledby="newProjectModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -728,169 +900,149 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   </div>
 </div>
 
-<!-- Board Settings Dropdown -->
-<!-- <div class="modal fade" id="boardSettingsModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Board Settings</h5>
-        <button type="button" class="close" data-dismiss="modal">
-          <span>&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="list-group">
-          <button type="button" class="list-group-item list-group-item-action" id="addNewBoardBtn">
-            <i class="fas fa-plus mr-2"></i>Add New Board
-          </button>
-          <button type="button" class="list-group-item list-group-item-action" id="manageBoardsBtn">
-            <i class="fas fa-cog mr-2"></i>Manage Boards
-          </button>
-          <button type="button" class="list-group-item list-group-item-action" id="resetBoardsBtn">
-            <i class="fas fa-redo mr-2"></i>Reset to Default Boards
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div> -->
 <!-- View Task Modal -->
 <div class="modal fade" id="viewTaskModal" tabindex="-1" role="dialog" aria-labelledby="viewTaskModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="viewTaskModalLabel">
-          <span id="viewTaskKey" class="text-muted mr-2"></span>
-          <span id="viewTaskTitle"></span>
+          <span id="viewTaskKey" class="text-light mr-2"></span>
+          <span id="viewTaskTitle" class="text-white"></span>
         </h5>
         <div class="modal-actions">
-          <button type="button" class="btn btn-outline-secondary btn-sm mr-2" id="editTaskBtn">
+          <button type="button" class="btn btn-light btn-sm mr-2" id="editTaskBtn">
             <i class="fas fa-edit mr-1"></i> Edit
           </button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">
+          <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">
             <i class="fas fa-times"></i>
           </button>
         </div>
       </div>
-      <div class="modal-body">
-        <div class="row">
-          <!-- Left Column - Main Content -->
-          <div class="col-md-8">
-            <!-- Description -->
-            <div class="card mb-4">
-              <div class="card-header bg-light">
-                <h6 class="mb-0">
-                  <i class="fas fa-align-left mr-2"></i>Description
-                </h6>
-              </div>
-              <div class="card-body">
-                <div id="viewTaskDescription" class="task-description">
-                  <!-- Description content will be loaded here -->
-                </div>
-                <div id="noDescription" class="text-muted" style="display: none;">
-                  <em>No description provided</em>
-                </div>
-              </div>
-            </div>
-
-            <!-- Activity/Comments Section -->
-            <div class="card">
-              <div class="card-header bg-light">
-                <h6 class="mb-0">
-                  <i class="fas fa-comments mr-2"></i>Activity
-                </h6>
-              </div>
-              <div class="card-body">
-                <!-- Comment Input -->
-                <div class="comment-input mb-4">
-                  <textarea class="form-control" id="commentText" rows="3" placeholder="Add a comment..."></textarea>
-                  <div class="mt-2 text-right">
-                    <button class="btn btn-primary btn-sm" id="addCommentBtn">
-                      <i class="fas fa-paper-plane mr-1"></i> Comment
-                    </button>
+      <div class="modal-body p-0">
+        <div class="container-fluid">
+          <div class="row">
+            <!-- Left Column - Main Content -->
+            <div class="col-lg-8 border-right">
+              <div class="p-3">
+                <!-- Description -->
+                <div class="card mb-4">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                      <i class="fas fa-align-left mr-2"></i>Description
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div id="viewTaskDescription" class="task-description">
+                      <!-- Description content will be loaded here -->
+                    </div>
+                    <div id="noDescription" class="text-muted" style="display: none;">
+                      <em>No description provided</em>
+                    </div>
                   </div>
                 </div>
-                
-                <!-- Activity Timeline -->
-                <div id="activityTimeline" class="activity-timeline">
-                  <!-- Activity items will be loaded here -->
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Right Column - Sidebar -->
-          <div class="col-md-4">
-            <!-- Task Details Card -->
-            <div class="card mb-4">
-              <div class="card-header bg-light">
-                <h6 class="mb-0">Details</h6>
-              </div>
-              <div class="card-body">
-                <div class="detail-item mb-3">
-                  <label class="text-muted small mb-1">Status</label>
-                  <div id="viewTaskStatus" class="font-weight-bold"></div>
-                </div>
-                <div class="detail-item mb-3">
-                  <label class="text-muted small mb-1">Assignee</label>
-                  <div id="viewTaskAssignee" class="d-flex align-items-center">
-                    <!-- Assignee info will be loaded here -->
+                <!-- Activity/Comments Section -->
+                <div class="card">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                      <i class="fas fa-comments mr-2"></i>Activity
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <!-- Comment Input -->
+                    <div class="comment-input mb-4">
+                      <textarea class="form-control" id="commentText" rows="3" placeholder="Add a comment..."></textarea>
+                      <div class="mt-2 text-right">
+                        <button class="btn btn-primary btn-sm" id="addCommentBtn">
+                          <i class="fas fa-paper-plane mr-1"></i> Comment
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Activity Timeline -->
+                    <div id="activityTimeline" class="activity-timeline">
+                      <!-- Activity items will be loaded here -->
+                    </div>
                   </div>
                 </div>
-                <div class="detail-item mb-3">
-                  <label class="text-muted small mb-1">Reporter</label>
-                  <div id="viewTaskReporter" class="d-flex align-items-center">
-                    <!-- Reporter info will be loaded here -->
+              </div>
+            </div>
+
+            <!-- Right Column - Sidebar -->
+            <div class="col-lg-4">
+              <div class="p-3">
+                <!-- Task Details Card -->
+                <div class="card mb-4">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Details</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="detail-item mb-3">
+                      <label class="text-muted small mb-1">Status</label>
+                      <div id="viewTaskStatus" class="font-weight-bold"></div>
+                    </div>
+                    <div class="detail-item mb-3">
+                      <label class="text-muted small mb-1">Assignee</label>
+                      <div id="viewTaskAssignee" class="d-flex align-items-center">
+                        <!-- Assignee info will be loaded here -->
+                      </div>
+                    </div>
+                    <div class="detail-item mb-3">
+                      <label class="text-muted small mb-1">Reporter</label>
+                      <div id="viewTaskReporter" class="d-flex align-items-center">
+                        <!-- Reporter info will be loaded here -->
+                      </div>
+                    </div>
+                    <div class="detail-item mb-3">
+                      <label class="text-muted small mb-1">Priority</label>
+                      <div id="viewTaskPriority"></div>
+                    </div>
+                    <div class="detail-item mb-3">
+                      <label class="text-muted small mb-1">Due Date</label>
+                      <div id="viewTaskDueDate"></div>
+                    </div>
+                    <div class="detail-item mb-3">
+                      <label class="text-muted small mb-1">Created</label>
+                      <div id="viewTaskCreated" class="small text-muted"></div>
+                    </div>
+                    <div class="detail-item">
+                      <label class="text-muted small mb-1">Updated</label>
+                      <div id="viewTaskUpdated" class="small text-muted"></div>
+                    </div>
                   </div>
                 </div>
-                <div class="detail-item mb-3">
-                  <label class="text-muted small mb-1">Priority</label>
-                  <div id="viewTaskPriority"></div>
-                </div>
-                <div class="detail-item mb-3">
-                  <label class="text-muted small mb-1">Due Date</label>
-                  <div id="viewTaskDueDate"></div>
-                </div>
-                <div class="detail-item mb-3">
-                  <label class="text-muted small mb-1">Created</label>
-                  <div id="viewTaskCreated" class="small text-muted"></div>
-                </div>
-                <div class="detail-item">
-                  <label class="text-muted small mb-1">Updated</label>
-                  <div id="viewTaskUpdated" class="small text-muted"></div>
-                </div>
-              </div>
-            </div>
 
-            <!-- Labels Card -->
-            <div class="card mb-4">
-              <div class="card-header bg-light">
-                <h6 class="mb-0">Labels</h6>
-              </div>
-              <div class="card-body">
-                <div id="viewTaskLabels" class="task-labels">
-                  <!-- Labels will be loaded here -->
+                <!-- Labels Card -->
+                <div class="card mb-4">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Labels</h6>
+                  </div>
+                  <div class="card-body">
+                    <div id="viewTaskLabels" class="task-labels">
+                      <!-- Labels will be loaded here -->
+                    </div>
+                    <div id="noLabels" class="text-muted small" style="display: none;">
+                      <em>No labels</em>
+                    </div>
+                  </div>
                 </div>
-                <div id="noLabels" class="text-muted small" style="display: none;">
-                  <em>No labels</em>
-                </div>
-              </div>
-            </div>
 
-            <!-- Project Info Card -->
-            <div class="card">
-              <div class="card-header bg-light">
-                <h6 class="mb-0">Project</h6>
-              </div>
-              <div class="card-body">
-                <div class="detail-item">
-                  <label class="text-muted small mb-1">Project</label>
-                  <div id="viewTaskProject" class="font-weight-bold"></div>
-                </div>
-                <div class="detail-item mt-2">
-                  <label class="text-muted small mb-1">Board</label>
-                  <div id="viewTaskBoard" class="d-flex align-items-center">
-                    <!-- Board info will be loaded here -->
+                <!-- Project Info Card -->
+                <div class="card">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">Project</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="detail-item">
+                      <label class="text-muted small mb-1">Project</label>
+                      <div id="viewTaskProject" class="font-weight-bold"></div>
+                    </div>
+                    <div class="detail-item mt-2">
+                      <label class="text-muted small mb-1">Board</label>
+                      <div id="viewTaskBoard" class="d-flex align-items-center">
+                        <!-- Board info will be loaded here -->
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -904,6 +1056,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
 
 <script>
 class Scrumboard {
+  
     constructor() {
         this.currentProjectId = null;
         this.currentProject = null;
@@ -957,7 +1110,9 @@ class Scrumboard {
         $('#resetBoardsBtn').click(() => this.resetBoards());
         $('#saveBoardBtn').click(() => this.saveBoard());
         $('#deleteBoardBtn').click(() => this.deleteBoard());
-
+        $('#updateTaskBtn').click(() => this.updateTask());
+        $('#deleteTaskBtn').click(() => this.deleteTask());
+        $('#editTaskBtn').click(() => this.editCurrentTask());
         // Board actions
         $(document).on('click', '.board-settings', (e) => {
             const boardId = $(e.currentTarget).data('board-id');
@@ -1001,6 +1156,170 @@ class Scrumboard {
         });
     }
 
+    // Add the showEditTaskModal method:
+    showEditTaskModal(task) {
+        // Populate the edit modal with task data
+        $('#editTaskId').val(task.task_id);
+        $('#editProjectId').val(task.project_id);
+        $('#editTaskTitle').val(task.title);
+        $('#editTaskDescription').val(task.description || '');
+        $('#editTaskPriority').val(task.priority);
+        $('#editTaskDueDate').val(task.due_date ? task.due_date.split(' ')[0] : '');
+        
+        // Populate assignee dropdown
+        this.populateAssigneeDropdown('#editTaskAssignee', task.assigned_to);
+        
+        // Populate boards dropdown
+        this.populateBoardsDropdown('#editTaskBoard', task.board_id);
+        
+        // Set labels
+        this.setEditTaskLabels(task.labels);
+        
+        // Show the modal
+        $('#editTaskModal').modal('show');
+    }
+
+    // Helper method to populate assignee dropdown
+    populateAssigneeDropdown(selector, selectedValue) {
+        const select = $(selector);
+        select.empty();
+        select.append('<option value="">Unassigned</option>');
+        
+        // This should use the same employees loaded for the add task modal
+        $('#taskAssignee option').each(function() {
+            const option = $(this).clone();
+            if (option.val() === String(selectedValue)) {
+                option.prop('selected', true);
+            }
+            select.append(option);
+        });
+    }
+
+    // Helper method to populate boards dropdown
+    populateBoardsDropdown(selector, selectedBoardId) {
+        const select = $(selector);
+        select.empty();
+        
+        this.boards.forEach(board => {
+            const option = $('<option>', {
+                value: board.board_id,
+                text: board.board_name
+            });
+            if (board.board_id == selectedBoardId) {
+                option.prop('selected', true);
+            }
+            select.append(option);
+        });
+    }
+
+    // Helper method to set labels in edit form
+    setEditTaskLabels(labelsString) {
+        // Clear all checkboxes first
+        $('#editLabelRevise, #editLabelUrgent, #editLabelDesign, #editLabelDevelopment, #editLabelReview').prop('checked', false);
+        
+        if (labelsString) {
+            const labels = labelsString.split(',');
+            labels.forEach(label => {
+                $(`#editLabel${label.charAt(0).toUpperCase() + label.slice(1)}`).prop('checked', true);
+            });
+        }
+    }
+
+    // Add update task method
+    async updateTask() {
+        const taskId = $('#editTaskId').val();
+        const labels = [];
+        
+        if ($('#editLabelRevise').is(':checked')) labels.push('revise');
+        if ($('#editLabelUrgent').is(':checked')) labels.push('urgent');
+        if ($('#editLabelDesign').is(':checked')) labels.push('design');
+        if ($('#editLabelDevelopment').is(':checked')) labels.push('development');
+        if ($('#editLabelReview').is(':checked')) labels.push('review');
+        
+        const formData = {
+            action: 'update_task',
+            task_id: taskId,
+            title: $('#editTaskTitle').val().trim(),
+            description: $('#editTaskDescription').val().trim(),
+            board_id: $('#editTaskBoard').val(),
+            priority: $('#editTaskPriority').val(),
+            labels: labels.join(','),
+            due_date: $('#editTaskDueDate').val(),
+            assigned_to: $('#editTaskAssignee').val() || null
+        };
+        
+        // Validation
+        if (!formData.title) {
+            this.showError('Please enter a task title');
+            return;
+        }
+        
+        if (!formData.board_id) {
+            this.showError('Please select a board');
+            return;
+        }
+        
+        try {
+            const response = await $.ajax({
+                url: '../includes/task_ajax.php',
+                method: 'POST',
+                data: formData,
+                dataType: 'json'
+            });
+
+            if (response.success) {
+                $('#editTaskModal').modal('hide');
+                await this.loadProjectTasks();
+                this.showSuccess('Task updated successfully');
+            } else {
+                this.showError(response.error || 'Failed to update task');
+            }
+        } catch (error) {
+            console.error('Error updating task:', error);
+            let errorMessage = 'Failed to update task: ';
+            if (error.responseJSON && error.responseJSON.error) {
+                errorMessage += error.responseJSON.error;
+            } else {
+                errorMessage += 'Unknown error occurred';
+            }
+            this.showError(errorMessage);
+        }
+    }
+
+    // Add delete task method
+    async deleteTask() {
+        const taskId = $('#editTaskId').val();
+        
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This task will be permanently deleted!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await $.post('../includes/task_ajax.php', {
+                        action: 'delete_task',
+                        task_id: taskId
+                    });
+
+                    if (response.success) {
+                        $('#editTaskModal').modal('hide');
+                        await this.loadProjectTasks();
+                        this.showSuccess('Task deleted successfully');
+                    } else {
+                        this.showError(response.error || 'Failed to delete task');
+                    }
+                } catch (error) {
+                    console.error('Error deleting task:', error);
+                    this.showError('Failed to delete task');
+                }
+            }
+        });
+    }
     toggleProjectsMonitoring() {
         const monitoringSection = $('#projectsMonitoring');
         const isVisible = monitoringSection.is(':visible');
@@ -1779,7 +2098,16 @@ class Scrumboard {
 
             // Populate modal with task data
             this.populateTaskModal(task);
-            $('#viewTaskModal').modal('show');
+            
+            // Show modal with proper positioning
+            $('#viewTaskModal').modal({
+                backdrop: 'static',
+                keyboard: true
+            }).modal('show');
+            
+            // Center the modal
+            $('#viewTaskModal').css('display', 'block');
+            $('#viewTaskModal').addClass('show');
             
         } catch (error) {
             console.error('Error loading task:', error);
@@ -1876,6 +2204,15 @@ class Scrumboard {
     }
 
     getStatusDisplayText(status) {
+        // If status is empty or invalid, try to get from board
+        if (!status || status === '') {
+            if (this.currentViewingTask && this.currentViewingTask.board_id) {
+                const board = this.boards.find(b => b.board_id == this.currentViewingTask.board_id);
+                return board ? board.board_name : 'Unknown';
+            }
+            return 'Unknown';
+        }
+        
         // If status starts with 'board_', it's a custom board - get the board name
         if (status.startsWith('board_')) {
             const boardId = status.replace('board_', '');
@@ -1889,12 +2226,15 @@ class Scrumboard {
             'todo': 'To Do',
             'inprogress': 'In Progress',
             'review': 'Review',
-            'done': 'Done'
+            'done': 'Done',
+            'in progress': 'In Progress', // Handle space variation
+            'to do': 'To Do' // Handle space variation
         };
         
         // If it's a known status, use the mapped display text
-        if (statusMap[status]) {
-            return statusMap[status];
+        const normalizedStatus = status.toLowerCase();
+        if (statusMap[normalizedStatus]) {
+            return statusMap[normalizedStatus];
         }
         
         // For custom statuses, convert from 'customstatus' to 'Custom Status'
@@ -1966,12 +2306,8 @@ class Scrumboard {
         // Close view modal
         $('#viewTaskModal').modal('hide');
         
-        // For now, we'll just show a message
-        // In a real implementation, you'd open an edit modal
-        this.showInfo('Edit functionality will be implemented in the next phase');
-        
-        // You can implement edit functionality like this:
-        // this.showEditTaskModal(this.currentViewingTask);
+        // Open edit modal with current task data
+        this.showEditTaskModal(this.currentViewingTask);
     }
 
     // Optional: Add info message method
@@ -1984,7 +2320,6 @@ class Scrumboard {
             showConfirmButton: false
         });
     }
-    
   }
 
 // Fix the duplicate initialization - remove one of these
@@ -1996,6 +2331,8 @@ $(document).ready(function() {
     
     window.scrumboard = new Scrumboard();
 });
+
+
 </script>
 </body>
 </html>

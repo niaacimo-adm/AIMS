@@ -71,9 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
             
-            // Convert board name to a valid status format
-            // Use the board_id as the status to ensure consistency
-            $status = 'board_' . $board_id;
+            // Use the board name as status for display purposes
+            $status = strtolower(str_replace(' ', '', $board['board_name']));
             
             $stmt = $db->prepare("INSERT INTO tasks (project_id, title, description, board_id, status, priority, labels, due_date, assigned_to, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             
@@ -155,6 +154,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => true]);
             } else {
                 echo json_encode(['success' => false, 'error' => 'Failed to update task board: ' . $stmt->error]);
+            }
+            break;
+        
+        case 'update_task':
+            if (empty($_POST['task_id']) || empty($_POST['title']) || empty($_POST['board_id'])) {
+                echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+                break;
+            }
+            
+            $task_id = (int)$_POST['task_id'];
+            $title = trim($_POST['title']);
+            $description = trim($_POST['description'] ?? '');
+            $board_id = (int)$_POST['board_id'];
+            $priority = $_POST['priority'] ?? 'medium';
+            $labels = isset($_POST['labels']) ? $_POST['labels'] : '';
+            $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
+            $assigned_to = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+            
+            // Get board details
+            $board_stmt = $db->prepare("SELECT board_name FROM project_boards WHERE board_id = ?");
+            $board_stmt->bind_param("i", $board_id);
+            $board_stmt->execute();
+            $board_result = $board_stmt->get_result();
+            $board = $board_result->fetch_assoc();
+            
+            if (!$board) {
+                echo json_encode(['success' => false, 'error' => 'Invalid board selected']);
+                break;
+            }
+            
+            // Use the board name as status for display purposes
+            $status = strtolower(str_replace(' ', '', $board['board_name']));
+            
+            $stmt = $db->prepare("UPDATE tasks SET title = ?, description = ?, board_id = ?, status = ?, priority = ?, labels = ?, due_date = ?, assigned_to = ?, updated_at = NOW() WHERE task_id = ?");
+            
+            if ($stmt) {
+                $stmt->bind_param("sssssssii", $title, $description, $board_id, $status, $priority, $labels, $due_date, $assigned_to, $task_id);
+                
+                if ($stmt->execute()) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Database error: ' . $stmt->error]);
+                }
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Database preparation failed: ' . $db->error]);
+            }
+            break;
+
+        case 'delete_task':
+            $task_id = (int)$_POST['task_id'];
+            
+            $stmt = $db->prepare("DELETE FROM tasks WHERE task_id = ?");
+            $stmt->bind_param("i", $task_id);
+            
+            if ($stmt->execute()) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $stmt->error]);
             }
             break;
                 default:
