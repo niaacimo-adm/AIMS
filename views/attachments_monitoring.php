@@ -10,6 +10,23 @@ $db = $database->getConnection();
 if (!isset($_SESSION['role'])) {
     $_SESSION['role'] = ''; // Default empty role
 }
+
+$module_name = 'Attachment Monitoring';
+$check_stmt = $db->prepare("SELECT is_under_maintenance FROM system_modules WHERE module_name = ?");
+$check_stmt->bind_param("s", $module_name);
+$check_stmt->execute();
+$result = $check_stmt->get_result();
+
+if ($result->num_rows > 0) {
+    $module = $result->fetch_assoc();
+    if ($module['is_under_maintenance'] && !hasPermission('manage_settings')) {
+        // Redirect to maintenance page or show message
+        $_SESSION['error'] = "The $module_name module is currently under maintenance. Please try again later.";
+        header("Location: ../unauthorized.php");
+        exit();
+    }
+}
+
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_attachment'])) {
@@ -375,7 +392,7 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     }
     
     .status-complete { 
-      background: linear-gradient(135deg, #4cc9f0, #4895ef); 
+      background: #1de32eff; 
       color: white; 
     }
     
@@ -385,7 +402,7 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     }
     
     .status-complete-late { 
-      background: linear-gradient(135deg, #f72585, #b5179e); 
+      background: #1ffaebff; 
       color: white; 
     }
     
@@ -482,11 +499,11 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       color: var(--dark);
     }
     
-    .export-dropdown {
+    /* .export-dropdown {
       min-width: 250px;
-    }
+    } */
 
-    .export-period {
+    /* .export-period {
       font-size: 0.9rem;
       padding: 8px 15px;
       border-radius: 6px;
@@ -497,7 +514,7 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     .export-period:hover {
       background-color: #f8f9fa;
       transform: translateX(5px);
-    }
+    } */
     
     .bulk-actions-card {
       background: white;
@@ -532,6 +549,73 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
         overflow-x: auto;
       }
     }
+
+    .status-no-attachments { 
+        background: #e9a214ff; 
+        color: white; 
+    }
+
+    .status-lacking-information { 
+        background: #4bcbe2ff; 
+        color: black; 
+    }
+
+    .status-for-review { 
+        background:  #df67d3ff; 
+        color: white; 
+    }
+
+    /* Add these styles to your existing CSS */
+    .export-dropdown {
+  min-width: 300px !important;
+  padding: 0;
+}
+
+.export-periods-container {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.export-period {
+  padding: 8px 15px;
+  border-bottom: 1px solid #f8f9fa;
+  transition: all 0.2s ease;
+  display: block;
+}
+
+.export-period:hover {
+  background-color: #f8f9fa;
+  text-decoration: none;
+  transform: translateX(3px);
+}
+
+.export-period:last-child {
+  border-bottom: none;
+}
+
+.no-results-message {
+  padding: 15px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+}
+    /* Style the filter inputs */
+    .export-dropdown .form-control-sm {
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .export-dropdown .form-group {
+      margin-bottom: 10px;
+    }
+
+    .export-dropdown .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .export-dropdown .small {
+      font-size: 0.75rem;
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -560,62 +644,62 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       <div class="container-fluid">
         <!-- Statistics Cards -->
         <div class="row">
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-info">
-              <div class="inner">
-                <h3><?= count($employees) ?></h3>
-                <p>Total Employees</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-users"></i>
-              </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3><?= count($employees) ?></h3>
+                        <p>Total Employees</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-success">
-              <div class="inner">
-                <h3>
-                  <?= count(array_filter($monitoringRecords, function($record) {
-                    return $record['status'] === 'COMPLETE';
-                  })) ?>
-                </h3>
-                <p>Complete Submissions</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-check-circle"></i>
-              </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>
+                            <?= count(array_filter($monitoringRecords, function($record) {
+                                return $record['status'] === 'COMPLETE';
+                            })) ?>
+                        </h3>
+                        <p>Complete</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-warning">
-              <div class="inner">
-                <h3>
-                  <?= count(array_filter($monitoringRecords, function($record) {
-                    return $record['status'] === 'COMPLETE AND LATE';
-                  })) ?>
-                </h3>
-                <p>Complete & Late</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-clock"></i>
-              </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>
+                            <?= count(array_filter($monitoringRecords, function($record) {
+                                return $record['status'] === 'COMPLETE AND LATE';
+                            })) ?>
+                        </h3>
+                        <p>Complete & Late</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-danger">
-              <div class="inner">
-                <h3>
-                  <?= count(array_filter($monitoringRecords, function($record) {
-                    return $record['status'] === 'NOT SUBMITTED';
-                  })) ?>
-                </h3>
-                <p>Not Submitted</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-times-circle"></i>
-              </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-danger">
+                    <div class="inner">
+                        <h3>
+                            <?= count(array_filter($monitoringRecords, function($record) {
+                                return $record['status'] === 'NO ATTACHMENTS';
+                            })) ?>
+                        </h3>
+                        <p>No Attachments</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
 
         <!-- Filters Card -->
@@ -634,17 +718,16 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
                 </select>
               </div>
             </div>
-            <div class="col-md-2">
-              <div class="form-group">
+            <div class="form-group">
                 <label>Status</label>
                 <select id="statusFilter" class="form-control">
-                  <option value="">All Statuses</option>
-                  <option value="COMPLETE">Complete</option>
-                  <option value="INCOMPLETE">Incomplete</option>
-                  <option value="COMPLETE AND LATE">Complete & Late</option>
-                  <option value="NOT SUBMITTED">Not Submitted</option>
+                    <option value="">All Statuses</option>
+                    <option value="NO ATTACHMENTS">No Attachments</option>
+                    <option value="COMPLETE">Complete</option>
+                    <option value="COMPLETE AND LATE">Complete & Late</option>
+                    <option value="LACKING INFORMATION">Lacking Information</option>
+                    <option value="FOR REVIEW">For Review</option>
                 </select>
-              </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
@@ -684,24 +767,75 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
                       <i class="fas fa-file-import"></i> Import
                     </button>
                     
-                    <!-- Export Dropdown -->
-                    <div class="btn-group">
-                      <button type="button" class="btn btn-info btn-sm" id="exportBtn">
-                        <i class="fas fa-file-export"></i> Export All
-                      </button>
-                      <button type="button" class="btn btn-info btn-sm dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <span class="sr-only">Toggle Dropdown</span>
-                      </button>
-                      <div class="dropdown-menu export-dropdown">
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-info btn-sm" id="exportBtn">
+                          <i class="fas fa-file-export"></i> Export All
+                        </button>
+                        <button type="button" class="btn btn-info btn-sm dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                          <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <div class="dropdown-menu export-dropdown">
                         <h6 class="dropdown-header">Export by Payroll Period</h6>
-                        <?php foreach ($payrollPeriods as $period): ?>
-                          <a class="dropdown-item export-period" href="#" data-period="<?= htmlspecialchars($period['payroll_period']) ?>">
-                            <i class="fas fa-download mr-2"></i><?= htmlspecialchars($period['payroll_period']) ?>
-                          </a>
-                        <?php endforeach; ?>
-                        <?php if (empty($payrollPeriods)): ?>
-                          <a class="dropdown-item disabled" href="#">No periods available</a>
-                        <?php endif; ?>
+                        
+                        <div class="px-3 py-2 border-bottom">
+                        <div class="form-group mb-2">
+                          <label class="small font-weight-bold mb-1">Filter by Year:</label>
+                          <select class="form-control form-control-sm" id="exportYearFilter">
+                            <option value="">All Years</option>
+                            <option value="current">Current Year (No year specified)</option>
+                            <?php
+                            // Extract unique years from payroll periods
+                            $years = [];
+                            
+                            foreach ($payrollPeriods as $period) {
+                              $payrollPeriod = $period['payroll_period'];
+                              
+                              // Check if period contains a year
+                              if (preg_match('/(\d{4})$/', $payrollPeriod, $matches)) {
+                                $years[] = $matches[1];
+                              } elseif (preg_match('/,(\d{4})$/', $payrollPeriod, $matches)) {
+                                $years[] = $matches[1];
+                              } elseif (preg_match('/(\d{4})/', $payrollPeriod, $matches)) {
+                                $years[] = $matches[1];
+                              }
+                              // If no year found, we don't add anything to $years array
+                            }
+                            
+                            if (!empty($years)) {
+                              $years = array_unique($years);
+                              rsort($years);
+                              foreach ($years as $year) {
+                                echo "<option value='{$year}'>{$year}</option>";
+                              }
+                            }
+                            ?>
+                          </select>
+                          <small class="form-text text-muted">
+                            Periods without years will only show when "Current Year" is selected
+                          </small>
+                        </div>
+                        
+                        <div class="form-group mb-0">
+                          <label class="small font-weight-bold mb-1">Search Periods:</label>
+                          <input type="text" class="form-control form-control-sm" id="exportSearchFilter" placeholder="Search periods...">
+                        </div>
+                      </div>
+                        
+                        <div class="export-periods-container">
+                          <?php if (!empty($payrollPeriods)): ?>
+                            <?php foreach ($payrollPeriods as $period): ?>
+                              <a class="dropdown-item export-period" href="#" data-period="<?= htmlspecialchars($period['payroll_period']) ?>">
+                                <i class="fas fa-download mr-2"></i><?= htmlspecialchars($period['payroll_period']) ?>
+                              </a>
+                            <?php endforeach; ?>
+                          <?php else: ?>
+                            <div class="dropdown-item disabled">No periods available</div>
+                          <?php endif; ?>
+                        </div>
+                        
+                        <div class="dropdown-item disabled no-results-message" style="display: none;">
+                          No periods match your search
+                        </div>
                       </div>
                     </div>
                     
@@ -863,13 +997,14 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
             <small class="form-text text-muted">Select start and end dates for the payroll period</small>
           </div>
           <div class="form-group">
-            <label>Status</label>
-            <select name="status" class="form-control" required>
-              <option value="NOT SUBMITTED">Not Submitted</option>
-              <option value="COMPLETE">Complete</option>
-              <option value="INCOMPLETE">Incomplete</option>
-              <option value="COMPLETE AND LATE">Complete and Late</option>
-            </select>
+              <label>Status</label>
+              <select name="status" class="form-control" required>
+                  <option value="NO ATTACHMENTS">No Attachments</option>
+                  <option value="COMPLETE">Complete</option>
+                  <option value="COMPLETE AND LATE">Complete and Late</option>
+                  <option value="LACKING INFORMATION">Lacking Information</option>
+                  <option value="FOR REVIEW">For Review</option>
+              </select>
           </div>
           <div class="form-group">
             <label>Filing Status</label>
@@ -910,13 +1045,14 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
         <input type="hidden" name="monitoring_id" id="edit_monitoring_id">
         <div class="modal-body">
           <div class="form-group">
-            <label>Status</label>
-            <select name="status" id="edit_status" class="form-control" required>
-              <option value="NOT SUBMITTED">Not Submitted</option>
-              <option value="COMPLETE">Complete</option>
-              <option value="INCOMPLETE">Incomplete</option>
-              <option value="COMPLETE AND LATE">Complete and Late</option>
-            </select>
+              <label>Status</label>
+              <select name="status" id="edit_status" class="form-control" required>
+                  <option value="NO ATTACHMENTS">No Attachments</option>
+                  <option value="COMPLETE">Complete</option>
+                  <option value="COMPLETE AND LATE">Complete and Late</option>
+                  <option value="LACKING INFORMATION">Lacking Information</option>
+                  <option value="FOR REVIEW">For Review</option>
+              </select>
           </div>
           <div class="form-group">
             <label>Filing Status</label>
@@ -943,7 +1079,7 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
   </div>
 </div>
 
-<!-- Import Modal -->
+<!-- In the Import Modal -->
 <div class="modal fade" id="importModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
@@ -953,22 +1089,27 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <form method="POST" action="attachments_import.php" enctype="multipart/form-data">
+      <form method="POST" id="importForm" enctype="multipart/form-data">
         <div class="modal-body">
           <div class="form-group">
             <label>Select Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
             <small class="form-text text-muted">
-              File format should be: Employee ID | Payroll Period | Status | Filing Status | Submission Date | Remarks
+                File must use the <a href="../public/templates/ATTACHMENTS-MONITORING-SHEET.xlsx" download>template format</a>. Required columns: NO. | NAMES | STATUS | REMARKS | DATE | PAYROLL PERIOD
             </small>
-          </div>
-          <div class="alert alert-info">
-            <strong>Note:</strong> Download the template first to ensure correct format.
+            <div class="alert alert-warning mt-3" role="alert">
+                <strong>Note:</strong> 
+                <ul class="mb-0 pl-3">
+                    <li>Valid Status values: NOT SUBMITTED, COMPLETE, INCOMPLETE, COMPLETE AND LATE</li>
+                    <li>Employee names must match exactly with database records</li>
+                    <li>Submission Date should be in YYYY-MM-DD format</li>
+                </ul>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Import</button>
+          <button type="submit" class="btn btn-primary" id="importSubmitBtn">Import</button>
         </div>
       </form>
     </div>
@@ -1082,20 +1223,44 @@ $(document).ready(function() {
   $('.export-period').on('click', function(e) {
     e.preventDefault();
     const period = $(this).data('period');
-    alert('Export functionality for period: ' + period + ' would be implemented here');
-    // In a real implementation, this would redirect to an export script with the period parameter
+    
+    // Create a form to submit the export request
+    const form = $('<form>').attr({
+      method: 'GET',
+      action: 'attachments_export.php'
+    });
+    
+    form.append($('<input>').attr({
+      type: 'hidden',
+      name: 'export_period',
+      value: period
+    }));
+    
+    $('body').append(form);
+    form.submit();
   });
-  
+
   // Template download
   $('#templateBtn').on('click', function() {
-    alert('Template download would be implemented here');
-    // In a real implementation, this would download an Excel template file
+    window.location.href = '../public/templates/ATTACHMENTS-MONITORING-SHEET.xlsx';
   });
-  
+
   // Export all
   $('#exportBtn').on('click', function() {
-    alert('Export all functionality would be implemented here');
-    // In a real implementation, this would redirect to an export script
+    // Create a form to export all records
+    const form = $('<form>').attr({
+      method: 'GET',
+      action: 'attachments_export.php'
+    });
+    
+    form.append($('<input>').attr({
+      type: 'hidden',
+      name: 'export_all',
+      value: '1'
+    }));
+    
+    $('body').append(form);
+    form.submit();
   });
   
   function filterTable() {
@@ -1154,7 +1319,232 @@ $(document).ready(function() {
       $(this).remove();
     });
   }
+
+      // Handle import form submission with SweetAlert
+    $('#importModal form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // Show loading state
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Importing...');
+        
+        $.ajax({
+            url: 'attachments_import.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                submitBtn.prop('disabled', false).html(originalText);
+                
+                if (response.success) {
+                    if (response.type === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            html: `<strong>${response.message}</strong><br><br>${response.details}`,
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#3085d6'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                location.reload();
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Completed with Issues',
+                            html: `<strong>${response.message}</strong><br><br>${response.details}`,
+                            confirmButtonText: 'OK, Reload',
+                            confirmButtonColor: '#3085d6',
+                            showCancelButton: true,
+                            cancelButtonText: 'View Errors'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                location.reload();
+                            } else {
+                                // Keep the modal open to show errors
+                                $('#importModal').modal('hide');
+                            }
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Import Failed',
+                        html: `<strong>${response.message}</strong><br><br>${response.details}`,
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#d33'
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                submitBtn.prop('disabled', false).html(originalText);
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Error',
+                    text: 'An error occurred while uploading the file. Please try again.',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#d33'
+                });
+            }
+        });
+    });
+
+    // Add file validation before submission
+    $('input[name="excel_file"]').on('change', function(e) {
+        const file = this.files[0];
+        if (file) {
+            const fileName = file.name;
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            
+            if (fileExtension !== 'xlsx') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid File',
+                    text: 'Please select an Excel file (.xlsx)',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#d33'
+                }).then(() => {
+                    $(this).val('');
+                });
+            }
+            
+            // Check file size (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'File Too Large',
+                    text: 'File size must be less than 10MB',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#d33'
+                }).then(() => {
+                    $(this).val('');
+                });
+            }
+        }
+    });
+
+    // Show import instructions when modal opens
+    $('#importModal').on('show.bs.modal', function() {
+        // Reset form
+        $(this).find('form')[0].reset();
+    });
 });
+// Export dropdown filtering - FIXED FOR PERIODS WITHOUT YEARS
+$(document).ready(function() {
+  console.log('Export filtering initialized');
+  
+  // Initialize filtering when the page loads
+  filterExportPeriods();
+  
+  // Filter export periods by year and search
+  $(document).on('change', '#exportYearFilter', function() {
+    filterExportPeriods();
+  });
+  
+  $(document).on('keyup', '#exportSearchFilter', function() {
+    filterExportPeriods();
+  });
+  
+  function filterExportPeriods() {
+    const yearFilter = $('#exportYearFilter').val();
+    const searchFilter = $('#exportSearchFilter').val().toLowerCase();
+    const $periods = $('.export-period');
+    const $container = $('.export-periods-container');
+    const $noResults = $('.no-results-message');
+    
+    let visibleCount = 0;
+    
+    console.log('Filtering - Year:', yearFilter, 'Search:', searchFilter);
+    
+    $periods.each(function() {
+      const $period = $(this);
+      const periodText = $period.text().toLowerCase();
+      const originalPeriodText = $period.text().trim();
+      
+      // Since periods don't contain years, we'll handle this differently
+      // For periods without years, we'll assume they're from current year or show all
+      const hasYear = /\d{4}/.test(originalPeriodText);
+      
+      let yearMatch = true; // Default to true since periods don't have years
+      
+      // If a year filter is selected and the period doesn't contain a year,
+      // we can't match it, so we hide it
+      if (yearFilter && !hasYear) {
+        yearMatch = false;
+      }
+      // If the period does contain a year, use normal matching
+      else if (yearFilter && hasYear) {
+        const yearMatchResult = originalPeriodText.match(/(\d{4})/);
+        const periodYear = yearMatchResult ? yearMatchResult[1] : '';
+        yearMatch = periodYear === yearFilter;
+      }
+      
+      const searchMatch = !searchFilter || periodText.includes(searchFilter);
+      
+      const isVisible = yearMatch && searchMatch;
+      $period.toggle(isVisible);
+      
+      if (isVisible) {
+        visibleCount++;
+      }
+    });
+    
+    // Show/hide no results message
+    if (visibleCount === 0) {
+      $noResults.show();
+      $container.hide();
+    } else {
+      $noResults.hide();
+      $container.show();
+    }
+  }
+  
+  // Reset filters when dropdown is opened
+  $(document).on('show.bs.dropdown', function(e) {
+    const $dropdown = $(e.target).closest('.btn-group').find('.export-dropdown');
+    if ($dropdown.length > 0) {
+      console.log('Dropdown opened - resetting filters');
+      setTimeout(() => {
+        $('#exportYearFilter').val('');
+        $('#exportSearchFilter').val('');
+        filterExportPeriods();
+      }, 50);
+    }
+  });
+  
+  // Prevent dropdown from closing when clicking inside filter elements
+  $(document).on('click', '.export-dropdown, #exportYearFilter, #exportSearchFilter', function(e) {
+    e.stopPropagation();
+  });
+  
+  // Handle export period clicks
+  $(document).on('click', '.export-period', function(e) {
+    e.preventDefault();
+    const period = $(this).data('period');
+    console.log('Exporting period:', period);
+    
+    // Create a form to submit the export request
+    const form = $('<form>').attr({
+      method: 'GET',
+      action: 'attachments_export.php'
+    });
+    
+    form.append($('<input>').attr({
+      type: 'hidden',
+      name: 'export_period',
+      value: period
+    }));
+    
+    $('body').append(form);
+    form.submit();
+  });
+});;
 </script>
 </body>
 </html>

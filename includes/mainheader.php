@@ -924,4 +924,34 @@ function setProfileThemeWithCurrent() {
     document.cookie = `current_module=${currentTheme}; path=/; max-age=300`;
     console.log('Profile theme set to:', currentTheme);
 }
+// Enhanced logout function with SweetAlert - No redundant loading
+function logoutUser() {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You will be logged out of the system!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, logout!',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        customClass: {
+            popup: 'custom-swal-popup',
+            title: 'custom-swal-title',
+            content: 'custom-swal-content',
+            confirmButton: 'custom-swal-confirm',
+            cancelButton: 'custom-swal-cancel'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Clear any theme/local storage
+            localStorage.removeItem('currentTheme');
+            localStorage.removeItem('sidebar-collapsed');
+            
+            // Redirect directly to logout page which has its own beautiful loader
+            window.location.href = '../logout.php';
+        }
+    });
+}
 </script>

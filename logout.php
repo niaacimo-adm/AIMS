@@ -1,16 +1,16 @@
 <?php
-// Start session at the VERY beginning, before any output
+// logout.php - Updated version
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Fix the paths - since logout.php is in root directory
-require_once 'config/database.php';
-require_once 'includes/chat_functions.php';
-
-// Set user offline in chat system
+// Set user offline in chat system BEFORE destroying session
 if (isset($_SESSION['emp_id'])) {
     try {
+        // Fix the path - logout.php is in root directory
+        require_once 'config/database.php';
+        require_once 'includes/chat_functions.php';
+        
         $chat = new ChatFunctions();
         $chat->updateOnlineStatus($_SESSION['emp_id'], 0); // Set to offline
         error_log("User {$_SESSION['emp_id']} set offline during logout");
@@ -18,6 +18,9 @@ if (isset($_SESSION['emp_id'])) {
         error_log("Error setting user offline: " . $e->getMessage());
     }
 }
+
+// Don't destroy session here - let perform_logout.php handle it
+// This allows the JavaScript to show the loading animation properly
 ?>
 
 <!DOCTYPE html>

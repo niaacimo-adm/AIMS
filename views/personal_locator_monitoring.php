@@ -1067,6 +1067,9 @@ $employees_result = $db->query($employees_query);
                                                                     data-slip='<?= json_encode($slip) ?>' title="View Details">
                                                                 <i class="fas fa-eye"></i>
                                                             </button>
+                                                            <a href="generate_excel_slip.php?id=<?= $slip['id'] ?>" class="btn btn-success btn-sm action-btn" title="Export Excel">
+                                                                <i class="fas fa-file-excel"></i>
+                                                            </a>
                                                             <?php if ($slip['status'] == 'pending'): ?>
                                                                 <button type="button" class="btn btn-warning btn-sm action-btn edit-slip" 
                                                                         data-toggle="modal" data-target="#editSlipModal" 
@@ -1664,7 +1667,8 @@ $(document).ready(function() {
             }
         }
     });
-});// SweetAlert for success messages
+});
+    // SweetAlert for success messages
     <?php if ($success_message): ?>
         Swal.fire({
             title: 'Success!',
@@ -1685,29 +1689,25 @@ $(document).ready(function() {
             confirmButtonColor: '#4361ee'
         });
     <?php endif; ?>
-
-    // SweetAlert for individual delete actions
-    $(document).on('submit', 'form[action=""]', function(e) {
-        const submitButton = $(this).find('button[type="submit"][name="delete_slip"]');
-        if (submitButton.length > 0) {
-            e.preventDefault();
-            const form = this;
-            
-            Swal.fire({
-                title: 'Delete Slip?',
-                text: "Are you sure you want to delete this personal locator slip? This action cannot be undone.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        }
+    // SweetAlert for individual delete actions - MORE SPECIFIC
+    $(document).on('click', 'button[name="delete_slip"]', function(e) {
+        e.preventDefault();
+        const form = $(this).closest('form');
+        
+        Swal.fire({
+            title: 'Delete Slip?',
+            text: "Are you sure you want to delete this personal locator slip? This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
     });
 
     // SweetAlert for bulk approve
@@ -1872,8 +1872,8 @@ $(document).ready(function() {
         });
     });
 
-    // SweetAlert for individual approve/reject actions
-    $(document).on('click', 'button[name="approve_slip"], button[name="reject_slip"]', function(e) {
+    // SweetAlert for individual approve/reject actions - FIXED VERSION
+    $(document).on('click', 'button[name="approve_slip"]but, ton[name="reject_slip"]', function(e) {
         e.preventDefault();
         const form = $(this).closest('form');
         const action = $(this).attr('name');
@@ -1890,6 +1890,14 @@ $(document).ready(function() {
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
+                // Create a hidden input to ensure the action is submitted
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = action;
+                actionInput.value = '1';
+                form.append(actionInput);
+                
+                // Submit the form
                 form.submit();
             }
         });
