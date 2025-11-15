@@ -165,7 +165,6 @@ if (isset($_SESSION['emp_id'])) {
     }
 }
 
-// Get personal locator slips - MOVED THIS QUERY TO AFTER POST PROCESSING
 $slips_query = "SELECT pls.*, e.first_name, e.last_name, e.position_id, p.position_name, 
                        s.section_name, app.first_name as approver_first, app.last_name as approver_last
                 FROM personal_locator_slips pls
@@ -174,15 +173,9 @@ $slips_query = "SELECT pls.*, e.first_name, e.last_name, e.position_id, p.positi
                 LEFT JOIN section s ON e.section_id = s.section_id
                 LEFT JOIN employee app ON pls.approved_by = app.emp_id";
                 
-// Filter based on user role
-if (!hasPermission('manage_employees')) {
-    $slips_query .= " WHERE pls.employee_id = ? ORDER BY pls.created_at DESC";
-    $stmt = $db->prepare($slips_query);
-    $stmt->bind_param("i", $_SESSION['emp_id']);
-} else {
-    $slips_query .= " ORDER BY pls.created_at DESC";
-    $stmt = $db->prepare($slips_query);
-}
+$slips_query .= " WHERE pls.employee_id = ? ORDER BY pls.created_at DESC";
+$stmt = $db->prepare($slips_query);
+$stmt->bind_param("i", $_SESSION['emp_id']);
 $stmt->execute();
 $slips_result = $stmt->get_result();
 ?>

@@ -806,6 +806,27 @@ $employees_result = $db->query($employees_query);
             color: rgba(255,255,255,0.9);
             font-weight: 500;
         }
+         /* Select2 styling */
+        .select2-container .select2-selection--single {
+            height: 46px !important;
+            border: 2px solid #e9ecef !important;
+            border-radius: 10px !important;
+        }
+
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+            line-height: 42px !important;
+            padding-left: 15px !important;
+        }
+
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+            height: 44px !important;
+        }
+
+        .select2-container--bootstrap4 .select2-dropdown {
+            border: 2px solid #e9ecef !important;
+            border-radius: 10px !important;
+        }
+
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -1119,7 +1140,7 @@ $employees_result = $db->query($employees_query);
 
 <!-- Create Slip Modal -->
 <div class="modal fade" id="createSlipModal" tabindex="-1" role="dialog" aria-labelledby="createSlipModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header modern-header">
                 <h5 class="modal-title font-weight-bold" id="createSlipModalLabel">
@@ -1135,7 +1156,7 @@ $employees_result = $db->query($employees_query);
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="font-weight-semibold">Employee *</label>
-                                <select class="form-control form-control-modern" name="employee_id" required>
+                                <select class="form-control form-control-modern select2" multiple="multiple" name="employee_id" required>
                                     <option value="">Select Employee</option>
                                     <?php 
                                     // Reset employees result pointer
@@ -1459,7 +1480,7 @@ $(document).ready(function() {
                 <div class="col-md-4">
                     <div class="employee-picture-container text-center mb-3">
                         ${slip.picture ? 
-                            `<img src="../uploads/employee_pictures/${slip.picture}" alt="${slip.first_name}" class="employee-picture" style="width: 120px; height: 120px;">` :
+                            `<img src="../dist/img/employees/${slip.picture}" alt="${slip.first_name}" class="employee-picture" style="width: 120px; height: 120px;">` :
                             `<div class="employee-picture-placeholder mx-auto" style="width: 120px; height: 120px; font-size: 2em;">
                                 ${slip.first_name.charAt(0)}${slip.last_name.charAt(0)}
                             </div>`
@@ -1908,7 +1929,12 @@ $(document).ready(function() {
         e.preventDefault();
         return false;
     });
-
+     $('.select2').select2({
+        theme: 'bootstrap4',
+        placeholder: 'Select Employee',
+        allowClear: true,
+        maximumSelectionLength: 1
+    });
 </script>
 </body>
 </html>

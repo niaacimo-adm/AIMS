@@ -201,8 +201,8 @@ $monitoringStmt->execute();
 $monitoringResult = $monitoringStmt->get_result();
 $monitoringRecords = $monitoringResult->fetch_all(MYSQLI_ASSOC);
 
-// Get unique payroll periods for filter
-$periodsQuery = "SELECT DISTINCT payroll_period FROM attachments_monitoring ORDER BY payroll_period DESC";
+// Get unique payroll periods for filter with actual years
+$periodsQuery = "SELECT DISTINCT payroll_period, period_start, period_end FROM attachments_monitoring ORDER BY period_start DESC, period_end DESC";
 $periodsStmt = $db->prepare($periodsQuery);
 $periodsStmt->execute();
 $periodsResult = $periodsStmt->get_result();
@@ -565,57 +565,124 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
         color: white; 
     }
 
-    /* Add these styles to your existing CSS */
-    .export-dropdown {
-  min-width: 300px !important;
-  padding: 0;
-}
+  /* Update the export dropdown styles */
+  .export-dropdown {
+    min-width: 300px !important;
+    padding: 0;
+  }
 
-.export-periods-container {
-  max-height: 200px;
-  overflow-y: auto;
-}
+  .export-periods-container {
+    max-height: 200px;
+    overflow-y: auto;
+  }
 
-.export-period {
-  padding: 8px 15px;
-  border-bottom: 1px solid #f8f9fa;
-  transition: all 0.2s ease;
-  display: block;
-}
+  .export-period {
+    padding: 8px 15px;
+    border-bottom: 1px solid #f8f9fa;
+    transition: all 0.2s ease;
+    display: block;
+    color: #495057;
+    text-decoration: none;
+  }
 
-.export-period:hover {
-  background-color: #f8f9fa;
-  text-decoration: none;
-  transform: translateX(3px);
-}
+  .export-period:hover {
+    background-color: #f8f9fa;
+    text-decoration: none;
+    transform: translateX(3px);
+    color: #495057;
+  }
 
-.export-period:last-child {
-  border-bottom: none;
-}
+  .export-period:last-child {
+    border-bottom: none;
+  }
 
-.no-results-message {
-  padding: 15px;
-  text-align: center;
-  color: #6c757d;
-  font-style: italic;
-}
-    /* Style the filter inputs */
-    .export-dropdown .form-control-sm {
-      border-radius: 4px;
-      font-size: 0.8rem;
-    }
+  .no-results-message {
+    padding: 15px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+  }
 
-    .export-dropdown .form-group {
-      margin-bottom: 10px;
-    }
+  /* Style the filter inputs */
+  .export-dropdown .form-control-sm {
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
 
-    .export-dropdown .form-group:last-child {
-      margin-bottom: 0;
-    }
+  .export-dropdown .form-group {
+    margin-bottom: 10px;
+  }
 
-    .export-dropdown .small {
-      font-size: 0.75rem;
-    }
+  .export-dropdown .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .export-dropdown .small {
+    font-size: 0.75rem;
+  }
+
+  /* Year filter section */
+  .year-filter-section {
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 10px;
+  }
+
+  .year-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+  }
+
+  .year-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    background: white;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .year-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+  }
+
+  .year-btn.active {
+    background: #4361ee;
+    color: white;
+    border-color: #4361ee;
+  }
+
+  .period-with-year {
+    font-weight: 500;
+  }
+
+  .period-without-year {
+    color: #6c757d;
+    font-style: italic;
+  }
+  .year-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+    border-bottom: 1px solid #dee2e6;
+    margin-top: 5px;
+    padding: 8px 15px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .year-header:first-child {
+    margin-top: 0;
+  }
+
+  .export-period {
+    padding-left: 25px !important;
+  }
+
+  .export-period .text-muted {
+    font-size: 0.75rem;
+  }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -774,60 +841,121 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
                         <button type="button" class="btn btn-info btn-sm dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                           <span class="sr-only">Toggle Dropdown</span>
                         </button>
-                        <div class="dropdown-menu export-dropdown">
+                      <div class="dropdown-menu export-dropdown">
                         <h6 class="dropdown-header">Export by Payroll Period</h6>
                         
-                        <div class="px-3 py-2 border-bottom">
-                        <div class="form-group mb-2">
-                          <label class="small font-weight-bold mb-1">Filter by Year:</label>
-                          <select class="form-control form-control-sm" id="exportYearFilter">
-                            <option value="">All Years</option>
-                            <option value="current">Current Year (No year specified)</option>
-                            <?php
-                            // Extract unique years from payroll periods
-                            $years = [];
+                        <!-- Year Filter Section -->
+                        <div class="px-3 py-2 border-bottom year-filter-section">
+                          <div class="form-group mb-2">
+                            <label class="small font-weight-bold mb-1">Filter by Year:</label>
+                            <select class="form-control form-control-sm" id="exportYearFilter">
+                              <option value="">All Years</option>
+                              <?php
+                              // Extract unique years from period_start and period_end dates
+                              $years = [];
+                              
+                              foreach ($payrollPeriods as $period) {
+                                if (!empty($period['period_start'])) {
+                                  $startYear = date('Y', strtotime($period['period_start']));
+                                  $years[] = $startYear;
+                                }
+                                if (!empty($period['period_end'])) {
+                                  $endYear = date('Y', strtotime($period['period_end']));
+                                  $years[] = $endYear;
+                                }
+                              }
+                              
+                              // Remove duplicates and sort
+                              if (!empty($years)) {
+                                $years = array_unique($years);
+                                rsort($years);
+                              } else {
+                                // Fallback to current year if no dates found
+                                $currentYear = date('Y');
+                                $years = [$currentYear];
+                              }
+                              
+                              foreach ($years as $year) {
+                                echo "<option value='{$year}'>{$year}</option>";
+                              }
+                              ?>
+                            </select>
+                          </div>
+                          
+                          <!-- Year Navigation Buttons -->
+                          <div class="mb-2">
+                            <label class="small font-weight-bold mb-1 d-block">Quick Year Filter:</label>
+                            <div class="year-buttons">
+                              <button type="button" class="year-btn clear-year-filter active" data-year="">All</button>
+                              <?php foreach ($years as $year): ?>
+                                <button type="button" class="year-btn" data-year="<?= $year ?>"><?= $year ?></button>
+                              <?php endforeach; ?>
+                            </div>
+                          </div>
+                          
+                          <div class="form-group mb-0">
+                            <label class="small font-weight-bold mb-1">Search Periods:</label>
+                            <input type="text" class="form-control form-control-sm" id="exportSearchFilter" placeholder="Search periods...">
+                          </div>
+                        </div>
+                        
+                        <div class="export-periods-container">
+                          <?php if (!empty($payrollPeriods)): ?>
+                            <?php 
+                            // Group periods by actual year from date fields
+                            $groupedPeriods = [];
                             
                             foreach ($payrollPeriods as $period) {
                               $payrollPeriod = $period['payroll_period'];
                               
-                              // Check if period contains a year
-                              if (preg_match('/(\d{4})$/', $payrollPeriod, $matches)) {
-                                $years[] = $matches[1];
-                              } elseif (preg_match('/,(\d{4})$/', $payrollPeriod, $matches)) {
-                                $years[] = $matches[1];
-                              } elseif (preg_match('/(\d{4})/', $payrollPeriod, $matches)) {
-                                $years[] = $matches[1];
+                              // Determine the year from period_start (most reliable)
+                              if (!empty($period['period_start'])) {
+                                $year = date('Y', strtotime($period['period_start']));
+                              } elseif (!empty($period['period_end'])) {
+                                $year = date('Y', strtotime($period['period_end']));
+                              } else {
+                                // Fallback to current year if no dates available
+                                $year = date('Y');
                               }
-                              // If no year found, we don't add anything to $years array
+                              
+                              if (!isset($groupedPeriods[$year])) {
+                                $groupedPeriods[$year] = [];
+                              }
+                              $groupedPeriods[$year][] = $period;
                             }
                             
-                            if (!empty($years)) {
-                              $years = array_unique($years);
-                              rsort($years);
-                              foreach ($years as $year) {
-                                echo "<option value='{$year}'>{$year}</option>";
-                              }
-                            }
+                            // Sort years in descending order
+                            krsort($groupedPeriods);
                             ?>
-                          </select>
-                          <small class="form-text text-muted">
-                            Periods without years will only show when "Current Year" is selected
-                          </small>
-                        </div>
-                        
-                        <div class="form-group mb-0">
-                          <label class="small font-weight-bold mb-1">Search Periods:</label>
-                          <input type="text" class="form-control form-control-sm" id="exportSearchFilter" placeholder="Search periods...">
-                        </div>
-                      </div>
-                        
-                        <div class="export-periods-container">
-                          <?php if (!empty($payrollPeriods)): ?>
-                            <?php foreach ($payrollPeriods as $period): ?>
-                              <a class="dropdown-item export-period" href="#" data-period="<?= htmlspecialchars($period['payroll_period']) ?>">
-                                <i class="fas fa-download mr-2"></i><?= htmlspecialchars($period['payroll_period']) ?>
-                              </a>
+                            
+                            <?php foreach ($groupedPeriods as $year => $periods): ?>
+                              <!-- Year Header -->
+                              <div class="dropdown-header year-header small font-weight-bold text-primary bg-light" data-year="<?= $year ?>">
+                                <i class="fas fa-calendar-alt mr-1"></i> <?= $year ?>
+                              </div>
+                              
+                              <?php foreach ($periods as $period): ?>
+                                <?php
+                                // Get the actual year for this period
+                                if (!empty($period['period_start'])) {
+                                  $periodYear = date('Y', strtotime($period['period_start']));
+                                } elseif (!empty($period['period_end'])) {
+                                  $periodYear = date('Y', strtotime($period['period_end']));
+                                } else {
+                                  $periodYear = $year;
+                                }
+                                ?>
+                                <a class="dropdown-item export-period" href="#" 
+                                  data-period="<?= htmlspecialchars($period['payroll_period']) ?>" 
+                                  data-year="<?= $periodYear ?>"
+                                  data-period-start="<?= $period['period_start'] ?>"
+                                  data-period-end="<?= $period['period_end'] ?>">
+                                  <i class="fas fa-download mr-2 text-muted"></i><?= htmlspecialchars($period['payroll_period']) ?>
+                                  <small class="text-muted ml-2">(<?= $periodYear ?>)</small>
+                                </a>
+                              <?php endforeach; ?>
                             <?php endforeach; ?>
+                            
                           <?php else: ?>
                             <div class="dropdown-item disabled">No periods available</div>
                           <?php endif; ?>
@@ -1435,96 +1563,106 @@ $(document).ready(function() {
         $(this).find('form')[0].reset();
     });
 });
-// Export dropdown filtering - FIXED FOR PERIODS WITHOUT YEARS
+// Export dropdown filtering with year navigation
 $(document).ready(function() {
   console.log('Export filtering initialized');
   
-  // Initialize filtering when the page loads
-  filterExportPeriods();
-  
   // Filter export periods by year and search
-  $(document).on('change', '#exportYearFilter', function() {
-    filterExportPeriods();
-  });
-  
-  $(document).on('keyup', '#exportSearchFilter', function() {
-    filterExportPeriods();
-  });
-  
   function filterExportPeriods() {
     const yearFilter = $('#exportYearFilter').val();
     const searchFilter = $('#exportSearchFilter').val().toLowerCase();
     const $periods = $('.export-period');
-    const $container = $('.export-periods-container');
+    const $yearHeaders = $('.year-header');
     const $noResults = $('.no-results-message');
     
     let visibleCount = 0;
+    let anyYearVisible = false;
     
     console.log('Filtering - Year:', yearFilter, 'Search:', searchFilter);
     
+    // Hide all periods first
+    $periods.hide();
+    $yearHeaders.hide();
+    
+    // Filter periods
     $periods.each(function() {
       const $period = $(this);
       const periodText = $period.text().toLowerCase();
-      const originalPeriodText = $period.text().trim();
+      const periodYear = $period.data('year').toString();
       
-      // Since periods don't contain years, we'll handle this differently
-      // For periods without years, we'll assume they're from current year or show all
-      const hasYear = /\d{4}/.test(originalPeriodText);
-      
-      let yearMatch = true; // Default to true since periods don't have years
-      
-      // If a year filter is selected and the period doesn't contain a year,
-      // we can't match it, so we hide it
-      if (yearFilter && !hasYear) {
-        yearMatch = false;
-      }
-      // If the period does contain a year, use normal matching
-      else if (yearFilter && hasYear) {
-        const yearMatchResult = originalPeriodText.match(/(\d{4})/);
-        const periodYear = yearMatchResult ? yearMatchResult[1] : '';
-        yearMatch = periodYear === yearFilter;
-      }
-      
+      const yearMatch = !yearFilter || periodYear === yearFilter;
       const searchMatch = !searchFilter || periodText.includes(searchFilter);
       
-      const isVisible = yearMatch && searchMatch;
-      $period.toggle(isVisible);
-      
-      if (isVisible) {
+      if (yearMatch && searchMatch) {
+        $period.show();
         visibleCount++;
+        
+        // Show the corresponding year header
+        const yearHeader = $('.year-header[data-year="' + periodYear + '"]');
+        yearHeader.show();
+        anyYearVisible = true;
       }
     });
     
     // Show/hide no results message
     if (visibleCount === 0) {
       $noResults.show();
-      $container.hide();
     } else {
       $noResults.hide();
-      $container.show();
+    }
+    
+    // If no year filter is applied but we have search, show relevant year headers
+    if (!yearFilter && searchFilter) {
+      $yearHeaders.each(function() {
+        const $header = $(this);
+        const headerYear = $header.data('year');
+        const hasVisiblePeriods = $periods.filter(function() {
+          return $(this).data('year').toString() === headerYear.toString() && 
+                 $(this).is(':visible');
+        }).length > 0;
+        
+        if (hasVisiblePeriods) {
+          $header.show();
+        }
+      });
     }
   }
   
-  // Reset filters when dropdown is opened
-  $(document).on('show.bs.dropdown', function(e) {
-    const $dropdown = $(e.target).closest('.btn-group').find('.export-dropdown');
-    if ($dropdown.length > 0) {
-      console.log('Dropdown opened - resetting filters');
-      setTimeout(() => {
-        $('#exportYearFilter').val('');
-        $('#exportSearchFilter').val('');
-        filterExportPeriods();
-      }, 50);
-    }
+  // Event handlers
+  $('#exportYearFilter').on('change', filterExportPeriods);
+  $('#exportSearchFilter').on('keyup', filterExportPeriods);
+  
+  // Year button clicks
+  $('.year-btn').on('click', function() {
+    const year = $(this).data('year') || '';
+    $('#exportYearFilter').val(year);
+    
+    // Update active state
+    $('.year-btn').removeClass('active');
+    $(this).addClass('active');
+    
+    filterExportPeriods();
   });
   
-  // Prevent dropdown from closing when clicking inside filter elements
-  $(document).on('click', '.export-dropdown, #exportYearFilter, #exportSearchFilter', function(e) {
+  // Reset filters when dropdown is opened
+  $('.dropdown-toggle').on('click', function() {
+    // Small delay to ensure dropdown is open before resetting
+    setTimeout(() => {
+      $('#exportYearFilter').val('');
+      $('#exportSearchFilter').val('');
+      $('.year-btn').removeClass('active');
+      $('.year-btn[data-year=""]').addClass('active');
+      filterExportPeriods();
+    }, 100);
+  });
+  
+  // Prevent dropdown from closing when clicking inside
+  $('.export-dropdown').on('click', function(e) {
     e.stopPropagation();
   });
   
   // Handle export period clicks
-  $(document).on('click', '.export-period', function(e) {
+  $('.export-period').on('click', function(e) {
     e.preventDefault();
     const period = $(this).data('period');
     console.log('Exporting period:', period);
@@ -1544,7 +1682,7 @@ $(document).ready(function() {
     $('body').append(form);
     form.submit();
   });
-});;
+});
 </script>
 </body>
 </html>

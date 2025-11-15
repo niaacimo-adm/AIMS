@@ -262,7 +262,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
   
   <!-- Add Vehicle Modal -->
   <div class="modal fade" id="addVehicleModal" tabindex="-1" role="dialog" aria-labelledby="addVehicleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
       <div class="modal-content">
         <form method="POST" action="service_vehicle.php">
           <div class="modal-header">
@@ -272,48 +272,56 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
             </button>
           </div>
           <div class="modal-body">
-            <div class="form-group">
-              <label>Property Number</label>
-              <input type="text" class="form-control" name="property_no" required>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>Property Number</label>
+                  <input type="text" class="form-control" name="property_no" required>
+                </div>
+                <div class="form-group">
+                  <label>Plate Number</label>
+                  <input type="text" class="form-control" name="plate_no" required>
+                </div>
+                <div class="form-group">
+                  <label>Vehicle Type</label>
+                  <input type="text" class="form-control" name="vehicle_type" required>
+                </div>
+                <div class="form-group">
+                  <label>Model</label>
+                  <input type="text" class="form-control" name="model">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>Year</label>
+                  <input type="number" class="form-control" name="year" min="1900" max="<?= date('Y') + 1 ?>">
+                </div>
+                <div class="form-group">
+                  <label>Capacity</label>
+                  <input type="number" class="form-control" name="capacity" min="1">
+                </div>
+                <div class="form-group">
+                  <label>Status</label>
+                  <select class="form-control" name="status" required>
+                    <option value="available">Available</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="unavailable">Unavailable</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Office</label>
+                  <select class="form-control" name="office_id">
+                    <option value="">Select Office</option>
+                    <?php foreach ($offices as $office): ?>
+                      <option value="<?= $office['office_id'] ?>"><?= $office['office_name'] ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+              </div>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Plate Number</label>
-              <input type="text" class="form-control" name="plate_no" required>
-            </div>
-            <div class="form-group">
-              <label>Vehicle Type</label>
-              <input type="text" class="form-control" name="vehicle_type" required>
-            </div>
-            <div class="form-group">
-              <label>Model</label>
-              <input type="text" class="form-control" name="model">
-            </div>
-            <div class="form-group">
-              <label>Year</label>
-              <input type="number" class="form-control" name="year" min="1900" max="<?= date('Y') + 1 ?>">
-            </div>
-            <div class="form-group">
-              <label>Capacity</label>
-              <input type="number" class="form-control" name="capacity" min="1">
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select class="form-control" name="status" required>
-                <option value="available">Available</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="unavailable">Unavailable</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Office</label>
-              <select class="form-control" name="office_id">
-                <option value="">Select Office</option>
-                <?php foreach ($offices as $office): ?>
-                  <option value="<?= $office['office_id'] ?>"><?= $office['office_name'] ?></option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-          </div>
+            
+            
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             <button type="submit" name="create_vehicle" class="btn btn-primary">Save Vehicle</button>
