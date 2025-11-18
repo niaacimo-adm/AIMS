@@ -124,6 +124,46 @@ while ($row = $result->fetch_assoc()) {
     $manager_staff[] = $row;
 }
 
+// Fetch data for appointment status chart
+$query = "SELECT a.status_name, a.color, COUNT(e.emp_id) as count
+          FROM appointment_status a
+          LEFT JOIN employee e ON a.appointment_id = e.appointment_status_id
+          GROUP BY a.appointment_id, a.status_name, a.color
+          ORDER BY count DESC";
+$stmt = $db->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+$appointment_data = [];
+while ($row = $result->fetch_assoc()) {
+    $appointment_data[] = $row;
+}
+
+// Fetch data for gender distribution by section
+$query = "SELECT s.section_name, 
+                 SUM(CASE WHEN e.gender = 'Male' THEN 1 ELSE 0 END) as male_count,
+                 SUM(CASE WHEN e.gender = 'Female' THEN 1 ELSE 0 END) as female_count,
+                 COUNT(e.emp_id) as total_count
+          FROM section s
+          LEFT JOIN employee e ON s.section_id = e.section_id
+          GROUP BY s.section_id, s.section_name
+          ORDER BY s.section_name";
+$stmt = $db->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+$gender_data = [];
+while ($row = $result->fetch_assoc()) {
+    $gender_data[] = $row;
+}
+
+// Fetch count of active employees
+$query = "SELECT COUNT(*) as active_count 
+          FROM employee 
+          WHERE employment_status_id = 1"; // Assuming 1 is the ID for active status
+$stmt = $db->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+$active_employees = $result->fetch_assoc()['active_count'];
+
 // Add this to your dashboard.php or profile.php after login
 function isUsingTemporaryPassword($emp_id, $db) {
     $query = "SELECT u.password, e.id_number 
@@ -157,649 +197,9 @@ if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AdminLTE 3 | Organization Dashboard</title>
   <?php include '../includes/header.php'; ?>
-  <style>
-    .dashboard-header {
-        background-color: #f8f9fa;
-        padding: 15px 0;
-        border-bottom: 1px solid #dee2e6;
-        margin-bottom: 20px;
-    }
-    
-    /* Manager Section Styles */
-    .manager-section {
-        background: linear-gradient(135deg, #667ceaff 0%, #4b5ea2ff 100%);
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 30px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-    
-    .manager-info {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 15px;
-    }
-    
-    .manager-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 20px;
-        border: 3px solid rgba(255,255,255,0.3);
-    }
-    
-    .default-manager-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background-color: rgba(255,255,255,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 20px;
-        color: rgba(255,255,255,0.8);
-        border: 3px solid rgba(255,255,255,0.3);
-        font-size: 2.5rem;
-    }
-    
-    .manager-details {
-        flex-grow: 1;
-    }
-    
-    .manager-name {
-        font-size: 1.8rem;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-    
-    .manager-title {
-        font-size: 1.2rem;
-        opacity: 0.9;
-        margin-bottom: 10px;
-    }
-    
-    .manager-contact {
-        font-size: 1rem;
-        opacity: 0.8;
-    }
-    
-    /* Section Card Styles */
-    .section-container {
-        margin-bottom: 30px;
-    }
-    
-    .section-card {
-        border: none;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-        overflow: hidden;
-        background: white;
-    }
-    
-    .section-header {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        color: white;
-        padding: 20px;
-        border-bottom: none;
-    }
-    
-    .section-title {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin: 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .section-badge {
-        background: rgba(255,255,255,0.2);
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.9rem;
-    }
-    
-    .section-head-info {
-        display: flex;
-        align-items: center;
-        margin-top: 15px;
-        padding: 15px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 8px;
-    }
-    
-    .section-head-avatar {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 15px;
-        border: 2px solid rgba(255,255,255,0.3);
-    }
-    
-    .default-section-head-avatar {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background-color: rgba(255,255,255,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 15px;
-        color: rgba(255,255,255,0.7);
-        border: 2px solid rgba(255,255,255,0.3);
-    }
-    
-    .section-head-details {
-        flex-grow: 1;
-    }
-    
-    .section-head-name {
-        font-weight: bold;
-        margin-bottom: 3px;
-        font-size: 1.1rem;
-    }
-    
-    .section-head-role {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    
-    /* Unit Button Styles */
-    .unit-buttons-container {
-        padding: 20px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-    }
-    
-    .unit-button {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 15px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    
-    .unit-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        background: linear-gradient(135deg, #218838 0%, #1e9e8a 100%);
-    }
-    
-    .unit-button-title {
-        font-weight: bold;
-        font-size: 1rem;
-        margin-bottom: 5px;
-    }
-    
-    .unit-button-count {
-        font-size: 0.8rem;
-        opacity: 0.9;
-    }
-    
-    /* Manager's Office Staff Styles */
-    .managers-staff-section {
-        background: white;
-        border-radius: 10px;
-        padding: 25px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        margin-bottom: 30px;
-    }
-    
-    .managers-staff-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #007bff;
-    }
-    
-    .managers-staff-title {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #495057;
-        margin: 0;
-    }
-    
-    .managers-staff-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-    }
-    
-    .staff-card {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 15px;
-        border-left: 4px solid #007bff;
-        transition: all 0.3s ease;
-    }
-    
-    .staff-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    
-    .staff-info {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-    
-    .staff-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 15px;
-        border: 2px solid #e9ecef;
-    }
-    
-    .default-staff-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: #e9ecef;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 15px;
-        color: #6c757d;
-        border: 2px solid #dee2e6;
-    }
-    
-    .staff-details {
-        flex-grow: 1;
-    }
-    
-    .staff-name {
-        font-weight: bold;
-        color: #495057;
-        margin-bottom: 2px;
-    }
-    
-    .staff-position {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-bottom: 3px;
-    }
-    
-    .staff-office {
-        font-size: 0.8rem;
-        color: #868e96;
-    }
-    
-    .staff-responsibilities {
-        font-size: 0.85rem;
-        color: #495057;
-        line-height: 1.4;
-    }
-    
-    .view-all-staff {
-        text-align: center;
-        margin-top: 20px;
-        padding-top: 15px;
-        border-top: 1px solid #dee2e6;
-    }
-    
-    /* Stats and Sidebar Styles */
-    .stats-card {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        margin-bottom: 20px;
-        text-align: center;
-        border-left: 4px solid #007bff;
-    }
-    
-    .stats-value {
-        font-size: 2rem;
-        font-weight: bold;
-        margin-bottom: 5px;
-        color: #007bff;
-    }
-    
-    .stats-label {
-        color: #6c757d;
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-    
-    .sidebar-section {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        margin-bottom: 20px;
-    }
-    
-    .sidebar-title {
-        font-weight: bold;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #007bff;
-        color: #495057;
-    }
-    
-    .quick-link {
-        display: flex;
-        align-items: center;
-        padding: 10px 0;
-        color: #495057;
-        text-decoration: none;
-        border-bottom: 1px solid #f1f1f1;
-        transition: color 0.3s ease;
-    }
-    
-    .quick-link:last-child {
-        border-bottom: none;
-    }
-    
-    .quick-link:hover {
-        color: #007bff;
-    }
-    
-    .quick-link i {
-        margin-right: 10px;
-        width: 20px;
-        text-align: center;
-    }
-    
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: #6c757d;
-    }
-    
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 15px;
-        opacity: 0.5;
-    }
-    
-    /* Organization Structure Layout */
-    .org-structure {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .org-manager {
-        margin-bottom: 10px;
-        width: auto;
-    }
-    
-    .org-sections {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 10px;
-        width: 100%;
-    }
-    
-    /* Section Card Layout */
-    .section-card-container {
-        height: 100%;
-    }
-    
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-        .org-sections {
-            grid-template-columns: 1fr;
-        }
-        
-        .manager-info {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .manager-avatar, .default-manager-avatar {
-            margin-right: 0;
-            margin-bottom: 15px;
-        }
-        
-        .managers-staff-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .unit-buttons-container {
-            grid-template-columns: 1fr;
-        }
-    }
-    .employee-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 15px;
-            border-bottom: 1px solid #f1f1f1;
-            transition: background-color 0.2s ease;
-        }
-
-        .employee-item:hover {
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-
-        .employee-item:last-child {
-            border-bottom: none;
-        }
-
-        .avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 15px;
-            border: 2px solid #e9ecef;
-        }
-
-        .default-avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background-color: #f0f0f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            color: #999;
-            border: 2px solid #e9ecef;
-        }
-
-        .employee-info {
-            flex-grow: 1;
-        }
-
-        .employee-name {
-            font-weight: 500;
-            color: #495057;
-            margin-bottom: 2px;
-            font-size: 0.95rem;
-        }
-
-        .employee-id {
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-
-        .employee-link {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .employee-link:hover {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        /* Modal Specific Styles */
-        .modal-employee-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .modal-employee-list .list-group {
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .modal-employee-list .employee-item {
-            border: none;
-            border-bottom: 1px solid #e9ecef;
-            margin: 0;
-        }
-
-        .modal-employee-list .employee-item:last-child {
-            border-bottom: none;
-        }
-
-        /* Modal Header Improvements */
-        .modal-header {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-            color: white;
-            border-bottom: none;
-            padding: 20px;
-        }
-
-        .modal-header .modal-title {
-            font-weight: bold;
-            font-size: 1.3rem;
-        }
-
-        .modal-header .close {
-            color: white;
-            opacity: 0.8;
-            text-shadow: none;
-        }
-
-        .modal-header .close:hover {
-            opacity: 1;
-        }
-
-        /* Modal Body Improvements */
-        .modal-body {
-            padding: 0;
-        }
-
-        /* Unit Head Information in Modal */
-        .unit-head-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-bottom: 1px solid #dee2e6;
-            margin-bottom: 0;
-        }
-
-        .unit-head-content {
-            display: flex;
-            align-items: center;
-        }
-
-        .unit-head-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 15px;
-            border: 3px solid #007bff;
-        }
-
-        .default-unit-head-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            color: #6c757d;
-            border: 3px solid #007bff;
-        }
-
-        .unit-head-details {
-            flex-grow: 1;
-        }
-
-        .unit-head-name {
-            font-weight: bold;
-            color: #495057;
-            margin-bottom: 5px;
-            font-size: 1.1rem;
-        }
-
-        .unit-head-role {
-            color: #6c757d;
-            font-size: 0.9rem;
-            margin-bottom: 3px;
-        }
-
-        .unit-head-section {
-            color: #868e96;
-            font-size: 0.85rem;
-        }
-
-        /* Empty State for Modal */
-        .modal-empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #6c757d;
-        }
-
-        .modal-empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .modal-empty-state h5 {
-            margin-bottom: 10px;
-            color: #495057;
-        }
-
-        /* Responsive adjustments for modal */
-        @media (max-width: 576px) {
-            .modal-dialog {
-                margin: 10px;
-            }
-            
-            .employee-item {
-                padding: 10px;
-            }
-            
-            .avatar, .default-avatar {
-                width: 40px;
-                height: 40px;
-                margin-right: 12px;
-            }
-            
-            .employee-name {
-                font-size: 0.9rem;
-            }
-            
-            .unit-head-info {
-                padding: 15px;
-            }
-            
-            .unit-head-avatar, .default-unit-head-avatar {
-                width: 50px;
-                height: 50px;
-            }
-        }
-  </style>
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <!-- Chart.js -->
+  <?php include '../includes/header.php'; ?>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -827,6 +227,66 @@ if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
     <!-- Main content -->
     <div class="content">
       <div class="container-fluid">
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+          <div class="col-md-3 col-sm-6">
+            <?php
+            $total_employees = 0;
+            foreach ($gender_data as $section) {
+                $total_employees += $section['total_count'];
+            }
+            ?>
+            <div class="stats-card">
+              <div class="stats-value"><?= $total_employees ?></div>
+              <div class="stats-label">Total Employees</div>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <div class="stats-card">
+              <div class="stats-value"><?= $active_employees ?></div>
+              <div class="stats-label">Active Employees</div>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <div class="stats-card">
+              <div class="stats-value"><?= count($sections) ?></div>
+              <div class="stats-label">Total Sections</div>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <div class="stats-card">
+              <div class="stats-value"><?= count($unit_sections) ?></div>
+              <div class="stats-label">Total Units</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="row mb-4">
+          <!-- Appointment Status Chart -->
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Appointment Status Distribution</h3>
+              </div>
+              <div class="card-body">
+                <canvas id="appointmentChart" height="250"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Gender Distribution Chart -->
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Gender Distribution by Section</h3>
+              </div>
+              <div class="card-body">
+                <canvas id="genderChart" height="250"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div class="row">
           <!-- Main Content Area -->
@@ -835,7 +295,7 @@ if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
             <div class="org-structure">
               <!-- Manager Section -->
               <div class="org-manager">
-                <div class="manager-section">
+                <div class="manager-section" data-toggle="modal" data-target="#managerStaffModal" style="cursor: pointer;">
                   <div class="manager-info">
                     <?php if ($manager): ?>
                       <?php if (!empty($manager['picture']) && file_exists("../dist/img/employees/" . $manager['picture'])): ?>
@@ -852,6 +312,11 @@ if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
                         <div class="manager-title">
                           <h5>ACTING DIVISION MANAGER</h5>
                         </div>
+                        <div class="manager-contact">
+                          <i class="fas fa-envelope mr-1"></i> <?= htmlspecialchars($manager['email']) ?>
+                          <br>
+                          <i class="fas fa-phone mr-1"></i> <?= htmlspecialchars($manager['phone_number']) ?>
+                        </div>
                       </div>
                     <?php else: ?>
                       <div class="text-center w-100">
@@ -863,7 +328,6 @@ if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
                   </div>
                 </div>
               </div>
-
 
               <!-- Sections -->
               <h4 class="mb-3"><i class="fas fa-sitemap mr-2"></i>SECTIONS</h4>
@@ -1070,8 +534,192 @@ if (isUsingTemporaryPassword($_SESSION['emp_id'], $db)) {
       </div>
     </div>
   </div>
+  
+  <!-- Manager's Staff Modal -->
+  <div class="modal fade" id="managerStaffModal">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">
+            <i class="fas fa-users mr-2"></i>
+            Manager's Office Staff
+          </h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <?php if (!empty($manager_staff)): ?>
+            <div class="row">
+              <?php foreach ($manager_staff as $staff): ?>
+                <div class="col-md-6 mb-3">
+                  <div class="staff-card">
+                    <div class="staff-info">
+                      <?php if (!empty($staff['employee_picture']) && file_exists("../dist/img/employees/" . $staff['employee_picture'])): ?>
+                        <img src="../dist/img/employees/<?= htmlspecialchars($staff['employee_picture']) ?>" 
+                            class="staff-avatar" 
+                            alt="<?= htmlspecialchars($staff['employee_name']) ?>">
+                      <?php else: ?>
+                        <div class="default-staff-avatar">
+                          <i class="fas fa-user"></i>
+                        </div>
+                      <?php endif; ?>
+                      
+                      <div class="staff-details">
+                        <div class="staff-name"><?= htmlspecialchars($staff['employee_name']) ?></div>
+                        <div class="staff-position"><?= htmlspecialchars($staff['employee_position']) ?></div>
+                        <div class="staff-office"><?= htmlspecialchars($staff['employee_office']) ?></div>
+                      </div>
+                    </div>
+                    <div class="staff-responsibilities">
+                      <strong>Responsibilities:</strong> <?= htmlspecialchars($staff['responsibilities']) ?>
+                    </div>
+                    <div class="staff-contact mt-2">
+                      <small class="text-muted">
+                        <i class="fas fa-envelope mr-1"></i> <?= htmlspecialchars($staff['employee_email']) ?>
+                        <br>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php else: ?>
+            <div class="empty-state">
+              <i class="fas fa-users-slash"></i>
+              <h5>No Staff Members</h5>
+              <p>There are no staff members assigned to the manager's office yet.</p>
+            </div>
+          <?php endif; ?>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">
+            <i class="fas fa-times mr-1"></i> Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <?php include '../includes/mainfooter.php'; ?>
 </div>
 <?php include '../includes/footer.php'; ?>
+
+<script>
+// Initialize charts when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Appointment Status Chart
+  const appointmentCtx = document.getElementById('appointmentChart').getContext('2d');
+  const appointmentChart = new Chart(appointmentCtx, {
+    type: 'doughnut',
+    data: {
+      labels: [
+        <?php foreach($appointment_data as $data): ?>
+          '<?= $data['status_name'] ?>',
+        <?php endforeach; ?>
+      ],
+      datasets: [{
+        data: [
+          <?php foreach($appointment_data as $data): ?>
+            <?= $data['count'] ?>,
+          <?php endforeach; ?>
+        ],
+        backgroundColor: [
+          <?php foreach($appointment_data as $data): ?>
+            '<?= $data['color'] ?>',
+          <?php endforeach; ?>
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.label || '';
+              if (label) {
+                label += ': ';
+              }
+              label += context.raw + ' employees';
+              return label;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Gender Distribution Chart
+  const genderCtx = document.getElementById('genderChart').getContext('2d');
+  const genderChart = new Chart(genderCtx, {
+    type: 'bar',
+    data: {
+      labels: [
+        <?php foreach($gender_data as $data): ?>
+          '<?= $data['section_name'] ?>',
+        <?php endforeach; ?>
+      ],
+      datasets: [
+        {
+          label: 'Male',
+          data: [
+            <?php foreach($gender_data as $data): ?>
+              <?= $data['male_count'] ?>,
+            <?php endforeach; ?>
+          ],
+          backgroundColor: '#3498db',
+          borderColor: '#2980b9',
+          borderWidth: 1
+        },
+        {
+          label: 'Female',
+          data: [
+            <?php foreach($gender_data as $data): ?>
+              <?= $data['female_count'] ?>,
+            <?php endforeach; ?>
+          ],
+          backgroundColor: '#e83e8c',
+          borderColor: '#d81b60',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          stacked: false,
+        },
+        y: {
+          stacked: false,
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            afterLabel: function(context) {
+              const dataset = context.dataset;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((context.raw / total) * 100);
+              return `Percentage: ${percentage}%`;
+            }
+          }
+        }
+      }
+    }
+  });
+});
+</script>
 </body>
 </html>

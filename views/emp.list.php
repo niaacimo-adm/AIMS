@@ -117,7 +117,7 @@ LEFT JOIN unit_section us ON e.unit_section_id = us.unit_id
 LEFT JOIN employee uh ON us.head_emp_id = uh.emp_id
 LEFT JOIN position p ON e.position_id = p.position_id
 LEFT JOIN appointment_status ap ON e.appointment_status_id = ap.appointment_id
-          ORDER BY e.emp_id DESC";
+          ORDER BY e.last_name ASC, e.first_name ASC"; // Changed from emp_id DESC to last_name ASC
           
 $stmt = $db->prepare($query);
 $stmt->execute();
@@ -157,422 +157,7 @@ while ($row = $result->fetch_assoc()) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AdminLTE 3 | Employee List</title>
   <?php include '../includes/header.php'; ?>
-<style>
-    .profile-grid-container {
-        width: 100%;
-        overflow-y: auto;
-        min-height: calc(100vh - 300px);
-        padding-bottom: 20px;
-    }
-
-    /* Grid container */
-    .profile-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 25px;
-        padding: 20px;
-        margin-top: 20px;
-        width: 100%;
-    }
-
-    /* Modern Card styling */
-    .profile-card {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        background: white;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        border: 1px solid #e9ecef;
-        position: relative; /* Add this */
-    }
-
-    .profile-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-
-    /* Modern Profile Header with Admin Theme */
-    .profile-header {
-        position: relative;
-        height: 70px;
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        padding-bottom: 20px;
-    }
-
-    .profile-avatarr {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        border: 5px solid white;
-        background: #f8f9fa;
-        position: absolute;
-        bottom: -60px;
-        object-fit: cover;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        z-index: 2; /* Add this */
-    }
-
-    /* Fix for avatar placeholder */
-    .profile-avatarr.d-flex {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        border: 5px solid white;
-        background: #f8f9fa;
-        position: absolute;
-        bottom: -60px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        z-index: 2;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .profile-body {
-        padding: 70px 20px 20px;
-        text-align: center;
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        position: relative; /* Add this */
-        z-index: 1; /* Add this */
-    }
-
-    .profile-named {
-        font-weight: 700;
-        margin-bottom: 8px;
-        font-size: 1.2rem;
-        color: #4361ee;
-        line-height: 1.3;
-        min-height: 1.6em; /* Ensure space for name */
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        -webkit-box-orient: vertical;
-    }
-
-    .profile-position {
-        color: #6c757d;
-        font-size: 0.95rem;
-        margin-bottom: 20px;
-        font-weight: 500;
-        line-height: 1.4;
-        min-height: 1.4em; /* Ensure space for position */
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        -webkit-box-orient: vertical;
-    }
-
-    .profile-details {
-        text-align: left;
-        font-size: 0.9rem;
-        margin-bottom: 20px;
-        flex-grow: 1;
-    }
-
-    .profile-detail {
-        display: flex;
-        align-items: flex-start;
-        margin-bottom: 10px;
-        line-height: 1.4;
-    }
-
-    .profile-detail i {
-        width: 20px;
-        color: #6c757d;
-        margin-right: 10px;
-        margin-top: 2px;
-        flex-shrink: 0;
-    }
-
-    .profile-detail span {
-        word-break: break-word;
-        flex: 1;
-        min-height: 1.4em; /* Ensure consistent height */
-    }
-
-    /* Status badges container */
-    .status-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        justify-content: center;
-        margin-top: auto;
-    }
-
-    /* Modern Profile Actions */
-    .profile-actions {
-        display: flex;
-        justify-content: center;
-        padding: 15px;
-        border-top: 1px solid #eee;
-        background: #f8f9fa;
-        margin-top: auto;
-        gap: 8px;
-        position: relative; /* Add this */
-        z-index: 1; /* Add this */
-    }
-
-    .profile-actions a {
-        width: 36px;
-        height: 36px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-        color: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    .profile-actions a:hover {
-        transform: scale(1.1);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-
-    .profile-actions a.btn-warning {
-        background: linear-gradient(135deg, #ffc107, #fd7e14);
-    }
-
-    .profile-actions a.btn-secondary {
-        background: linear-gradient(135deg, #6c757d, #495057);
-    }
-
-    /* Modern Badges */
-    .badge-custom {
-        font-size: 0.75rem;
-        padding: 6px 10px;
-        border-radius: 12px;
-        font-weight: 500;
-    }
-
-    /* Search and pagination */
-    .card-header .card-title {
-        line-height: 1.8;
-    }
-
-    #gridSearch {
-        transition: all 0.3s;
-    }
-
-    .no-results {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 40px 20px;
-        color: #6c757d;
-        font-style: italic;
-        font-size: 1.1rem;
-    }
-
-    .grid-pagination {
-        padding: 20px;
-        border-top: 1px solid #dee2e6;
-        margin-top: 10px;
-        background: white;
-        border-radius: 0 0 10px 10px;
-    }
-
-    .grid-pagination button {
-        margin-left: 5px;
-        border-radius: 6px;
-    }
-
-    .grid-pagination .disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 1200px) {
-        .profile-grid {
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px;
-            padding: 15px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .profile-grid {
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 15px;
-            padding: 10px;
-        }
-        
-        .profile-header {
-            height: 120px;
-        }
-        
-        .profile-avatarr {
-            width: 100px;
-            height: 100px;
-            bottom: -50px;
-        }
-        
-        .profile-body {
-            padding: 60px 15px 15px;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .profile-grid {
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        
-        .profile-grid-container {
-            min-height: calc(100vh - 350px);
-        }
-        
-        .profile-actions a {
-            width: 32px;
-            height: 32px;
-            font-size: 0.8rem;
-        }
-        
-        .profile-header {
-            height: 100px;
-        }
-        
-        .profile-avatarr {
-            width: 90px;
-            height: 90px;
-            bottom: -45px;
-        }
-        
-        .profile-body {
-            padding: 55px 12px 12px;
-        }
-    }
-
-    #gridViewBtn.active {
-        background-color: #4361ee;
-        color: white;
-    }
-
-    #tableViewBtn.active {
-        background-color: #4361ee;
-        color: white;
-    }
-
-    /* Text truncation for long content */
-    .text-truncate {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: block;
-    }
-
-    /* Modern Card Header */
-    .grid-card-header {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-        color: white;
-        padding: 15px 20px;
-        border-radius: 10px 10px 0 0;
-    }
-
-    .grid-card-header h3 {
-        margin: 0;
-        font-size: 1.3rem;
-        font-weight: 600;
-    }
-    .profile-actions .btn-danger {
-        background: linear-gradient(135deg, #dc3545, #c82333);
-    }
-
-    .profile-actions .btn-danger:hover {
-        background: linear-gradient(135deg, #c82333, #a71e2a);
-        transform: scale(1.1);
-    }
-    /* SweetAlert validation input styling */
-    .swal2-popup .form-control {
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 8px 12px;
-        font-size: 14px;
-        transition: border-color 0.3s ease;
-    }
-
-    .swal2-popup .form-control:focus {
-        border-color: #4361ee;
-        box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
-        outline: none;
-    }
-
-    .swal2-popup .form-label {
-        font-weight: 500;
-        color: #374151;
-        text-align: left;
-        display: block;
-    }
-
-    /* Validation states */
-    .swal2-popup .form-control.is-valid {
-        border-color: #28a745;
-    }
-
-    .swal2-popup .form-control.is-invalid {
-        border-color: #dc3545;
-    }
-
-    /* SweetAlert custom width */
-    .swal2-popup {
-        width: auto !important;
-        max-width: 500px !important;
-    }
-    /* SweetAlert custom styles for delete confirmation */
-    .swal2-popup-custom {
-        width: 500px !important;
-    }
-
-    .swal2-popup .input-group {
-        width: 100%;
-    }
-
-    .swal2-popup .input-group-append .btn {
-        height: 42px;
-        border: 1px solid #ddd;
-        border-left: none;
-        background-color: #f8f9fa;
-        transition: all 0.3s ease;
-    }
-
-    .swal2-popup .input-group-append .btn:hover {
-        background-color: #e9ecef;
-    }
-
-    .swal2-popup #showIdNumber {
-        font-size: 0.8rem;
-        padding: 4px 8px;
-    }
-
-    .swal2-popup #idNumberDisplay {
-        font-family: 'Arial', monospace;
-        font-weight: bold;
-    }
-
-    /* Password input styling */
-    .swal2-popup input[type="password"] {
-        font-family: 'Arial', monospace;
-        letter-spacing: 1px;
-    }
-
-    .swal2-popup input[type="text"] {
-        font-family: 'Arial', monospace;
-    }
-</style>
+  <link rel="stylesheet" href="../css/emp_list.css">
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -635,10 +220,168 @@ while ($row = $result->fetch_assoc()) {
                                   <i class="fas fa-file-export"></i>
                                   <span class="d-none d-sm-inline"> Export</span>
                               </a>
+                                <button type="button" class="btn btn-warning" id="advancedSearchBtn" title="Advanced Search">
+                                    <i class="fas fa-search-plus"></i>
+                                    <span class="d-none d-sm-inline"> Advanced Search</span>
+                                    <span id="activeFilterCount" class="search-active-badge" style="display: none;">0</span>
+                                </button>
                           </div>
                       </div>
                   </div>
               </div>
+              <!-- Advanced Search Modal -->
+                <div class="advanced-search-backdrop" id="advancedSearchBackdrop"></div>
+                <div class="advanced-search-modal" id="advancedSearchModal">
+                    <div class="advanced-search-header">
+                        <h4><i class="fas fa-search-plus mr-2"></i>Advanced Search</h4>
+                        <button type="button" class="advanced-search-close" id="advancedSearchClose">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="advanced-search-body">
+                        <!-- Basic Information Section -->
+                        <div class="advanced-search-section">
+                            <h6><i class="fas fa-user"></i> Basic Information</h6>
+                            
+                            <div class="search-form-group">
+                                <label for="searchName">Name</label>
+                                <input type="text" class="search-form-control" id="searchName" 
+                                    placeholder="Search by first or last name...">
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchIdNumber">ID Number</label>
+                                <input type="text" class="search-form-control" id="searchIdNumber" 
+                                    placeholder="Enter employee ID...">
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchEmail">Email</label>
+                                <input type="text" class="search-form-control" id="searchEmail" 
+                                    placeholder="Search by email...">
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchPhone">Phone Number</label>
+                                <input type="text" class="search-form-control" id="searchPhone" 
+                                    placeholder="Search by phone...">
+                            </div>
+                        </div>
+                        
+                        <!-- Employment Details Section -->
+                        <div class="advanced-search-section">
+                            <h6><i class="fas fa-briefcase"></i> Employment Details</h6>
+                            
+                            <div class="search-form-group">
+                                <label for="searchPosition">Position</label>
+                                <select class="search-form-control search-select" id="searchPosition">
+                                    <option value="">All Positions</option>
+                                    <?php
+                                    $positionQuery = "SELECT position_id, position_name FROM position ORDER BY position_name";
+                                    $positionStmt = $db->prepare($positionQuery);
+                                    $positionStmt->execute();
+                                    $positions = $positionStmt->get_result();
+                                    
+                                    while ($position = $positions->fetch_assoc()): ?>
+                                        <option value="<?= $position['position_id'] ?>">
+                                            <?= htmlspecialchars($position['position_name']) ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchOffice">Office</label>
+                                <select class="search-form-control search-select" id="searchOffice">
+                                    <option value="">All Offices</option>
+                                    <?php
+                                    $officeQuery = "SELECT office_id, office_name FROM office ORDER BY office_name";
+                                    $officeStmt = $db->prepare($officeQuery);
+                                    $officeStmt->execute();
+                                    $offices = $officeStmt->get_result();
+                                    
+                                    while ($office = $offices->fetch_assoc()): ?>
+                                        <option value="<?= $office['office_id'] ?>">
+                                            <?= htmlspecialchars($office['office_name']) ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchSection">Section</label>
+                                <select class="search-form-control search-select" id="searchSection">
+                                    <option value="">All Sections</option>
+                                    <?php
+                                    $sectionQuery = "SELECT section_id, section_name FROM section ORDER BY section_name";
+                                    $sectionStmt = $db->prepare($sectionQuery);
+                                    $sectionStmt->execute();
+                                    $sections = $sectionStmt->get_result();
+                                    
+                                    while ($section = $sections->fetch_assoc()): ?>
+                                        <option value="<?= $section['section_id'] ?>">
+                                            <?= htmlspecialchars($section['section_name']) ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Status Filters Section -->
+                        <div class="advanced-search-section">
+                            <h6><i class="fas fa-tags"></i> Status Filters</h6>
+                            
+                            <div class="search-form-group">
+                                <label for="searchEmploymentStatus">Employment Status</label>
+                                <select class="search-form-control search-select" id="searchEmploymentStatus">
+                                    <option value="">All Statuses</option>
+                                    <?php foreach ($employmentStatuses as $status): ?>
+                                        <option value="<?= $status['status_id'] ?>">
+                                            <?= htmlspecialchars($status['status_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchAppointmentStatus">Appointment Status</label>
+                                <select class="search-form-control search-select" id="searchAppointmentStatus">
+                                    <option value="">All Statuses</option>
+                                    <?php foreach ($appointmentStatuses as $status): ?>
+                                        <option value="<?= $status['appointment_id'] ?>">
+                                            <?= htmlspecialchars($status['status_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Date Range Section -->
+                        <div class="advanced-search-section">
+                            <h6><i class="fas fa-calendar-alt"></i> Date Range</h6>
+                            
+                            <div class="search-form-group">
+                                <label for="searchDateFrom">From Date</label>
+                                <input type="date" class="search-form-control" id="searchDateFrom">
+                            </div>
+                            
+                            <div class="search-form-group">
+                                <label for="searchDateTo">To Date</label>
+                                <input type="date" class="search-form-control" id="searchDateTo">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="advanced-search-footer">
+                        <button type="button" class="btn-search-clear" id="clearSearchFilters">
+                            <i class="fas fa-eraser mr-1"></i> Clear All
+                        </button>
+                        <button type="button" class="btn-search-apply" id="applySearchFilters">
+                            <i class="fas fa-filter mr-1"></i> Apply Filters
+                        </button>
+                    </div>
+                </div>
                 <!-- Import Excel Modal -->
                 <div class="modal fade" id="importModal" tabindex="-1" role="dialog" aria-labelledby="importModalLabel" aria-hidden="true">
                   <div class="modal-dialog" role="document">
@@ -688,7 +431,8 @@ while ($row = $result->fetch_assoc()) {
                     </thead>
                     <tbody>
                       <?php foreach ($employees as $employee): ?>
-                      <tr>
+                      <tr data-employment-status="<?= $employee['employment_status_id'] ?>" 
+                            data-appointment-status="<?= $employee['appointment_status_id'] ?>">
                         <td><?= htmlspecialchars($employee['id_number']) ?></td>
                         <td>
                           <?php 
@@ -798,7 +542,14 @@ while ($row = $result->fetch_assoc()) {
                         <div class="card-body p-0">
                         <div class="profile-grid">
                             <?php foreach ($employees as $employee): ?>
-                        <div class="profile-card" data-search="<?= strtolower(htmlspecialchars($employee['first_name'].' '.$employee['last_name'].' '.$employee['id_number'].' '.$employee['position_name'].' '.$employee['office_name'])) ?>">
+                        <div class="profile-card" 
+                            data-search="<?= strtolower(htmlspecialchars($employee['first_name'].' '.$employee['last_name'].' '.$employee['id_number'].' '.$employee['position_name'].' '.$employee['office_name'])) ?>"
+                            data-position="<?= $employee['position_id'] ?>"
+                            data-office="<?= $employee['office_id'] ?>"
+                            data-section="<?= $employee['section_id'] ?>"
+                            data-employment-status="<?= $employee['employment_status_id'] ?>"
+                            data-appointment-status="<?= $employee['appointment_status_id'] ?>"
+                            data-last-name="<?= htmlspecialchars(strtolower($employee['last_name'])) ?>">
                             <div class="profile-header">
                                 <?php 
                                 $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture']);
@@ -941,6 +692,7 @@ $(document).ready(function() {
             { responsivePriority: 2, targets: 2 }, // Name
             { responsivePriority: 3, targets: -1 } // Actions
         ],
+        order: [[2, 'asc']], // Sort by Name column (index 2) ascending
         dom: '<"top"lf>rt<"bottom"ip>',
         language: {
             lengthMenu: "Show _MENU_ entries per page",
@@ -1082,6 +834,9 @@ $(document).ready(function() {
         $('#profileGrid').show();
         $(this).addClass('active');
         $('#tableViewBtn').removeClass('active');
+        
+        // Sort grid cards alphabetically by last name when switching to grid view
+        sortGridCardsAlphabetically();
         
         // Reinitialize grid view when switching back from table
         filteredEmployees = Array.from({length: $('.profile-card').length}, (_, i) => i);
@@ -1309,6 +1064,386 @@ $(document).on('click', '.delete-employee', function() {
     const empIdNumber = $(this).data('emp-id-number');
     deleteEmployee(empId, empName, empIdNumber);
 });
+// Advanced Search Functionality
+$(document).ready(function() {
+    let activeFilters = {};
+    let filterCount = 0;
+
+    // Open advanced search modal
+    $('#advancedSearchBtn').click(function() {
+        $('#advancedSearchModal').addClass('show');
+        $('#advancedSearchBackdrop').addClass('show');
+        $('body').css('overflow', 'hidden');
+    });
+
+    // Close advanced search modal
+    $('#advancedSearchClose, #advancedSearchBackdrop').click(function() {
+        $('#advancedSearchModal').removeClass('show');
+        $('#advancedSearchBackdrop').removeClass('show');
+        $('body').css('overflow', '');
+    });
+
+    // Clear all filters
+    $('#clearSearchFilters').click(function() {
+        // Clear all form fields
+        $('#advancedSearchModal .search-form-control').val('');
+        $('#advancedSearchModal select').val('');
+        
+        // Reset active filters
+        activeFilters = {};
+        filterCount = 0;
+        updateFilterBadge();
+        
+        // Reset both table and grid views
+        resetSearch();
+        
+        // Close modal
+        $('#advancedSearchModal').removeClass('show');
+        $('#advancedSearchBackdrop').removeClass('show');
+        $('body').css('overflow', '');
+    });
+
+    // Apply filters
+    $('#applySearchFilters').click(function() {
+        // Collect filter values
+        activeFilters = {
+            name: $('#searchName').val().trim().toLowerCase(),
+            idNumber: $('#searchIdNumber').val().trim().toLowerCase(),
+            email: $('#searchEmail').val().trim().toLowerCase(),
+            phone: $('#searchPhone').val().trim().toLowerCase(),
+            position: $('#searchPosition').val(),
+            office: $('#searchOffice').val(),
+            section: $('#searchSection').val(),
+            employmentStatus: $('#searchEmploymentStatus').val(),
+            appointmentStatus: $('#searchAppointmentStatus').val(),
+            dateFrom: $('#searchDateFrom').val(),
+            dateTo: $('#searchDateTo').val()
+        };
+
+        // Count active filters
+        filterCount = Object.values(activeFilters).filter(value => 
+            value !== '' && value !== null && value !== undefined
+        ).length;
+
+        updateFilterBadge();
+        applyAdvancedFilters();
+        
+        // Close modal
+        $('#advancedSearchModal').removeClass('show');
+        $('#advancedSearchBackdrop').removeClass('show');
+        $('body').css('overflow', '');
+    });
+
+    // Update filter badge
+    function updateFilterBadge() {
+        const badge = $('#activeFilterCount');
+        if (filterCount > 0) {
+            badge.text(filterCount).show();
+        } else {
+            badge.hide();
+        }
+    }
+
+    // Apply advanced filters to both table and grid views
+    function applyAdvancedFilters() {
+        if ($('#tableViewBtn').hasClass('active')) {
+            // Filter table view
+            filterTableView();
+        } else {
+            // Filter grid view
+            filterGridView();
+        }
+
+        // Show/hide no results message
+        showNoResultsIfNeeded();
+    }
+
+    // Filter table view 
+    function filterTableView() {
+        // Clear all searches first
+        employeeTable.search('');
+        employeeTable.columns().search('');
+        
+        if (filterCount === 0) {
+            employeeTable.draw();
+            return;
+        }
+
+        // Apply individual column filters for text searches
+        if (activeFilters.name) {
+            employeeTable.column(2).search(activeFilters.name, true, false);
+        }
+        if (activeFilters.idNumber) {
+            employeeTable.column(0).search(activeFilters.idNumber, true, false);
+        }
+        if (activeFilters.email) {
+            employeeTable.column(3).search(activeFilters.email, true, false);
+        }
+        if (activeFilters.phone) {
+            employeeTable.column(4).search(activeFilters.phone, true, false);
+        }
+
+        // For status filters, use custom filtering
+        if (activeFilters.employmentStatus || activeFilters.appointmentStatus) {
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    const row = employeeTable.row(dataIndex).node();
+                    if (!row) return true;
+
+                    let employmentMatch = true;
+                    let appointmentMatch = true;
+
+                    // Check employment status
+                    if (activeFilters.employmentStatus) {
+                        const rowEmploymentStatus = $(row).data('employment-status');
+                        employmentMatch = rowEmploymentStatus && rowEmploymentStatus.toString() === activeFilters.employmentStatus.toString();
+                    }
+
+                    // Check appointment status
+                    if (activeFilters.appointmentStatus) {
+                        const rowAppointmentStatus = $(row).data('appointment-status');
+                        appointmentMatch = rowAppointmentStatus && rowAppointmentStatus.toString() === activeFilters.appointmentStatus.toString();
+                    }
+
+                    return employmentMatch && appointmentMatch;
+                }
+            );
+        }
+
+        employeeTable.draw();
+        
+        // Remove the custom filter function after drawing
+        if (activeFilters.employmentStatus || activeFilters.appointmentStatus) {
+            $.fn.dataTable.ext.search.pop();
+        }
+    }
+
+    function sortVisibleGridCardsAlphabetically() {
+        const $visibleCards = $('.profile-card:visible');
+        
+        $visibleCards.sort(function(a, b) {
+            const aLastName = $(a).data('last-name') || '';
+            const bLastName = $(b).data('last-name') || '';
+            return aLastName.localeCompare(bLastName);
+        });
+        
+        // Re-append visible cards in sorted order
+        $('.profile-grid').append($visibleCards);
+        
+        // Hide all cards again (they'll be shown in updateGridPagination)
+        $('.profile-card').hide();
+    }
+
+    // Filter grid view
+    function filterGridView() {
+        let visibleCount = 0;
+        
+        $('.profile-card').each(function() {
+            const card = $(this);
+            const matches = checkCardMatchesFilters(card);
+            
+            if (matches) {
+                card.show();
+                visibleCount++;
+            } else {
+                card.hide();
+            }
+        });
+
+        // Sort visible cards alphabetically by last name
+        sortVisibleGridCardsAlphabetically();
+        
+        // Update grid pagination with filtered results
+        updateGridWithFilteredResults();
+        
+        return visibleCount;
+    }
+
+    // Check if card matches all active filters
+    function checkCardMatchesFilters(card) {
+        const cardData = card.data('search').toLowerCase();
+        
+        // Basic text search in card data
+        if (activeFilters.name && !cardData.includes(activeFilters.name)) {
+            return false;
+        }
+        if (activeFilters.idNumber && !cardData.includes(activeFilters.idNumber)) {
+            return false;
+        }
+        if (activeFilters.email && !cardData.includes(activeFilters.email)) {
+            return false;
+        }
+        if (activeFilters.phone && !cardData.includes(activeFilters.phone)) {
+            return false;
+        }
+
+        // Position filter
+        if (activeFilters.position) {
+            const cardPosition = card.data('position');
+            if (!cardPosition || cardPosition.toString() !== activeFilters.position.toString()) {
+                return false;
+            }
+        }
+
+        // Office filter
+        if (activeFilters.office) {
+            const cardOffice = card.data('office');
+            if (!cardOffice || cardOffice.toString() !== activeFilters.office.toString()) {
+                return false;
+            }
+        }
+
+        // Section filter
+        if (activeFilters.section) {
+            const cardSection = card.data('section');
+            if (!cardSection || cardSection.toString() !== activeFilters.section.toString()) {
+                return false;
+            }
+        }
+
+        // Employment Status filter
+        if (activeFilters.employmentStatus) {
+            const cardEmploymentStatus = card.data('employment-status');
+            if (!cardEmploymentStatus || cardEmploymentStatus.toString() !== activeFilters.employmentStatus.toString()) {
+                return false;
+            }
+        }
+
+        // Appointment Status filter
+        if (activeFilters.appointmentStatus) {
+            const cardAppointmentStatus = card.data('appointment-status');
+            if (!cardAppointmentStatus || cardAppointmentStatus.toString() !== activeFilters.appointmentStatus.toString()) {
+                return false;
+            }
+        }
+
+        // Date range filter (you'll need to add date data attributes to cards)
+        if (activeFilters.dateFrom || activeFilters.dateTo) {
+            // Implement date filtering if you have date data in your cards
+            // const cardDate = card.data('date');
+            // if (cardDate) {
+            //     const cardDateObj = new Date(cardDate);
+            //     if (activeFilters.dateFrom && cardDateObj < new Date(activeFilters.dateFrom)) {
+            //         return false;
+            //     }
+            //     if (activeFilters.dateTo && cardDateObj > new Date(activeFilters.dateTo)) {
+            //         return false;
+            //     }
+            // }
+        }
+
+        return true;
+    }
+
+    // Update grid pagination with filtered results
+    function updateGridWithFilteredResults() {
+        filteredEmployees = [];
+        
+        $('.profile-card').each(function(index) {
+            if ($(this).is(':visible')) {
+                filteredEmployees.push(index);
+            }
+        });
+        
+        currentGridPage = 1;
+        updateGridPagination();
+        
+        // Show no results message if needed
+        if (filteredEmployees.length === 0 && filterCount > 0) {
+            $('.no-results').remove();
+            $('.profile-grid').append('<div class="no-results">No employees match your search criteria</div>');
+        } else {
+            $('.no-results').remove();
+        }
+    }
+
+    // Reset search
+    function resetSearch() {
+        if ($('#tableViewBtn').hasClass('active')) {
+            employeeTable.search('').columns().search('').draw();
+            // Remove any custom filters
+            $.fn.dataTable.ext.search = [];
+        } else {
+            filteredEmployees = Array.from({length: $('.profile-card').length}, (_, i) => i);
+            currentGridPage = 1;
+            updateGridPagination();
+            $('.profile-card').show();
+        }
+        
+        $('.no-results').remove();
+    }
+
+    // Show no results message if needed
+    function showNoResultsIfNeeded() {
+        $('.no-results').remove();
+        
+        const visibleCount = $('#tableViewBtn').hasClass('active') ? 
+            employeeTable.rows({ filter: 'applied' }).count() : 
+            $('.profile-card:visible').length;
+            
+        if (visibleCount === 0 && filterCount > 0) {
+            const noResultsHtml = '<div class="no-results">No employees match your search criteria</div>';
+            
+            if ($('#tableViewBtn').hasClass('active')) {
+                $('#employeeTable_wrapper').append(noResultsHtml);
+            } else {
+                $('.profile-grid').append(noResultsHtml);
+            }
+        }
+    }
+
+    // Prevent modal close when clicking inside modal
+    $('#advancedSearchModal').click(function(e) {
+        e.stopPropagation();
+    });
+
+    // Close modal with Escape key
+    $(document).keyup(function(e) {
+        if (e.keyCode === 27 && $('#advancedSearchModal').hasClass('show')) {
+            $('#advancedSearchModal').removeClass('show');
+            $('#advancedSearchBackdrop').removeClass('show');
+            $('body').css('overflow', '');
+        }
+    });
+});
+// Function to sort grid cards by last name
+function sortGridCardsAlphabetically() {
+    const $cards = $('.profile-card');
+    
+    $cards.sort(function(a, b) {
+        const aLastName = $(a).data('last-name') || '';
+        const bLastName = $(b).data('last-name') || '';
+        return aLastName.localeCompare(bLastName);
+    });
+    
+    // Re-append cards in sorted order
+    $('.profile-grid').append($cards);
+}
+
+// Initialize grid view as default
+function initializeGridAsDefault() {
+    // Set grid as active view
+    $('#gridViewBtn').addClass('active');
+    $('#tableViewBtn').removeClass('active');
+    
+    // Sort grid cards alphabetically by last name
+    sortGridCardsAlphabetically();
+    
+    // Initialize grid pagination with all employees
+    filteredEmployees = Array.from({length: $('.profile-card').length}, (_, i) => i);
+    updateGridPagination();
+    
+    // Calculate and set container height
+    const headerHeight = $('.content-header').outerHeight(true);
+    const cardHeaderHeight = $('#profileGrid .card-header').outerHeight(true);
+    const windowHeight = $(window).height();
+    const availableHeight = windowHeight - headerHeight - cardHeaderHeight - 80;
+    
+    $('#profileGrid .card-body').css({
+        'height': availableHeight + 'px',
+        'overflow-y': 'auto'
+    });
+}
 </script>
 </body>
 </html>

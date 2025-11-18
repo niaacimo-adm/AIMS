@@ -52,8 +52,116 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
     <link rel="stylesheet" href="index.css">
 
+    <style>
+        /* Modal Slide Styles - COMPACT VERSION */
+        .modal-slide {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 20%; /* Reduced from 80% */
+            max-width: 400px; /* Reduced from 500px */
+            height: 100%;
+            background: var(--light-color);
+            z-index: 1060;
+            transition: right 0.4s ease-in-out;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+
+        .modal-slide.show {
+            right: 0;
+        }
+
+        .modal-slide-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1050;
+            display: none;
+        }
+
+        .modal-slide-backdrop.show {
+            display: block;
+        }
+
+        .modal-slide .modal-header {
+            background: var(--primary-color) !important;
+            color: white !important;
+            border-bottom: none;
+            padding: 12px 15px; /* Reduced padding */
+        }
+
+        .modal-slide .modal-title {
+            color: white !important;
+            font-weight: 600;
+            margin: 0;
+            font-size: 1.1rem; /* Slightly smaller */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-slide .close {
+            color: white !important;
+            opacity: 0.8;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            font-size: 1.3rem; /* Slightly smaller */
+            padding: 5px;
+        }
+
+        .modal-slide .close:hover {
+            color: white !important;
+            opacity: 1;
+        }
+
+        .modal-slide .modal-body {
+            padding: 15px; /* Reduced padding */
+            color: #000 !important;
+        }
+
+        .modal-slide .modal-body * {
+            color: #000 !important;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .modal-slide {
+                width: 70%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-slide {
+                width: 85%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .modal-slide {
+                width: 100%;
+            }
+        }
+</style>
 </head>
 <body>
+
+    <!-- Forms Modal Slide -->
+    <div class="modal-slide-backdrop" id="formsModalBackdrop"></div>
+    
+    <div class="modal-slide" id="formsModal">
+        <div class="modal-header">
+            <h5 class="modal-title">Forms & Documents</h5>
+            <button type="button" class="close" id="closeFormsModal">
+                <span>&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="formsModalContent">
+                <!-- Forms content will be loaded here -->
+            </div>
+        </div>
+    </div>
 
     <!-- Floating Calendar Button -->
     <button class="floating-calendar-btn" id="floatingCalendarBtn" title="Quick Calendar View">
@@ -80,6 +188,7 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             </div>
         </div>
     </div>
+    
     <!-- Scroll to top button -->
     <button class="scroll-to-top" id="scrollToTop">
         <i class="fas fa-chevron-up"></i>
@@ -101,13 +210,15 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
                     <li class="nav-item"><a class="nav-link" href="#gallery">Gallery</a></li>
                     <li class="nav-item"><a class="nav-link" href="#events">Events</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#forms">Forms</a></li>
+                    <!-- Modified Forms link - removed nav-item styling and added modal trigger -->
+                    <a class="nav-link" href="#" id="formsModalTrigger">Forms</a>
                     <li class="nav-item"><a class="nav-link login-btn" href="login.php">Sign In</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
+    <!-- Rest of the page content remains the same -->
     <!-- Hero Section -->
     <section id="home" class="hero-section">
         <div class="container">
@@ -122,7 +233,6 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             </div>
         </div>
     </section>
-
 
     <!-- About Section -->
     <section id="about" class="section-padding">
@@ -248,6 +358,7 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             <?php endif; ?>
         </div>
     </section>
+    
     <!-- Image Modal -->
     <div class="modal fade" id="imageModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -330,52 +441,6 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         </div>
     </section>
 
-    <!-- Forms Section -->
-    <section id="forms" class="section-padding">
-        <div class="container">
-            <h2 class="section-title">Forms & Documents</h2>
-            
-            <?php if (!empty($company_forms)): ?>
-                <div class="forms-control">
-                    <div class="search-box">
-                        <div class="input-group">
-                            <input type="text" id="forms-search" class="form-control" placeholder="Search forms...">
-                            <div class="input-group-append">
-                                <span class="input-group-text">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="forms-info">
-                        Showing <span id="forms-start">1</span>-<span id="forms-end">6</span> of <span id="forms-total"><?= count($company_forms) ?></span> forms
-                    </div>
-                </div>
-
-                <div id="forms-container">
-                    <!-- Forms pages will be loaded here by JavaScript -->
-                </div>
-
-                <div class="pagination-container">
-                    <nav>
-                        <ul class="pagination" id="forms-pagination">
-                            <!-- Pagination will be generated by JavaScript -->
-                        </ul>
-                    </nav>
-                </div>
-            <?php else: ?>
-                <div class="col-12 text-center">
-                    <div class="card form-card">
-                        <div class="card-body">
-                            <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">No forms available at the moment.</p>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </section>
-
     <!-- Footer -->
     <footer>
         <div class="container text-center">
@@ -408,8 +473,93 @@ $company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     <script src="plugins/fullcalendar/main.js"></script>
     <script src="plugins/moment/moment.min.js"></script>
 
+
     <script>
     $(document).ready(function() {
+        // Forms Modal functionality
+        const formsModal = document.getElementById('formsModal');
+        const formsModalBackdrop = document.getElementById('formsModalBackdrop');
+        const formsModalTrigger = document.getElementById('formsModalTrigger');
+        const closeFormsModal = document.getElementById('closeFormsModal');
+        
+        // Show modal
+        if (formsModalTrigger) {
+            formsModalTrigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                showFormsModal();
+            });
+        }
+        
+        // Close modal
+        if (closeFormsModal) {
+            closeFormsModal.addEventListener('click', function() {
+                hideFormsModal();
+            });
+        }
+        
+        // Close modal when clicking on backdrop
+        if (formsModalBackdrop) {
+            formsModalBackdrop.addEventListener('click', function() {
+                hideFormsModal();
+            });
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && formsModal.classList.contains('show')) {
+                hideFormsModal();
+            }
+        });
+        
+        function showFormsModal() {
+            // Load forms content
+            loadFormsContent();
+            
+            // Show modal
+            formsModal.classList.add('show');
+            formsModalBackdrop.classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent body scrolling
+        }
+        
+        function hideFormsModal() {
+            // Hide modal
+            formsModal.classList.remove('show');
+            formsModalBackdrop.classList.remove('show');
+            document.body.style.overflow = ''; // Restore body scrolling
+        }
+        
+        function loadFormsContent() {
+            const formsModalContent = document.getElementById('formsModalContent');
+            
+            // Show loading state
+            formsModalContent.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Loading forms...</span>
+                    </div>
+                    <p class="mt-2">Loading forms...</p>
+                </div>
+            `;
+            
+            // Load forms content via AJAX
+            $.ajax({
+                url: 'views/get_forms.php', // You'll need to create this endpoint
+                type: 'GET',
+                dataType: 'html',
+                success: function(response) {
+                    formsModalContent.innerHTML = response;
+                },
+                error: function(xhr, status, error) {
+                    formsModalContent.innerHTML = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Failed to load forms. Please try again later.</p>
+                            <button class="btn btn-primary" onclick="loadFormsContent()">Retry</button>
+                        </div>
+                    `;
+                }
+            });
+        }
         // Gallery functionality
         const galleryItemsPerPage = 6;
         let currentGalleryPage = 1;
