@@ -268,6 +268,12 @@ if ($employee_id) {
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="profile.php" onclick="setProfileThemeWithCurrent()"><i class="fas fa-user"></i> My Profile</a></li>
                     <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
+<!-- Backup Database Option for Administrators -->
+<li><hr class="dropdown-divider"></li>
+<li><a class="dropdown-item" href="#" onclick="createDatabaseBackup()">
+    <i class="fas fa-database"></i> Backup Database
+</a></li>
+                    
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
@@ -951,6 +957,180 @@ function logoutUser() {
             
             // Redirect directly to logout page which has its own beautiful loader
             window.location.href = '../logout.php';
+        }
+    });
+}
+// Enhanced database backup function
+function createDatabaseBackup() {
+    
+    Swal.fire({
+        title: 'Create Database Backup',
+        text: "This will create a complete backup of the database. This may take a few moments.",
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Create Backup',
+        cancelButtonText: 'Cancel',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return fetch('backup_database.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message || 'Unknown error occurred');
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(`Backup failed: ${error.message}`);
+                });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            const backupData = result.value;
+            Swal.fire({
+                title: 'Backup Successful!',
+                html: `
+                    <div class="text-left">
+                        <p><strong>File:</strong> ${backupData.filename}</p>
+                        <p><strong>Size:</strong> ${backupData.filesize}</p>
+                        <p><strong>Time:</strong> ${backupData.timestamp}</p>
+                        <p><strong>Location:</strong> ${backupData.filepath}</p>
+                    </div>
+                `,
+                icon: 'success',
+                confirmButtonText: 'OK',
+                showCancelButton: true,
+                cancelButtonText: 'Download',
+                didOpen: () => {
+                    // Add download functionality to cancel button
+                    const cancelButton = Swal.getCancelButton();
+                    cancelButton.addEventListener('click', function() {
+                        downloadBackup(backupData.filename);
+                    });
+                }
+            });
+        }
+    });
+}
+
+// Function to download backup file
+function downloadBackup(filename) {
+    const downloadUrl = '../database_backups/' + filename;
+    
+    // Create temporary link for download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Show success message
+    Swal.fire({
+        title: 'Download Started',
+        text: 'Backup file download has started.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+    });
+}
+// Function to download backup file
+function downloadBackup(filename) {
+    const downloadUrl = '../database_backups/' + filename;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Function to view backup history (optional)
+function viewBackupHistory() {
+    Swal.fire({
+        title: 'Backup History',
+        html: '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading backup history...</div>',
+        showConfirmButton: false,
+        allowOutsideClick: false
+    });
+    
+    // You can implement AJAX call to fetch backup history here
+    // This would require creating a separate PHP file to fetch backup logs
+}
+// Enhanced backup function with progress tracking
+function createDatabaseBackupWithProgress() {
+    let timerInterval;
+    Swal.fire({
+        title: 'Creating Database Backup',
+        html: 'Please wait while we backup your database...<br><div class="progress mt-3"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div></div>',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+            const progressBar = Swal.getHtmlContainer().querySelector('.progress-bar');
+            let progress = 0;
+            
+            timerInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 500);
+            
+            // Start actual backup
+            fetch('../views/backup_database.php')
+                .then(response => response.json())
+                .then(data => {
+                    clearInterval(timerInterval);
+                    progressBar.style.width = '100%';
+                    
+                    setTimeout(() => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: 'Backup Complete!',
+                                html: `
+                                    <div class="text-left">
+                                        <p><i class="fas fa-check-circle text-success"></i> Backup created successfully</p>
+                                        <p><strong>File:</strong> ${data.filename}</p>
+                                        <p><strong>Size:</strong> ${data.filesize}</p>
+                                        <p><strong>Time:</strong> ${data.timestamp}</p>
+                                    </div>
+                                `,
+                                icon: 'success',
+                                confirmButtonText: 'OK',
+                                showCancelButton: true,
+                                cancelButtonText: 'Download',
+                                preConfirm: () => {
+                                    downloadBackup(data.filename);
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Backup Failed',
+                                text: data.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    }, 1000);
+                })
+                .catch(error => {
+                    clearInterval(timerInterval);
+                    Swal.fire({
+                        title: 'Backup Failed',
+                        text: 'An error occurred while creating the backup.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                });
         }
     });
 }

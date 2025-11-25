@@ -128,7 +128,7 @@ function formatSectionHeadName($first_name, $last_name, $middle_name = '') {
             font-size: 11px;
             line-height: 1.3;
             color: #000;
-            max-width: 8.5in;
+            max-width: 8.2in;
             margin: 0 auto;
             padding: 0.5in;
             position: relative; /* Added for normal flow */
