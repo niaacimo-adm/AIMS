@@ -1,6 +1,6 @@
 <?php
-    require_once '../config/database.php';
-    require_once 'helpers.php';
+require_once '../config/database.php';
+require_once 'helpers.php';
 ?>
 <?php
 // Determine current theme based on page
@@ -31,17 +31,17 @@ $employee_id = $_SESSION['emp_id'] ?? null;
 if ($employee_id) {
     $database = new Database();
     $db = $database->getConnection();
-    
+
     $query = "SELECT first_name, last_name, picture FROM employee WHERE emp_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $employee_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows > 0) {
         $employee_data = $result->fetch_assoc();
         $employee_name = htmlspecialchars($employee_data['first_name'] . ' ' . $employee_data['last_name']);
-        
+
         // Generate initials
         $names = explode(' ', $employee_name);
         if (count($names) >= 2) {
@@ -72,6 +72,14 @@ if ($employee_id) {
                                 <i class="fas fa-tachometer-alt"></i>
                             </div>
                             <span class="app-name">Admin Section</span>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="queue.php" class="app-item" data-theme="queue">
+                            <div class="app-icon">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <span class="app-name">Queue Management</span>
                         </a>
                     </div>
                     <div class="col-6">
@@ -137,7 +145,7 @@ if ($employee_id) {
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
-    <!-- Notifications Dropdown -->
+        <!-- Notifications Dropdown -->
         <li class="nav-item dropdown notification-dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false" id="notificationDropdown">
                 <i class="far fa-bell"></i>
@@ -146,7 +154,7 @@ if ($employee_id) {
                 if (isset($_SESSION['emp_id'])) {
                     require_once 'leave_functions.php';
                     $leaveFunctions = new LeaveFunctions();
-                    
+
                     // Check if user is admin and should see all notifications
                     $user_role = $_SESSION['role'] ?? '';
                     if ($user_role === 'admin') {
@@ -156,7 +164,7 @@ if ($employee_id) {
                         // Regular users see only their notifications
                         $unread_count = $leaveFunctions->getUnreadNotificationCount($_SESSION['emp_id']);
                     }
-                    
+
                     if ($unread_count > 0) {
                         echo '<span class="notification-badge" id="notificationCount">' . $unread_count . '</span>';
                     }
@@ -176,7 +184,7 @@ if ($employee_id) {
                 <div class="notification-header">
                     <span>Notifications</span>
                     <span class="notification-count" id="notificationHeader">
-                        <?php 
+                        <?php
                         if (isset($unread_count)) {
                             echo $unread_count > 0 ? $unread_count . ' New' : 'No Notifications';
                         } else {
@@ -189,20 +197,20 @@ if ($employee_id) {
                     <?php
                     if (isset($_SESSION['emp_id'])) {
                         $user_role = $_SESSION['role'] ?? '';
-                        
+
                         // Get notifications based on user role
                         if ($user_role === 'admin') {
                             $notifications = $leaveFunctions->getAdminNotifications();
                         } else {
                             $notifications = $leaveFunctions->getUserNotifications($_SESSION['emp_id']);
                         }
-                        
+
                         if (count($notifications) > 0) {
                             foreach ($notifications as $notification) {
                                 $time_ago = time_elapsed_string($notification['created_at']);
                                 $read_class = $notification['is_read'] ? '' : 'unread';
-                                $link = $notification['link'] ?? '#'; 
-                                
+                                $link = $notification['link'] ?? '#';
+
                                 // Make sure the link is properly set for all roles
                                 if (empty($link) && strpos($notification['message'], 'leave request') !== false) {
                                     // Extract leave ID from message for fallback
@@ -211,7 +219,7 @@ if ($employee_id) {
                                         $link = "leave_approval.php?leave_id=" . $matches[1];
                                     }
                                 }
-                                
+
                                 echo '<a href="' . $link . '" class="notification-link" style="text-decoration: none; color: inherit;">';
                                 echo '<div class="notification-item ' . $read_class . '" data-notification-id="' . $notification['id'] . '">';
                                 echo '    <div class="notification-content">';
@@ -245,39 +253,43 @@ if ($employee_id) {
                 </a>
             </div>
         </li>
-        
+
         <!-- Fullscreen Toggle -->
         <li class="nav-item">
             <a class="nav-link" data-widget="fullscreen" href="#" role="button">
                 <i class="fas fa-expand-arrows-alt"></i>
             </a>
         </li>
-        
-            <!-- Profile Dropdown -->
-            <li class="nav-item dropdown profile-dropdown">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
-                    <div class="profile-avatar">
-                        <?php if (!empty($employee_data['picture']) && file_exists('../dist/img/employees/' . $employee_data['picture'])): ?>
-                            <img src="../dist/img/employees/<?= $employee_data['picture'] ?>" alt="<?= $employee_name ?>" class="profile-avatar-img">
-                        <?php else: ?>
-                            <span><?= $employee_initials ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="profile-name d-none d-md-inline"><?= $employee_name ?: 'User' ?></span>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="profile.php" onclick="setProfileThemeWithCurrent()"><i class="fas fa-user"></i> My Profile</a></li>
-                    <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
-<!-- Backup Database Option for Administrators -->
-<li><hr class="dropdown-divider"></li>
-<li><a class="dropdown-item" href="#" onclick="createDatabaseBackup()">
-    <i class="fas fa-database"></i> Backup Database
-</a></li>
-                    
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-                </ul>
-            </li>
+
+        <!-- Profile Dropdown -->
+        <li class="nav-item dropdown profile-dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
+                <div class="profile-avatar">
+                    <?php if (!empty($employee_data['picture']) && file_exists('../dist/img/employees/' . $employee_data['picture'])): ?>
+                        <img src="../dist/img/employees/<?= $employee_data['picture'] ?>" alt="<?= $employee_name ?>" class="profile-avatar-img">
+                    <?php else: ?>
+                        <span><?= $employee_initials ?></span>
+                    <?php endif; ?>
+                </div>
+                <span class="profile-name d-none d-md-inline"><?= $employee_name ?: 'User' ?></span>
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="profile.php" onclick="setProfileThemeWithCurrent()"><i class="fas fa-user"></i> My Profile</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                <!-- Backup Database Option for Administrators -->
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li><a class="dropdown-item" href="#" onclick="createDatabaseBackup()">
+                        <i class="fas fa-database"></i> Backup Database
+                    </a></li>
+
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li><a class="dropdown-item" href="#" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </li>
     </ul>
 </nav>
 
@@ -304,45 +316,45 @@ if ($employee_id) {
                     $result = $stmt->get_result();
                     $all_notifications = $result->fetch_all(MYSQLI_ASSOC);
                 ?>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Message</th>
-                                <th width="120">Status</th>
-                                <th width="150">Date</th>
-                                <th width="100">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (count($all_notifications) > 0): ?>
-                                <?php foreach ($all_notifications as $notification): ?>
-                                    <tr class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>">
-                                        <td><?= htmlspecialchars_decode($notification['message']) ?></td>
-                                        <td>
-                                            <span class="badge badge-<?= $notification['is_read'] ? 'success' : 'warning' ?>">
-                                                <?= $notification['is_read'] ? 'Read' : 'Unread' ?>
-                                            </span>
-                                        </td>
-                                        <td><?= time_elapsed_string($notification['created_at']) ?></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['id'] ?>">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['id'] ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
                                 <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted">No notifications found</td>
+                                    <th>Message</th>
+                                    <th width="120">Status</th>
+                                    <th width="150">Date</th>
+                                    <th width="100">Actions</th>
                                 </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                <?php if (count($all_notifications) > 0): ?>
+                                    <?php foreach ($all_notifications as $notification): ?>
+                                        <tr class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>">
+                                            <td><?= htmlspecialchars_decode($notification['message']) ?></td>
+                                            <td>
+                                                <span class="badge badge-<?= $notification['is_read'] ? 'success' : 'warning' ?>">
+                                                    <?= $notification['is_read'] ? 'Read' : 'Unread' ?>
+                                                </span>
+                                            </td>
+                                            <td><?= time_elapsed_string($notification['created_at']) ?></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['id'] ?>">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['id'] ?>">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">No notifications found</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 <?php } ?>
             </div>
             <div class="modal-footer">
@@ -365,12 +377,12 @@ if ($employee_id) {
         // Get base URL for AJAX calls - ORIGINAL JAVASCRIPT
         const baseUrl = window.location.origin + '/NIA-PROJECT/views/';
         console.log('Base URL:', baseUrl);
-        
+
         // Fix pushmenu functionality for Bootstrap 4
         $('[data-widget="pushmenu"]').click(function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             // Use AdminLTE if available
             if (typeof $ !== 'undefined' && $.fn.pushMenu) {
                 $('body').pushMenu('toggle');
@@ -379,7 +391,7 @@ if ($employee_id) {
                 $('body').toggleClass('sidebar-collapse');
                 $('body').toggleClass('sidebar-open');
             }
-            
+
             // Update localStorage for persistence
             const isCollapsed = $('body').hasClass('sidebar-collapse');
             localStorage.setItem('sidebar-collapsed', isCollapsed);
@@ -394,7 +406,7 @@ if ($employee_id) {
         $('[data-widget="fullscreen"]').click(function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => {
                     console.log(`Error attempting to enable fullscreen: ${err.message}`);
@@ -415,11 +427,13 @@ if ($employee_id) {
         $('.mark-all-read-btn').click(function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             $.ajax({
                 url: baseUrl + 'mark_all_notifications_read.php',
                 type: 'POST',
-                data: {emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>},
+                data: {
+                    emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
+                },
                 success: function(response) {
                     if (response.success) {
                         // Update UI with modern classes
@@ -428,7 +442,7 @@ if ($employee_id) {
                         $('#notificationHeader').text('No Notifications');
                         $('.notification-item').removeClass('unread');
                         $('.badge-warning').removeClass('badge-warning').addClass('badge-success').text('Read');
-                        
+
                         // Show success message
                         toastr.success('All notifications marked as read');
                     } else {
@@ -440,17 +454,19 @@ if ($employee_id) {
                 }
             });
         });
-        
+
         // Delete all notifications (dropdown)
         $('.delete-all-btn').click(function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             if (confirm('Are you sure you want to delete all notifications?')) {
                 $.ajax({
                     url: baseUrl + 'delete_all_notifications.php',
                     type: 'POST',
-                    data: {emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>},
+                    data: {
+                        emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
+                    },
                     success: function(response) {
                         if (response.success) {
                             // Update UI
@@ -458,7 +474,7 @@ if ($employee_id) {
                             $('#notificationCount').remove();
                             $('#notificationHeader').text('No Notifications');
                             $('#allNotificationsModal tbody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
-                            
+
                             // Show success message
                             toastr.success('All notifications deleted');
                         } else {
@@ -471,13 +487,15 @@ if ($employee_id) {
                 });
             }
         });
-        
+
         // Mark all notifications as read (modal)
         $('#modalMarkAllRead').click(function() {
             $.ajax({
                 url: baseUrl + 'mark_all_notifications_read.php',
                 type: 'POST',
-                data: {emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>},
+                data: {
+                    emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
+                },
                 success: function(response) {
                     if (response.success) {
                         // Update UI
@@ -486,7 +504,7 @@ if ($employee_id) {
                         $('.notification-item').removeClass('unread');
                         $('#notificationCount').remove();
                         $('#notificationHeader').text('No Notifications');
-                        
+
                         // Show success message
                         toastr.success('All notifications marked as read');
                     } else {
@@ -498,14 +516,16 @@ if ($employee_id) {
                 }
             });
         });
-        
+
         // Delete all notifications (modal)
         $('#modalDeleteAll').click(function() {
             if (confirm('Are you sure you want to delete all notifications?')) {
                 $.ajax({
                     url: baseUrl + 'delete_all_notifications.php',
                     type: 'POST',
-                    data: {emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>},
+                    data: {
+                        emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
+                    },
                     success: function(response) {
                         if (response.success) {
                             // Update UI
@@ -513,7 +533,7 @@ if ($employee_id) {
                             $('#notificationCount').remove();
                             $('#notificationHeader').text('No Notifications');
                             $('#allNotificationsModal tbody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
-                            
+
                             // Show success message
                             toastr.success('All notifications deleted');
                         } else {
@@ -526,30 +546,32 @@ if ($employee_id) {
                 });
             }
         });
-        
+
         // Delete single notification
         $(document).on('click', '.delete-notification', function() {
             const notificationId = $(this).data('id');
             const $row = $(this).closest('tr');
-            
+
             if (confirm('Are you sure you want to delete this notification?')) {
                 $.ajax({
                     url: '../views/delete_notification.php',
                     type: 'POST',
-                    data: {id: notificationId},
+                    data: {
+                        id: notificationId
+                    },
                     success: function(response) {
                         if (response.success) {
                             // Remove the row from the table
                             $row.remove();
-                            
+
                             // Check if table is empty
                             if ($('#allNotificationsModal tbody tr').length === 0) {
                                 $('#allNotificationsModal tbody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
                             }
-                            
+
                             // Update dropdown count
                             updateNotificationCount();
-                            
+
                             toastr.success('Notification deleted');
                         } else {
                             toastr.error('Error deleting notification');
@@ -561,28 +583,30 @@ if ($employee_id) {
                 });
             }
         });
-        
+
         // View notification (mark as read)
         $(document).on('click', '.view-notification', function() {
             const notificationId = $(this).data('id');
             const $row = $(this).closest('tr');
-            
+
             $.ajax({
                 url: baseUrl + 'mark_notification_read.php',
                 type: 'POST',
-                data: {id: notificationId},
+                data: {
+                    id: notificationId
+                },
                 success: function(response) {
                     if (response.success) {
                         // Update UI
                         $row.removeClass('unread');
                         $row.find('.badge').removeClass('badge-warning').addClass('badge-success').text('Read');
-                        
+
                         // Update dropdown if this notification is there
                         $('div[data-notification-id="' + notificationId + '"]').removeClass('unread');
-                        
+
                         // Update count
                         updateNotificationCount();
-                        
+
                         toastr.success('Notification marked as read');
                     } else {
                         toastr.error('Error marking notification as read');
@@ -593,7 +617,7 @@ if ($employee_id) {
                 }
             });
         });
-        
+
         // Function to update notification count - ORIGINAL FUNCTION
         function updateNotificationCount() {
             $.ajax({
@@ -614,9 +638,9 @@ if ($employee_id) {
                 }
             });
         }
-        
+
         // Refresh modal content when opened - ORIGINAL FUNCTION
-        $('#allNotificationsModal').on('show.bs.modal', function () {
+        $('#allNotificationsModal').on('show.bs.modal', function() {
             $.ajax({
                 url: baseUrl + 'get_all_notifications.php',
                 type: 'GET',
@@ -632,10 +656,10 @@ if ($employee_id) {
         $(document).on('click', '.notification-text a', function(e) {
             console.log('Link clicked:', $(this).attr('href'));
             e.stopPropagation();
-            
+
             // Allow default link behavior (navigation)
             const href = $(this).attr('href');
-            
+
             if (href && href !== '#') {
                 console.log('Allowing navigation to:', href);
                 return true;
@@ -650,28 +674,30 @@ if ($employee_id) {
             if ($(e.target).is('a') || $(e.target).closest('a').length) {
                 return;
             }
-            
+
             e.preventDefault();
             e.stopPropagation();
-            
+
             const notificationId = $(this).data('notification-id');
             const $notificationLink = $(this).closest('.notification-link');
             const href = $notificationLink.attr('href');
-            
+
             console.log('Notification clicked:', notificationId, 'Link:', href);
-            
+
             if (notificationId && href && href !== '#') {
                 // Mark as read via AJAX
                 $.ajax({
                     url: baseUrl + 'mark_notification_read.php',
                     type: 'POST',
-                    data: {id: notificationId},
+                    data: {
+                        id: notificationId
+                    },
                     success: function(response) {
                         console.log('Mark as read response:', response);
                         if (response.success) {
                             $(this).removeClass('unread');
                             updateNotificationCount();
-                            
+
                             // Navigate to the link after marking as read
                             console.log('Navigating to:', href);
                             window.location.href = href;
@@ -718,7 +744,7 @@ if ($employee_id) {
                 var $parent = $dropdown.parent();
                 var $window = $(window);
                 var rect = $parent[0].getBoundingClientRect();
-                
+
                 // Check if dropdown would go off screen
                 if (rect.right + $dropdown.outerWidth() > $window.width()) {
                     $dropdown.addClass('dropdown-menu-right');
@@ -727,7 +753,7 @@ if ($employee_id) {
         });
         // Force close other dropdowns when one opens
 
-        
+
     });
 </script>
 <script>
@@ -773,6 +799,11 @@ if ($employee_id) {
                 header: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
                 footer: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
                 class: 'theme-scrum'
+            },
+            'queue': {
+                header: 'linear-gradient(135deg, #2c3e50, #34495e)',
+                footer: 'linear-gradient(135deg, #2c3e50, #34495e)',
+                class: 'theme-queue'
             }
         };
 
@@ -802,7 +833,7 @@ if ($employee_id) {
 
             // Save theme to localStorage
             localStorage.setItem('currentTheme', themeName);
-            
+
             // Update notification header background to match theme
             $('.notification-header').css('background', theme.header);
         }
@@ -818,34 +849,34 @@ if ($employee_id) {
             }
         });
 
-    function setThemeFromPage() {
-        const currentPage = window.location.pathname;
-        console.log('Current page:', currentPage);
-        let theme = 'admin'; // default
-        
-        // Comprehensive theme detection
-        if (currentPage.includes('ict_') || currentPage.includes('ict_inventory') || currentPage.includes('ict_equipment') || currentPage.includes('ict_my_equipment')) {
-            theme = 'ict';
-        } else if (currentPage.includes('service')) {
-            theme = 'service';
-        } else if (currentPage.includes('inventory') && !currentPage.includes('ict_')) {
-            theme = 'inventory';
-        } else if (currentPage.includes('file_management')) {
-            theme = 'file';
-        } else if (currentPage.includes('ia_profile') || currentPage.includes('ia_profiles')) {
-            theme = 'ia';
-        } else if (currentPage.includes('document_') || currentPage.includes('documents_')) {
-            theme = 'document';
-        } else if (currentPage.includes('scrum') || currentPage.includes('scrumboard')) {
-            theme = 'scrum';
-        } else if (currentPage.includes('dashboard')) {
-            theme = 'admin';
+        function setThemeFromPage() {
+            const currentPage = window.location.pathname;
+            console.log('Current page:', currentPage);
+            let theme = 'admin'; // default
+
+            // Comprehensive theme detection
+            if (currentPage.includes('ict_') || currentPage.includes('ict_inventory') || currentPage.includes('ict_equipment') || currentPage.includes('ict_my_equipment')) {
+                theme = 'ict';
+            } else if (currentPage.includes('service')) {
+                theme = 'service';
+            } else if (currentPage.includes('inventory') && !currentPage.includes('ict_')) {
+                theme = 'inventory';
+            } else if (currentPage.includes('file_management')) {
+                theme = 'file';
+            } else if (currentPage.includes('ia_profile') || currentPage.includes('ia_profiles')) {
+                theme = 'ia';
+            } else if (currentPage.includes('document_') || currentPage.includes('documents_')) {
+                theme = 'document';
+            } else if (currentPage.includes('scrum') || currentPage.includes('scrumboard')) {
+                theme = 'scrum';
+            } else if (currentPage.includes('dashboard')) {
+                theme = 'admin';
+            }
+
+            console.log('Detected theme:', theme);
+            setTheme(theme);
+            return theme;
         }
-        
-        console.log('Detected theme:', theme);
-        setTheme(theme);
-        return theme;
-    }
 
         // Set theme on page load with delay to ensure DOM is ready
         setTimeout(function() {
@@ -881,123 +912,124 @@ if ($employee_id) {
     });
 </script>
 <script>
-// Force theme application on load
-$(window).on('load', function() {
-    setTimeout(function() {
+    // Force theme application on load
+    $(window).on('load', function() {
+        setTimeout(function() {
+            const currentTheme = localStorage.getItem('currentTheme') || 'admin';
+            const themes = {
+                'admin': 'linear-gradient(135deg, #4361ee, #3f37c9)',
+                'queue': 'linear-gradient(135deg, #2c3e50, #34495e)',
+                'service': 'linear-gradient(135deg, #ffc107, #fd7e14)',
+                'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
+                'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
+                'ict': 'linear-gradient(135deg, #17a2b8, #138496)',
+                'ia': 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
+                'document': 'linear-gradient(135deg, #556b2f, #2b2b2b)',
+                'scrum': 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
+            };
+
+            if (themes[currentTheme]) {
+                $('.main-header').css('background', themes[currentTheme]);
+                $('#mainFooter').css('background', themes[currentTheme]);
+
+                // Also update theme classes
+                $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
+                    .addClass('theme-' + currentTheme);
+                $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
+                    .addClass('theme-' + currentTheme);
+
+                console.log('Theme applied:', currentTheme);
+            }
+        }, 200);
+    });
+    // Set module cookie based on current theme when profile is accessed from header
+    function setModuleCookie() {
         const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-        const themes = {
-            'admin': 'linear-gradient(135deg, #4361ee, #3f37c9)',
-            'service': 'linear-gradient(135deg, #ffc107, #fd7e14)',
-            'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
-            'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
-            'ict': 'linear-gradient(135deg, #17a2b8, #138496)',
-            'ia': 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-            'document': 'linear-gradient(135deg, #556b2f, #2b2b2b)',
-            'scrum': 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
-        };
-        
-        if (themes[currentTheme]) {
-            $('.main-header').css('background', themes[currentTheme]);
-            $('#mainFooter').css('background', themes[currentTheme]);
-            
-            // Also update theme classes
-            $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
-                            .addClass('theme-' + currentTheme);
-            $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
-                          .addClass('theme-' + currentTheme);
-            
-            console.log('Theme applied:', currentTheme);
-        }
-    }, 200);
-});
-// Set module cookie based on current theme when profile is accessed from header
-function setModuleCookie() {
-    const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-    document.cookie = `current_module=${currentTheme}; path=/; max-age=300`; // 5 minutes
-    console.log('Module cookie set:', currentTheme);
-}
+        document.cookie = `current_module=${currentTheme}; path=/; max-age=300`; // 5 minutes
+        console.log('Module cookie set:', currentTheme);
+    }
 
-// Update profile link to set module cookie
-$(document).ready(function() {
-    $('a[href="profile.php"]').on('click', function(e) {
-        setModuleCookie();
+    // Update profile link to set module cookie
+    $(document).ready(function() {
+        $('a[href="profile.php"]').on('click', function(e) {
+            setModuleCookie();
+        });
     });
-});
 
-// Function to set profile theme with current module
-function setProfileThemeWithCurrent() {
-    const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-    document.cookie = `current_module=${currentTheme}; path=/; max-age=300`;
-    console.log('Profile theme set to:', currentTheme);
-}
-// Enhanced logout function with SweetAlert - No redundant loading
-function logoutUser() {
-    Swal.fire({
-        title: 'Are you sure?',
-        text: "You will be logged out of the system!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, logout!',
-        cancelButtonText: 'Cancel',
-        reverseButtons: true,
-        customClass: {
-            popup: 'custom-swal-popup',
-            title: 'custom-swal-title',
-            content: 'custom-swal-content',
-            confirmButton: 'custom-swal-confirm',
-            cancelButton: 'custom-swal-cancel'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Clear any theme/local storage
-            localStorage.removeItem('currentTheme');
-            localStorage.removeItem('sidebar-collapsed');
-            
-            // Redirect directly to logout page which has its own beautiful loader
-            window.location.href = '../logout.php';
-        }
-    });
-}
-// Enhanced database backup function
-function createDatabaseBackup() {
-    
-    Swal.fire({
-        title: 'Create Database Backup',
-        text: "This will create a complete backup of the database. This may take a few moments.",
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Create Backup',
-        cancelButtonText: 'Cancel',
-        showLoaderOnConfirm: true,
-        preConfirm: () => {
-            return fetch('backup_database.php')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message || 'Unknown error occurred');
-                    }
-                    return data;
-                })
-                .catch(error => {
-                    Swal.showValidationMessage(`Backup failed: ${error.message}`);
-                });
-        },
-        allowOutsideClick: () => !Swal.isLoading()
-    }).then((result) => {
-        if (result.isConfirmed && result.value) {
-            const backupData = result.value;
-            Swal.fire({
-                title: 'Backup Successful!',
-                html: `
+    // Function to set profile theme with current module
+    function setProfileThemeWithCurrent() {
+        const currentTheme = localStorage.getItem('currentTheme') || 'admin';
+        document.cookie = `current_module=${currentTheme}; path=/; max-age=300`;
+        console.log('Profile theme set to:', currentTheme);
+    }
+    // Enhanced logout function with SweetAlert - No redundant loading
+    function logoutUser() {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You will be logged out of the system!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, logout!',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+            customClass: {
+                popup: 'custom-swal-popup',
+                title: 'custom-swal-title',
+                content: 'custom-swal-content',
+                confirmButton: 'custom-swal-confirm',
+                cancelButton: 'custom-swal-cancel'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Clear any theme/local storage
+                localStorage.removeItem('currentTheme');
+                localStorage.removeItem('sidebar-collapsed');
+
+                // Redirect directly to logout page which has its own beautiful loader
+                window.location.href = '../logout.php';
+            }
+        });
+    }
+    // Enhanced database backup function
+    function createDatabaseBackup() {
+
+        Swal.fire({
+            title: 'Create Database Backup',
+            text: "This will create a complete backup of the database. This may take a few moments.",
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Create Backup',
+            cancelButtonText: 'Cancel',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch('backup_database.php')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message || 'Unknown error occurred');
+                        }
+                        return data;
+                    })
+                    .catch(error => {
+                        Swal.showValidationMessage(`Backup failed: ${error.message}`);
+                    });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                const backupData = result.value;
+                Swal.fire({
+                    title: 'Backup Successful!',
+                    html: `
                     <div class="text-left">
                         <p><strong>File:</strong> ${backupData.filename}</p>
                         <p><strong>Size:</strong> ${backupData.filesize}</p>
@@ -1005,98 +1037,98 @@ function createDatabaseBackup() {
                         <p><strong>Location:</strong> ${backupData.filepath}</p>
                     </div>
                 `,
-                icon: 'success',
-                confirmButtonText: 'OK',
-                showCancelButton: true,
-                cancelButtonText: 'Download',
-                didOpen: () => {
-                    // Add download functionality to cancel button
-                    const cancelButton = Swal.getCancelButton();
-                    cancelButton.addEventListener('click', function() {
-                        downloadBackup(backupData.filename);
-                    });
-                }
-            });
-        }
-    });
-}
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                    showCancelButton: true,
+                    cancelButtonText: 'Download',
+                    didOpen: () => {
+                        // Add download functionality to cancel button
+                        const cancelButton = Swal.getCancelButton();
+                        cancelButton.addEventListener('click', function() {
+                            downloadBackup(backupData.filename);
+                        });
+                    }
+                });
+            }
+        });
+    }
 
-// Function to download backup file
-function downloadBackup(filename) {
-    const downloadUrl = '../database_backups/' + filename;
-    
-    // Create temporary link for download
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.style.display = 'none';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Show success message
-    Swal.fire({
-        title: 'Download Started',
-        text: 'Backup file download has started.',
-        icon: 'success',
-        timer: 2000,
-        showConfirmButton: false
-    });
-}
-// Function to download backup file
-function downloadBackup(filename) {
-    const downloadUrl = '../database_backups/' + filename;
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
+    // Function to download backup file
+    function downloadBackup(filename) {
+        const downloadUrl = '../database_backups/' + filename;
 
-// Function to view backup history (optional)
-function viewBackupHistory() {
-    Swal.fire({
-        title: 'Backup History',
-        html: '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading backup history...</div>',
-        showConfirmButton: false,
-        allowOutsideClick: false
-    });
-    
-    // You can implement AJAX call to fetch backup history here
-    // This would require creating a separate PHP file to fetch backup logs
-}
-// Enhanced backup function with progress tracking
-function createDatabaseBackupWithProgress() {
-    let timerInterval;
-    Swal.fire({
-        title: 'Creating Database Backup',
-        html: 'Please wait while we backup your database...<br><div class="progress mt-3"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div></div>',
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-            const progressBar = Swal.getHtmlContainer().querySelector('.progress-bar');
-            let progress = 0;
-            
-            timerInterval = setInterval(() => {
-                progress += Math.random() * 10;
-                if (progress > 90) progress = 90;
-                progressBar.style.width = progress + '%';
-            }, 500);
-            
-            // Start actual backup
-            fetch('../views/backup_database.php')
-                .then(response => response.json())
-                .then(data => {
-                    clearInterval(timerInterval);
-                    progressBar.style.width = '100%';
-                    
-                    setTimeout(() => {
-                        if (data.success) {
-                            Swal.fire({
-                                title: 'Backup Complete!',
-                                html: `
+        // Create temporary link for download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success message
+        Swal.fire({
+            title: 'Download Started',
+            text: 'Backup file download has started.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+    // Function to download backup file
+    function downloadBackup(filename) {
+        const downloadUrl = '../database_backups/' + filename;
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Function to view backup history (optional)
+    function viewBackupHistory() {
+        Swal.fire({
+            title: 'Backup History',
+            html: '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading backup history...</div>',
+            showConfirmButton: false,
+            allowOutsideClick: false
+        });
+
+        // You can implement AJAX call to fetch backup history here
+        // This would require creating a separate PHP file to fetch backup logs
+    }
+    // Enhanced backup function with progress tracking
+    function createDatabaseBackupWithProgress() {
+        let timerInterval;
+        Swal.fire({
+            title: 'Creating Database Backup',
+            html: 'Please wait while we backup your database...<br><div class="progress mt-3"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div></div>',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => {
+                const progressBar = Swal.getHtmlContainer().querySelector('.progress-bar');
+                let progress = 0;
+
+                timerInterval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress > 90) progress = 90;
+                    progressBar.style.width = progress + '%';
+                }, 500);
+
+                // Start actual backup
+                fetch('../views/backup_database.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        clearInterval(timerInterval);
+                        progressBar.style.width = '100%';
+
+                        setTimeout(() => {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: 'Backup Complete!',
+                                    html: `
                                     <div class="text-left">
                                         <p><i class="fas fa-check-circle text-success"></i> Backup created successfully</p>
                                         <p><strong>File:</strong> ${data.filename}</p>
@@ -1104,34 +1136,34 @@ function createDatabaseBackupWithProgress() {
                                         <p><strong>Time:</strong> ${data.timestamp}</p>
                                     </div>
                                 `,
-                                icon: 'success',
-                                confirmButtonText: 'OK',
-                                showCancelButton: true,
-                                cancelButtonText: 'Download',
-                                preConfirm: () => {
-                                    downloadBackup(data.filename);
-                                }
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Backup Failed',
-                                text: data.message,
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    }, 1000);
-                })
-                .catch(error => {
-                    clearInterval(timerInterval);
-                    Swal.fire({
-                        title: 'Backup Failed',
-                        text: 'An error occurred while creating the backup.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
+                                    icon: 'success',
+                                    confirmButtonText: 'OK',
+                                    showCancelButton: true,
+                                    cancelButtonText: 'Download',
+                                    preConfirm: () => {
+                                        downloadBackup(data.filename);
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Backup Failed',
+                                    text: data.message,
+                                    icon: 'error',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        }, 1000);
+                    })
+                    .catch(error => {
+                        clearInterval(timerInterval);
+                        Swal.fire({
+                            title: 'Backup Failed',
+                            text: 'An error occurred while creating the backup.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
                     });
-                });
-        }
-    });
-}
+            }
+        });
+    }
 </script>
