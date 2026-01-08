@@ -68,14 +68,6 @@ if ($employee_id) {
       <!-- Sidebar Menu -->
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
-          <li class="nav-item">
-            <a href="queue.php" class="nav-link <?= $current_page == 'queue.php' ? 'active bg-queue' : 'text-white' ?>">
-              <i class="nav-icon fas fa-list-ol"></i>
-              <p>Queue Dashboard</p>
-            </a>
-          </li>
-          
-          <li class="nav-header text-light border-bottom pb-2 mt-3">QUEUE MANAGEMENT</li>
           
           <li class="nav-item">
             <a href="queue_display.php" class="nav-link <?= $current_page == 'queue_display.php' ? 'active bg-queue' : 'text-white' ?>">
@@ -85,12 +77,17 @@ if ($employee_id) {
           </li>
           
           <li class="nav-item">
-            <a href="visitor_registration.php" class="nav-link <?= $current_page == 'visitor_registration.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="section_queue.php" class="nav-link <?= $current_page == 'section_queue.php' ? 'active bg-queue' : 'text-white' ?>">
+              <i class="nav-icon fas fa-building"></i>
+              <p>Section/IMO Queue</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="queue.php" class="nav-link <?= $current_page == 'queue.php' ? 'active bg-queue' : 'text-white' ?>">
               <i class="nav-icon fas fa-user-plus"></i>
               <p>Visitor Registration</p>
             </a>
           </li>
-          
           <li class="nav-item">
             <a href="queue_reports.php" class="nav-link <?= $current_page == 'queue_reports.php' ? 'active bg-queue' : 'text-white' ?>">
               <i class="nav-icon fas fa-chart-bar"></i>

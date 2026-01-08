@@ -103,6 +103,55 @@ if ($unit_result) {
             margin: 10px auto;
             display: block;
         }
+
+        .priority-queue {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+            color: white;
+        }
+
+        .priority-badge {
+            background: #dc3545 !important;
+            color: white;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .priority-text {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .custom-checkbox.priority-check .custom-control-label::before {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+            border-color: #dc3545;
+        }
+
+        .custom-checkbox.priority-check .custom-control-input:checked~.custom-control-label::before {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+            border-color: #dc3545;
+        }
+
+        .priority-label {
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        .priority-field {
+            border: 2px solid #dc3545 !important;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -160,6 +209,17 @@ if ($unit_result) {
                                                 <option value="Other">Other</option>
                                             </select>
                                         </div>
+
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="isPriority">
+                                                <label class="custom-control-label text-danger" for="isPriority">
+                                                    Priority Visitor
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">Check this box for Priority visitors <label class="text-danger">(Senior Citizens | PWD | Pregnant)</label></small>
+                                        </div>
+
                                         <div class="form-group">
                                             <label for="personToVisit">Person to Visit *</label>
                                             <select class="form-control select2" id="personToVisit" required style="width: 100%;">
@@ -173,7 +233,7 @@ if ($unit_result) {
                                         </div>
                                         <div class="form-group">
                                             <label for="section">Department/Section *</label>
-                                            <select class="form-control select2" id="section" required style="width: 100%;">
+                                            <select class="form-control select2" id="section" required style="width: 100%;" disabled>
                                                 <option value="">Select Section/Unit</option>
                                                 <optgroup label="Manager's Office">
                                                     <option value="manager_office">IMO Office</option>
@@ -201,6 +261,7 @@ if ($unit_result) {
                                                     <?php endforeach; ?>
                                                 </optgroup>
                                             </select>
+                                            <small id="sectionHelp" class="form-text text-muted">Section will be auto-selected based on the employee chosen.</small>
                                         </div>
                                         <div class="form-group">
                                             <label for="contactNumber">Contact Number</label>
@@ -340,108 +401,209 @@ if ($unit_result) {
                 theme: 'bootstrap4'
             });
 
-// Replace the DataTables initialization section with this:
-var queueTable = $('#queueTable').DataTable({
-    "processing": true,
-    "serverSide": false,
-    "ajax": {
-        "url": "../includes/queue_ajax.php?action=get_queue",
-        "type": "GET",
-        "dataSrc": function(json) {
-            console.log('AJAX Response:', json); // Debug logging
-            
-            // Check if we got a valid response
-            if (json && json.success === true && json.data) {
-                return json.data;
-            } else {
-                // Show user-friendly error
-                if (json && json.message) {
-                    console.error('Server error:', json.message);
-                    Swal.fire({
-                        title: 'Error',
-                        text: json.message,
-                        icon: 'error'
-                    });
+            // Handle priority checkbox styling
+            $('#isPriority').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                const parentDiv = $(this).closest('.form-group');
+
+                if (isChecked) {
+                    parentDiv.addClass('priority-check');
+                    parentDiv.find('.custom-control-label').addClass('priority-label');
+                    $('#purpose').addClass('priority-field');
                 } else {
-                    console.error('Invalid response format:', json);
-                    Swal.fire({
-                        title: 'Error',
-                        text: 'Invalid response from server',
-                        icon: 'error'
-                    });
+                    parentDiv.removeClass('priority-check');
+                    parentDiv.find('.custom-control-label').removeClass('priority-label');
+                    $('#purpose').removeClass('priority-field');
                 }
-                return [];
-            }
-        },
-        "error": function(xhr, error, thrown) {
-            console.error('DataTables AJAX error:', error, thrown);
-            console.error('Response:', xhr.responseText);
-            
-            // Parse error message from response if possible
-            let errorMsg = 'Failed to load queue data. Please check your connection and try again.';
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response && response.message) {
-                    errorMsg = response.message;
-                }
-            } catch (e) {
-                // If not JSON, use default message
-            }
-            
-            Swal.fire({
-                title: 'Connection Error',
-                text: errorMsg,
-                icon: 'error'
             });
-            
-            // Show error in table
-            $('#queueTable tbody').html(`
-                <tr>
-                    <td colspan="8" class="text-center text-danger">
-                        <i class="fas fa-exclamation-triangle"></i> 
-                        ${errorMsg}
-                    </td>
-                </tr>
-            `);
-        }
-    },
-    "columns": [{
-            "data": "queue_number",
-            "render": function(data) {
-                return `<span class="badge badge-dark" style="font-size: 14px;">${data}</span>`;
-            }
-        },
-        {
-            "data": "visitor_name"
-        },
-        {
-            "data": "purpose"
-        },
-        {
-            "data": null,
-            "render": function(data) {
-                if (data.section_name && data.section_name !== '') {
-                    return data.section_name;
-                } else if (data.unit_name && data.unit_name !== '') {
-                    return data.unit_name;
-                }
-                return 'N/A';
-            }
-        },
-        {
-            "data": null,
-            "render": function(data) {
-                if (data.employee_first_name && data.employee_last_name) {
-                    return data.employee_last_name + ', ' + data.employee_first_name;
-                }
-                return data.employee_name || 'N/A';
-            }
-        },
-        {
-            "data": "time_in",
-            "render": function(data) {
-                if (!data) return '';
-                const date = new Date(data);
+
+            // DataTables initialization
+            var queueTable = $('#queueTable').DataTable({
+                "processing": true,
+                "serverSide": false,
+                "ajax": {
+                    "url": "../includes/queue_ajax.php?action=get_queue",
+                    "type": "GET",
+                    "dataSrc": function(json) {
+                        console.log('AJAX Response:', json);
+
+                        if (json && json.success === true && json.data) {
+                            return json.data;
+                        } else {
+                            if (json && json.message) {
+                                console.error('Server error:', json.message);
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: json.message,
+                                    icon: 'error'
+                                });
+                            } else {
+                                console.error('Invalid response format:', json);
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: 'Invalid response from server',
+                                    icon: 'error'
+                                });
+                            }
+                            return [];
+                        }
+                    },
+                    "error": function(xhr, error, thrown) {
+                        console.error('DataTables AJAX error:', error, thrown);
+                        console.error('Response:', xhr.responseText);
+
+                        let errorMsg = 'Failed to load queue data. Please check your connection and try again.';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response && response.message) {
+                                errorMsg = response.message;
+                            }
+                        } catch (e) {}
+
+                        Swal.fire({
+                            title: 'Connection Error',
+                            text: errorMsg,
+                            icon: 'error'
+                        });
+
+                        $('#queueTable tbody').html(`
+                            <tr>
+                                <td colspan="8" class="text-center text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    ${errorMsg}
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                "columns": [{
+                        "data": null,
+                        "render": function(data) {
+                            // Check if it's a priority queue
+                            if (data.is_priority == 1 && data.priority_number) {
+                                return `<span class="badge badge-danger priority-badge" style="font-size: 14px;">
+                        <i class="fas fa-star mr-1"></i>${data.priority_number}
+                    </span>`;
+                            } else {
+                                return `<span class="badge badge-dark" style="font-size: 14px;">${data.queue_number}</span>`;
+                            }
+                        }
+                    },
+                    {
+                        "data": "visitor_name"
+                    },
+                    {
+                        "data": "purpose"
+                    },
+                    {
+                        "data": null,
+                        "render": function(data) {
+                            if (data.section_name && data.section_name !== '') {
+                                return data.section_name;
+                            } else if (data.unit_name && data.unit_name !== '') {
+                                return data.unit_name;
+                            }
+                            return 'N/A';
+                        }
+                    },
+                    {
+                        "data": null,
+                        "render": function(data) {
+                            if (data.employee_first_name && data.employee_last_name) {
+                                return data.employee_last_name + ', ' + data.employee_first_name;
+                            }
+                            return data.employee_name || 'N/A';
+                        }
+                    },
+                    {
+                        "data": "time_in",
+                        "render": function(data) {
+                            if (!data) return '';
+                            const date = new Date(data);
+                            let hours = date.getHours();
+                            let minutes = date.getMinutes();
+                            const ampm = hours >= 12 ? 'PM' : 'AM';
+
+                            hours = hours % 12;
+                            hours = hours ? hours : 12;
+                            minutes = minutes < 10 ? '0' + minutes : minutes;
+
+                            return hours + ':' + minutes + ' ' + ampm;
+                        }
+                    },
+                    {
+                        "data": "status",
+                        "render": function(data) {
+                            let badgeClass = 'secondary';
+                            let statusText = data;
+
+                            switch (data) {
+                                case 'waiting':
+                                    badgeClass = 'warning';
+                                    statusText = 'Waiting';
+                                    break;
+                                case 'called':
+                                    badgeClass = 'info';
+                                    statusText = 'Called';
+                                    break;
+                                case 'serving':
+                                    badgeClass = 'primary';
+                                    statusText = 'Serving';
+                                    break;
+                                case 'completed':
+                                    badgeClass = 'success';
+                                    statusText = 'Completed';
+                                    break;
+                                case 'cancelled':
+                                    badgeClass = 'danger';
+                                    statusText = 'Cancelled';
+                                    break;
+                            }
+
+                            return `<span class="badge badge-${badgeClass}">${statusText}</span>`;
+                        }
+                    },
+                    {
+                        "data": null,
+                        "render": function(data, type, row) {
+                            let actions = '';
+                            if (row.status === 'waiting') {
+                                actions += `<button class="btn btn-sm btn-info call-btn" data-id="${row.id}">
+                                                <i class="fas fa-bullhorn"></i> Call
+                                            </button> `;
+                                actions += `<button class="btn btn-sm btn-warning edit-btn" data-id="${row.id}">
+                                                <i class="fas fa-edit"></i>
+                                            </button> `;
+                                actions += `<button class="btn btn-sm btn-danger cancel-btn" data-id="${row.id}">
+                                                <i class="fas fa-times"></i>
+                                            </button>`;
+                            } else if (row.status === 'called') {
+                                actions += `<button class="btn btn-sm btn-primary serve-btn" data-id="${row.id}">
+                                                <i class="fas fa-user-check"></i> Serve
+                                            </button> `;
+                            } else if (row.status === 'serving') {
+                                actions += `<button class="btn btn-sm btn-success complete-btn" data-id="${row.id}">
+                                                <i class="fas fa-check"></i> Complete
+                                            </button>`;
+                            }
+                            return actions;
+                        }
+                    }
+                ],
+                "language": {
+                    "emptyTable": "No visitors in queue",
+                    "loadingRecords": "Loading queue data...",
+                    "processing": "Processing..."
+                },
+                "pageLength": 10,
+                "responsive": true,
+                "searching": true,
+                "ordering": true,
+                "info": true,
+                "autoWidth": false
+            });
+
+            function formatTime12Hour(date) {
                 let hours = date.getHours();
                 let minutes = date.getMinutes();
                 const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -452,95 +614,45 @@ var queueTable = $('#queueTable').DataTable({
 
                 return hours + ':' + minutes + ' ' + ampm;
             }
-        },
-        {
-            "data": "status",
-            "render": function(data) {
-                let badgeClass = 'secondary';
-                let statusText = data;
 
-                switch (data) {
-                    case 'waiting':
-                        badgeClass = 'warning';
-                        statusText = 'Waiting';
-                        break;
-                    case 'called':
-                        badgeClass = 'info';
-                        statusText = 'Called';
-                        break;
-                    case 'serving':
-                        badgeClass = 'primary';
-                        statusText = 'Serving';
-                        break;
-                    case 'completed':
-                        badgeClass = 'success';
-                        statusText = 'Completed';
-                        break;
-                    case 'cancelled':
-                        badgeClass = 'danger';
-                        statusText = 'Cancelled';
-                        break;
-                }
-
-                return `<span class="badge badge-${badgeClass}">${statusText}</span>`;
-            }
-        },
-        {
-            "data": null,
-            "render": function(data, type, row) {
-                let actions = '';
-                if (row.status === 'waiting') {
-                    actions += `<button class="btn btn-sm btn-info call-btn" data-id="${row.id}">
-                        <i class="fas fa-bullhorn"></i> Call
-                        </button> `;
-                    actions += `<button class="btn btn-sm btn-warning edit-btn" data-id="${row.id}">
-                        <i class="fas fa-edit"></i>
-                        </button> `;
-                    actions += `<button class="btn btn-sm btn-danger cancel-btn" data-id="${row.id}">
-                        <i class="fas fa-times"></i>
-                        </button>`;
-                } else if (row.status === 'called') {
-                    actions += `<button class="btn btn-sm btn-primary serve-btn" data-id="${row.id}">
-                        <i class="fas fa-user-check"></i> Serve
-                        </button> `;
-                } else if (row.status === 'serving') {
-                    actions += `<button class="btn btn-sm btn-success complete-btn" data-id="${row.id}">
-                        <i class="fas fa-check"></i> Complete
-                        </button>`;
-                }
-                return actions;
-            }
-        }
-    ],
-    "language": {
-        "emptyTable": "No visitors in queue",
-        "loadingRecords": "Loading queue data...",
-        "processing": "Processing..."
-    },
-    "pageLength": 10,
-    "responsive": true,
-    "searching": true,
-    "ordering": true,
-    "info": true,
-    "autoWidth": false
-});
-
-            function formatTime12Hour(date) {
-                let hours = date.getHours();
-                let minutes = date.getMinutes();
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-
-                hours = hours % 12;
-                hours = hours ? hours : 12; // the hour '0' should be '12'
-
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-
-                return hours + ':' + minutes + ' ' + ampm;
-            }
-            // Generate Queue Number
+            // Form submission with priority confirmation
             $('#visitorForm').on('submit', function(e) {
                 e.preventDefault();
 
+                const isPriority = $('#isPriority').is(':checked');
+                const purpose = $('#purpose').val();
+
+                if (isPriority) {
+                    Swal.fire({
+                        title: 'Priority Visitor Registration',
+                        html: '<div class="text-left">' +
+                            '<p><strong>Are you sure this is a priority visitor?</strong></p>' +
+                            '<p class="text-danger">' +
+                            '<i class="fas fa-exclamation-circle"></i> This visitor will be placed at the front of the queue.' +
+                            '</p>' +
+                            '</div>',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc3545',
+                        confirmButtonText: 'Yes, register as PRIORITY',
+                        cancelButtonText: 'No, regular queue',
+                        reverseButtons: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Continue with form submission as priority
+                            submitVisitorForm(true);
+                        } else {
+                            // Uncheck priority and submit as regular
+                            $('#isPriority').prop('checked', false).trigger('change');
+                            submitVisitorForm(false);
+                        }
+                    });
+                } else {
+                    submitVisitorForm(false);
+                }
+            });
+
+            function submitVisitorForm(isPriority) {
                 const formData = {
                     visitor_name: $('#visitorName').val().trim(),
                     company: $('#visitorCompany').val().trim(),
@@ -548,7 +660,8 @@ var queueTable = $('#queueTable').DataTable({
                     person_to_visit: $('#personToVisit').val(),
                     section: $('#section').val(),
                     contact_number: $('#contactNumber').val().trim(),
-                    remarks: $('#remarks').val().trim()
+                    remarks: $('#remarks').val().trim(),
+                    is_priority: isPriority ? '1' : '0'
                 };
 
                 // Validate form
@@ -575,9 +688,13 @@ var queueTable = $('#queueTable').DataTable({
                     data: formData,
                     success: function(response) {
                         if (response.success) {
+                            let queueDisplay = response.is_priority ?
+                                `<span class="badge badge-danger">PRIORITY</span> ${response.queue_number}` :
+                                response.queue_number;
+
                             Swal.fire({
                                 title: 'Success!',
-                                html: `Queue Number: <h2 class="text-primary">${response.queue_number}</h2>`,
+                                html: `Queue Number: <h2 class="${response.is_priority ? 'text-danger' : 'text-primary'}">${queueDisplay}</h2>`,
                                 icon: 'success',
                                 confirmButtonText: 'OK'
                             });
@@ -601,6 +718,7 @@ var queueTable = $('#queueTable').DataTable({
 
                             // Clear form
                             $('#visitorForm')[0].reset();
+                            $('#isPriority').prop('checked', false).trigger('change');
                             $('.select2').val(null).trigger('change');
                         } else {
                             Swal.fire({
@@ -610,10 +728,14 @@ var queueTable = $('#queueTable').DataTable({
                                 confirmButtonText: 'OK'
                             });
                         }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Failed to add visitor to queue', 'error');
                     }
                 });
-            });
+            }
 
+            // Call Next button
             $('#callNextBtn').click(function() {
                 const section = prompt('Enter Section/Unit to call from (or leave empty for any):');
 
@@ -625,17 +747,15 @@ var queueTable = $('#queueTable').DataTable({
                     },
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Call next response:', response);
-
                         if (response.success) {
                             // Update display
                             $('#nowServing').text(response.queue_number);
                             $('#currentVisitorInfo').html(`
-                    <strong>${response.visitor_name}</strong><br>
-                    <small>${response.section_name || response.unit_name || 'N/A'}</small>
-                `);
+                                <strong>${response.visitor_name}</strong><br>
+                                <small>${response.section_name || response.unit_name || 'N/A'}</small>
+                            `);
 
-                            // Also update queue display
+                            // Update queue display
                             updateQueueStatus();
 
                             // Refresh queue table
@@ -669,6 +789,7 @@ var queueTable = $('#queueTable').DataTable({
                     }
                 });
             });
+
             // Action buttons
             $(document).on('click', '.call-btn', function() {
                 const queueId = $(this).data('id');
@@ -709,6 +830,99 @@ var queueTable = $('#queueTable').DataTable({
                 loadSectionCounters();
             }, 30000);
 
+            // Auto-select section based on employee
+            $('#personToVisit').on('change', function() {
+                const empId = $(this).val();
+
+                if (!empId) {
+                    $('#section').prop('disabled', false);
+                    $('#sectionHelp').text('Please select a section/unit');
+                    return;
+                }
+
+                $('#section').prop('disabled', true);
+                $('#sectionHelp').html('<i class="fas fa-spinner fa-spin"></i> Fetching employee details...');
+
+                $.ajax({
+                    url: '../includes/get_employee_section.php',
+                    type: 'POST',
+                    data: {
+                        emp_id: empId
+                    },
+                    dataType: 'json',
+                    timeout: 10000,
+                    success: function(response) {
+                        console.log('Employee details response:', response);
+
+                        if (response.success) {
+                            let sectionValue = '';
+                            let helpText = '';
+
+                            if (response.is_manager_office_staff) {
+                                sectionValue = 'manager_office';
+                                helpText = 'Auto-selected: IMO Office (Manager\'s Office Staff)';
+                            } else if (response.unit_id && response.unit_id > 0) {
+                                sectionValue = 'unit_' + response.unit_id;
+                                helpText = `Auto-selected: ${response.unit_name || 'Unit'} (${response.unit_code || response.unit_id})`;
+                            } else if (response.section_id && response.section_id > 0) {
+                                sectionValue = 'section_' + response.section_id;
+                                helpText = `Auto-selected: ${response.section_name || 'Section'} (${response.section_code || response.section_id})`;
+                            }
+
+                            if (sectionValue) {
+                                $('#section').val(sectionValue).trigger('change');
+                                $('#sectionHelp').html('<i class="fas fa-check text-success"></i> ' + helpText);
+                                $('#section').prop('disabled', true);
+                            } else {
+                                $('#section').prop('disabled', false);
+                                $('#sectionHelp').html('<i class="fas fa-exclamation-triangle text-warning"></i> This employee has no assigned section/unit. Please manually select one.');
+                                Swal.fire({
+                                    title: 'No Section Assigned',
+                                    text: 'This employee is not assigned to any section or unit. Please manually select a section/unit.',
+                                    icon: 'warning',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        } else {
+                            $('#section').prop('disabled', false);
+                            let errorMsg = response.message || 'Unknown error occurred';
+                            $('#sectionHelp').html('<i class="fas fa-times-circle text-danger"></i> ' + errorMsg);
+
+                            if (response.message && response.message.includes('not found')) {
+                                Swal.fire({
+                                    title: 'Employee Not Found',
+                                    text: 'The selected employee could not be found in the database.',
+                                    icon: 'error',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#section').prop('disabled', false);
+                        let errorMsg = 'Connection error. Please manually select a section/unit.';
+
+                        try {
+                            if (xhr.responseText) {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response && response.message) {
+                                    errorMsg = response.message;
+                                }
+                            }
+                        } catch (e) {}
+
+                        $('#sectionHelp').html('<i class="fas fa-times-circle text-danger"></i> ' + errorMsg);
+
+                        Swal.fire({
+                            title: 'Connection Error',
+                            text: 'Failed to retrieve employee details. You may need to manually select a section/unit.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            });
+
             // Initial load
             updateQueueStatus();
             loadSectionCounters();
@@ -716,12 +930,9 @@ var queueTable = $('#queueTable').DataTable({
 
         function generateQRCode(queueId, queueNumber) {
             $('#qrcode').empty();
-
-            // Create a new image element
             const qrData = `NIA-QUEUE:${queueId}:${queueNumber}`;
             const qrUrl = `../includes/generate_qrcode.php?data=${encodeURIComponent(qrData)}`;
 
-            // Create an image and set its source
             const img = document.createElement('img');
             img.src = qrUrl;
             img.alt = `QR Code for ${queueNumber}`;
@@ -731,7 +942,6 @@ var queueTable = $('#queueTable').DataTable({
             $('#qrcode').html(img);
         }
 
-        // In queue.php, modify the callVisitor function:
         function callVisitor(queueId) {
             $.ajax({
                 url: '../includes/queue_ajax.php?action=call_visitor',
@@ -739,20 +949,16 @@ var queueTable = $('#queueTable').DataTable({
                 data: {
                     queue_id: queueId
                 },
-                dataType: 'json', // Add this to expect JSON
+                dataType: 'json',
                 success: function(response) {
-                    console.log('Call response:', response); // Add for debugging
-
                     if (response.success) {
                         $('#nowServing').text(response.queue_number);
                         $('#currentVisitorInfo').html(`
-                    <strong>${response.visitor_name}</strong><br>
-                    <small>${response.section_name || response.unit_name || 'N/A'}</small>
-                `);
+                            <strong>${response.visitor_name}</strong><br>
+                            <small>${response.section_name || response.unit_name || 'N/A'}</small>
+                        `);
 
-                        // Update the queue display as well
                         updateQueueStatus();
-
                         $('#queueTable').DataTable().ajax.reload(null, false);
                         loadSectionCounters();
                         playNotificationSound();
@@ -782,14 +988,13 @@ var queueTable = $('#queueTable').DataTable({
                 data: {
                     queue_id: queueId
                 },
-                dataType: 'json', // Add this line
+                dataType: 'json',
                 success: function(response) {
                     if (response.success) {
                         $('#queueTable').DataTable().ajax.reload();
                         loadSectionCounters();
                         updateQueueStatus();
 
-                        // Show success message
                         Swal.fire({
                             title: 'Success!',
                             text: response.message || 'Visitor is now being served',
@@ -833,7 +1038,6 @@ var queueTable = $('#queueTable').DataTable({
         }
 
         function editVisitor(queueId) {
-            // Load visitor data and show edit modal
             $.ajax({
                 url: '../includes/queue_ajax.php?action=get_visitor_details',
                 type: 'POST',
@@ -842,25 +1046,24 @@ var queueTable = $('#queueTable').DataTable({
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show edit form in modal
                         Swal.fire({
                             title: 'Edit Visitor Details',
                             html: `
-                        <div class="text-left">
-                            <div class="form-group">
-                                <label>Visitor Name</label>
-                                <input type="text" class="form-control" id="editVisitorName" value="${response.visitor_name}">
-                            </div>
-                            <div class="form-group">
-                                <label>Company</label>
-                                <input type="text" class="form-control" id="editCompany" value="${response.company || ''}">
-                            </div>
-                            <div class="form-group">
-                                <label>Contact Number</label>
-                                <input type="text" class="form-control" id="editContact" value="${response.contact_number || ''}">
-                            </div>
-                        </div>
-                    `,
+                                <div class="text-left">
+                                    <div class="form-group">
+                                        <label>Visitor Name</label>
+                                        <input type="text" class="form-control" id="editVisitorName" value="${response.visitor_name}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Company</label>
+                                        <input type="text" class="form-control" id="editCompany" value="${response.company || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Contact Number</label>
+                                        <input type="text" class="form-control" id="editContact" value="${response.contact_number || ''}">
+                                    </div>
+                                </div>
+                            `,
                             showCancelButton: true,
                             confirmButtonText: 'Save',
                             preConfirm: () => {
@@ -934,22 +1137,19 @@ var queueTable = $('#queueTable').DataTable({
                 type: 'GET',
                 success: function(response) {
                     if (response.success) {
-                        // Update current serving
                         if (response.now_serving) {
                             $('#nowServing').text(response.now_serving.queue_number);
                             $('#currentVisitorInfo').html(`
-                        <strong>${response.now_serving.visitor_name}</strong><br>
-                        <small>${response.now_serving.section_name || response.now_serving.unit_name}</small>
-                    `);
+                                <strong>${response.now_serving.visitor_name}</strong><br>
+                                <small>${response.now_serving.section_name || response.now_serving.unit_name}</small>
+                            `);
                         } else {
                             $('#nowServing').text('---');
                             $('#currentVisitorInfo').html('No visitor being served');
                         }
 
-                        // Update next in line
                         $('#nextInLine').text(response.next_in_line || '---');
 
-                        // Calculate wait time
                         if (response.waiting_count > 0) {
                             const avgTime = response.average_wait_time || 5;
                             const waitMinutes = response.waiting_count * avgTime;
@@ -975,27 +1175,27 @@ var queueTable = $('#queueTable').DataTable({
                             const total = waiting + serving;
 
                             html += `
-                        <div class="section-counter">
-                            <h5>${counter.name}</h5>
-                            <div class="row">
-                                <div class="col-6">
-                                    <div class="text-center">
-                                        <small>Now Serving</small>
-                                        <div class="counter-number text-primary">${counter.current_serving || '---'}</div>
+                                <div class="section-counter">
+                                    <h5>${counter.name}</h5>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <small>Now Serving</small>
+                                                <div class="counter-number text-primary">${counter.current_serving || '---'}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <small>Waiting</small>
+                                                <div class="counter-number text-warning">${waiting}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-center">
+                                        <small>Total Today: ${counter.total_today || 0}</small>
                                     </div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="text-center">
-                                        <small>Waiting</small>
-                                        <div class="counter-number text-warning">${waiting}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-2 text-center">
-                                <small>Total Today: ${counter.total_today || 0}</small>
-                            </div>
-                        </div>
-                    `;
+                            `;
                         });
                         $('#sectionCounters').html(html);
                     }
@@ -1012,7 +1212,6 @@ var queueTable = $('#queueTable').DataTable({
             const printContent = document.getElementById('visitorPass').innerHTML;
             const originalContent = document.body.innerHTML;
 
-            // Get the current time in 12-hour format
             const now = new Date();
             let hours = now.getHours();
             let minutes = now.getMinutes();
@@ -1046,59 +1245,7 @@ var queueTable = $('#queueTable').DataTable({
             document.body.innerHTML = originalContent;
             location.reload();
         }
-
-        // Handle section selection change to filter employees
-        $('#section').on('change', function() {
-            const sectionValue = $(this).val();
-            if (sectionValue.startsWith('section_')) {
-                const sectionId = sectionValue.replace('section_', '');
-                // You can implement filtering of employees by section here
-            }
-        });
-        // Auto-select section based on employee
-        $('#personToVisit').on('change', function() {
-            const empId = $(this).val();
-
-            if (!empId) {
-                return;
-            }
-
-            // Get employee details via AJAX
-            $.ajax({
-                url: '../includes/get_employee_section.php',
-                type: 'POST',
-                data: {
-                    emp_id: empId
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        let sectionValue = '';
-
-                        if (response.is_manager_office_staff) {
-                            // Manager's office staff
-                            sectionValue = 'manager_office';
-                        } else if (response.section_id) {
-                            // Regular section
-                            sectionValue = 'section_' + response.section_id;
-                        } else if (response.unit_section_id) {
-                            // Unit section
-                            sectionValue = 'unit_' + response.unit_section_id;
-                        }
-
-                        // Set the section dropdown
-                        if (sectionValue) {
-                            $('#section').val(sectionValue).trigger('change');
-                        }
-                    }
-                },
-                error: function() {
-                    console.log('Failed to get employee details');
-                }
-            });
-        });
     </script>
-
 </body>
 
 </html>

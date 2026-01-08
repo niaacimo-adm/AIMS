@@ -27,6 +27,7 @@ function logError($message)
 {
     error_log("Queue AJAX Error: " . $message);
 }
+
 // Test database connection
 if (!$db) {
     error_log("Database connection failed in queue_ajax.php");
@@ -34,13 +35,6 @@ if (!$db) {
     exit;
 }
 
-// Test simple query
-$test = $db->query("SELECT 1 as test");
-if (!$test) {
-    error_log("Database query test failed: " . $db->error);
-    echo json_encode(['success' => false, 'message' => 'Database query failed: ' . $db->error]);
-    exit;
-}
 try {
     switch ($action) {
         case 'add_to_queue':
@@ -79,12 +73,410 @@ try {
         case 'get_visitor_details':
             getVisitorDetails();
             break;
+        case 'get_section_queue':
+            getSectionQueue();
+            break;
+        case 'call_next_section':
+            callNextSection();
+            break;
+        case 'get_completed_today':
+            getCompletedToday();
+            break;
+        case 'recall_visitor':
+            recallVisitor();
+            break;
+        case 'transfer_queue':
+            transferQueue();
+            break;
+            case 'call_specific_visitor':  // Add this new case
+            callSpecificVisitor();
+            break;
         default:
-            jsonResponse(['success' => false, 'message' => 'Invalid action']);
+            jsonResponse(['success' => false, 'message' => 'Invalid action: ' . $action]);
     }
 } catch (Exception $e) {
     logError($e->getMessage());
     jsonResponse(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+}
+function callSpecificVisitor()
+{
+    global $db;
+
+    $queue_id = $_POST['queue_id'] ?? 0;
+    $section_type = $_POST['type'] ?? '';
+    $section_id = $_POST['section_id'] ?? 0;
+    $unit_id = $_POST['unit_id'] ?? 0;
+    $is_manager_staff = $_POST['is_manager_staff'] ?? false;
+
+    if ($queue_id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid queue ID']);
+        return;
+    }
+
+    // First, verify that the visitor belongs to the current section/unit
+    $verifyQuery = "SELECT * FROM visitor_queue WHERE id = ? AND status IN ('waiting', 'called') ";
+    
+    if ($section_type == 'imo') {
+        $verifyQuery .= "AND section_name = 'IMO Office' ";
+    } elseif ($section_type == 'section' && $section_id > 0) {
+        $verifyQuery .= "AND section_id = ? ";
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $verifyQuery .= "AND unit_id = ? ";
+    }
+    
+    $stmt = $db->prepare($verifyQuery);
+    
+    if ($section_type == 'section' && $section_id > 0) {
+        $stmt->bind_param("ii", $queue_id, $section_id);
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $stmt->bind_param("ii", $queue_id, $unit_id);
+    } else {
+        $stmt->bind_param("i", $queue_id);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        // Update visitor status to 'serving'
+        $updateQuery = "UPDATE visitor_queue SET status = 'serving', time_called = NOW() WHERE id = ?";
+        $updateStmt = $db->prepare($updateQuery);
+        $updateStmt->bind_param("i", $queue_id);
+        
+        if ($updateStmt->execute()) {
+            echo json_encode([
+                'success' => true,
+                'queue_number' => $row['queue_number'],
+                'visitor_name' => $row['visitor_name'],
+                'message' => 'Visitor called successfully'
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to update visitor status: ' . $db->error
+            ]);
+        }
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Visitor not found in your queue or already being served'
+        ]);
+    }
+}
+
+function getSectionQueue()
+{
+    global $db;
+
+    // Get queue for specific section/unit/imo
+    $section_type = $_POST['type'] ?? '';
+    $section_id = $_POST['section_id'] ?? 0;
+    $unit_id = $_POST['unit_id'] ?? 0;
+    $is_manager_staff = $_POST['is_manager_staff'] ?? false;
+
+    // Build query based on section type
+    $whereClause = "WHERE q.status IN ('waiting', 'called', 'serving') ";
+    $params = [];
+    $types = "";
+
+    if ($section_type == 'imo') {
+        $whereClause .= "AND q.section_name = 'IMO Office' ";
+    } elseif ($section_type == 'section' && $section_id > 0) {
+        $whereClause .= "AND q.section_id = ? ";
+        $params[] = $section_id;
+        $types .= "i";
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $whereClause .= "AND q.unit_id = ? ";
+        $params[] = $unit_id;
+        $types .= "i";
+    }
+
+    // Get current serving visitor
+    $currentQuery = "SELECT q.* FROM visitor_queue q $whereClause AND q.status = 'serving' LIMIT 1";
+    $waitingQuery = "SELECT q.* FROM visitor_queue q $whereClause AND q.status IN ('waiting', 'called') ORDER BY 
+                     CASE WHEN q.is_priority = 1 THEN 0 ELSE 1 END, 
+                     q.priority_number ASC, 
+                     q.id ASC";
+
+    // Execute queries with parameters if any
+    if (!empty($params)) {
+        $stmt = $db->prepare($currentQuery);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $current = $stmt->get_result()->fetch_assoc();
+
+        $stmt = $db->prepare($waitingQuery);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $waiting = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    } else {
+        $current = $db->query($currentQuery)->fetch_assoc();
+        $waiting = $db->query($waitingQuery)->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Get statistics
+    $statsQuery = "SELECT 
+                    SUM(CASE WHEN status IN ('waiting', 'called') THEN 1 ELSE 0 END) as waiting_count,
+                    SUM(CASE WHEN status = 'serving' THEN 1 ELSE 0 END) as serving_count,
+                    COUNT(*) as total_today
+                   FROM visitor_queue 
+                   WHERE DATE(time_in) = CURDATE() ";
+
+    if ($section_type == 'imo') {
+        $statsQuery .= "AND section_name = 'IMO Office'";
+    } elseif ($section_type == 'section' && $section_id > 0) {
+        $statsQuery .= "AND section_id = ?";
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $statsQuery .= "AND unit_id = ?";
+    }
+
+    if (!empty($params)) {
+        $stmt = $db->prepare($statsQuery);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $stats = $stmt->get_result()->fetch_assoc();
+    } else {
+        $stats = $db->query($statsQuery)->fetch_assoc();
+    }
+
+    echo json_encode([
+        'success' => true,
+        'current_serving' => $current,
+        'waiting_list' => $waiting,
+        'statistics' => $stats
+    ]);
+}
+
+function callNextSection()
+{
+    global $db;
+
+    // Call next visitor for specific section
+    $section_type = $_POST['type'] ?? '';
+    $section_id = $_POST['section_id'] ?? 0;
+    $unit_id = $_POST['unit_id'] ?? 0;
+    $is_manager_staff = $_POST['is_manager_staff'] ?? false;
+
+    // Find next visitor based on section
+    $query = "SELECT * FROM visitor_queue 
+              WHERE status IN ('waiting', 'called') ";
+
+    if ($section_type == 'imo') {
+        $query .= "AND section_name = 'IMO Office' ";
+    } elseif ($section_type == 'section' && $section_id > 0) {
+        $query .= "AND section_id = ? ";
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $query .= "AND unit_id = ? ";
+    }
+
+    $query .= "ORDER BY 
+               CASE WHEN is_priority = 1 THEN 0 ELSE 1 END, 
+               priority_number ASC, 
+               id ASC 
+               LIMIT 1";
+
+    $stmt = $db->prepare($query);
+
+    if ($section_type == 'section' && $section_id > 0) {
+        $stmt->bind_param("i", $section_id);
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $stmt->bind_param("i", $unit_id);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        // Update visitor status to 'serving'
+        $updateQuery = "UPDATE visitor_queue SET status = 'serving', time_called = NOW() WHERE id = ?";
+        $updateStmt = $db->prepare($updateQuery);
+        $updateStmt->bind_param("i", $row['id']);
+        $updateStmt->execute();
+
+        echo json_encode([
+            'success' => true,
+            'queue_number' => $row['queue_number'],
+            'visitor_name' => $row['visitor_name']
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No visitors waiting in queue'
+        ]);
+    }
+}
+
+function getCompletedToday()
+{
+    global $db;
+
+    // Get completed visitors for today
+    $section_type = $_POST['type'] ?? '';
+    $section_id = $_POST['section_id'] ?? 0;
+    $unit_id = $_POST['unit_id'] ?? 0;
+
+    $query = "SELECT * FROM visitor_queue 
+              WHERE status = 'completed' 
+              AND DATE(time_in) = CURDATE() ";
+
+    if ($section_type == 'imo') {
+        $query .= "AND section_name = 'IMO Office' ";
+    } elseif ($section_type == 'section' && $section_id > 0) {
+        $query .= "AND section_id = ? ";
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $query .= "AND unit_id = ? ";
+    }
+
+    $query .= "ORDER BY time_out DESC LIMIT 20";
+
+    $stmt = $db->prepare($query);
+
+    if ($section_type == 'section' && $section_id > 0) {
+        $stmt->bind_param("i", $section_id);
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $stmt->bind_param("i", $unit_id);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $completed = $result->fetch_all(MYSQLI_ASSOC);
+
+    echo json_encode([
+        'success' => true,
+        'completed_visitors' => $completed
+    ]);
+}
+
+function recallVisitor()
+{
+    global $db;
+
+    // Recall a visitor (announce again)
+    $queue_id = $_POST['queue_id'] ?? 0;
+
+    $query = "SELECT * FROM visitor_queue WHERE id = ? AND status = 'serving'";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param("i", $queue_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        echo json_encode([
+            'success' => true,
+            'queue_number' => $row['queue_number'],
+            'message' => 'Visitor recalled successfully'
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Visitor not found or not currently being served'
+        ]);
+    }
+}
+
+function transferQueue()
+{
+    global $db;
+
+    // Transfer queue to another section
+    $target_section = $_POST['target_section'] ?? '';
+    $reason = $_POST['reason'] ?? '';
+    $section_type = $_POST['type'] ?? '';
+    $section_id = $_POST['section_id'] ?? 0;
+    $unit_id = $_POST['unit_id'] ?? 0;
+
+    // Parse target section
+    $target_type = '';
+    $target_id = 0;
+
+    if (strpos($target_section, 'section_') === 0) {
+        $target_type = 'section';
+        $target_id = intval(str_replace('section_', '', $target_section));
+    } elseif (strpos($target_section, 'unit_') === 0) {
+        $target_type = 'unit';
+        $target_id = intval(str_replace('unit_', '', $target_section));
+    } elseif ($target_section == 'manager_office') {
+        $target_type = 'imo';
+    }
+
+    // Get target section/unit name
+    $target_name = '';
+    if ($target_type == 'section') {
+        $query = "SELECT section_name FROM section WHERE section_id = ?";
+        $stmt = $db->prepare($query);
+        $stmt->bind_param("i", $target_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $target_name = $row['section_name'];
+        }
+    } elseif ($target_type == 'unit') {
+        $query = "SELECT unit_name FROM unit_section WHERE unit_id = ?";
+        $stmt = $db->prepare($query);
+        $stmt->bind_param("i", $target_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $target_name = $row['unit_name'] . ' Unit';
+        }
+    } elseif ($target_type == 'imo') {
+        $target_name = 'IMO Office';
+    }
+
+    // Update all waiting/called visitors from current section
+    $updateQuery = "UPDATE visitor_queue SET ";
+
+    if ($target_type == 'section') {
+        $updateQuery .= "section_id = ?, unit_id = NULL, section_name = ? ";
+        $params = [$target_id, $target_name];
+        $types = "is";
+    } elseif ($target_type == 'unit') {
+        // Get parent section for the unit
+        $unitQuery = "SELECT section_id FROM unit_section WHERE unit_id = ?";
+        $unitStmt = $db->prepare($unitQuery);
+        $unitStmt->bind_param("i", $target_id);
+        $unitStmt->execute();
+        $unitResult = $unitStmt->get_result();
+        $unitData = $unitResult->fetch_assoc();
+
+        $parent_section_id = $unitData['section_id'] ?? 0;
+
+        $updateQuery .= "section_id = ?, unit_id = ?, section_name = (SELECT section_name FROM section WHERE section_id = ?) ";
+        $params = [$parent_section_id, $target_id, $parent_section_id];
+        $types = "iii";
+    } elseif ($target_type == 'imo') {
+        $updateQuery .= "section_id = NULL, unit_id = NULL, section_name = ? ";
+        $params = [$target_name];
+        $types = "s";
+    }
+
+    $updateQuery .= ", remarks = CONCAT(IFNULL(remarks, ''), ' Transferred from current section. Reason: ', ?) ";
+    $params[] = $reason;
+    $types .= "s";
+
+    $updateQuery .= "WHERE status IN ('waiting', 'called') ";
+
+    if ($section_type == 'imo') {
+        $updateQuery .= "AND section_name = 'IMO Office' ";
+    } elseif ($section_type == 'section' && $section_id > 0) {
+        $updateQuery .= "AND section_id = ? ";
+        $params[] = $section_id;
+        $types .= "i";
+    } elseif ($section_type == 'unit' && $unit_id > 0) {
+        $updateQuery .= "AND unit_id = ? ";
+        $params[] = $unit_id;
+        $types .= "i";
+    }
+
+    $stmt = $db->prepare($updateQuery);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Queue transferred to ' . $target_name,
+        'transferred_count' => $stmt->affected_rows
+    ]);
 }
 
 function addToQueue()
@@ -99,8 +491,12 @@ function addToQueue()
         'person_to_visit' => $_POST['person_to_visit'] ?? '',
         'section' => $_POST['section'] ?? '',
         'contact_number' => $_POST['contact_number'] ?? '',
-        'remarks' => $_POST['remarks'] ?? ''
+        'remarks' => $_POST['remarks'] ?? '',
+        'is_priority' => $_POST['is_priority'] ?? '0' // Add this line
     ];
+
+    // Log the incoming data for debugging
+    error_log("addToQueue - Received data: " . print_r($data, true));
 
     // Validate required fields
     if (
@@ -111,104 +507,166 @@ function addToQueue()
         return;
     }
 
-    // Parse section/unit
     $section_type = '';
     $section_id = 0;
     $unit_id = 0;
-    $prefix = 'V'; // Default prefix
+    $prefix = ''; // Will be set based on section/unit
     $section_name = '';
     $unit_name = '';
 
+    // Check if it's a priority queue (based on checkbox)
+    $is_priority = isset($_POST['is_priority']) && $_POST['is_priority'] == '1' ? 1 : 0;
+    $queue_prefix = $is_priority ? 'P' : 'V'; // Priority = P, Regular = V
+
+    $section_code = '';
+    $unit_code = '';
+
     if ($data['section'] === 'manager_office') {
         $section_type = 'manager';
-        $prefix = 'IMO';  // Changed from 'MGR' to 'IMO'
-        $section_name = "IMO Office";  // Changed name
+        $section_name = "IMO Office";
+        $section_code = "IMO";  // Use IMO for Manager's Office
+        $prefix = "IMO";
     } elseif (strpos($data['section'], 'section_') === 0) {
         $section_type = 'section';
         $section_id = intval(str_replace('section_', '', $data['section']));
 
-        // Get section details
-        $stmt = $db->prepare("SELECT section_code, section_name FROM section WHERE section_id = ?");
+        // Get section details with code
+        $stmt = $db->prepare("SELECT section_name, section_code FROM section WHERE section_id = ?");
         $stmt->bind_param("i", $section_id);
         $stmt->execute();
         $result = $stmt->get_result();
         if ($row = $result->fetch_assoc()) {
-            $prefix = $row['section_code'];
             $section_name = $row['section_name'];
+            $section_code = $row['section_code'];
+            $prefix = $section_code;  // Use section code instead of initials
         }
     } elseif (strpos($data['section'], 'unit_') === 0) {
         $section_type = 'unit';
         $unit_id = intval(str_replace('unit_', '', $data['section']));
 
-        // Get unit details
-        $stmt = $db->prepare("SELECT unit_code, unit_name FROM unit_section WHERE unit_id = ?");
+        // Get unit details with code
+        $stmt = $db->prepare("SELECT unit_name, unit_code FROM unit_section WHERE unit_id = ?");
         $stmt->bind_param("i", $unit_id);
         $stmt->execute();
         $result = $stmt->get_result();
         if ($row = $result->fetch_assoc()) {
-            $prefix = $row['unit_code'];
             $unit_name = $row['unit_name'];
+            $unit_code = $row['unit_code'];
+            $prefix = $unit_code;  // Use unit code instead of initials
+
+            // Also get the parent section for the unit
+            $stmt2 = $db->prepare("SELECT s.section_id, s.section_name FROM section s 
+                               INNER JOIN unit_section us ON s.section_id = us.section_id 
+                               WHERE us.unit_id = ?");
+            $stmt2->bind_param("i", $unit_id);
+            $stmt2->execute();
+            $result2 = $stmt2->get_result();
+            if ($row2 = $result2->fetch_assoc()) {
+                $section_id = $row2['section_id'];
+                $section_name = $row2['section_name'];
+            }
         }
     }
 
     // Generate queue number
-    $date = date('Ymd');
-    $query = "SELECT MAX(queue_number) as last_number FROM visitor_queue 
-              WHERE queue_number LIKE '{$prefix}%' 
+    if ($is_priority) {
+        // Generate priority queue number
+        $query = "SELECT MAX(priority_number) as last_number FROM visitor_queue 
+              WHERE priority_number LIKE '{$prefix}-P%' 
               AND DATE(time_in) = CURDATE()";
-    $result = $db->query($query);
-    $row = $result->fetch_assoc();
+        $result = $db->query($query);
+        $row = $result->fetch_assoc();
 
-    if ($row && $row['last_number']) {
-        $last_num = intval(substr($row['last_number'], -3));
-        $next_num = str_pad($last_num + 1, 3, '0', STR_PAD_LEFT);
+        if ($row && $row['last_number']) {
+            $last_num = intval(substr($row['last_number'], -3));
+            $next_num = str_pad($last_num + 1, 3, '0', STR_PAD_LEFT);
+        } else {
+            $next_num = '001';
+        }
+
+        $queue_number = $section_name ?: $unit_name;
+        $priority_number = $prefix . '-P' . $next_num; // Format: CODE-P001
+        $queue_number = $prefix . '-P' . $next_num; // Also set queue_number for priority
     } else {
-        $next_num = '001';
-    }
+        // Generate regular queue number
+        $query = "SELECT MAX(queue_number) as last_number FROM visitor_queue 
+              WHERE queue_number LIKE '{$prefix}-V%' 
+              AND DATE(time_in) = CURDATE()
+              AND is_priority = 0";
+        $result = $db->query($query);
+        $row = $result->fetch_assoc();
 
-    $queue_number = $prefix . $date . $next_num;
+        if ($row && $row['last_number']) {
+            $last_num = intval(substr($row['last_number'], -3));
+            $next_num = str_pad($last_num + 1, 3, '0', STR_PAD_LEFT);
+        } else {
+            $next_num = '001';
+        }
+
+        $queue_number = $prefix . '-V' . $next_num; // Format: CODE-V001
+        $priority_number = null;
+    }
 
     // Get employee name (not storing it anymore)
     $emp_id = intval($data['person_to_visit']);
 
-    // Insert visitor
     $stmt = $db->prepare("INSERT INTO visitor_queue 
-        (queue_number, visitor_name, company, purpose, person_to_visit,
+        (queue_number, priority_number, visitor_name, company, purpose, person_to_visit,
         section_id, unit_id, section_name, unit_name, is_manager_office,
-        contact_number, remarks, status, created_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        contact_number, remarks, status, created_by, is_priority) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
     $created_by = $_SESSION['emp_id'] ?? 0;
     $is_manager_office = ($section_type === 'manager') ? 1 : 0;
     $status = 'waiting';
 
-    $section_id_param = $section_type === 'section' ? $section_id : null;
-    $unit_id_param = $section_type === 'unit' ? $unit_id : null;
+    // Handle section/unit ID assignment properly
+    $section_id_param = null;
+    $unit_id_param = null;
+
+    if ($section_type === 'manager') {
+        $section_id_param = null;
+        $unit_id_param = null;
+    } elseif ($section_type === 'section') {
+        $section_id_param = $section_id;
+        $unit_id_param = null;
+    } elseif ($section_type === 'unit') {
+        $section_id_param = $section_id; // Parent section ID for the unit
+        $unit_id_param = $unit_id; // Actual unit ID
+    }
 
     $stmt->bind_param(
-        "ssssiiissiissi",
-        $queue_number,
-        $data['visitor_name'],
-        $data['company'],
-        $data['purpose'],
-        $emp_id,
-        $section_id_param,
-        $unit_id_param,
-        $section_name,
-        $unit_name,
-        $is_manager_office,
-        $data['contact_number'],
-        $data['remarks'],
-        $status,
-        $created_by
+        "sssssiiissiissii", // 16 parameters
+        $queue_number,        // queue_number
+        $priority_number,     // priority_number
+        $data['visitor_name'], // visitor_name
+        $data['company'],     // company
+        $data['purpose'],     // purpose
+        $emp_id,              // person_to_visit
+        $section_id_param,    // section_id
+        $unit_id_param,       // unit_id
+        $section_name,        // section_name
+        $unit_name,           // unit_name
+        $is_manager_office,   // is_manager_office
+        $data['contact_number'], // contact_number
+        $data['remarks'],     // remarks
+        $status,              // status
+        $created_by,          // created_by
+        $is_priority          // is_priority
     );
 
     if ($stmt->execute()) {
         $queue_id = $stmt->insert_id;
+
+        // Return the correct display queue number
+        $display_queue_number = $is_priority ? $priority_number : $queue_number;
+
         jsonResponse([
             'success' => true,
             'queue_id' => $queue_id,
-            'queue_number' => $queue_number,
+            'queue_number' => $display_queue_number,
+            'is_priority' => $is_priority,
+            'priority_number' => $priority_number,
             'visitor_name' => $data['visitor_name'],
             'section_name' => $section_name,
             'unit_name' => $unit_name,
@@ -219,7 +677,26 @@ function addToQueue()
     }
 }
 
+function getInitials($name)
+{
+    $words = explode(' ', $name);
+    $initials = '';
 
+    foreach ($words as $word) {
+        if (ctype_upper($word[0])) {
+            $initials .= $word[0];
+        }
+    }
+
+    // If no uppercase initials found, use first letters
+    if (empty($initials)) {
+        foreach ($words as $word) {
+            $initials .= strtoupper(substr($word, 0, 1));
+        }
+    }
+
+    return $initials;
+}
 function getQueue()
 {
     global $db;
@@ -232,34 +709,35 @@ function getQueue()
 
     // Try to get data with better error handling
     try {
-        $query = "SELECT vq.*, 
-                  s.section_name, s.section_code,
-                  u.unit_name, u.unit_code,
-                  e.first_name, e.last_name,
-                  CONCAT(e.last_name, ', ', e.first_name) AS employee_name
-                  FROM visitor_queue vq
-                  LEFT JOIN section s ON vq.section_id = s.section_id
-                  LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
-                  LEFT JOIN employee e ON vq.person_to_visit = e.emp_id
-                  WHERE DATE(vq.time_in) = CURDATE() 
-                  AND vq.status IN ('waiting', 'called', 'serving')
-                  ORDER BY 
-                    CASE vq.status 
-                        WHEN 'serving' THEN 1
-                        WHEN 'called' THEN 2
-                        WHEN 'waiting' THEN 3
-                        ELSE 4
-                    END, 
-                    vq.time_in ASC";
 
+        $query = "SELECT vq.*, 
+              s.section_name, s.section_code,
+              u.unit_name, u.unit_code,
+              e.first_name, e.last_name,
+              CONCAT(e.last_name, ', ', e.first_name) AS employee_name
+              FROM visitor_queue vq
+              LEFT JOIN section s ON vq.section_id = s.section_id
+              LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
+              LEFT JOIN employee e ON vq.person_to_visit = e.emp_id
+              WHERE DATE(vq.time_in) = CURDATE() 
+              AND vq.status IN ('waiting', 'called', 'serving')
+              ORDER BY 
+                vq.is_priority DESC, -- Priority queues first
+                CASE vq.status 
+                    WHEN 'serving' THEN 1
+                    WHEN 'called' THEN 2
+                    WHEN 'waiting' THEN 3
+                    ELSE 4
+                END, 
+                vq.time_in ASC";
         error_log("Queue Query Executing: " . $query);
-        
+
         $result = $db->query($query);
 
         if (!$result) {
             error_log("Database error in getQueue: " . $db->error);
             jsonResponse([
-                'success' => false, 
+                'success' => false,
                 'message' => 'Database query failed: ' . $db->error,
                 'data' => []
             ]);
@@ -273,6 +751,8 @@ function getQueue()
                 $queue[] = [
                     'id' => $row['id'] ?? 0,
                     'queue_number' => $row['queue_number'] ?? '',
+                    'priority_number' => $row['priority_number'] ?? '',
+                    'is_priority' => $row['is_priority'] ?? 0,
                     'visitor_name' => $row['visitor_name'] ?? '',
                     'company' => $row['company'] ?? '',
                     'purpose' => $row['purpose'] ?? '',
@@ -296,7 +776,7 @@ function getQueue()
         }
 
         error_log("Queue data found: " . count($queue) . " records");
-        
+
         // Return success with data
         jsonResponse([
             'success' => true,
@@ -305,11 +785,10 @@ function getQueue()
             'recordsTotal' => count($queue),
             'recordsFiltered' => count($queue)
         ]);
-        
     } catch (Exception $e) {
         error_log("Exception in getQueue: " . $e->getMessage());
         jsonResponse([
-            'success' => false, 
+            'success' => false,
             'message' => 'Server error: ' . $e->getMessage(),
             'data' => []
         ]);
@@ -580,7 +1059,7 @@ function getDisplayData()
 {
     global $db;
 
-    // Get current serving visitor
+    // Get current priority serving visitor
     $query = "SELECT vq.*, 
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO Office'
@@ -590,20 +1069,21 @@ function getDisplayData()
                   WHEN vq.is_manager_office = 1 THEN 'IMO'
                   ELSE s.section_code 
               END as section_code,
-              u.unit_name 
+              u.unit_name, u.unit_code
               FROM visitor_queue vq
               LEFT JOIN section s ON vq.section_id = s.section_id
               LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
               WHERE vq.status = 'serving'
+              AND vq.is_priority = 1
               AND DATE(vq.time_in) = CURDATE()
               ORDER BY vq.time_served DESC 
               LIMIT 1";
 
     $result = $db->query($query);
-    $current_serving = $result ? $result->fetch_assoc() : null;
+    $current_priority = $result ? $result->fetch_assoc() : null;
 
-    // If no serving, get the most recent called visitor
-    if (!$current_serving) {
+    // If no priority serving, get the most recent called priority visitor
+    if (!$current_priority) {
         $query = "SELECT vq.*, 
                   CASE 
                       WHEN vq.is_manager_office = 1 THEN 'IMO Office'
@@ -613,37 +1093,92 @@ function getDisplayData()
                       WHEN vq.is_manager_office = 1 THEN 'IMO'
                       ELSE s.section_code 
                   END as section_code,
-                  u.unit_name 
+                  u.unit_name, u.unit_code
                   FROM visitor_queue vq
                   LEFT JOIN section s ON vq.section_id = s.section_id
                   LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
                   WHERE vq.status = 'called'
+                  AND vq.is_priority = 1
                   AND DATE(vq.time_in) = CURDATE()
                   ORDER BY vq.time_called DESC 
                   LIMIT 1";
 
         $result = $db->query($query);
-        $current_serving = $result ? $result->fetch_assoc() : null;
+        $current_priority = $result ? $result->fetch_assoc() : null;
     }
 
-    // Handle manager's office display
-    if ($current_serving) {
-        // Check if it's manager's office
-        if (isset($current_serving['is_manager_office']) && $current_serving['is_manager_office']) {
-            $current_serving['section_name'] = "IMO Office";
-            $current_serving['section_code'] = "IMO";
-        }
-        // If section_name is empty but unit_name exists, use unit_name
-        elseif (empty($current_serving['section_name']) && !empty($current_serving['unit_name'])) {
-            $current_serving['section_name'] = $current_serving['unit_name'];
-        }
-        // If both are empty, set a default
-        elseif (empty($current_serving['section_name']) && empty($current_serving['unit_name'])) {
-            $current_serving['section_name'] = 'General Queue';
+    // Get current regular serving visitor
+    $query = "SELECT vq.*, 
+              CASE 
+                  WHEN vq.is_manager_office = 1 THEN 'IMO Office'
+                  ELSE s.section_name 
+              END as section_name,
+              CASE 
+                  WHEN vq.is_manager_office = 1 THEN 'IMO'
+                  ELSE s.section_code 
+              END as section_code,
+              u.unit_name, u.unit_code
+              FROM visitor_queue vq
+              LEFT JOIN section s ON vq.section_id = s.section_id
+              LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
+              WHERE vq.status = 'serving'
+              AND vq.is_priority = 0
+              AND DATE(vq.time_in) = CURDATE()
+              ORDER BY vq.time_served DESC 
+              LIMIT 1";
+
+    $result = $db->query($query);
+    $current_regular = $result ? $result->fetch_assoc() : null;
+
+    // If no regular serving, get the most recent called regular visitor
+    if (!$current_regular) {
+        $query = "SELECT vq.*, 
+                  CASE 
+                      WHEN vq.is_manager_office = 1 THEN 'IMO Office'
+                      ELSE s.section_name 
+                  END as section_name,
+                  CASE 
+                      WHEN vq.is_manager_office = 1 THEN 'IMO'
+                      ELSE s.section_code 
+                  END as section_code,
+                  u.unit_name, u.unit_code
+                  FROM visitor_queue vq
+                  LEFT JOIN section s ON vq.section_id = s.section_id
+                  LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
+                  WHERE vq.status = 'called'
+                  AND vq.is_priority = 0
+                  AND DATE(vq.time_in) = CURDATE()
+                  ORDER BY vq.time_called DESC 
+                  LIMIT 1";
+
+        $result = $db->query($query);
+        $current_regular = $result ? $result->fetch_assoc() : null;
+    }
+
+    // Handle manager's office display for both priority and regular
+    if ($current_priority) {
+        if (isset($current_priority['is_manager_office']) && $current_priority['is_manager_office']) {
+            $current_priority['section_name'] = "IMO Office";
+            $current_priority['section_code'] = "IMO";
+        } elseif (empty($current_priority['section_name']) && !empty($current_priority['unit_name'])) {
+            $current_priority['section_name'] = $current_priority['unit_name'];
+        } elseif (empty($current_priority['section_name']) && empty($current_priority['unit_name'])) {
+            $current_priority['section_name'] = 'General Queue';
         }
     }
 
-    // Get waiting queue (max 10) - includes called visitors
+    if ($current_regular) {
+        if (isset($current_regular['is_manager_office']) && $current_regular['is_manager_office']) {
+            $current_regular['section_name'] = "IMO Office";
+            $current_regular['section_code'] = "IMO";
+        } elseif (empty($current_regular['section_name']) && !empty($current_regular['unit_name'])) {
+            $current_regular['section_name'] = $current_regular['unit_name'];
+        } elseif (empty($current_regular['section_name']) && empty($current_regular['unit_name'])) {
+            $current_regular['section_name'] = 'General Queue';
+        }
+    }
+
+    // Get waiting queue (max 10) - includes called visitors, separated by priority
     $query = "SELECT vq.*, 
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO Office'
@@ -656,6 +1191,7 @@ function getDisplayData()
               WHERE vq.status IN ('waiting', 'called')
               AND DATE(vq.time_in) = CURDATE()
               ORDER BY 
+                vq.is_priority DESC, -- Priority first
                 CASE vq.status 
                     WHEN 'called' THEN 1
                     WHEN 'waiting' THEN 2
@@ -667,12 +1203,9 @@ function getDisplayData()
     $waiting_queue = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            // Handle manager's office for waiting queue items
             if (isset($row['is_manager_office']) && $row['is_manager_office']) {
                 $row['section_name'] = "IMO Office";
-            }
-            // If section_name is empty but unit_name exists, use unit_name
-            elseif (empty($row['section_name']) && !empty($row['unit_name'])) {
+            } elseif (empty($row['section_name']) && !empty($row['unit_name'])) {
                 $row['section_name'] = $row['unit_name'];
             }
             $waiting_queue[] = $row;
@@ -698,12 +1231,9 @@ function getDisplayData()
     $served_queue = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            // Handle manager's office for served queue items
             if (isset($row['is_manager_office']) && $row['is_manager_office']) {
                 $row['section_name'] = "IMO Office";
-            }
-            // If section_name is empty but unit_name exists, use unit_name
-            elseif (empty($row['section_name']) && !empty($row['unit_name'])) {
+            } elseif (empty($row['section_name']) && !empty($row['unit_name'])) {
                 $row['section_name'] = $row['unit_name'];
             }
             $served_queue[] = $row;
@@ -760,7 +1290,7 @@ function getDisplayData()
                 COALESCE((SELECT COUNT(*) FROM visitor_queue 
                          WHERE is_manager_office = 1 
                          AND DATE(time_in) = CURDATE()), 0) as total_today";
-    
+
     $result = $db->query($query);
     if ($row = $result->fetch_assoc()) {
         array_unshift($sections, $row); // Add IMO office at the beginning
@@ -795,17 +1325,20 @@ function getDisplayData()
     }
 
     // DEBUG: Log what we found
-    error_log("Current serving: " . ($current_serving ? $current_serving['queue_number'] . " (status: " . $current_serving['status'] . ")" : 'None'));
-    
+    error_log("Current priority: " . ($current_priority ? $current_priority['queue_number'] : 'None'));
+    error_log("Current regular: " . ($current_regular ? $current_regular['queue_number'] : 'None'));
+
     jsonResponse([
         'success' => true,
-        'current_serving' => $current_serving,
+        'current_priority' => $current_priority,
+        'current_regular' => $current_regular,
         'waiting_queue' => $waiting_queue,
         'served_queue' => $served_queue,
         'sections' => $sections,
         'units' => $units
     ]);
 }
+
 
 function getSectionCounters()
 {
