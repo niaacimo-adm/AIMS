@@ -109,7 +109,13 @@ if ($employee_id) {
           </li>
           
           <?php if (hasPermission('manage_employees')): ?>
-          <li class="nav-header text-light border-bottom pb-2 mt-3">EMPLOYEE MANAGEMENT</li>
+          <li class="nav-header text-light border-bottom pb-2 mt-3">HR MANAGEMENT</li>
+            <li class="nav-item">
+                <a href="../views/applicant.php" class="nav-link <?= $current_page == 'applicant.php' ? 'active bg-primary' : 'text-white' ?>">
+                    <i class="fas fa-clipboard-check nav-icon"></i>
+                    <p>Applicant Databank</p>
+                </a>
+            </li>
               <li class="nav-item">
                 <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active bg-primary' : 'text-white' ?>">
                   <i class="fas fa-user-plus nav-icon"></i>
@@ -132,6 +138,12 @@ if ($employee_id) {
                   <a href="../views/personal_locator_monitoring.php" class="nav-link <?= $current_page == 'personal_locator_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
                       <i class="fas fa-clipboard-check nav-icon"></i>
                       <p>Slip Monitoring</p>
+                  </a>
+              </li>
+              <li class="nav-item">
+                  <a href="../views/intern.php" class="nav-link <?= $current_page == 'intern.php' ? 'active bg-primary' : 'text-white' ?>">
+                      <i class="fas fa-clipboard-check nav-icon"></i>
+                      <p>Intern Databank</p>
                   </a>
               </li>
           <?php endif; ?>
@@ -224,6 +236,7 @@ if ($employee_id) {
 .sidebar-dark-primary {
     background-color: #2c3e50 !important;
 }
+
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
     color: #c2c7d0 !important;
     border-radius: 0;

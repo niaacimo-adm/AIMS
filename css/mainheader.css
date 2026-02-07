@@ -1,4 +1,4 @@
-    :root {
+:root {
         --primary-color: #4361ee;
         --secondary-color: #3f37c9;
         --accent-color: #4895ef;
@@ -41,18 +41,36 @@
         font-size: 0.8rem;
         z-index: 2;
     }
-    /* Fix dropdown z-index issues */
+
+    /* Fix z-index layering - CRITICAL FIX */
+    /* Main header should be below modals */
+    .main-header {
+        z-index: 1000 !important;
+        position: relative;
+    }
+
+    /* Sidebar below modals */
+    .main-sidebar {
+        z-index: 999 !important;
+    }
+
+    /* Dropdowns above header but below modals */
     .navbar-nav .dropdown-menu {
-        z-index: 1030 !important;
+        z-index: 1020 !important;
     }
 
-    /* Fix modal backdrop */
+    /* Modal backdrop - between header and modal */
     .modal-backdrop {
-        z-index: 1029 !important;
+        z-index: 1040 !important;
     }
 
+    /* Modal dialog - highest priority */
     .modal {
-        z-index: 1030 !important;
+        z-index: 1050 !important;
+    }
+
+    .modal-dialog {
+        z-index: 1051 !important;
     }
 
     /* Ensure proper sidebar functionality */
@@ -63,6 +81,7 @@
     .main-sidebar {
         transition: margin-left 0.3s ease-in-out;
     }
+
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background-color: #f5f7fb;
@@ -76,6 +95,7 @@
         transition: var(--transition);
         border: none;
     }
+    
     .main-header.theme-admin {
         background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
     }
@@ -90,6 +110,10 @@
 
     .main-header.theme-file {
         background: linear-gradient(135deg, #800020, #5a0a1d) !important;
+    }
+
+    .main-header.theme-ict {
+        background: linear-gradient(135deg, #17a2b8, #138496) !important;
     }
 
     /* Apps dropdown theming */
@@ -108,6 +132,7 @@
     .apps-dropdown .app-item[data-theme="file"] .app-icon {
         background: linear-gradient(135deg, #800020, #5a0a1d);
     }
+
     .navbar-brand {
         color: white;
         font-weight: 700;
@@ -271,6 +296,7 @@
 
     .notification-item:hover {
         background-color: var(--light-gray);
+        transform: translateX(5px);
     }
 
     .notification-content {
@@ -385,6 +411,8 @@
         border: none;
         border-radius: 0.75rem;
         box-shadow: var(--shadow-hover);
+        position: relative;
+        z-index: 1052 !important;
     }
 
     .modal-header {
@@ -455,6 +483,7 @@
             margin-left: -250px;
         }
     }
+
     .notification-link {
         display: block;
         text-decoration: none !important;
@@ -466,26 +495,11 @@
         color: inherit !important;
     }
 
-    .notification-item {
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .notification-item:hover {
-        background-color: #f8f9fa !important;
-        transform: translateX(5px);
-    }
-
     .table-active {
         background-color: #e3f2fd !important;
         border-left: 4px solid #2196F3 !important;
     }
-.main-header.theme-ict {
-    background: linear-gradient(135deg, #17a2b8, #138496) !important;
-}
 
-.main-footer.theme-ict {
-    background: linear-gradient(135deg, #17a2b8, #138496) !important;
-}
-
-    
+    .main-footer.theme-ict {
+        background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    }
