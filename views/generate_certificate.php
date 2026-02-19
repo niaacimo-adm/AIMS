@@ -96,6 +96,13 @@ if ($result->num_rows === 0) {
 
 $intern = $result->fetch_assoc();
 
+// Debug: Check intern data
+error_log("=== Certificate Generation Debug ===");
+error_log("Intern ID: " . $intern['intern_id']);
+error_log("Name: " . $intern['first_name'] . ' ' . $intern['last_name']);
+error_log("Gender from DB: '" . $intern['gender'] . "'");
+error_log("Gender Type: " . gettype($intern['gender']));
+
 // Prepare data
 $full_name = trim($intern['first_name'] . ' ' . ($intern['middle_name'] ? $intern['middle_name'] . ' ' : '') . $intern['last_name']);
 $end_date = $intern['end_date'] ? date('F d, Y', strtotime($intern['end_date'])) : date('F d, Y');
@@ -107,8 +114,25 @@ $issue_suffix = date('S');
 $issue_month = date('F');
 $issue_year = date('Y');
 
+// Determine title based on gender - FIXED VERSION
+$gender = trim($intern['gender'] ?? '');
+$title = 'Mr.'; // Default to Mr.
+
+// Case-insensitive gender check
+if (strcasecmp($gender, 'female') === 0) {
+    $title = 'Ms.';
+} elseif (strcasecmp($gender, 'male') === 0) {
+    $title = 'Mr.';
+}
+
+// For debugging, also check the actual value
+error_log("Gender after trim: '" . $gender . "'");
+error_log("Gender lowercase: '" . strtolower($gender) . "'");
+error_log("Determined Title: " . $title);
+error_log("Full Name: " . $full_name);
+
 // Template path - normalize path separators for Windows
-$template_path = str_replace('/', DIRECTORY_SEPARATOR, __DIR__ . '/../templates/CERTIFICATE_OF_COMPLETION_TEMPLATE.docx');
+$template_path = str_replace('/', DIRECTORY_SEPARATOR, __DIR__ . '/../public/templates/CERTIFICATE_OF_COMPLETION_TEMPLATE.docx');
 $template_path = realpath($template_path);
 
 if (!file_exists($template_path)) {
@@ -137,15 +161,37 @@ if ($zip->open($output_path) === TRUE) {
         die('Error reading template content');
     }
     
-    // Replace placeholders
+    // Debug: Save original XML for inspection
+    $debug_dir = __DIR__ . '/../debug/';
+    if (!file_exists($debug_dir)) {
+        mkdir($debug_dir, 0777, true);
+    }
+    file_put_contents($debug_dir . 'original_document.xml', $document_xml);
+    
+    // Create an array of all possible variations of the Ms/Mr placeholder
+    $title_placeholders = [
+        'Ms/Mr.',
+        'Ms/Mr',
+        'Ms./Mr.',
+        'Ms./Mr',
+        'Ms. / Mr.',
+        'Ms / Mr',
+        'Ms./ Mr.',
+        'Ms/ Mr.',
+        'Ms/ Mr. ',
+        'Ms./Mr. ',
+    ];
+    
+    // First, replace all standard placeholders
     $replacements = [
         '{FULL_NAME}' => htmlspecialchars($full_name, ENT_XML1, 'UTF-8'),
         'Course' => htmlspecialchars($intern['course'], ENT_XML1, 'UTF-8'),
-        'Year Level' => htmlspecialchars($intern['year_level'], ENT_XML1, 'UTF-8'),
-        'School' => htmlspecialchars($intern['school'], ENT_XML1, 'UTF-8'),
+        '{YEAR-LEVEL}' => htmlspecialchars($intern['year_level'], ENT_XML1, 'UTF-8'),
+        '{SCHOOL}' => htmlspecialchars($intern['school'], ENT_XML1, 'UTF-8'),
         '{HOURS}' => htmlspecialchars($total_hours, ENT_XML1, 'UTF-8'),
         'End Date' => htmlspecialchars($end_date, ENT_XML1, 'UTF-8'),
-        'Lastname of Intern' => htmlspecialchars($intern['last_name'], ENT_XML1, 'UTF-8'),
+        '{TITLE}' => htmlspecialchars($title, ENT_XML1, 'UTF-8'),
+        '{LAST_NAME}' => htmlspecialchars($intern['last_name'], ENT_XML1, 'UTF-8'),
         // Replace the date components
         '>02<' => '>' . htmlspecialchars($issue_day, ENT_XML1, 'UTF-8') . '<',
         '>th<' => '>' . htmlspecialchars($issue_suffix, ENT_XML1, 'UTF-8') . '<',
@@ -153,10 +199,59 @@ if ($zip->open($output_path) === TRUE) {
         '>2026<' => '>' . htmlspecialchars($issue_year, ENT_XML1, 'UTF-8') . '<',
     ];
     
-    // Perform replacements
+    // Apply all standard replacements
     foreach ($replacements as $search => $replace) {
         $document_xml = str_replace($search, $replace, $document_xml);
     }
+    
+    // SPECIAL HANDLING FOR GENDER TITLE - MULTIPLE METHODS
+    error_log("Attempting to replace Ms/Mr. with: " . $title);
+    
+    // Method 1: Direct replacement for common patterns
+    foreach ($title_placeholders as $placeholder) {
+        if (strpos($document_xml, $placeholder) !== false) {
+            error_log("Found placeholder in XML: " . $placeholder);
+            $document_xml = str_replace($placeholder, $title, $document_xml);
+        }
+    }
+    
+    // Method 2: Regex replacement for any Ms/Mr variation
+    // This handles cases like "Ms/Mr." or "Ms / Mr" etc.
+    $document_xml = preg_replace('/Ms\.?\s*\/\s*Mr\.?/i', $title, $document_xml);
+    
+    // Method 3: Handle the specific pattern from your template
+    // The template says: "Ms/Mr. Lastname of Intern"
+    // So we need to replace "Ms/Mr." followed by space and last name
+    $last_name_placeholder = $intern['last_name'];
+    $document_xml = preg_replace('/Ms\.?\s*\/\s*Mr\.?\s*' . preg_quote($last_name_placeholder, '/') . '/i', 
+                                 $title . ' ' . $last_name_placeholder, 
+                                 $document_xml);
+    
+    // Method 4: Also try replacing just the placeholder followed by any text
+    $document_xml = preg_replace('/Ms\.?\s*\/\s*Mr\.?\s*Lastname/i', 
+                                 $title . ' ' . htmlspecialchars($intern['last_name'], ENT_XML1, 'UTF-8'), 
+                                 $document_xml);
+    
+    // Method 5: Additional check for split XML tags (common in Word documents)
+    // Pattern for <w:t>Ms/</w:t><w:t>Mr.</w:t> or similar
+    $document_xml = preg_replace_callback(
+        '/(<w:t[^>]*>)(Ms\.?\s*\/?\s*)(<\/w:t>)(.*?)(<w:t[^>]*>)(Mr\.?\s*)(<\/w:t>)/i',
+        function($matches) use ($title) {
+            error_log("Found split XML pattern for Ms/Mr");
+            // Replace with the title in the first tag, remove the second
+            return $matches[1] . $title . $matches[3] . $matches[4] . $matches[5] . $matches[7];
+        },
+        $document_xml
+    );
+    
+    // Final safety check: If we still see any Ms/Mr pattern, replace it
+    if (preg_match('/Ms\.?\s*\/\s*Mr\.?/i', $document_xml)) {
+        error_log("Warning: Ms/Mr pattern still found after all replacements");
+        $document_xml = preg_replace('/Ms\.?\s*\/\s*Mr\.?/i', $title, $document_xml);
+    }
+    
+    // Debug: Save modified XML
+    file_put_contents($debug_dir . 'modified_document.xml', $document_xml);
     
     // Update the document.xml in the archive
     if (!$zip->deleteName('word/document.xml')) {
@@ -199,6 +294,10 @@ if ($zip->open($output_path) === TRUE) {
     
     // Delete temporary file
     @unlink($output_path);
+    
+    // Log success
+    error_log("Certificate generated successfully for: " . $full_name . " (Gender: " . $gender . ", Title: " . $title . ")");
+    error_log("=== End Certificate Generation ===");
     exit();
     
 } else {
