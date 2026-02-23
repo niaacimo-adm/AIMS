@@ -88,8 +88,17 @@ try {
         case 'transfer_queue':
             transferQueue();
             break;
-            case 'call_specific_visitor':  // Add this new case
+        case 'call_specific_visitor':
             callSpecificVisitor();
+            break;
+        case 'reset_daily_queue':
+            resetDailyQueue();
+            break;
+        case 'get_queue_summary':
+            getQueueSummary();
+            break;
+        case 'no_show_visitor':
+            noShowVisitor();
             break;
         default:
             jsonResponse(['success' => false, 'message' => 'Invalid action: ' . $action]);
@@ -327,7 +336,7 @@ function getCompletedToday()
         $query .= "AND unit_id = ? ";
     }
 
-    $query .= "ORDER BY time_out DESC LIMIT 20";
+    $query .= "ORDER BY time_in DESC LIMIT 20";
 
     $stmt = $db->prepare($query);
 
@@ -765,8 +774,7 @@ function getQueue()
                     'remarks' => $row['remarks'] ?? '',
                     'time_in' => $row['time_in'] ?? '',
                     'time_called' => $row['time_called'] ?? '',
-                    'time_served' => $row['time_served'] ?? '',
-                    'time_completed' => $row['time_completed'] ?? '',
+
                     'status' => $row['status'] ?? 'waiting',
                     'created_by' => $row['created_by'] ?? 0,
                     'first_name' => $row['first_name'] ?? '',
@@ -883,11 +891,16 @@ function callVisitor()
         return;
     }
 
-    $query = "SELECT vq.*, s.section_name, u.unit_name 
+    // Fetch visitor — allow waiting OR called (re-announce support)
+    $query = "SELECT vq.*,
+              COALESCE(s.section_name, vq.section_name) as section_name,
+              s.section_code,
+              u.unit_name, u.unit_code,
+              vq.is_manager_office
               FROM visitor_queue vq
               LEFT JOIN section s ON vq.section_id = s.section_id
               LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
-              WHERE vq.id = ?";
+              WHERE vq.id = ? AND vq.status IN ('waiting', 'called')";
 
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $queue_id);
@@ -902,26 +915,42 @@ function callVisitor()
     if ($result->num_rows > 0) {
         $visitor = $result->fetch_assoc();
 
-        // Update to called - This should work now with updated schema
+        // Update to called (or re-call) — set call_count++ to track repeated calls
         $update = $db->prepare("UPDATE visitor_queue 
-                               SET status = 'called', 
-                                   time_called = NOW() 
+                               SET status = 'called',
+                                   time_called = NOW(),
+                                   call_count = COALESCE(call_count, 0) + 1
                                WHERE id = ?");
         $update->bind_param("i", $visitor['id']);
 
         if ($update->execute()) {
+            // Resolve display names — IMO Office override
+            $section_name = $visitor['is_manager_office'] ? 'IMO Office' : ($visitor['section_name'] ?? '');
+            $unit_name    = $visitor['unit_name'] ?? '';
+
             jsonResponse([
-                'success' => true,
-                'queue_number' => $visitor['queue_number'],
+                'success'      => true,
+                'queue_number' => $visitor['is_priority'] ? $visitor['priority_number'] : $visitor['queue_number'],
                 'visitor_name' => $visitor['visitor_name'],
-                'section_name' => $visitor['section_name'] ?? '',
-                'unit_name' => $visitor['unit_name'] ?? ''
+                'section_name' => $section_name,
+                'unit_name'    => $unit_name,
+                'is_imo'       => (bool)$visitor['is_manager_office'],
+                'call_count'   => (int)($visitor['call_count'] ?? 0) + 1
             ]);
         } else {
             jsonResponse(['success' => false, 'message' => 'Failed to call visitor: ' . $db->error]);
         }
     } else {
-        jsonResponse(['success' => false, 'message' => 'Visitor not found']);
+        // Check if the visitor exists but is already serving/completed
+        $check = $db->prepare("SELECT status FROM visitor_queue WHERE id = ?");
+        $check->bind_param("i", $queue_id);
+        $check->execute();
+        $checkRow = $check->get_result()->fetch_assoc();
+        if ($checkRow) {
+            jsonResponse(['success' => false, 'message' => 'Visitor is already ' . $checkRow['status'] . ' and cannot be re-called.']);
+        } else {
+            jsonResponse(['success' => false, 'message' => 'Visitor not found']);
+        }
     }
 }
 
@@ -932,15 +961,31 @@ function serveVisitor()
     $queue_id = intval($_POST['queue_id'] ?? 0);
 
     $update = $db->prepare("UPDATE visitor_queue 
-                           SET status = 'serving', 
-                               time_served = NOW() 
-                           WHERE id = ? AND status = 'called'");
+                           SET status = 'serving',
+                               time_called = COALESCE(time_called, NOW())
+                           WHERE id = ? AND status IN ('called', 'waiting')");
     $update->bind_param("i", $queue_id);
 
-    if ($update->execute()) {
-        jsonResponse(['success' => true, 'message' => 'Visitor is now being served']);
+    if ($update->execute() && $update->affected_rows > 0) {
+        $q = $db->prepare("SELECT queue_number, priority_number, is_priority, visitor_name,
+                            COALESCE(s.section_name, vq.section_name) as section_name, u.unit_name
+                            FROM visitor_queue vq
+                            LEFT JOIN section s ON vq.section_id = s.section_id
+                            LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
+                            WHERE vq.id = ?");
+        $q->bind_param("i", $queue_id);
+        $q->execute();
+        $row = $q->get_result()->fetch_assoc();
+        jsonResponse([
+            'success'      => true,
+            'message'      => 'Visitor is now being served',
+            'queue_number' => $row['is_priority'] ? $row['priority_number'] : $row['queue_number'],
+            'visitor_name' => $row['visitor_name'],
+            'section_name' => $row['section_name'] ?? '',
+            'unit_name'    => $row['unit_name'] ?? ''
+        ]);
     } else {
-        jsonResponse(['success' => false, 'message' => 'Failed to update status: ' . $db->error]);
+        jsonResponse(['success' => false, 'message' => 'Could not update status. Visitor may already be serving or not found.']);
     }
 }
 
@@ -948,18 +993,19 @@ function completeVisitor()
 {
     global $db;
 
-    $queue_id = intval($_POST['queue_id'] ?? 0);
+    $queue_id  = intval($_POST['queue_id'] ?? 0);
+    $remarks   = $_POST['remarks'] ?? null; // optional completion note
 
     $update = $db->prepare("UPDATE visitor_queue 
-                           SET status = 'completed', 
-                               time_completed = NOW() 
-                           WHERE id = ?");
-    $update->bind_param("i", $queue_id);
+                           SET status = 'completed',
+                               remarks = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE remarks END
+                           WHERE id = ? AND status = 'serving'");
+    $update->bind_param("sssi", $remarks, $remarks, $remarks, $queue_id);
 
-    if ($update->execute()) {
+    if ($update->execute() && $update->affected_rows > 0) {
         jsonResponse(['success' => true, 'message' => 'Visitor service completed']);
     } else {
-        jsonResponse(['success' => false, 'message' => 'Failed to complete visitor: ' . $db->error]);
+        jsonResponse(['success' => false, 'message' => 'Could not complete. Visitor may not be in serving status.']);
     }
 }
 
@@ -970,8 +1016,7 @@ function cancelVisitor()
     $queue_id = intval($_POST['queue_id'] ?? 0);
 
     $update = $db->prepare("UPDATE visitor_queue 
-                           SET status = 'cancelled', 
-                               time_cancelled = NOW() 
+                           SET status = 'cancelled'
                            WHERE id = ?");
     $update->bind_param("i", $queue_id);
 
@@ -1022,7 +1067,7 @@ function getQueueStatus()
               LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
               WHERE vq.status = 'serving' 
               AND DATE(vq.time_in) = CURDATE()
-              ORDER BY vq.time_served DESC 
+              ORDER BY vq.time_called DESC 
               LIMIT 1";
 
     $result = $db->query($query);
@@ -1076,7 +1121,7 @@ function getDisplayData()
               WHERE vq.status = 'serving'
               AND vq.is_priority = 1
               AND DATE(vq.time_in) = CURDATE()
-              ORDER BY vq.time_served DESC 
+              ORDER BY vq.time_called DESC 
               LIMIT 1";
 
     $result = $db->query($query);
@@ -1124,7 +1169,7 @@ function getDisplayData()
               WHERE vq.status = 'serving'
               AND vq.is_priority = 0
               AND DATE(vq.time_in) = CURDATE()
-              ORDER BY vq.time_served DESC 
+              ORDER BY vq.time_called DESC 
               LIMIT 1";
 
     $result = $db->query($query);
@@ -1224,7 +1269,7 @@ function getDisplayData()
               LEFT JOIN unit_section u ON vq.unit_id = u.unit_id
               WHERE vq.status = 'completed' 
               AND DATE(vq.time_in) = CURDATE()
-              ORDER BY vq.time_completed DESC 
+              ORDER BY vq.time_called DESC 
               LIMIT 10";
 
     $result = $db->query($query);
@@ -1247,7 +1292,7 @@ function getDisplayData()
                        WHERE section_id = s.section_id 
                        AND status = 'serving' 
                        AND DATE(time_in) = CURDATE() 
-                       ORDER BY time_served DESC LIMIT 1), '---') as current_serving,
+                       ORDER BY time_called DESC LIMIT 1), '---') as current_serving,
               COALESCE((SELECT COUNT(*) FROM visitor_queue 
                        WHERE section_id = s.section_id 
                        AND status IN ('waiting', 'called')
@@ -1278,7 +1323,7 @@ function getDisplayData()
                          WHERE is_manager_office = 1 
                          AND status = 'serving' 
                          AND DATE(time_in) = CURDATE() 
-                         ORDER BY time_served DESC LIMIT 1), '---') as current_serving,
+                         ORDER BY time_called DESC LIMIT 1), '---') as current_serving,
                 COALESCE((SELECT COUNT(*) FROM visitor_queue 
                          WHERE is_manager_office = 1 
                          AND status IN ('waiting', 'called')
@@ -1303,7 +1348,7 @@ function getDisplayData()
                        WHERE unit_id = u.unit_id 
                        AND status = 'serving' 
                        AND DATE(time_in) = CURDATE() 
-                       ORDER BY time_served DESC LIMIT 1), '---') as current_serving,
+                       ORDER BY time_called DESC LIMIT 1), '---') as current_serving,
               COALESCE((SELECT COUNT(*) FROM visitor_queue 
                        WHERE unit_id = u.unit_id 
                        AND status IN ('waiting', 'called')
@@ -1352,7 +1397,7 @@ function getSectionCounters()
                WHERE section_id = s.section_id 
                AND status = 'serving' 
                AND DATE(time_in) = CURDATE() 
-               ORDER BY time_served DESC LIMIT 1) as current_serving,
+               ORDER BY time_called DESC LIMIT 1) as current_serving,
               (SELECT COUNT(*) FROM visitor_queue 
                WHERE section_id = s.section_id 
                AND status = 'waiting'
@@ -1389,7 +1434,7 @@ function getSectionCounters()
                WHERE unit_id = u.unit_id 
                AND status = 'serving' 
                AND DATE(time_in) = CURDATE() 
-               ORDER BY time_served DESC LIMIT 1) as current_serving,
+               ORDER BY time_called DESC LIMIT 1) as current_serving,
               (SELECT COUNT(*) FROM visitor_queue 
                WHERE unit_id = u.unit_id 
                AND status = 'waiting'
@@ -1451,5 +1496,85 @@ function getVisitorDetails()
         ]);
     } else {
         jsonResponse(['success' => false, 'message' => 'Visitor not found']);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NEW FUNCTIONS
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Mark a visitor as "no show" — they were called but didn't appear.
+ * Sets status to 'cancelled' with a no_show flag.
+ */
+function noShowVisitor()
+{
+    global $db;
+    $queue_id = intval($_POST['queue_id'] ?? 0);
+
+    $update = $db->prepare("UPDATE visitor_queue 
+                           SET status = 'cancelled',
+                               remarks = CONCAT(COALESCE(remarks,''), ' [NO SHOW]')
+                           WHERE id = ? AND status IN ('called', 'waiting')");
+    $update->bind_param("i", $queue_id);
+
+    if ($update->execute() && $update->affected_rows > 0) {
+        jsonResponse(['success' => true, 'message' => 'Visitor marked as no-show']);
+    } else {
+        jsonResponse(['success' => false, 'message' => 'Could not mark as no-show']);
+    }
+}
+
+/**
+ * Reset (cancel) all waiting/called visitors for today.
+ * Used at end of day or to clear the queue. Only allowed for admin.
+ */
+// function resetDailyQueue()
+// {
+//     global $db;
+
+
+//     $update->bind_param();
+
+//     if ($db->query("UPDATE visitor_queue 
+//                     SET status = 'cancelled'
+//                     WHERE DATE(time_in) = CURDATE()
+//                     AND status IN ('waiting', 'called')")) {
+//         jsonResponse([
+//             'success' => true,
+//             'message' => 'Queue reset. ' . $db->affected_rows . ' visitor(s) cleared.',
+//             'cleared' => $db->affected_rows
+//         ]);
+//     } else {
+//         jsonResponse(['success' => false, 'message' => 'Reset failed: ' . $db->error]);
+//     }
+// }
+
+/**
+ * Quick summary stats for the dashboard widget — today's numbers.
+ */
+function getQueueSummary()
+{
+    global $db;
+
+    $result = $db->query("SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status='waiting'   THEN 1 ELSE 0 END) as waiting,
+        SUM(CASE WHEN status='called'    THEN 1 ELSE 0 END) as called,
+        SUM(CASE WHEN status='serving'   THEN 1 ELSE 0 END) as serving,
+        SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) as cancelled,
+        SUM(is_priority) as priority_total,
+        ROUND(AVG(CASE WHEN time_called IS NOT NULL 
+                  THEN TIMESTAMPDIFF(MINUTE, time_in, time_called) END), 1) as avg_wait_min,
+        NULL as avg_serve_min
+        FROM visitor_queue
+        WHERE DATE(time_in) = CURDATE()");
+
+    if ($result) {
+        $row = $result->fetch_assoc();
+        jsonResponse(['success' => true, 'summary' => $row]);
+    } else {
+        jsonResponse(['success' => false, 'message' => $db->error]);
     }
 }

@@ -301,6 +301,41 @@ if ($unit_result) {
                         </div>
 
                         <div class="col-md-8">
+
+                            <!-- Live Summary Bar -->
+                            <div class="row mb-2" id="summaryBar">
+                                <div class="col-6 col-sm-4 col-lg-2 mb-2">
+                                    <div class="small-box bg-info mb-0 py-2 px-3 text-center" style="border-radius:10px;">
+                                        <div class="inner"><h5 id="ds-total" class="mb-0">—</h5><p class="mb-0" style="font-size:11px;">Total Today</p></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-sm-4 col-lg-2 mb-2">
+                                    <div class="small-box bg-warning mb-0 py-2 px-3 text-center" style="border-radius:10px;">
+                                        <div class="inner"><h5 id="ds-waiting" class="mb-0">—</h5><p class="mb-0" style="font-size:11px;">Waiting</p></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-sm-4 col-lg-2 mb-2">
+                                    <div class="small-box bg-primary mb-0 py-2 px-3 text-center" style="border-radius:10px;">
+                                        <div class="inner"><h5 id="ds-serving" class="mb-0">—</h5><p class="mb-0" style="font-size:11px;">Serving</p></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-sm-4 col-lg-2 mb-2">
+                                    <div class="small-box bg-success mb-0 py-2 px-3 text-center" style="border-radius:10px;">
+                                        <div class="inner"><h5 id="ds-completed" class="mb-0">—</h5><p class="mb-0" style="font-size:11px;">Completed</p></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-sm-4 col-lg-2 mb-2">
+                                    <div class="small-box bg-danger mb-0 py-2 px-3 text-center" style="border-radius:10px;">
+                                        <div class="inner"><h5 id="ds-priority" class="mb-0">—</h5><p class="mb-0" style="font-size:11px;">Priority</p></div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-sm-4 col-lg-2 mb-2">
+                                    <div class="small-box bg-secondary mb-0 py-2 px-3 text-center" style="border-radius:10px;">
+                                        <div class="inner"><h5 id="ds-avgwait" class="mb-0">—</h5><p class="mb-0" style="font-size:11px;">Avg Wait</p></div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="card">
                                 <div class="card-header">
                                     <h3 class="card-title">Active Queue List</h3>
@@ -310,6 +345,9 @@ if ($unit_result) {
                                         </button>
                                         <button class="btn btn-sm btn-info" id="refreshQueue">
                                             <i class="fas fa-sync"></i> Refresh
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" id="resetQueueBtn" title="Cancel all waiting/called visitors">
+                                            <i class="fas fa-broom"></i> Reset Queue
                                         </button>
                                     </div>
                                 </div>
@@ -568,7 +606,12 @@ if ($unit_result) {
                         "render": function(data, type, row) {
                             let actions = '';
                             if (row.status === 'waiting') {
-                                actions += `<button class="btn btn-sm btn-info call-btn" data-id="${row.id}">
+                                actions += `<button class="btn btn-sm btn-info call-btn" 
+                                                data-id="${row.id}"
+                                                data-queue="${row.is_priority == 1 ? row.priority_number : row.queue_number}"
+                                                data-section="${row.section_name || ''}"
+                                                data-unit="${row.unit_name || ''}"
+                                                data-is-imo="${(row.section_name === 'IMO Office' || row.unit_name === 'IMO Office') ? '1' : '0'}">
                                                 <i class="fas fa-bullhorn"></i> Call
                                             </button> `;
                                 actions += `<button class="btn btn-sm btn-warning edit-btn" data-id="${row.id}">
@@ -578,10 +621,23 @@ if ($unit_result) {
                                                 <i class="fas fa-times"></i>
                                             </button>`;
                             } else if (row.status === 'called') {
+                                // Keep Call button (re-announce) + Serve button; remove when serving
+                                actions += `<button class="btn btn-sm btn-info call-btn" 
+                                                data-id="${row.id}"
+                                                data-queue="${row.is_priority == 1 ? row.priority_number : row.queue_number}"
+                                                data-section="${row.section_name || ''}"
+                                                data-unit="${row.unit_name || ''}"
+                                                data-is-imo="${(row.section_name === 'IMO Office' || row.unit_name === 'IMO Office') ? '1' : '0'}">
+                                                <i class="fas fa-bullhorn"></i> Call
+                                            </button> `;
                                 actions += `<button class="btn btn-sm btn-primary serve-btn" data-id="${row.id}">
                                                 <i class="fas fa-user-check"></i> Serve
                                             </button> `;
+                                actions += `<button class="btn btn-sm btn-secondary noshow-btn" data-id="${row.id}" title="Mark as No Show">
+                                                <i class="fas fa-user-slash"></i>
+                                            </button> `;
                             } else if (row.status === 'serving') {
+                                // No Call button when serving
                                 actions += `<button class="btn btn-sm btn-success complete-btn" data-id="${row.id}">
                                                 <i class="fas fa-check"></i> Complete
                                             </button>`;
@@ -792,8 +848,12 @@ if ($unit_result) {
 
             // Action buttons
             $(document).on('click', '.call-btn', function() {
-                const queueId = $(this).data('id');
-                callVisitor(queueId);
+                const queueId     = $(this).data('id');
+                const queueNumber = $(this).data('queue');
+                const sectionName = $(this).data('section');
+                const unitName    = $(this).data('unit');
+                const isImo       = $(this).data('is-imo');
+                callVisitor(queueId, queueNumber, sectionName, unitName, isImo);
             });
 
             $(document).on('click', '.serve-btn', function() {
@@ -816,6 +876,42 @@ if ($unit_result) {
                 cancelVisitor(queueId);
             });
 
+            $(document).on('click', '.noshow-btn', function() {
+                const queueId = $(this).data('id');
+                noShowVisitor(queueId);
+            });
+
+            // Reset Queue button
+            $('#resetQueueBtn').click(function() {
+                Swal.fire({
+                    title: 'Reset Queue?',
+                    html: '<p>This will <strong>cancel all waiting and called</strong> visitors for today.</p><p class="text-danger">This cannot be undone.</p>',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Yes, reset queue!',
+                    cancelButtonText: 'No, keep it'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '../includes/queue_ajax.php?action=reset_daily_queue',
+                            type: 'POST',
+                            success: function(response) {
+                                if (response.success) {
+                                    $('#queueTable').DataTable().ajax.reload();
+                                    updateQueueStatus();
+                                    loadSectionCounters();
+                                    updateDashboardSummary();
+                                    Swal.fire('Done!', response.message, 'success');
+                                } else {
+                                    Swal.fire('Error', response.message, 'error');
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+
             // Refresh queue
             $('#refreshQueue').click(function() {
                 $('#queueTable').DataTable().ajax.reload();
@@ -828,7 +924,9 @@ if ($unit_result) {
                 $('#queueTable').DataTable().ajax.reload(null, false);
                 updateQueueStatus();
                 loadSectionCounters();
+                updateDashboardSummary();
             }, 30000);
+            updateDashboardSummary(); // load on start
 
             // Auto-select section based on employee
             $('#personToVisit').on('change', function() {
@@ -942,7 +1040,77 @@ if ($unit_result) {
             $('#qrcode').html(img);
         }
 
-        function callVisitor(queueId) {
+        function announceQueueTTS(queueNumber, sectionName, unitName, isImo) {
+            if (!('speechSynthesis' in window)) return;
+
+            // Determine destination label
+            let destination = '';
+            if (isImo === '1' || isImo === true) {
+                destination = 'I M O Office';
+            } else if (unitName && unitName.trim() !== '') {
+                destination = unitName.trim();
+            } else if (sectionName && sectionName.trim() !== '') {
+                destination = sectionName.trim();
+            } else {
+                destination = 'the Office of the Division Manager';
+            }
+
+            // Spell out queue number digit by digit for clarity (like airport PA)
+            const queueSpelled = String(queueNumber).split('').join(' ');
+
+            const announcement =
+                `Attention please. Queue number ${queueSpelled}, ` +
+                `please proceed to ${destination}. ` +
+                `Queue number ${queueSpelled}, to ${destination}. Thank you.`;
+
+            window.speechSynthesis.cancel(); // Cancel any ongoing speech
+
+            const utterance = new SpeechSynthesisUtterance(announcement);
+            utterance.rate  = 0.88;   // Slightly slower — airport style
+            utterance.pitch = 1.1;    // Slightly higher — feminine
+            utterance.volume = 1.0;
+
+            // Pick a female voice
+            function speak() {
+                const voices = window.speechSynthesis.getVoices();
+
+                // Priority list of known female/neutral voices
+                const femaleKeywords = ['female', 'woman', 'zira', 'susan', 'samantha',
+                                        'karen', 'moira', 'tessa', 'victoria', 'fiona',
+                                        'google uk english female', 'microsoft zira',
+                                        'microsoft susan', 'en-us', 'en-gb', 'en-au'];
+
+                let chosenVoice = null;
+
+                // 1. Exact name match for known female voices
+                for (const kw of femaleKeywords) {
+                    chosenVoice = voices.find(v =>
+                        v.name.toLowerCase().includes(kw) && v.lang.startsWith('en'));
+                    if (chosenVoice) break;
+                }
+
+                // 2. Fallback: any English voice
+                if (!chosenVoice) {
+                    chosenVoice = voices.find(v => v.lang.startsWith('en'));
+                }
+
+                if (chosenVoice) utterance.voice = chosenVoice;
+
+                window.speechSynthesis.speak(utterance);
+            }
+
+            // Voices may not be loaded yet on first call
+            if (window.speechSynthesis.getVoices().length === 0) {
+                window.speechSynthesis.onvoiceschanged = function () {
+                    window.speechSynthesis.onvoiceschanged = null;
+                    speak();
+                };
+            } else {
+                speak();
+            }
+        }
+
+        function callVisitor(queueId, queueNumber, sectionName, unitName, isImo) {
             $.ajax({
                 url: '../includes/queue_ajax.php?action=call_visitor',
                 type: 'POST',
@@ -962,6 +1130,13 @@ if ($unit_result) {
                         $('#queueTable').DataTable().ajax.reload(null, false);
                         loadSectionCounters();
                         playNotificationSound();
+
+                        // TTS announcement — no visitor name, only Queue No. & Section/Unit
+                        const announcedQueue   = queueNumber   || response.queue_number;
+                        const announcedSection = sectionName   || response.section_name || '';
+                        const announcedUnit    = unitName      || response.unit_name    || '';
+                        const announcedIsImo   = isImo         || (announcedSection === 'IMO Office' || announcedUnit === 'IMO Office') ? '1' : '0';
+                        announceQueueTTS(announcedQueue, announcedSection, announcedUnit, announcedIsImo);
 
                         Swal.fire({
                             title: 'Visitor Called!',
@@ -1032,6 +1207,54 @@ if ($unit_result) {
                             timer: 2000,
                             showConfirmButton: false
                         });
+                    }
+                }
+            });
+        }
+
+        function noShowVisitor(queueId) {
+            Swal.fire({
+                title: 'Mark as No Show?',
+                text: 'This visitor was called but did not appear.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, No Show'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '../includes/queue_ajax.php?action=no_show_visitor',
+                        type: 'POST',
+                        data: { queue_id: queueId },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#queueTable').DataTable().ajax.reload();
+                                updateQueueStatus();
+                                loadSectionCounters();
+                                updateDashboardSummary();
+                                Swal.fire({ title: 'Marked', text: 'Visitor marked as no-show', icon: 'info', timer: 1800, showConfirmButton: false });
+                            } else {
+                                Swal.fire('Error', response.message, 'error');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        function updateDashboardSummary() {
+            $.ajax({
+                url: '../includes/queue_ajax.php?action=get_queue_summary',
+                type: 'GET',
+                success: function(response) {
+                    if (response.success && response.summary) {
+                        const s = response.summary;
+                        $('#ds-total').text(s.total || 0);
+                        $('#ds-waiting').text(s.waiting || 0);
+                        $('#ds-serving').text(s.serving || 0);
+                        $('#ds-completed').text(s.completed || 0);
+                        $('#ds-priority').text(s.priority_total || 0);
+                        $('#ds-avgwait').text(s.avg_wait_min ? s.avg_wait_min + ' min' : '—');
                     }
                 }
             });

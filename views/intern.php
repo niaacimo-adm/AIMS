@@ -862,15 +862,18 @@ $result = $db->query($query);
                     <span class="badge badge-<?= $class ?>"><?= $row['status'] ?></span>
                   </td>
                   <td>
-                    <button class="btn btn-sm btn-info view-btn" data-id="<?= $row['intern_id'] ?>">
+                    <button class="btn btn-sm btn-info view-btn" data-id="<?= $row['intern_id'] ?>" title="View Details">
                       <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['intern_id'] ?>">
+                    <button class="btn btn-sm btn-warning edit-btn" data-id="<?= $row['intern_id'] ?>" title="Edit">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="<?= $row['intern_id'] ?>">
+                    <button class="btn btn-sm btn-danger delete-btn" data-id="<?= $row['intern_id'] ?>" title="Delete">
                       <i class="fas fa-trash"></i>
                     </button>
+                    <a href="generate_certificate.php?intern_id=<?= $row['intern_id'] ?>" class="btn btn-sm btn-success" title="Generate Certificate" target="_blank">
+                      <i class="fas fa-certificate"></i>
+                    </a>
                   </td>
                 </tr>
               <?php endwhile; ?>
@@ -1536,6 +1539,9 @@ $result = $db->query($query);
             <div id="viewInternContent"></div>
           </div>
           <div class="modal-footer">
+            <a href="#" id="viewModalCertBtn" class="btn btn-success" target="_blank">
+              <i class="fas fa-certificate mr-2"></i>Generate Certificate
+            </a>
             <button type="button" class="btn btn-secondary" data-dismiss="modal">
               <i class="fas fa-times mr-2"></i>Close
             </button>
@@ -2080,6 +2086,8 @@ $(document).on('click', '.view-btn', function() {
           </div>
         `;
         $('#viewInternContent').html(content);
+        // Set the certificate button link
+        $('#viewModalCertBtn').attr('href', 'generate_certificate.php?intern_id=' + data.intern_id);
         $('#viewInternModal').modal('show');
       }
     }
