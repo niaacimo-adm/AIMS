@@ -91,9 +91,9 @@ try {
         case 'call_specific_visitor':
             callSpecificVisitor();
             break;
-        case 'reset_daily_queue':
-            resetDailyQueue();
-            break;
+        // case 'reset_daily_queue':
+        //     resetDailyQueue();
+        //     break;
         case 'get_queue_summary':
             getQueueSummary();
             break;
@@ -915,27 +915,30 @@ function callVisitor()
     if ($result->num_rows > 0) {
         $visitor = $result->fetch_assoc();
 
-        // Update to called (or re-call) — set call_count++ to track repeated calls
         $update = $db->prepare("UPDATE visitor_queue 
                                SET status = 'called',
-                                   time_called = NOW(),
-                                   call_count = COALESCE(call_count, 0) + 1
+                                   time_called = NOW()
                                WHERE id = ?");
         $update->bind_param("i", $visitor['id']);
 
         if ($update->execute()) {
-            // Resolve display names — IMO Office override
-            $section_name = $visitor['is_manager_office'] ? 'IMO Office' : ($visitor['section_name'] ?? '');
-            $unit_name    = $visitor['unit_name'] ?? '';
+            // Resolve correct destination — unit_name takes priority over section_name
+            if (!empty($visitor['is_manager_office'])) {
+                $destination = 'IMO Office';
+            } elseif (!empty($visitor['unit_name'])) {
+                $destination = $visitor['unit_name'];   // e.g. "Cashier Unit"
+            } else {
+                $destination = $visitor['section_name'] ?? '';  // e.g. "Finance Section"
+            }
 
             jsonResponse([
                 'success'      => true,
                 'queue_number' => $visitor['is_priority'] ? $visitor['priority_number'] : $visitor['queue_number'],
                 'visitor_name' => $visitor['visitor_name'],
-                'section_name' => $section_name,
-                'unit_name'    => $unit_name,
+                'section_name' => $visitor['section_name'] ?? '',
+                'unit_name'    => $visitor['unit_name'] ?? '',
+                'destination'  => $destination,
                 'is_imo'       => (bool)$visitor['is_manager_office'],
-                'call_count'   => (int)($visitor['call_count'] ?? 0) + 1
             ]);
         } else {
             jsonResponse(['success' => false, 'message' => 'Failed to call visitor: ' . $db->error]);
@@ -1108,11 +1111,13 @@ function getDisplayData()
     $query = "SELECT vq.*, 
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO Office'
-                  ELSE s.section_name 
+                  WHEN u.unit_name IS NOT NULL AND u.unit_name != '' THEN u.unit_name
+                  ELSE COALESCE(s.section_name, vq.section_name, 'General')
               END as section_name,
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO'
-                  ELSE s.section_code 
+                  WHEN u.unit_code IS NOT NULL AND u.unit_code != '' THEN u.unit_code
+                  ELSE COALESCE(s.section_code, '')
               END as section_code,
               u.unit_name, u.unit_code
               FROM visitor_queue vq
@@ -1156,11 +1161,13 @@ function getDisplayData()
     $query = "SELECT vq.*, 
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO Office'
-                  ELSE s.section_name 
+                  WHEN u.unit_name IS NOT NULL AND u.unit_name != '' THEN u.unit_name
+                  ELSE COALESCE(s.section_name, vq.section_name, 'General')
               END as section_name,
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO'
-                  ELSE s.section_code 
+                  WHEN u.unit_code IS NOT NULL AND u.unit_code != '' THEN u.unit_code
+                  ELSE COALESCE(s.section_code, '')
               END as section_code,
               u.unit_name, u.unit_code
               FROM visitor_queue vq
@@ -1200,34 +1207,28 @@ function getDisplayData()
         $current_regular = $result ? $result->fetch_assoc() : null;
     }
 
-    // Handle manager's office display for both priority and regular
-    if ($current_priority) {
-        if (isset($current_priority['is_manager_office']) && $current_priority['is_manager_office']) {
-            $current_priority['section_name'] = "IMO Office";
-            $current_priority['section_code'] = "IMO";
-        } elseif (empty($current_priority['section_name']) && !empty($current_priority['unit_name'])) {
-            $current_priority['section_name'] = $current_priority['unit_name'];
-        } elseif (empty($current_priority['section_name']) && empty($current_priority['unit_name'])) {
-            $current_priority['section_name'] = 'General Queue';
+    // Post-process: ensure destination name is always set correctly.
+    // SQL CASE already prefers unit_name over section_name, this is a safety fallback.
+    foreach (['current_priority', 'current_regular'] as $var) {
+        if (!$$var) continue;
+        if (!empty($$var['is_manager_office'])) {
+            $$var['section_name'] = 'IMO Office';
+            $$var['section_code'] = 'IMO';
+        } elseif (empty($$var['section_name']) && !empty($$var['unit_name'])) {
+            $$var['section_name'] = $$var['unit_name'];
+        } elseif (empty($$var['section_name'])) {
+            $$var['section_name'] = 'General Queue';
         }
-    }
-
-    if ($current_regular) {
-        if (isset($current_regular['is_manager_office']) && $current_regular['is_manager_office']) {
-            $current_regular['section_name'] = "IMO Office";
-            $current_regular['section_code'] = "IMO";
-        } elseif (empty($current_regular['section_name']) && !empty($current_regular['unit_name'])) {
-            $current_regular['section_name'] = $current_regular['unit_name'];
-        } elseif (empty($current_regular['section_name']) && empty($current_regular['unit_name'])) {
-            $current_regular['section_name'] = 'General Queue';
-        }
+        // Add a dedicated 'destination' key used by TTS — always the most specific name
+        $$var['destination'] = $$var['section_name'];
     }
 
     // Get waiting queue (max 10) - includes called visitors, separated by priority
     $query = "SELECT vq.*, 
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO Office'
-                  ELSE s.section_name 
+                  WHEN u.unit_name IS NOT NULL AND u.unit_name != '' THEN u.unit_name
+                  ELSE COALESCE(s.section_name, vq.section_name, 'General')
               END as section_name,
               u.unit_name 
               FROM visitor_queue vq
@@ -1248,11 +1249,12 @@ function getDisplayData()
     $waiting_queue = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            if (isset($row['is_manager_office']) && $row['is_manager_office']) {
+            if (!empty($row['is_manager_office'])) {
                 $row['section_name'] = "IMO Office";
             } elseif (empty($row['section_name']) && !empty($row['unit_name'])) {
                 $row['section_name'] = $row['unit_name'];
             }
+            $row['destination'] = $row['section_name'];
             $waiting_queue[] = $row;
         }
     }
@@ -1261,7 +1263,8 @@ function getDisplayData()
     $query = "SELECT vq.*, 
               CASE 
                   WHEN vq.is_manager_office = 1 THEN 'IMO Office'
-                  ELSE s.section_name 
+                  WHEN u.unit_name IS NOT NULL AND u.unit_name != '' THEN u.unit_name
+                  ELSE COALESCE(s.section_name, vq.section_name, 'General')
               END as section_name,
               u.unit_name 
               FROM visitor_queue vq
@@ -1276,11 +1279,12 @@ function getDisplayData()
     $served_queue = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            if (isset($row['is_manager_office']) && $row['is_manager_office']) {
+            if (!empty($row['is_manager_office'])) {
                 $row['section_name'] = "IMO Office";
             } elseif (empty($row['section_name']) && !empty($row['unit_name'])) {
                 $row['section_name'] = $row['unit_name'];
             }
+            $row['destination'] = $row['section_name'];
             $served_queue[] = $row;
         }
     }

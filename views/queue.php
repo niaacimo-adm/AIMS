@@ -1040,73 +1040,101 @@ if ($unit_result) {
             $('#qrcode').html(img);
         }
 
+        // ✨ Social media girl voice announcement ✨
         function announceQueueTTS(queueNumber, sectionName, unitName, isImo) {
             if (!('speechSynthesis' in window)) return;
 
-            // Determine destination label
-            let destination = '';
+            // Resolve destination — most specific name first
+            let dest = '';
             if (isImo === '1' || isImo === true) {
-                destination = 'I M O Office';
+                dest = 'I M O Office';
             } else if (unitName && unitName.trim() !== '') {
-                destination = unitName.trim();
+                dest = unitName.trim();
             } else if (sectionName && sectionName.trim() !== '') {
-                destination = sectionName.trim();
-            } else {
-                destination = 'the Office of the Division Manager';
+                dest = sectionName.trim();
             }
 
-            // Spell out queue number digit by digit for clarity (like airport PA)
-            const queueSpelled = String(queueNumber).split('').join(' ');
+            // Spell queue number character by character so TTS reads it correctly
+            const spokenNum  = String(queueNumber).split('').join(' ');
+            const destPhrase = dest ? ' at ' + dest : '';
+            const destTo     = dest ? ' to ' + dest : '';
 
-            const announcement =
-                `Attention please. Queue number ${queueSpelled}, ` +
-                `please proceed to ${destination}. ` +
-                `Queue number ${queueSpelled}, to ${destination}. Thank you.`;
+            // Rotating scripts — clear, calm, senior-friendly
+            const scripts = [
+                // Script 1
+                'Attention please. Queue number ' + spokenNum +
+                    (dest ? ', please proceed to ' + dest : '') +
+                    '. I repeat, queue number ' + spokenNum + destTo +
+                    '. Thank you, and please take care.',
 
-            window.speechSynthesis.cancel(); // Cancel any ongoing speech
+                // Script 2
+                'Good day! Queue number ' + spokenNum + ' is now being called.' +
+                    (dest ? ' Please go to ' + dest + '.' : '') +
+                    ' That is queue number ' + spokenNum + destTo +
+                    '. Thank you very much.',
+
+                // Script 3
+                'Your attention please. We are now calling queue number ' + spokenNum +
+                    (dest ? '. Please make your way to ' + dest : '') +
+                    '. Queue number ' + spokenNum + destTo +
+                    '. We are ready for you. Thank you.',
+
+                // Script 4
+                'Queue number ' + spokenNum + ', it is your turn.' +
+                    (dest ? ' Please proceed to ' + dest + '.' : '') +
+                    ' Again, queue number ' + spokenNum + destTo +
+                    '. Thank you for waiting, and please come forward.',
+            ];
+
+            const announcement = scripts[Math.floor(Date.now() / 1000) % scripts.length];
+
+            window.speechSynthesis.cancel();
 
             const utterance = new SpeechSynthesisUtterance(announcement);
-            utterance.rate  = 0.88;   // Slightly slower — airport style
-            utterance.pitch = 1.1;    // Slightly higher — feminine
+            utterance.rate   = 1.1;   // Slower — clear and easy to follow for seniors
+            utterance.pitch  = 1.1;    // Slightly warm and friendly, not flat
             utterance.volume = 1.0;
 
-            // Pick a female voice
-            function speak() {
+            function doSpeak() {
                 const voices = window.speechSynthesis.getVoices();
 
-                // Priority list of known female/neutral voices
-                const femaleKeywords = ['female', 'woman', 'zira', 'susan', 'samantha',
-                                        'karen', 'moira', 'tessa', 'victoria', 'fiona',
-                                        'google uk english female', 'microsoft zira',
-                                        'microsoft susan', 'en-us', 'en-gb', 'en-au'];
+                // Best voices for the "social media girl" sound
+                const voicePriority = [
+                    'microsoft aria',           // 🥇 Neural, natural young US female
+                    'microsoft jenny',          // 🥈 Casual friendly US female
+                    'google us english',        // 🥉 Clear American female (Chrome)
+                    'aria',
+                    'jenny',
+                    'emma',
+                    'ava',
+                    'samantha',
+                    'sonia',
+                    'natasha',
+                    'karen',
+                    'google uk english female',
+                    'female',
+                    'zira',
+                ];
 
                 let chosenVoice = null;
-
-                // 1. Exact name match for known female voices
-                for (const kw of femaleKeywords) {
+                for (const kw of voicePriority) {
                     chosenVoice = voices.find(v =>
                         v.name.toLowerCase().includes(kw) && v.lang.startsWith('en'));
                     if (chosenVoice) break;
                 }
-
-                // 2. Fallback: any English voice
-                if (!chosenVoice) {
-                    chosenVoice = voices.find(v => v.lang.startsWith('en'));
-                }
-
+                if (!chosenVoice) chosenVoice = voices.find(v => v.lang.startsWith('en'));
                 if (chosenVoice) utterance.voice = chosenVoice;
 
                 window.speechSynthesis.speak(utterance);
             }
 
-            // Voices may not be loaded yet on first call
             if (window.speechSynthesis.getVoices().length === 0) {
                 window.speechSynthesis.onvoiceschanged = function () {
                     window.speechSynthesis.onvoiceschanged = null;
-                    speak();
+                    doSpeak();
                 };
             } else {
-                speak();
+                doSpeak();
             }
         }
 

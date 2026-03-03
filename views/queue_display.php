@@ -197,241 +197,157 @@ array_unshift($sections, $manager_office);
             background: var(--divider);
         }
 
-        /* ── NOW SERVING HERO ── */
-        .now-serving-hero {
-            text-align: center;
-            margin-bottom: 14px;
-        }
-        .now-serving-hero span {
-            font-family: 'Nunito', sans-serif;
-            font-size: 28px;
-            font-weight: 900;
-            letter-spacing: 6px;
-            text-transform: uppercase;
-            color: var(--nia-green);
-        }
-
-        /* ── NOW SERVING CARDS ── */
-        .serving-cards-container {
+        /* ── 3-COLUMN LAYOUT ── */
+        .three-col-layout {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1.4fr 1fr;
             gap: 16px;
             margin-bottom: 20px;
+            align-items: stretch;
         }
 
-        .serving-card {
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            border: 2px solid transparent;
-            min-height: 300px;
-        }
-
-        /* PRIORITY card = warm orange tint */
-        .serving-card.priority {
-            background: var(--pri-card-bg);
-            border-color: var(--pri-orange);
-            box-shadow: 0 4px 32px var(--shadow-pri);
-        }
-
-        /* REGULAR card = green tint with #2dc95a */
-        .serving-card.regular {
-            background: var(--reg-card-bg);
-            border-color: var(--nia-green-mid);
-            box-shadow: 0 4px 32px var(--shadow-reg);
-        }
-
-        .serving-card-accent { height: 10px; }
-        .serving-card.priority .serving-card-accent {
-            background: linear-gradient(90deg, var(--pri-orange), #fb923c);
-        }
-        .serving-card.regular .serving-card-accent {
-            background: linear-gradient(90deg, var(--nia-green), var(--nia-green-mid));
-        }
-
-        .serving-card-body {
-            padding: 20px 28px 24px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .serving-card-title {
-            font-size: 18px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-
-        /* Priority label = orange */
-        .serving-card.priority .serving-card-title { color: var(--pri-orange-dark); }
-        /* Regular label = NIA green */
-        .serving-card.regular  .serving-card-title { color: var(--nia-green-dark); }
-
-        .dot {
-            width: 12px; height: 12px;
-            border-radius: 50%;
-            animation: blink 1.5s ease-in-out infinite;
-            flex-shrink: 0;
-        }
-
-        .serving-card.priority .dot { background: var(--pri-orange); box-shadow: 0 0 10px var(--pri-orange); }
-        .serving-card.regular  .dot { background: var(--nia-green-mid); box-shadow: 0 0 10px var(--nia-green-mid); }
-
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
-
-        .now-serving-label {
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-
-        /* ★ QUEUE NUMBERS ★ */
-        .serving-number {
-            font-family: 'Nunito', sans-serif;
-            font-size: 140px;
-            font-weight: 900;
-            line-height: 1;
-            text-align: center;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            letter-spacing: -2px;
-        }
-
-        /* Priority number = warm orange */
-        .serving-card.priority .serving-number { color: var(--pri-orange); }
-        /* Regular number = white (on green card) … but card is light, use dark green for contrast */
-        .serving-card.regular  .serving-number { color: var(--nia-green-dark); }
-
-        /* Visitor info */
-        .visitor-info {
-            background: rgba(255,255,255,0.7);
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin-top: 10px;
-            border: 1px solid var(--border-card);
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--divider);
-        }
-        .info-row:last-child { border-bottom: none; }
-
-        .info-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .info-value {
-            font-size: 15px;
-            font-weight: 800;
-            color: var(--text-dark);
-            text-align: right;
-            max-width: 60%;
-            word-break: break-word;
-        }
-
-        .waiting-time {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text-mid);
-            background: rgba(255,255,255,0.6);
-            border-radius: 30px;
-            padding: 7px 16px;
-            border: 1px solid var(--border-card);
-            margin-top: 12px;
-        }
-
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 28px;
-            color: var(--text-light);
-            flex: 1;
-            gap: 10px;
-        }
-        .empty-icon { font-size: 44px; opacity: 0.4; }
-        .empty-text { font-size: 18px; font-weight: 700; }
-
-        /* ── QUEUE PANELS ── */
-        .queue-panels {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .queue-panel {
+        .col-panel {
             background: var(--surface);
             border-radius: 20px;
-            border: 1px solid var(--border-card);
-            padding: 20px 22px;
-            min-height: 260px;
-            box-shadow: 0 2px 12px var(--shadow);
+            overflow: hidden;
+            border: 2px solid var(--divider);
+            display: flex;
+            flex-direction: column;
+            min-height: 460px;
+            box-shadow: 0 2px 16px var(--shadow);
         }
 
-        .queue-panel-header {
+        .col-panel-header {
+            padding: 14px 20px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 17px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid var(--divider);
+            gap: 10px;
         }
 
-        .queue-panel-title {
-            font-size: 18px;
+        .waiting-panel  { border-color: #fde68a; }
+        .serving-panel  { border-color: var(--nia-green-mid); box-shadow: 0 4px 32px var(--shadow-reg); }
+        .served-panel   { border-color: #86efac; }
+
+        .waiting-header { background: #fffbeb; color: #92400e; }
+        .serving-header { background: var(--nia-green-dark); color: #fff; }
+        .served-header  { background: #f0fdf4; color: #15803d; }
+
+        .col-badge {
+            background: rgba(0,0,0,.15);
+            color: inherit;
+            font-size: 13px;
             font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-dark);
+            border-radius: 20px;
+            padding: 2px 12px;
+            min-width: 32px;
+            text-align: center;
+        }
+        .waiting-header .col-badge { background: #fde68a; color: #92400e; }
+        .served-header  .col-badge { background: #bbf7d0; color: #15803d; }
+
+        .col-panel-body {
+            flex: 1;
+            padding: 14px;
+            overflow-y: auto;
         }
 
-        .queue-count-badge {
-            font-family: 'Nunito', sans-serif;
-            font-size: 24px;
-            font-weight: 900;
-            min-width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* ── SERVING PANEL INTERNALS ── */
+        .serving-block {
+            border-radius: 16px;
+            padding: 16px 14px;
+            text-align: center;
+            position: relative;
         }
-
-        .queue-count-badge.waiting {
-            background: #fff8e1;
-            color: var(--amber);
-            border: 2px solid #fde68a;
+        .priority-block {
+            background: var(--pri-card-bg);
+            border: 2px solid var(--pri-orange);
+            margin-bottom: 0;
         }
-
-        .queue-count-badge.served {
-            background: var(--nia-green-pale);
-            color: var(--nia-green);
+        .regular-block  {
+            background: var(--reg-card-bg);
             border: 2px solid var(--nia-green-mid);
         }
 
+        .serving-block-label {
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .priority-label-tag { color: var(--pri-orange-dark); }
+        .regular-label-tag  { color: var(--nia-green-dark); }
+
+        .serving-big-number {
+            font-family: 'Nunito', sans-serif;
+            font-size: 80px;
+            font-weight: 900;
+            line-height: 1;
+            margin: 6px 0;
+        }
+        .priority-block .serving-big-number { color: var(--pri-orange); }
+        .regular-block  .serving-big-number { color: var(--nia-green-dark); }
+
+        .serving-dest {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-mid);
+            margin-bottom: 6px;
+            min-height: 20px;
+        }
+
+        .serving-info-row {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 2px 0;
+        }
+
+        .serving-divider {
+            height: 1px;
+            background: var(--divider);
+            margin: 10px 0;
+        }
+
+        .wait-times-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .wait-chip {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .priority-chip { background: var(--pri-orange-light); color: var(--pri-orange-dark); }
+        .regular-chip  { background: var(--nia-green-pale); color: var(--nia-green-dark); }
+
+        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; animation: pulseDot 1.2s ease-in-out infinite; }
+        .dot-priority { background: var(--pri-orange); }
+        .dot-regular  { background: var(--nia-green-mid); }
+        @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.6} }
+
+        /* ── QUEUE PANEL EMPTY STATE ── */
+        .empty-state { text-align: center; padding: 32px 10px; color: var(--text-light); }
+        .empty-icon  { font-size: 36px; margin-bottom: 10px; opacity: .5; }
+        .empty-text  { font-size: 14px; font-weight: 700; }
+
+        /* Queue grid */
         /* Queue grid */
         .queue-grid {
             display: grid;
@@ -653,9 +569,13 @@ array_unshift($sections, $manager_office);
         }
 
         /* Responsive */
-        @media (max-width: 900px) {
-            .serving-cards-container, .queue-panels { grid-template-columns: 1fr; }
-            .serving-number { font-size: 100px; }
+        @media (max-width: 1100px) {
+            .three-col-layout { grid-template-columns: 1fr 1.2fr 1fr; }
+            .serving-big-number { font-size: 60px; }
+        }
+        @media (max-width: 800px) {
+            .three-col-layout { grid-template-columns: 1fr; }
+            .serving-big-number { font-size: 80px; }
             .qd-clock { font-size: 34px; }
             .qd-logo { width: 54px; height: 54px; }
         }
@@ -684,83 +604,80 @@ array_unshift($sections, $manager_office);
             </div>
         </div>
 
-        <!-- NOW SERVING HERO LABEL -->
-        <div class="now-serving-hero">
-            <span>▶ &nbsp;NOW SERVING&nbsp; ◀</span>
-        </div>
+        <!-- 3-COLUMN QUEUE LAYOUT -->
+        <div class="three-col-layout">
 
-        <!-- NOW SERVING CARDS -->
-        <div class="serving-cards-container">
-
-            <!-- PRIORITY CARD -->
-            <div class="serving-card priority" id="priorityServingCard">
-                <div class="serving-card-accent"></div>
-                <div class="serving-card-body">
-                    <div class="serving-card-title">
-                        <span class="dot"></span>
-                        <i class="fas fa-star"></i>&nbsp; PRIORITY (PWD / Senior)
-                    </div>
-                    <div class="now-serving-label">Queue Number</div>
-                    <div class="serving-number" id="priorityCurrentQueue">---</div>
-                    <div id="priorityVisitorInfo"></div>
-                    <div>
-                        <span class="waiting-time">
-                            <i class="fas fa-clock"></i>&nbsp;
-                            Priority Wait: <strong id="priorityWaitTime">Ready</strong>
-                        </span>
-                    </div>
+            <!-- ══ COL 1: WAITING ══ -->
+            <div class="col-panel waiting-panel">
+                <div class="col-panel-header waiting-header">
+                    <span><i class="fas fa-hourglass-half"></i>&nbsp; Waiting</span>
+                    <span class="col-badge" id="waitingCount">0</span>
                 </div>
-            </div>
-
-            <!-- REGULAR CARD -->
-            <div class="serving-card regular" id="regularServingCard">
-                <div class="serving-card-accent"></div>
-                <div class="serving-card-body">
-                    <div class="serving-card-title">
-                        <span class="dot"></span>
-                        <i class="fas fa-users"></i>&nbsp; REGULAR SERVICE
-                    </div>
-                    <div class="now-serving-label">Queue Number</div>
-                    <div class="serving-number" id="regularCurrentQueue">---</div>
-                    <div id="regularVisitorInfo"></div>
-                    <div>
-                        <span class="waiting-time">
-                            <i class="fas fa-clock"></i>&nbsp;
-                            Est. Wait: <strong id="regularWaitTime">0 min</strong>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- WAITING & SERVED QUEUES -->
-        <div class="qd-section-label">Queue Status</div>
-        <div class="queue-panels">
-            <div class="queue-panel">
-                <div class="queue-panel-header">
-                    <div class="queue-panel-title"><i class="fas fa-clock" style="margin-right:8px;"></i>Waiting</div>
-                    <div class="queue-count-badge waiting" id="waitingCount">0</div>
-                </div>
-                <div id="waitingQueue">
+                <div class="col-panel-body" id="waitingQueue">
                     <div class="empty-state">
                         <div class="empty-icon"><i class="fas fa-users"></i></div>
                         <div class="empty-text">No visitors waiting</div>
                     </div>
                 </div>
             </div>
-            <div class="queue-panel">
-                <div class="queue-panel-header">
-                    <div class="queue-panel-title"><i class="fas fa-check-circle" style="margin-right:8px;"></i>Served</div>
-                    <div class="queue-count-badge served" id="servedCount">0</div>
+
+            <!-- ══ COL 2: NOW SERVING (Priority + Regular) ══ -->
+            <div class="col-panel serving-panel">
+                <div class="col-panel-header serving-header">
+                    <span><i class="fas fa-bullhorn"></i>&nbsp; NOW SERVING</span>
                 </div>
-                <div id="servedQueue">
+                <div class="col-panel-body" style="padding: 12px;">
+
+                    <!-- PRIORITY -->
+                    <div class="serving-block priority-block" id="priorityServingCard">
+                        <div class="serving-block-label priority-label-tag">
+                            <span class="dot dot-priority"></span>
+                            <i class="fas fa-star"></i>&nbsp; PRIORITY (PWD / Senior)
+                        </div>
+                        <div class="serving-big-number" id="priorityCurrentQueue">---</div>
+                        <div class="serving-dest" id="priorityDest"></div>
+                        <div id="priorityVisitorInfo"></div>
+                    </div>
+
+                    <div class="serving-divider"></div>
+
+                    <!-- REGULAR -->
+                    <div class="serving-block regular-block" id="regularServingCard">
+                        <div class="serving-block-label regular-label-tag">
+                            <span class="dot dot-regular"></span>
+                            <i class="fas fa-users"></i>&nbsp; REGULAR
+                        </div>
+                        <div class="serving-big-number" id="regularCurrentQueue">---</div>
+                        <div class="serving-dest" id="regularDest"></div>
+                        <div id="regularVisitorInfo"></div>
+                    </div>
+
+                    <!-- Wait time chips -->
+                    <div class="wait-times-row">
+                        <span class="wait-chip priority-chip">
+                            <i class="fas fa-star"></i> Priority: <strong id="priorityWaitTime">Ready</strong>
+                        </span>
+                        <span class="wait-chip regular-chip">
+                            <i class="fas fa-clock"></i> Est. Wait: <strong id="regularWaitTime">0 min</strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ COL 3: SERVED ══ -->
+            <div class="col-panel served-panel">
+                <div class="col-panel-header served-header">
+                    <span><i class="fas fa-check-circle"></i>&nbsp; Served</span>
+                    <span class="col-badge" id="servedCount">0</span>
+                </div>
+                <div class="col-panel-body" id="servedQueue">
                     <div class="empty-state">
                         <div class="empty-icon"><i class="fas fa-check-circle"></i></div>
                         <div class="empty-text">No visitors served yet</div>
                     </div>
                 </div>
             </div>
+
         </div>
 
         <!-- MARQUEE -->
@@ -776,7 +693,7 @@ array_unshift($sections, $manager_office);
         </div>
 
         <!-- SECTION & UNIT COUNTERS -->
-        <div class="qd-section-label">Section &amp; Unit Counters</div>
+        <!-- <div class="qd-section-label">Section &amp; Unit Counters</div>
         <div id="dynamicCounters" class="counter-container">
             <?php foreach ($sections as $section): ?>
                 <div class="section-card" id="section-<?= $section['section_code'] ?>"
@@ -828,7 +745,7 @@ array_unshift($sections, $manager_office);
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
-        </div>
+        </div> -->
 
     </div><!-- /container-fluid -->
 
@@ -862,7 +779,7 @@ array_unshift($sections, $manager_office);
     </div>
 
     <!-- Volume / TTS control button -->
-    <div style="position:fixed; bottom:50px; left:20px; z-index:9998;">
+    <div style="position:fixed; top:5px; right:20px; z-index:9998;">
         <button id="ttsToggleBtn" onclick="toggleTTS()" style="
             background: #0e5225;
             border: 2px solid #2dc95a;
@@ -879,7 +796,7 @@ array_unshift($sections, $manager_office);
             box-shadow: 0 4px 16px rgba(14,82,37,0.25);
         ">
             <i class="fas fa-volume-up" id="ttsIcon"></i>
-            <span id="ttsLabel">Announcements ON</span>
+            <!-- <span id="ttsLabel">Announcements ON</span> -->
         </button>
     </div>
 
@@ -938,29 +855,55 @@ array_unshift($sections, $manager_office);
             let recentlyAnnounced = {};   // { queueNumber: timestamp }
             const ANNOUNCE_COOLDOWN_MS = 15000; // won't re-announce within 15 seconds
 
-            // Build announcement text — NO visitor name, only Queue No. + Section/Unit
+            // Build announcement — clear, friendly, easy to follow
             function buildAnnouncement(queueData, queueType) {
                 const qNum = queueData.queue_number || '';
-                let dest   = (queueData.section_name || queueData.unit_name || '').trim();
+                let dest = (queueData.destination || queueData.unit_name || queueData.section_name || '').trim();
 
                 // Normalise IMO Office label for TTS
                 if (dest.toUpperCase() === 'IMO' || dest === 'IMO Office') {
                     dest = 'I M O Office';
                 }
 
-                // Spell out each character for clarity e.g. "P001" → "P 0 0 1"
+                // Spell each character with spaces so TTS reads them individually
                 const spokenNum = qNum.split('').join(' ');
+                const destTo = dest ? ' to ' + dest : '';
 
-                let text = `Attention please. Queue number ${spokenNum}`;
-                if (dest) text += `, please proceed to ${dest}`;
-                text += `. Queue number ${spokenNum}`;
-                if (dest) text += `, to ${dest}`;
-                text += `. Thank you.`;
+                // Rotating scripts — simple, clear, warm
+                const scripts = [
+                    // Script 1
+                    'Attention please. Queue number ' + spokenNum +
+                        (dest ? ', please proceed to ' + dest : '') +
+                        '. I repeat, queue number ' + spokenNum + destTo +
+                        '. Thank you, and please take care.',
+
+                    // Script 2
+                    'Good day! Queue number ' + spokenNum + ' is now being called.' +
+                        (dest ? ' Please go to ' + dest + '.' : '') +
+                        ' That is queue number ' + spokenNum + destTo +
+                        '. Thank you very much.',
+
+                    // Script 3
+                    'Your attention please. We are now calling queue number ' + spokenNum +
+                        (dest ? '. Please make your way to ' + dest : '') +
+                        '. Queue number ' + spokenNum + destTo +
+                        '. We are ready for you. Thank you.',
+
+                    // Script 4
+                    'Queue number ' + spokenNum + ', it is your turn.' +
+                        (dest ? ' Please proceed to ' + dest + '.' : '') +
+                        ' Again, queue number ' + spokenNum + destTo +
+                        '. Thank you for waiting, and please come forward.',
+
+                ];
+
+                const idx = Math.floor(Date.now() / 1000) % scripts.length;
+                const text = scripts[idx];
 
                 const displayDest = dest === 'I M O Office' ? 'IMO Office' : dest;
                 return {
                     text,
-                    displayText: `Queue #${qNum}${displayDest ? ' → ' + displayDest : ''}`
+                    displayText: 'Queue #' + qNum + (displayDest ? '  →  ' + displayDest : '')
                 };
             }
 
@@ -1022,33 +965,47 @@ array_unshift($sections, $manager_office);
                 $('#announcementOverlay').removeClass('announcing').fadeOut(400);
             }
 
-            // Speak text using Web Speech API — female/airport-style voice
+            // Speak — social media girl voice ✨
+            // Bright, fast, bubbly — like a TikTok creator doing a voiceover
             function speak(text, onEnd) {
                 if (!('speechSynthesis' in window)) { onEnd && onEnd(); return; }
                 window.speechSynthesis.cancel();
 
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate   = 0.88;   // Slightly slower — easier for seniors
-                utterance.pitch  = 1.1;    // Slightly higher — feminine tone
+                utterance.rate   = 0.85;   // Slower — clear and easy to follow for seniors
+                utterance.pitch  = 1.1;    // Slightly warm and friendly, not flat
                 utterance.volume = 1.0;
 
-                // Pick a female voice — same priority list as queue.php
                 function doSpeak() {
                     const voices = window.speechSynthesis.getVoices();
-                    const femaleKeywords = [
-                        'female', 'woman', 'zira', 'susan', 'samantha',
-                        'karen', 'moira', 'tessa', 'victoria', 'fiona',
-                        'google uk english female', 'microsoft zira',
-                        'microsoft susan'
+
+                    // Best voices for the "social media girl" sound — ordered by preference.
+                    // Microsoft Aria & Jenny are neural voices that genuinely sound like this.
+                    // Google US English Female is the best fallback on Chrome.
+                    const voicePriority = [
+                        'microsoft aria',           // 🥇 Best — natural, young, clear US female
+                        'microsoft jenny',          // 🥈 Casual and friendly US female
+                        'google us english',        // 🥉 Clear American female (Chrome)
+                        'aria',                     // Generic Aria match
+                        'jenny',
+                        'emma',                     // Apple/Google Emma
+                        'ava',                      // Apple Ava — warm young voice
+                        'samantha',                 // Apple Samantha — bright
+                        'sonia',                    // Microsoft Sonia UK
+                        'natasha',                  // Australian female
+                        'karen',
+                        'google uk english female',
+                        'female',
+                        'zira',
                     ];
 
                     let chosenVoice = null;
-                    for (const kw of femaleKeywords) {
+                    for (const kw of voicePriority) {
                         chosenVoice = voices.find(v =>
                             v.name.toLowerCase().includes(kw) && v.lang.startsWith('en'));
                         if (chosenVoice) break;
                     }
-                    // Fallback: any English voice
+                    // Last resort: any English voice
                     if (!chosenVoice) chosenVoice = voices.find(v => v.lang.startsWith('en'));
                     if (chosenVoice) utterance.voice = chosenVoice;
 
@@ -1167,126 +1124,63 @@ array_unshift($sections, $manager_office);
                             // Update priority serving
                             if (response.current_priority && response.current_priority.queue_number) {
                                 const current = response.current_priority;
-                                $('#priorityCurrentQueue').text(current.queue_number);
-
-                                // Update visitor info for priority
-                                const priorityInfoHtml = `
-                                    <div class="info-row">
-                                        <span class="info-label">Visitor:</span>
-                                        <span class="info-value">${current.visitor_name}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Section/Unit:</span>
-                                        <span class="info-value">${current.section_name || current.unit_name || 'General'}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Purpose:</span>
-                                        <span class="info-value">${current.purpose || ''}</span>
-                                    </div>
-                                `;
-                                $('#priorityVisitorInfo').html(priorityInfoHtml);
-
-                                // Store section/unit codes for priority
+                                // destination = most specific name (unit > section > IMO)
+                                const priDest = current.destination || current.unit_name || current.section_name || '';
+                                $('#priorityCurrentQueue').text(current.is_priority == 1 ? (current.priority_number || current.queue_number) : current.queue_number);
+                                $('#priorityDest').text(priDest);
+                                $('#priorityVisitorInfo').html(
+                                    `<div class="serving-info-row"><i class="fas fa-user"></i> ${current.visitor_name || ''}</div>` +
+                                    (current.purpose ? `<div class="serving-info-row"><i class="fas fa-file-alt"></i> ${current.purpose}</div>` : '')
+                                );
                                 currentPrioritySectionCode = current.section_code;
                                 currentPriorityUnitCode = current.unit_code;
 
-                                // Check if queue number changed
                                 if (lastPriorityQueueNumber !== current.queue_number) {
                                     lastPriorityQueueNumber = current.queue_number;
                                     playQueueSound();
-
-                                    // ── ANNOUNCE: Priority queue number + visitor info ──
                                     queueAnnouncement(current, 'priority');
-
-                                    // Add visual effect
-                                    $('#priorityCurrentQueue').css({
-                                        'transform': 'scale(1.1)',
-                                        'color': '#eb5600'
+                                    $('#priorityCurrentQueue').animate({fontSize:'90px'}, 150, function(){
+                                        $(this).animate({fontSize:'80px'}, 200);
                                     });
-                                    setTimeout(() => {
-                                        $('#priorityCurrentQueue').css({
-                                            'transform': 'scale(1)',
-                                            'color': '#eb5600'
-                                        });
-                                    }, 500);
                                 }
                             } else {
                                 $('#priorityCurrentQueue').text('---');
-                                $('#priorityVisitorInfo').html(`
-                                    <div class="empty-state">
-                                        <div class="empty-icon">
-                                            <i class="fas fa-user-clock"></i>
-                                        </div>
-                                        <div class="empty-text">
-                                            No priority visitors currently being served
-                                        </div>
-                                    </div>
-                                `);
+                                $('#priorityDest').text('');
+                                $('#priorityVisitorInfo').html(
+                                    '<div class="empty-state"><div class="empty-icon"><i class="fas fa-user-clock"></i></div>' +
+                                    '<div class="empty-text">No priority visitor</div></div>'
+                                );
                             }
 
                             // Update regular serving
                             if (response.current_regular && response.current_regular.queue_number) {
                                 const current = response.current_regular;
+                                const regDest = current.destination || current.unit_name || current.section_name || '';
                                 $('#regularCurrentQueue').text(current.queue_number);
-
-                                // Update visitor info for regular
-                                const regularInfoHtml = `
-                                    <div class="info-row">
-                                        <span class="info-label">Visitor:</span>
-                                        <span class="info-value">${current.visitor_name}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Section/Unit:</span>
-                                        <span class="info-value">${current.section_name || current.unit_name || 'General'}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Purpose:</span>
-                                        <span class="info-value">${current.purpose || ''}</span>
-                                    </div>
-                                `;
-                                $('#regularVisitorInfo').html(regularInfoHtml);
-
-                                // Store section/unit codes for regular
+                                $('#regularDest').text(regDest);
+                                $('#regularVisitorInfo').html(
+                                    `<div class="serving-info-row"><i class="fas fa-user"></i> ${current.visitor_name || ''}</div>` +
+                                    (current.purpose ? `<div class="serving-info-row"><i class="fas fa-file-alt"></i> ${current.purpose}</div>` : '')
+                                );
                                 currentRegularSectionCode = current.section_code;
                                 currentRegularUnitCode = current.unit_code;
 
-                                // Check if queue number changed
                                 if (lastRegularQueueNumber !== current.queue_number) {
                                     lastRegularQueueNumber = current.queue_number;
                                     playQueueSound();
-
-                                    // ── ANNOUNCE: Regular queue number + visitor info ──
                                     queueAnnouncement(current, 'regular');
-
-                                    // Add visual effect
-                                    $('#regularCurrentQueue').css({
-                                        'transform': 'scale(1.1)',
-                                        'color': '#0e5225'
+                                    $('#regularCurrentQueue').animate({fontSize:'90px'}, 150, function(){
+                                        $(this).animate({fontSize:'80px'}, 200);
                                     });
-                                    setTimeout(() => {
-                                        $('#regularCurrentQueue').css({
-                                            'transform': 'scale(1)',
-                                            'color': '#0e5225f'
-                                        });
-                                    }, 500);
                                 }
                             } else {
                                 $('#regularCurrentQueue').text('---');
-                                $('#regularVisitorInfo').html(`
-                                    <div class="empty-state">
-                                        <div class="empty-icon">
-                                            <i class="fas fa-user-clock"></i>
-                                        </div>
-                                        <div class="empty-text">
-                                            No regular visitors currently being served
-                                        </div>
-                                    </div>
-                                `);
+                                $('#regularDest').text('');
+                                $('#regularVisitorInfo').html(
+                                    '<div class="empty-state"><div class="empty-icon"><i class="fas fa-users"></i></div>' +
+                                    '<div class="empty-text">No regular visitor</div></div>'
+                                );
                             }
-
-                            // Update active highlights for BOTH priority and regular
-                            updateActiveHighlight(currentPrioritySectionCode, currentPriorityUnitCode,
-                                currentRegularSectionCode, currentRegularUnitCode);
 
                             // Update waiting queue (Show only 6 in 3 columns)
                             if (response.waiting_queue && response.waiting_queue.length > 0) {
@@ -1300,20 +1194,18 @@ array_unshift($sections, $manager_office);
 
                                 displayQueue.forEach(function(visitor, index) {
                                     const statusClass = visitor.status === 'called' ? 'called' : 'waiting';
-                                    // FIX: Use explicit check for priority
-                                    const isPriority = (visitor.is_priority === true || visitor.is_priority === '1' || visitor.queue_type === 'priority');
+                                    const isPriority = (visitor.is_priority === true || visitor.is_priority === '1');
+                                    const dest = visitor.destination || visitor.unit_name || visitor.section_name || '';
+                                    const qNum = isPriority ? (visitor.priority_number || visitor.queue_number) : visitor.queue_number;
 
                                     if (isPriority) priorityCount++;
                                     else regularCount++;
 
-                                    waitingHtml += `
-        <div class="queue-grid-item ${statusClass} ${isPriority ? 'priority' : 'regular'}">
-            <div class="queue-grid-number">${visitor.queue_number}</div>
-            ${isPriority ? 
-                '<span class="queue-grid-badge p-badge"><i class="fas fa-star"></i> PRI</span>' : 
-                '<span class="queue-grid-badge r-badge">REG</span>'}
-        </div>
-    `;
+                                    waitingHtml += '<div class="queue-grid-item ' + statusClass + ' ' + (isPriority ? 'priority' : 'regular') + '">' +
+                                        '<div class="queue-grid-number">' + qNum + '</div>' +
+                                        (isPriority ? '<span class="queue-grid-badge p-badge"><i class="fas fa-star"></i> PRI</span>' : '<span class="queue-grid-badge r-badge">REG</span>') +
+                                        (dest ? '<div style="font-size:10px;color:#6b9e7a;margin-top:3px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + dest + '</div>' : '') +
+                                    '</div>';
                                 });
 
                                 // Fill empty slots if less than 6
@@ -1366,17 +1258,15 @@ array_unshift($sections, $manager_office);
                                 const displayQueue = response.served_queue.slice(0, maxDisplay);
 
                                 displayQueue.forEach(function(visitor, index) {
-                                    // FIX: Use explicit check for priority
-                                    const isPriority = (visitor.is_priority === true || visitor.is_priority === '1' || visitor.queue_type === 'priority');
+                                    const isPriority = (visitor.is_priority === true || visitor.is_priority === '1');
+                                    const dest = visitor.destination || visitor.unit_name || visitor.section_name || '';
+                                    const qNum = isPriority ? (visitor.priority_number || visitor.queue_number) : visitor.queue_number;
 
-                                    servedHtml += `
-                                        <div class="queue-grid-item served ${isPriority ? 'priority' : 'regular'}">
-                                            <div class="queue-grid-number">${visitor.queue_number}</div>
-                                            ${isPriority ? 
-                                                '<span class="queue-grid-badge p-badge"><i class="fas fa-star"></i> PRI</span>' : 
-                                                '<span class="queue-grid-badge s-badge">SERVED</span>'}
-                                        </div>
-                                    `;
+                                    servedHtml += '<div class="queue-grid-item served ' + (isPriority ? 'priority' : 'regular') + '">' +
+                                        '<div class="queue-grid-number">' + qNum + '</div>' +
+                                        (isPriority ? '<span class="queue-grid-badge p-badge"><i class="fas fa-star"></i> PRI</span>' : '<span class="queue-grid-badge s-badge">SERVED</span>') +
+                                        (dest ? '<div style="font-size:10px;color:#15803d;margin-top:3px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + dest + '</div>' : '') +
+                                    '</div>';
                                 });
 
                                 // Fill empty slots if less than 6
@@ -1708,7 +1598,7 @@ function updateActiveHighlight(prioritySectionCode, priorityUnitCode, regularSec
             }
 
             // Initial load message
-            showToast('Queue display loaded. Announcements active. Auto-refreshing every 5 seconds...');
+            // showToast('Queue display loaded. Announcements active. Auto-refreshing every 5 seconds...');
 
             // Preload voices (Chrome needs this on load)
             if ('speechSynthesis' in window) {
