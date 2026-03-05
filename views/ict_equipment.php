@@ -812,21 +812,7 @@ try {
             window.history.replaceState({}, '', url.toString());
         }
 
-        // Set and maintain ICT theme
-        const currentTheme = localStorage.getItem('currentTheme');
-        if (currentTheme !== 'ict') {
-            localStorage.setItem('currentTheme', 'ict');
-        }
-        document.cookie = 'current_module=ict; path=/; max-age=300';
         
-        // Apply theme immediately
-        const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
-        $('.main-header').css('background', theme);
-        $('#mainFooter').css('background', theme);
-        
-        // Update theme classes
-        $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-        $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
 
         // View Equipment - Populate modal
         $(document).on('click', '.view-equipment', function() {

@@ -310,19 +310,7 @@ $completion_time = $completion_time_result->fetch_assoc();
 
 <script>
 $(document).ready(function() {
-    // Set ICT theme
-    const currentTheme = localStorage.getItem('currentTheme');
-    if (currentTheme !== 'ict') {
-        localStorage.setItem('currentTheme', 'ict');
-    }
-    document.cookie = 'current_module=ict; path=/; max-age=300';
-    
-    const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
-    $('.main-header').css('background', theme);
-    $('#mainFooter').css('background', theme);
-    
-    $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-    $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
+
 
     // Equipment Status Chart
     const equipmentStatusCtx = document.getElementById('equipmentStatusChart').getContext('2d');

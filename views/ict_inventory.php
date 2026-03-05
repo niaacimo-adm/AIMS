@@ -214,25 +214,6 @@ while ($row = $result->fetch_assoc()) {
 <?php include '../includes/footer.php'; ?>
 <!-- Add this to ICT pages -->
 <script>
-$(document).ready(function() {
-    // Set and maintain ICT theme
-    const currentTheme = localStorage.getItem('currentTheme');
-    if (currentTheme !== 'ict') {
-        localStorage.setItem('currentTheme', 'ict');
-    }
-    document.cookie = 'current_module=ict; path=/; max-age=300';
-    
-    // Apply theme immediately
-    const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
-    $('.main-header').css('background', theme);
-    $('#mainFooter').css('background', theme);
-    
-    // Update theme classes
-    $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-    $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-});
-</script>
-<script>
 // Equipment Status Chart
 const ctx = document.getElementById('statusChart').getContext('2d');
 const statusChart = new Chart(ctx, {

@@ -550,7 +550,7 @@ $result = $db->query($query);
     }
     
     .info-card {
-      background: #f8f9fa;
+      background: dark;
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
@@ -582,7 +582,7 @@ $result = $db->query($query);
     }
     
     .info-value {
-      color: #212529;
+      color: dark;
       flex: 1;
     }
     
@@ -590,7 +590,7 @@ $result = $db->query($query);
       display: flex;
       align-items: center;
       padding: 12px;
-      background: white;
+      background: dark;
       border-radius: 6px;
       margin-bottom: 10px;
       border: 1px solid #e9ecef;
@@ -624,7 +624,7 @@ $result = $db->query($query);
     
     .document-name {
       font-weight: 500;
-      color: #212529;
+      color: dark;
       font-size: 14px;
       margin-bottom: 2px;
     }
@@ -749,7 +749,7 @@ $result = $db->query($query);
 /* For the view modal document names */
 .document-name {
     font-weight: 500;
-    color: #212529;
+    color:dark;
     font-size: 14px;
     margin-bottom: 2px;
     display: block;
@@ -764,7 +764,7 @@ $result = $db->query($query);
     display: flex;
     align-items: center;
     padding: 12px;
-    background: white;
+    background: dark;
     border-radius: 6px;
     margin-bottom: 10px;
     border: 1px solid #e9ecef;
@@ -809,7 +809,73 @@ $result = $db->query($query);
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-  </style>
+  
+/* =========================================================
+   DARK MODE OVERRIDES — applied via body.dark-mode
+   ========================================================= */
+body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
+body.dark-mode .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; border-color: var(--card-border) !important; }
+body.dark-mode .card-body { background: var(--card-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .card-footer { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .modal-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
+body.dark-mode .modal-body { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .modal-footer { background: var(--modal-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .table { background: var(--table-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
+body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
+body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
+body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
+body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
+body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
+body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
+body.dark-mode .text-muted { color: var(--text-muted) !important; }
+body.dark-mode .text-dark { color: var(--text-primary) !important; }
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 { color: var(--text-primary) !important; }
+body.dark-mode p, body.dark-mode span:not(.badge) { color: var(--text-primary); }
+body.dark-mode .breadcrumb { background: var(--card-bg) !important; }
+body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
+body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
+body.dark-mode .nav-tabs .nav-link { color: var(--text-muted) !important; border-color: var(--card-border) !important; }
+body.dark-mode .nav-tabs .nav-link.active { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .nav-tabs { border-color: var(--card-border) !important; }
+body.dark-mode .tab-content, body.dark-mode .tab-pane { background: var(--card-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .accordion .card { background: var(--card-bg) !important; }
+body.dark-mode .accordion .card-header { background: var(--table-stripe) !important; }
+body.dark-mode .list-group-item { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
+body.dark-mode .dropdown-item { color: var(--dropdown-color) !important; }
+body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
+body.dark-mode .alert { border-color: var(--card-border) !important; }
+body.dark-mode .alert-info { background: #1e2f3e !important; color: #93c5fd !important; }
+body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
+body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
+body.dark-mode .alert-danger { background: #2e1515 !important; color: #fca5a5 !important; }
+body.dark-mode .page-item .page-link { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .page-item.active .page-link { background: var(--sidebar-active-bg) !important; border-color: var(--sidebar-active-bg) !important; }
+body.dark-mode hr { border-color: var(--card-border) !important; }
+body.dark-mode .dataTables_wrapper { color: var(--text-primary) !important; }
+body.dark-mode .dataTables_filter input, body.dark-mode .dataTables_length select { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .dataTables_info { color: var(--text-muted) !important; }
+body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .select2-container--bootstrap4 .select2-selection__rendered { color: var(--input-color) !important; }
+body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
+body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
+
+body.dark-mode .intern-card { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .intern-header { background: var(--table-stripe) !important; color: var(--text-primary) !important; }
+body.dark-mode .step-item { background: var(--card-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .step-item.active { background: var(--notification-unread-bg) !important; }
+body.dark-mode .step-item.completed { background: var(--card-bg) !important; }
+body.dark-mode .progress-step-label { color: var(--text-primary) !important; }
+
+</style>
 </head>
 <body class="hold-transition sidebar-mini">
   <div class="wrapper">

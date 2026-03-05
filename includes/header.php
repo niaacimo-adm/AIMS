@@ -528,8 +528,36 @@
     padding: 5px 15px;
 }
 
+
+/* =========================================================
+   HEADER.PHP CHAT WIDGET — Dark Mode Overrides
+   ========================================================= */
+body.dark-mode .chat-modal { background: var(--chat-bg) !important; }
+body.dark-mode .chat-header { background: var(--chat-header-bg) !important; color: var(--chat-header-color) !important; }
+body.dark-mode .users-header { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .user-search { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .user-item { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
+body.dark-mode .user-item:hover { background: var(--table-stripe) !important; }
+body.dark-mode .user-name { color: var(--text-primary) !important; }
+body.dark-mode .user-status { color: var(--text-muted) !important; }
+body.dark-mode .chat-messages-container { background: var(--body-bg) !important; }
+body.dark-mode .message.received .message-bubble { background: var(--chat-msg-received-bg) !important; color: var(--chat-msg-received-color) !important; border-color: var(--card-border) !important; }
+body.dark-mode .message.sent .message-bubble { background: var(--chat-msg-sent) !important; color: #fff !important; }
+body.dark-mode .chat-input-container { background: var(--chat-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .message-input { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .active-chat-header { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .active-user-name { color: var(--text-primary) !important; }
+body.dark-mode .active-user-status-text { color: var(--text-muted) !important; }
+body.dark-mode .no-chat-selected { color: var(--text-muted) !important; background: var(--card-bg) !important; }
+body.dark-mode .no-messages { color: var(--text-muted) !important; }
+body.dark-mode .typing-indicator { color: var(--text-muted) !important; }
+body.dark-mode .search-icon { color: var(--text-muted) !important; }
+body.dark-mode .back-to-users { color: #7aabdf !important; }
+body.dark-mode .back-to-users:hover { background: var(--table-stripe) !important; }
+body.dark-mode .message-time { opacity: 0.7; }
+
+
 </style>
   <link rel="stylesheet" href="../plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="../plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
    <link rel="stylesheet" href="../plugins/fullcalendar/main.css">
-   

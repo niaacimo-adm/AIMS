@@ -3,25 +3,7 @@ require_once '../config/database.php';
 require_once 'helpers.php';
 ?>
 <?php
-// Determine current theme based on page
-$current_page = basename($_SERVER['PHP_SELF']);
-$current_theme = 'admin'; // default
-
-if (strpos($current_page, 'service') !== false) {
-    $current_theme = 'service';
-} elseif (strpos($current_page, 'inventory') !== false && strpos($current_page, 'ict_') === false) {
-    $current_theme = 'inventory';
-} elseif (strpos($current_page, 'file_management') !== false) {
-    $current_theme = 'file';
-} elseif (strpos($current_page, 'ict_') !== false) {
-    $current_theme = 'ict';
-} elseif (strpos($current_page, 'ia_profile') !== false || strpos($current_page, 'ia_profiles') !== false) {
-    $current_theme = 'ia';
-}
-
-
-// Store in session for persistence
-$_SESSION['current_theme'] = $current_theme;
+// No per-module themes — light/dark mode only
 
 // Get employee data directly
 $employee_name = '';
@@ -254,6 +236,13 @@ if ($employee_id) {
             </div>
         </li>
 
+        <!-- Dark Mode Toggle -->
+        <li class="nav-item">
+            <a class="nav-link" href="#" role="button" id="darkModeToggle" title="Toggle Dark Mode">
+                <i class="fas fa-moon" id="darkModeIcon"></i>
+            </a>
+        </li>
+
         <!-- Fullscreen Toggle -->
         <li class="nav-item">
             <a class="nav-link" data-widget="fullscreen" href="#" role="button">
@@ -371,6 +360,366 @@ if ($employee_id) {
 </div>
 
 <link rel="stylesheet" href="../css/mainheader.css">
+<!-- Light/Dark Mode CSS -->
+<style>
+/* ===== CSS VARIABLES: LIGHT MODE (default) ===== */
+:root {
+    --header-bg: #ffffff;
+    --header-color: #343a40;
+    --header-border: rgba(0,0,0,0.1);
+    --footer-bg: #ffffff;
+    --footer-color: #343a40;
+    --footer-border: rgba(0,0,0,0.1);
+    --sidebar-bg: #343a40;
+    --sidebar-text: #c2c7d0;
+    --sidebar-active-bg: #007bff;
+    --sidebar-active-text: #ffffff;
+    --sidebar-hover-bg: rgba(255,255,255,0.08);
+    --sidebar-brand-bg: #007bff;
+    --dropdown-bg: #ffffff;
+    --dropdown-color: #212529;
+    --dropdown-border: rgba(0,0,0,0.15);
+    --body-bg: #f4f6f9;
+    --card-bg: #ffffff;
+    --card-border: rgba(0,0,0,0.1);
+    --input-bg: #ffffff;
+    --input-color: #495057;
+    --input-border: #ced4da;
+    --text-primary: #212529;
+    --text-muted: #6c757d;
+    --notification-header-bg: #343a40;
+    --notification-unread-bg: #e8f4fd;
+    --table-bg: #ffffff;
+    --table-stripe: #f8f9fa;
+    --table-border: #dee2e6;
+    --modal-bg: #ffffff;
+    --modal-header-bg: #343a40;
+    --modal-header-color: #ffffff;
+    --chat-bg: #ffffff;
+    --chat-header-bg: #343a40;
+    --chat-header-color: #ffffff;
+    --chat-msg-sent: #007bff;
+    --chat-msg-received-bg: #f1f3f5;
+    --chat-msg-received-color: #212529;
+    --badge-bg: #007bff;
+}
+
+/* ===== CSS VARIABLES: DARK MODE ===== */
+body.dark-mode {
+    --header-bg: #1a1d23;
+    --header-color: #e0e0e0;
+    --header-border: rgba(255,255,255,0.08);
+    --footer-bg: #1a1d23;
+    --footer-color: #e0e0e0;
+    --footer-border: rgba(255,255,255,0.08);
+    --sidebar-bg: #111318;
+    --sidebar-text: #9da5b4;
+    --sidebar-active-bg: #375a7f;
+    --sidebar-active-text: #ffffff;
+    --sidebar-hover-bg: rgba(255,255,255,0.06);
+    --sidebar-brand-bg: #1a1d23;
+    --dropdown-bg: #252830;
+    --dropdown-color: #e0e0e0;
+    --dropdown-border: rgba(255,255,255,0.1);
+    --body-bg: #12151a;
+    --card-bg: #1e2128;
+    --card-border: rgba(255,255,255,0.08);
+    --input-bg: #252830;
+    --input-color: #e0e0e0;
+    --input-border: #3d4049;
+    --text-primary: #e0e0e0;
+    --text-muted: #7a8399;
+    --notification-header-bg: #1a1d23;
+    --notification-unread-bg: #1e2a38;
+    --table-bg: #1e2128;
+    --table-stripe: #252830;
+    --table-border: #3d4049;
+    --modal-bg: #1e2128;
+    --modal-header-bg: #1a1d23;
+    --modal-header-color: #e0e0e0;
+    --chat-bg: #1e2128;
+    --chat-header-bg: #1a1d23;
+    --chat-header-color: #e0e0e0;
+    --chat-msg-sent: #375a7f;
+    --chat-msg-received-bg: #252830;
+    --chat-msg-received-color: #e0e0e0;
+    --badge-bg: #375a7f;
+}
+
+/* Prevent flash of unstyled content */
+html.dark-mode-preload body { background: #12151a !important; }
+
+/* ===== APPLY VARIABLES ===== */
+body {
+    background-color: var(--body-bg) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* HEADER */
+.main-header {
+    background: var(--header-bg) !important;
+    color: var(--header-color) !important;
+    border-bottom: 1px solid var(--header-border) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1030 !important;
+    width: 100%;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out, background 0.3s ease;
+}
+body:not(.sidebar-collapse) .main-header { left: 250px; width: calc(100% - 250px); }
+body.sidebar-collapse .main-header { left: 0; width: 100%; }
+@media (max-width: 768px) { .main-header { left: 0 !important; width: 100% !important; } }
+
+.main-header .nav-link,
+.main-header .navbar-nav .nav-link {
+    color: var(--header-color) !important;
+}
+.main-header .nav-link:hover { opacity: 0.8; }
+
+/* DROPDOWNS */
+.main-header .dropdown-menu,
+.dropdown-menu {
+    background: var(--dropdown-bg) !important;
+    border: 1px solid var(--dropdown-border) !important;
+    color: var(--dropdown-color) !important;
+}
+.main-header .dropdown-item,
+.dropdown-item {
+    color: var(--dropdown-color) !important;
+}
+.main-header .dropdown-item:hover,
+.dropdown-item:hover {
+    background: var(--sidebar-hover-bg) !important;
+    color: var(--text-primary) !important;
+}
+.dropdown-header { color: var(--text-muted) !important; }
+.dropdown-divider { border-color: var(--dropdown-border) !important; }
+
+/* NOTIFICATIONS */
+.notification-header {
+    background: var(--notification-header-bg) !important;
+    color: #ffffff !important;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+.notification-item.unread { background: var(--notification-unread-bg) !important; }
+.notification-item { color: var(--dropdown-color) !important; }
+.notification-time { color: var(--text-muted) !important; }
+
+/* APP LAUNCHER */
+.app-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--dropdown-color) !important;
+    transition: background 0.2s;
+}
+.app-item:hover { background: var(--sidebar-hover-bg) !important; }
+.app-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--sidebar-active-bg);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 5px;
+}
+.app-name { font-size: 11px; text-align: center; }
+
+/* PROFILE AVATAR */
+.profile-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--sidebar-active-bg);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    overflow: hidden;
+}
+.profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name { color: var(--header-color) !important; margin-left: 6px; font-size: 14px; }
+
+/* NOTIFICATION BADGE */
+.notification-badge {
+    position: absolute; top: 2px; right: 2px;
+    background: #dc3545; color: #fff;
+    border-radius: 50%; width: 18px; height: 18px;
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* SIDEBAR */
+.main-sidebar {
+    background-color: var(--sidebar-bg) !important;
+    position: fixed !important; top: 0 !important; left: 0 !important;
+    height: 100vh !important; width: 250px !important;
+    display: flex !important; flex-direction: column !important;
+    overflow: hidden !important;
+    transition: background-color 0.3s ease;
+}
+.brand-link { flex-shrink: 0 !important; }
+.sidebar {
+    flex: 1 !important; overflow-y: auto !important; overflow-x: hidden !important;
+    padding-bottom: 20px !important;
+    background-color: var(--sidebar-bg) !important;
+}
+.sidebar::-webkit-scrollbar { width: 5px; }
+.sidebar::-webkit-scrollbar-track { background: var(--sidebar-bg); }
+.sidebar::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; }
+
+/* Override all sidebar variant classes to use variables */
+[class*="sidebar-dark-"] { background-color: var(--sidebar-bg) !important; }
+[class*="sidebar-dark-"] .nav-sidebar > .nav-item > .nav-link {
+    color: var(--sidebar-text) !important;
+    border-radius: 0; margin: 0; padding: 0.75rem 1rem;
+    transition: background 0.2s;
+}
+[class*="sidebar-dark-"] .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-active-text) !important;
+    border-left: 4px solid rgba(255,255,255,0.5);
+}
+[class*="sidebar-dark-"] .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: var(--sidebar-hover-bg) !important;
+    color: #ffffff !important;
+}
+
+/* Brand link */
+[class*="brand-link"] {
+    background: var(--sidebar-brand-bg) !important;
+}
+/* Override specific gradient brand classes */
+.bg-gradient-olive, .bg-gradient-maroon, .bg-gradient-success,
+.bg-gradient-info, .bg-gradient-warning, .bg-gradient-primary,
+.bg-gradient-queue {
+    background: var(--sidebar-brand-bg) !important;
+}
+
+.nav-header {
+    font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-top: 1rem; padding: 0.5rem 1rem;
+    color: var(--text-muted) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.user-panel { border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
+.user-panel .info a { color: var(--sidebar-text) !important; }
+.user-panel .info .badge { background-color: var(--sidebar-active-bg) !important; }
+
+/* Override active classes that use hardcoded bg */
+.bg-olive, .bg-maroon, .bg-success, .bg-info, .bg-warning, .bg-primary, .bg-queue {
+    background-color: var(--sidebar-active-bg) !important;
+}
+
+/* CARDS */
+.card {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--card-border) !important;
+    color: var(--text-primary) !important;
+}
+.card-header { background: var(--card-bg) !important; border-bottom: 1px solid var(--card-border) !important; }
+.card-footer { background: var(--card-bg) !important; border-top: 1px solid var(--card-border) !important; }
+
+/* CONTENT WRAPPER */
+.content-wrapper {
+    background-color: var(--body-bg) !important;
+    margin-left: 250px !important; min-height: 100vh;
+    color: var(--text-primary);
+    transition: background-color 0.3s ease;
+}
+@media (max-width: 768px) { .content-wrapper { margin-left: 0 !important; } }
+
+/* TABLES */
+.table { color: var(--text-primary) !important; }
+.table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
+.table td, .table th { border-color: var(--table-border) !important; }
+.table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
+.table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
+body.dark-mode .table { background: var(--table-bg) !important; }
+
+/* FORMS */
+.form-control {
+    background: var(--input-bg) !important;
+    color: var(--input-color) !important;
+    border-color: var(--input-border) !important;
+}
+.form-control:focus { border-color: #375a7f !important; box-shadow: 0 0 0 0.2rem rgba(55,90,127,0.25) !important; }
+.input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
+
+/* MODALS */
+.modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+.modal-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; border-color: var(--dropdown-border) !important; }
+.modal-footer { background: var(--modal-bg) !important; border-color: var(--dropdown-border) !important; }
+.modal-body { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+.modal-title { color: var(--modal-header-color) !important; }
+.modal-header .close { color: var(--modal-header-color) !important; }
+
+/* FOOTER */
+.main-footer {
+    background: var(--footer-bg) !important;
+    color: var(--footer-color) !important;
+    border-top: 1px solid var(--footer-border) !important;
+    position: sticky !important; bottom: 0 !important; z-index: 1020 !important;
+    width: 100%;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out, background 0.3s ease;
+}
+body:not(.sidebar-collapse) .main-footer { left: 250px; width: calc(100% - 250px); }
+body.sidebar-collapse .main-footer { left: 0; width: 100%; }
+@media (max-width: 768px) { .main-footer { left: 0 !important; width: 100% !important; } }
+
+/* CHAT */
+.chat-icon {
+    background: var(--sidebar-active-bg) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.chat-modal { background: var(--chat-bg) !important; }
+.chat-header { background: var(--chat-header-bg) !important; color: var(--chat-header-color) !important; }
+.users-header { background: var(--card-bg) !important; border-bottom: 1px solid var(--dropdown-border) !important; }
+.user-search { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+.user-item { border-bottom: 1px solid var(--card-border) !important; }
+.user-item:hover { background: var(--sidebar-hover-bg) !important; }
+.user-name { color: var(--text-primary) !important; }
+.message.sent .message-bubble { background: var(--chat-msg-sent) !important; }
+.message.received .message-bubble { background: var(--chat-msg-received-bg) !important; color: var(--chat-msg-received-color) !important; border-color: var(--card-border) !important; }
+.chat-messages-container { background: var(--body-bg) !important; }
+.chat-input-container { background: var(--chat-bg) !important; border-top: 1px solid var(--dropdown-border) !important; }
+.message-input { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+.active-chat-header { background: var(--chat-bg) !important; border-bottom: 1px solid var(--dropdown-border) !important; }
+.send-btn { background: var(--sidebar-active-bg) !important; }
+
+/* MISC */
+.text-muted { color: var(--text-muted) !important; }
+hr { border-color: var(--dropdown-border) !important; }
+body.dark-mode .swal2-popup { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; color: var(--dropdown-color) !important; }
+body.dark-mode .fc-theme-standard td, body.dark-mode .fc-theme-standard th { border-color: var(--table-border) !important; }
+body.dark-mode .fc-col-header-cell-cushion, body.dark-mode .fc-daygrid-day-number { color: var(--text-primary) !important; }
+body.dark-mode .fc-toolbar-title { color: var(--text-primary) !important; }
+</style>
+
+<!-- Add this script to handle scroll effects -->
+<script>
+$(document).ready(function() {
+    // Add scrolled class to header on scroll
+    $(window).scroll(function() {
+        if ($(this).scrollTop() > 10) {
+            $('.main-header').addClass('scrolled');
+        } else {
+            $('.main-header').removeClass('scrolled');
+        }
+    });
+});
+</script>
 
 <script>
     $(document).ready(function() {
@@ -757,191 +1106,44 @@ if ($employee_id) {
     });
 </script>
 <script>
-    $(document).ready(function() {
-        // Theme configuration
-        const themes = {
-            'admin': {
-                header: 'linear-gradient(135deg, #4361ee, #3f37c9)',
-                footer: 'linear-gradient(135deg, #4361ee, #3f37c9)',
-                class: 'theme-admin'
-            },
-            'service': {
-                header: 'linear-gradient(135deg, #ffc107, #fd7e14)',
-                footer: 'linear-gradient(135deg, #ffc107, #fd7e14)',
-                class: 'theme-service'
-            },
-            'inventory': {
-                header: 'linear-gradient(135deg, #28a745, #20c997)',
-                footer: 'linear-gradient(135deg, #28a745, #20c997)',
-                class: 'theme-inventory'
-            },
-            'file': {
-                header: 'linear-gradient(135deg, #800020, #5a0a1d)',
-                footer: 'linear-gradient(135deg, #800020, #5a0a1d)',
-                class: 'theme-file'
-            },
-            'ict': {
-                header: 'linear-gradient(135deg, #17a2b8, #138496)',
-                footer: 'linear-gradient(135deg, #17a2b8, #138496)',
-                class: 'theme-ict'
-            },
-            'ia': {
-                header: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-                footer: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-                class: 'theme-ia'
-            },
-            'document': {
-                header: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
-                footer: 'linear-gradient(135deg, #556b2f, #2b2b2b)',
-                class: 'theme-document'
-            },
-            'scrum': {
-                header: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-                footer: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-                class: 'theme-scrum'
-            },
-            'queue': {
-                header: 'linear-gradient(135deg, #2c3e50, #34495e)',
-                footer: 'linear-gradient(135deg, #2c3e50, #34495e)',
-                class: 'theme-queue'
-            }
-        };
-
-        // Function to set theme
-        function setTheme(themeName) {
-            console.log('Setting theme:', themeName);
-            const theme = themes[themeName];
-            if (!theme) return;
-
-            // Update header
-            const header = $('.main-header');
-            if (header.length) {
-                header.css('background', theme.header);
-                header.removeClass('theme-admin theme-service theme-inventory theme-file theme-ia');
-                header.addClass(theme.class);
-                console.log('Header updated');
-            }
-
-            // Update footer
-            const footer = $('#mainFooter');
-            if (footer.length) {
-                footer.css('background', theme.footer);
-                footer.removeClass('theme-admin theme-service theme-inventory theme-file theme-ia');
-                footer.addClass(theme.class);
-                console.log('Footer updated');
-            }
-
-            // Save theme to localStorage
-            localStorage.setItem('currentTheme', themeName);
-
-            // Update notification header background to match theme
-            $('.notification-header').css('background', theme.header);
-        }
-
-        // Handle app clicks
-        $(document).on('click', '.app-item', function(e) {
-            const theme = $(this).data('theme');
-            console.log('App clicked, theme:', theme);
-            if (theme) {
-                // Set theme immediately before navigation
-                setTheme(theme);
-                // Allow navigation to proceed
-            }
-        });
-
-        function setThemeFromPage() {
-            const currentPage = window.location.pathname;
-            console.log('Current page:', currentPage);
-            let theme = 'admin'; // default
-
-            // Comprehensive theme detection
-            if (currentPage.includes('ict_') || currentPage.includes('ict_inventory') || currentPage.includes('ict_equipment') || currentPage.includes('ict_my_equipment')) {
-                theme = 'ict';
-            } else if (currentPage.includes('service')) {
-                theme = 'service';
-            } else if (currentPage.includes('inventory') && !currentPage.includes('ict_')) {
-                theme = 'inventory';
-            } else if (currentPage.includes('file_management')) {
-                theme = 'file';
-            } else if (currentPage.includes('ia_profile') || currentPage.includes('ia_profiles')) {
-                theme = 'ia';
-            } else if (currentPage.includes('document_') || currentPage.includes('documents_')) {
-                theme = 'document';
-            } else if (currentPage.includes('scrum') || currentPage.includes('scrumboard')) {
-                theme = 'scrum';
-            } else if (currentPage.includes('dashboard')) {
-                theme = 'admin';
-            }
-
-            console.log('Detected theme:', theme);
-            setTheme(theme);
-            return theme;
-        }
-
-        // Set theme on page load with delay to ensure DOM is ready
-        setTimeout(function() {
-            // Check if theme is already set by sidebar
-            const sidebarTheme = localStorage.getItem('currentTheme');
-            if (!sidebarTheme) {
-                setThemeFromPage();
+    // ===== DARK MODE SYSTEM =====
+    (function() {
+        function applyMode(isDark) {
+            if (isDark) {
+                $('body').addClass('dark-mode');
+                $('#darkModeIcon').removeClass('fa-moon').addClass('fa-sun');
+                $('#darkModeToggle').attr('title', 'Switch to Light Mode');
             } else {
-                setTheme(sidebarTheme);
+                $('body').removeClass('dark-mode');
+                $('#darkModeIcon').removeClass('fa-sun').addClass('fa-moon');
+                $('#darkModeToggle').attr('title', 'Switch to Dark Mode');
             }
-        }, 100);
-
-        // Update notification dropdown header to match current theme
-        function updateNotificationHeaderTheme() {
-            const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-            const theme = themes[currentTheme];
-            if (theme) {
-                $('.notification-header').css('background', theme.header);
-            }
+            localStorage.setItem('darkMode', isDark ? '1' : '0');
         }
 
-        // Update notification header when dropdown is shown
-        $('.notification-dropdown').on('show.bs.dropdown', function() {
-            updateNotificationHeaderTheme();
+        // Apply on page load before render to avoid flash
+        const saved = localStorage.getItem('darkMode');
+        if (saved === '1') {
+            document.documentElement.classList.add('dark-mode-preload');
+        }
+
+        $(document).ready(function() {
+            const isDark = localStorage.getItem('darkMode') === '1';
+            applyMode(isDark);
+
+            $('#darkModeToggle').on('click', function(e) {
+                e.preventDefault();
+                const nowDark = !$('body').hasClass('dark-mode');
+                applyMode(nowDark);
+            });
         });
+    })();
 
-        // Listen for theme changes from other pages
-        $(window).on('storage', function(e) {
-            if (e.originalEvent.key === 'currentTheme') {
-                setTheme(e.originalEvent.newValue);
-            }
-        });
-    });
-</script>
-<script>
-    // Force theme application on load
-    $(window).on('load', function() {
-        setTimeout(function() {
-            const currentTheme = localStorage.getItem('currentTheme') || 'admin';
-            const themes = {
-                'admin': 'linear-gradient(135deg, #4361ee, #3f37c9)',
-                'queue': 'linear-gradient(135deg, #2c3e50, #34495e)',
-                'service': 'linear-gradient(135deg, #ffc107, #fd7e14)',
-                'inventory': 'linear-gradient(135deg, #28a745, #20c997)',
-                'file': 'linear-gradient(135deg, #800020, #5a0a1d)',
-                'ict': 'linear-gradient(135deg, #17a2b8, #138496)',
-                'ia': 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-                'document': 'linear-gradient(135deg, #556b2f, #2b2b2b)',
-                'scrum': 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
-            };
+    // Expose setTheme as no-op for backward compat with sidebars
+    window.setTheme = function() {};
 
-            if (themes[currentTheme]) {
-                $('.main-header').css('background', themes[currentTheme]);
-                $('#mainFooter').css('background', themes[currentTheme]);
-
-                // Also update theme classes
-                $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
-                    .addClass('theme-' + currentTheme);
-                $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum theme-ia')
-                    .addClass('theme-' + currentTheme);
-
-                console.log('Theme applied:', currentTheme);
-            }
-        }, 200);
-    });
+    // Force theme application on load — no-op now, kept for compatibility
+    // $(window).on('load', function() {
     // Set module cookie based on current theme when profile is accessed from header
     function setModuleCookie() {
         const currentTheme = localStorage.getItem('currentTheme') || 'admin';

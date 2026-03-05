@@ -112,9 +112,7 @@
         background: linear-gradient(135deg, #800020, #5a0a1d) !important;
     }
 
-    .main-header.theme-ict {
-        background: linear-gradient(135deg, #17a2b8, #138496) !important;
-    }
+
 
     /* Apps dropdown theming */
     .apps-dropdown .app-item[data-theme="admin"] .app-icon {
@@ -500,6 +498,57 @@
         border-left: 4px solid #2196F3 !important;
     }
 
-    .main-footer.theme-ict {
-        background: linear-gradient(135deg, #17a2b8, #138496) !important;
-    }
+    
+    /* Ensure proper z-index layering with sticky elements */
+.main-header {
+    z-index: 1030 !important;
+    position: sticky !important;
+    top: 0 !important;
+}
+
+.main-footer {
+    z-index: 1020 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+}
+
+/* Ensure content wrapper has proper spacing */
+.content-wrapper {
+    min-height: calc(100vh - 112px); /* Adjust based on header/footer height (56px each) */
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* Fix for modals to appear above sticky elements */
+.modal {
+    z-index: 1050 !important;
+}
+
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+/* Ensure dropdowns appear above sticky header */
+.dropdown-menu {
+    z-index: 1031 !important;
+}
+
+/* Fix for sidebar when header is sticky */
+.main-sidebar {
+    z-index: 1025 !important;
+    position: fixed !important;
+    top: 56px; /* Height of your header */
+    height: calc(100vh - 56px); /* Subtract header height */
+    overflow-y: auto;
+}
+
+/* Adjust for collapsed sidebar */
+.sidebar-collapse .main-sidebar {
+    margin-left: -250px;
+}
+
+/* Ensure content doesn't get hidden behind sticky footer */
+.content-wrapper {
+    margin-bottom: 0;
+    padding-bottom: 20px;
+}

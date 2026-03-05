@@ -346,9 +346,6 @@ if ($unit_result) {
                                         <button class="btn btn-sm btn-info" id="refreshQueue">
                                             <i class="fas fa-sync"></i> Refresh
                                         </button>
-                                        <button class="btn btn-sm btn-danger" id="resetQueueBtn" title="Cancel all waiting/called visitors">
-                                            <i class="fas fa-broom"></i> Reset Queue
-                                        </button>
                                     </div>
                                 </div>
                                 <div class="card-body">
@@ -1091,7 +1088,7 @@ if ($unit_result) {
             window.speechSynthesis.cancel();
 
             const utterance = new SpeechSynthesisUtterance(announcement);
-            utterance.rate   = 1.1;   // Slower — clear and easy to follow for seniors
+            utterance.rate   = 0.85;   // Slower — clear and easy to follow for seniors
             utterance.pitch  = 1.1;    // Slightly warm and friendly, not flat
             utterance.volume = 1.0;
 

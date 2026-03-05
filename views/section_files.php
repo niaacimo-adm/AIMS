@@ -376,7 +376,7 @@
                 
                 $stmt = $db->prepare("INSERT INTO folders (folder_name, description, section_id, password, created_by, is_locked) 
                                     VALUES (?, ?, ?, ?, ?, ?)");
-                $section_id_value = ($section_id === 'manager') ? NULL : $section_id;
+                $section_id_value = ($section_id === 'manager') ? NULL : intval($section_id);
                 $stmt->bind_param("ssisii", $folder_name, $description, $section_id_value, $password, $user_emp_id, $is_locked);
                 
                 if ($stmt->execute()) {
@@ -825,6 +825,80 @@
                             echo json_encode(['success' => false, 'message' => 'Share not found.']);
                         }
                     exit();
+                    case 'upload_file':
+                    case 'upload_files':
+                        // Handle file uploads at section level (not in a folder)
+                        $upload_results = [];
+                        $has_success = false;
+                        $has_error = false;
+
+                        if (isset($_FILES['files']) && !empty($_FILES['files']['name'][0])) {
+                            $file_count = count($_FILES['files']['name']);
+
+                            for ($i = 0; $i < $file_count; $i++) {
+                                if ($_FILES['files']['error'][$i] === UPLOAD_ERR_OK) {
+                                    $file_name = basename($_FILES['files']['name'][$i]);
+                                    $file_size = $_FILES['files']['size'][$i];
+                                    $file_tmp  = $_FILES['files']['tmp_name'][$i];
+                                    $file_type = pathinfo($file_name, PATHINFO_EXTENSION);
+                                    $description = trim($_POST['description'] ?? '');
+                                    $folder_id_val = !empty($_POST['folder_id']) ? intval($_POST['folder_id']) : null;
+
+                                    $max_size = 500 * 1024 * 1024;
+                                    if ($file_size > $max_size) {
+                                        $upload_results[] = ['file' => $file_name, 'success' => false, 'message' => 'File exceeds 500MB limit.'];
+                                        $has_error = true;
+                                        continue;
+                                    }
+
+                                    $unique_name = uniqid() . '_' . time() . '_' . $i . '.' . strtolower($file_type);
+                                    $upload_dir  = '../uploads/';
+                                    $file_path   = $upload_dir . $unique_name;
+
+                                    if (!is_dir($upload_dir)) {
+                                        mkdir($upload_dir, 0755, true);
+                                    }
+
+                                    if (move_uploaded_file($file_tmp, $file_path)) {
+                                        $section_id_value = ($section_id === 'manager') ? NULL : (is_numeric($section_id) ? intval($section_id) : NULL);
+
+                                        // Check if description column exists
+                                        $check_column = $db->query("SHOW COLUMNS FROM files LIKE 'description'");
+                                        if ($check_column->num_rows > 0) {
+                                            $stmt = $db->prepare("INSERT INTO files (file_name, file_path, file_type, file_size, description, section_id, folder_id, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                                            $stmt->bind_param("ssssisii", $file_name, $unique_name, $file_type, $file_size, $description, $section_id_value, $folder_id_val, $user_emp_id);
+                                        } else {
+                                            $stmt = $db->prepare("INSERT INTO files (file_name, file_path, file_type, file_size, section_id, folder_id, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                                            $stmt->bind_param("ssssiiii", $file_name, $unique_name, $file_type, $file_size, $section_id_value, $folder_id_val, $user_emp_id);
+                                        }
+
+                                        if ($stmt->execute()) {
+                                            $upload_results[] = ['file' => $file_name, 'success' => true, 'message' => 'Uploaded successfully!'];
+                                            $has_success = true;
+                                        } else {
+                                            unlink($file_path);
+                                            $upload_results[] = ['file' => $file_name, 'success' => false, 'message' => 'DB insert failed: ' . $db->error];
+                                            $has_error = true;
+                                        }
+                                    } else {
+                                        $upload_results[] = ['file' => $file_name, 'success' => false, 'message' => 'Failed to move uploaded file.'];
+                                        $has_error = true;
+                                    }
+                                } else {
+                                    $upload_results[] = ['file' => $_FILES['files']['name'][$i] ?? 'unknown', 'success' => false, 'message' => 'Upload error code: ' . $_FILES['files']['error'][$i]];
+                                    $has_error = true;
+                                }
+                            }
+
+                            $success_count = count(array_filter($upload_results, fn($r) => $r['success']));
+                            $total_count   = count($upload_results);
+                            $message = "Uploaded {$success_count} of {$total_count} file(s).";
+                            echo json_encode(['success' => $has_success, 'message' => $message, 'results' => $upload_results, 'uploaded_count' => $success_count]);
+                        } else {
+                            echo json_encode(['success' => false, 'message' => 'No files were selected.']);
+                        }
+                    exit();
+
                     case 'check_folder_permission':
                         $folder_id = $_POST['folder_id'];
                         $has_permission = hasFolderPermission($db, $folder_id, $user_emp_id, 'view');
@@ -1644,33 +1718,42 @@
 <!-- Create Folder Modal -->
 <div class="modal fade" id="createFolderModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content modal-modern">
             <div class="modal-header">
-                <h5 class="modal-title">Create New Folder</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h5 class="modal-title"><i class="fas fa-folder-plus mr-2"></i>Create New Folder</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
             </div>
             <form id="folderForm" method="POST">
                 <input type="hidden" name="action" value="create_folder">
                 <input type="hidden" name="section_id" value="<?= $section_id ?>">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="folderName">Folder Name *</label>
-                        <input type="text" class="form-control" id="folderName" name="folder_name" required>
+                        <label for="folderName"><i class="fas fa-folder mr-1 text-warning"></i> Folder Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-modern" id="folderName" name="folder_name" 
+                               placeholder="Enter folder name..." required autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        <label for="description"><i class="fas fa-comment mr-1"></i> Description <small class="text-muted">(optional)</small></label>
+                        <textarea class="form-control form-control-modern" id="description" name="description" rows="2" 
+                                  placeholder="Brief description of this folder..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="password">Password (Optional - for folder protection)</label>
-                        <input type="password" class="form-control" id="password" name="password" 
-                               placeholder="Leave blank for no password">
-                        <small class="form-text text-muted">If set, users will need to enter password to access this folder.</small>
+                        <label for="password"><i class="fas fa-lock mr-1 text-warning"></i> Password Protection <small class="text-muted">(optional)</small></label>
+                        <div class="input-group">
+                            <input type="password" class="form-control form-control-modern" id="password" name="password" 
+                                   placeholder="Leave blank for no password" autocomplete="new-password">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary" id="toggleCreatePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>If set, users must enter the password to open this folder.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Folder</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times mr-1"></i>Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-folder-plus mr-1"></i>Create Folder</button>
                 </div>
             </form>
         </div>
@@ -1757,19 +1840,46 @@
 <!-- Upload File Modal -->
 <div class="modal fade" id="uploadFileModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content modal-modern">
             <div class="modal-header">
-                <h5 class="modal-title">Upload Files (Max 10 files, 500MB each)</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h5 class="modal-title"><i class="fas fa-cloud-upload-alt mr-2"></i>Upload Files</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
             </div>
-            <form id="uploadForm" enctype="multipart/form-data" method="POST" action="upload_file.php">
+            <form id="uploadForm" enctype="multipart/form-data" method="POST" action="section_files.php?section_id=<?= $section_id ?>">
                 <div class="modal-body">
+                    <!-- Upload destination info -->
+                    <div class="alert alert-info d-flex align-items-center mb-3" style="border-radius:8px;">
+                        <i class="fas fa-info-circle mr-2 fa-lg"></i>
+                        <div>
+                            <strong>Upload Destination:</strong> Files will be saved to the 
+                            <strong><?= htmlspecialchars($section_name) ?></strong> section root.
+                            <?php if (!empty($folders)): ?>
+                                To upload into a folder, open the folder first then click Upload.
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($folders)): ?>
+                    <!-- Optional folder selector -->
+                    <div class="form-group">
+                        <label for="uploadFolderSelect"><i class="fas fa-folder mr-1 text-warning"></i> Upload Into Folder <small class="text-muted">(optional)</small></label>
+                        <select class="form-control" id="uploadFolderSelect" name="folder_id">
+                            <option value="">— Section Root (no folder) —</option>
+                            <?php foreach ($folders as $f): ?>
+                                <option value="<?= $f['folder_id'] ?>"><?= htmlspecialchars($f['folder_name']) ?> (<?= $f['file_count'] ?> files)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php else: ?>
+                    <input type="hidden" name="folder_id" value="">
+                    <?php endif; ?>
+
                     <!-- File Drop Zone -->
                     <div class="file-drop-zone" id="fileDropZone">
                         <div class="drop-zone-content">
-                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
-                            <h5>Drag & Drop files here</h5>
-                            <p class="text-muted">or click to browse (Max 500MB per file)</p>
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3" style="display:block;"></i>
+                            <h5>Drag &amp; Drop files here</h5>
+                            <p class="text-muted mb-2">or click to browse &mdash; max 500MB per file, up to 10 files</p>
                             <input type="file" id="fileInput" name="files[]" multiple accept="*/*" style="display: none;">
                             <button type="button" class="btn btn-primary mt-2" id="browseFilesBtn">
                                 <i class="fas fa-folder-open mr-2"></i>Browse Files
@@ -1779,24 +1889,21 @@
                     
                     <!-- Selected Files List -->
                     <div class="selected-files-container mt-3" id="selectedFilesContainer" style="display: none;">
-                        <h6>Selected Files (<span id="fileCount">0</span>/10)</h6>
-                        <div class="selected-files-list" id="selectedFilesList">
-                            <!-- Files will be listed here -->
-                        </div>
+                        <h6><i class="fas fa-list mr-1"></i>Selected Files (<span id="fileCount">0</span>/10)</h6>
+                        <div class="selected-files-list" id="selectedFilesList"></div>
                     </div>
                     
                     <!-- File Description -->
                     <div class="form-group mt-3">
-                        <label for="fileDescription">Description (applies to all files)</label>
-                        <textarea class="form-control" id="fileDescription" name="description" rows="3" placeholder="Optional description for all uploaded files"></textarea>
+                        <label for="fileDescription"><i class="fas fa-comment mr-1"></i>Description <small class="text-muted">(applies to all files)</small></label>
+                        <textarea class="form-control form-control-modern" id="fileDescription" name="description" rows="2" placeholder="Optional description..."></textarea>
                     </div>
                     
                     <input type="hidden" name="section_id" value="<?= $section_id ?>">
-                    <input type="hidden" name="folder_id" value="">
                     <input type="hidden" name="action" value="upload_files">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times mr-1"></i>Cancel</button>
                     <button type="submit" class="btn btn-primary" id="uploadFilesBtn" disabled>
                         <i class="fas fa-upload mr-2"></i>Upload Files
                     </button>
@@ -1911,6 +2018,13 @@
     $(document).ready(function() {
         let currentFolderId = null;
         
+        // Toggle password visibility for create folder modal
+        $('#toggleCreatePassword').click(function() {
+            const field = $('#password');
+            field.attr('type', field.attr('type') === 'password' ? 'text' : 'password');
+            $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+        });
+
         // Toggle password visibility for edit modal
         $('#toggleEditPassword').click(function() {
             const passwordField = $('#editPassword');
@@ -2078,60 +2192,8 @@
             });
         }
         
-        // Upload file functionality
-        $('#uploadForm').submit(function(e) {
-            e.preventDefault();
-            
-            var formData = new FormData(this);
-            formData.append('action', 'upload_file');
-            
-            $.ajax({
-                url: 'upload_file.php',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.success) {
-                            Swal.fire({
-                                title: 'Success!',
-                                text: 'File uploaded successfully!',
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            });
-                            $('#uploadFileModal').modal('hide');
-                            location.reload();
-                        } else {
-                            Swal.fire({
-                                title: 'Error!',
-                                text: result.message || 'Upload failed',
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    } catch (e) {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Invalid server response',
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                        console.error('Parse error:', e, 'Response:', response);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to upload file: ' + error,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                    console.error('AJAX error:', error);
-                }
-            });
-        });
+        // Upload file handled by the uploadFiles() function below
+
 
         function handleAjaxResponse(response, successCallback, errorCallback) {
             try {
@@ -2726,7 +2788,7 @@ function uploadFiles() {
     uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
     
     $.ajax({
-        url: 'upload_file.php',
+        url: 'section_files.php?section_id=<?= $section_id ?>',
         type: 'POST',
         data: formData,
         processData: false,
@@ -2920,7 +2982,7 @@ $('#uploadForm').submit(function(e) {
     uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
     
     $.ajax({
-        url: 'upload_file.php',
+        url: 'section_files.php?section_id=<?= $section_id ?>',
         type: 'POST',
         data: formData,
         processData: false,

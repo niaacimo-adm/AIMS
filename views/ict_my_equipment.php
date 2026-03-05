@@ -45,9 +45,6 @@ $employee = $emp_result->fetch_assoc();
     <link rel="stylesheet" href="../plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
     <link rel="stylesheet" href="../plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
     <style>
-        .theme-ict {
-            background: linear-gradient(135deg, #17a2b8, #138496) !important;
-        }
         .card-primary.ict-theme {
             border-top: 3px solid #17a2b8;
         }
@@ -451,21 +448,6 @@ $employee = $emp_result->fetch_assoc();
 <!-- ICT Theme Script -->
 <script>
 $(document).ready(function() {
-    // Set and maintain ICT theme
-    const currentTheme = localStorage.getItem('currentTheme');
-    if (currentTheme !== 'ict') {
-        localStorage.setItem('currentTheme', 'ict');
-    }
-    document.cookie = 'current_module=ict; path=/; max-age=300';
-    
-    // Apply ICT theme colors
-    const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
-    $('.main-header').css('background', theme);
-    $('#mainFooter').css('background', theme);
-    
-    // Update theme classes
-    $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-    $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
     
     // Add ICT styling to page elements
     $('.content-header h1').css('color', '#17a2b8');

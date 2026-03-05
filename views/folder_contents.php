@@ -15,22 +15,12 @@
     $database = new Database();
     $db = $database->getConnection();
 
-    $user_emp_id = null;
-    $section_check = $db->prepare("SELECT f.section_id FROM folders f WHERE f.folder_id = ?");
-    $section_check->bind_param("i", $folder_id);
-    $section_check->execute();
-    $section_result = $section_check->get_result();
+    // Get folder ID and section ID from URL parameters FIRST (needed by everything below)
+    $folder_id = isset($_GET['folder_id']) ? $_GET['folder_id'] : '';
+    $section_id = isset($_GET['section_id']) ? $_GET['section_id'] : '';
 
-    if ($section_result->num_rows > 0) {
-        $folder_section = $section_result->fetch_assoc();
-        
-        if (!userBelongsToSection($db, $user_emp_id, $folder_section['section_id'])) {
-            $_SESSION['error'] = "You do not have access to this section.";
-            header("Location: section_files.php?section_id=" . $section_id);
-            exit();
-        }
-    }
-    // First, try to get the employee ID from the users table
+    // Get user employee ID
+    $user_emp_id = null;
     $user_stmt = $db->prepare("SELECT employee_id FROM users WHERE id = ?");
     $user_stmt->bind_param("i", $_SESSION['user_id']);
     $user_stmt->execute();
@@ -39,22 +29,27 @@
     if ($user_result->num_rows > 0) {
         $user_data = $user_result->fetch_assoc();
         $user_emp_id = $user_data['employee_id'];
-    } else {
-        // If no user record found, use session user_id as fallback
-        $user_emp_id = $_SESSION['user_id'];
-        error_log("Using session user_id as fallback employee ID: " . $user_emp_id);
     }
 
+    // Fallback: check employee table directly
+    if (!$user_emp_id) {
+        $emp_stmt = $db->prepare("SELECT emp_id FROM employee WHERE emp_id = ?");
+        $emp_stmt->bind_param("i", $_SESSION['user_id']);
+        $emp_stmt->execute();
+        $emp_result = $emp_stmt->get_result();
+        if ($emp_result->num_rows > 0) {
+            $user_emp_id = $_SESSION['user_id'];
+        }
+    }
+
+    if (!$user_emp_id) {
+        $_SESSION['error'] = "No valid employee record found. Please contact administrator.";
+        header("Location: ../login.php");
+        exit();
+    }
 
     // Store for consistent use throughout the script
     $_SESSION['user_emp_id'] = $user_emp_id;
-
-    // Debug logging (remove in production)
-    error_log("User Emp ID determined: " . $user_emp_id . " for user ID: " . $_SESSION['user_id']);
-
-    // Get folder ID and section ID from URL parameters
-    $folder_id = isset($_GET['folder_id']) ? $_GET['folder_id'] : '';
-    $section_id = isset($_GET['section_id']) ? $_GET['section_id'] : '';
 
     if (empty($folder_id) || !is_numeric($folder_id)) {
         header("Location: section_files.php?section_id=" . $section_id);
@@ -113,6 +108,46 @@
     }
     
     $breadcrumbs = array_reverse($breadcrumbs);
+
+    // Handle subfolder creation
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_folder') {
+        $new_folder_name = trim($_POST['folder_name'] ?? '');
+        $new_description = trim($_POST['description'] ?? '');
+        $parent_folder_id = isset($_POST['parent_folder_id']) ? intval($_POST['parent_folder_id']) : intval($folder_id);
+        $password = !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : null;
+        $is_locked = !empty($_POST['password']) ? 1 : 0;
+
+        if (empty($new_folder_name)) {
+            $_SESSION['error'] = 'Folder name is required.';
+            header("Location: folder_contents.php?folder_id=" . $folder_id . "&section_id=" . $section_id);
+            exit();
+        }
+
+        if (!canPerformAction($db, $parent_folder_id, $user_emp_id, 'create_folder')) {
+            $_SESSION['error'] = 'You do not have permission to create folders here.';
+            header("Location: folder_contents.php?folder_id=" . $folder_id . "&section_id=" . $section_id);
+            exit();
+        }
+
+        $section_id_value = ($section_id === 'manager') ? NULL : (is_numeric($section_id) ? intval($section_id) : NULL);
+        $stmt = $db->prepare("INSERT INTO folders (folder_name, description, section_id, parent_folder_id, password, is_locked, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssiiisi", $new_folder_name, $new_description, $section_id_value, $parent_folder_id, $password, $is_locked, $user_emp_id);
+
+        if ($stmt->execute()) {
+            $new_folder_id = $db->insert_id;
+            // Log activity
+            $log_stmt = $db->prepare("INSERT INTO folder_activity_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'created', ?, ?)");
+            $log_description = "Subfolder '{$new_folder_name}' created";
+            $ip = $_SERVER['REMOTE_ADDR'];
+            $log_stmt->bind_param("iiss", $new_folder_id, $user_emp_id, $log_description, $ip);
+            $log_stmt->execute();
+            $_SESSION['success'] = "Folder '{$new_folder_name}' created successfully!";
+        } else {
+            $_SESSION['error'] = 'Failed to create folder: ' . $db->error;
+        }
+        header("Location: folder_contents.php?folder_id=" . $folder_id . "&section_id=" . $section_id);
+        exit();
+    }
 
     // Handle file upload
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_file') {
@@ -1195,7 +1230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <h5 class="modal-title">Create New Subfolder</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <form id="folderForm" method="POST" action="create_folder.php">
+            <form id="folderForm" method="POST" action="folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>">
                 <input type="hidden" name="action" value="create_folder">
                 <input type="hidden" name="section_id" value="<?= $section_id ?>">
                 <input type="hidden" name="parent_folder_id" value="<?= $folder_id ?>">

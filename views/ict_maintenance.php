@@ -342,21 +342,6 @@ $equipment_list = $equipment_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 <?php include '../includes/footer.php'; ?>
 <script>
 $(document).ready(function() {
-    // Set and maintain ICT theme
-    const currentTheme = localStorage.getItem('currentTheme');
-    if (currentTheme !== 'ict') {
-        localStorage.setItem('currentTheme', 'ict');
-    }
-    document.cookie = 'current_module=ict; path=/; max-age=300';
-    
-    // Apply theme immediately
-    const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
-    $('.main-header').css('background', theme);
-    $('#mainFooter').css('background', theme);
-    
-    // Update theme classes
-    $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-    $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
 
     // Auto-select equipment when coming from My Equipment page
     const urlParams = new URLSearchParams(window.location.search);

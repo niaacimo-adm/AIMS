@@ -581,38 +581,33 @@ $(window).on('beforeunload', () => {
 </script>
 
 <style>
-/* Footer theming */
-.main-footer {
-    background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
-    color: white;
-    padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* Footer uses CSS variables from mainheader dark mode system */
+.main-footer::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: inherit; z-index: -1;
 }
 
-.main-footer.theme-admin {
-    background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
+/* Ensure chat widget doesn't get hidden behind sticky footer */
+.chat-widget { z-index: 1021 !important; bottom: 80px !important; position: fixed !important; right: 20px !important; }
+.chat-modal { max-height: calc(100vh - 140px) !important; bottom: 80px !important; position: fixed !important; right: 20px !important; }
+
+@media (max-width: 768px) {
+    .chat-modal { max-height: calc(100vh - 130px) !important; bottom: 70px !important; right: 10px !important; left: 10px !important; width: auto !important; }
+    .chat-widget { bottom: 70px !important; right: 10px !important; }
 }
 
-.main-footer.theme-service {
-    background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
-    color: #212529 !important;
-}
-
-.main-footer.theme-inventory {
-    background: linear-gradient(135deg, #28a745, #20c997) !important;
-}
-
-.main-footer.theme-file {
-    background: linear-gradient(135deg, #800020, #5a0a1d) !important;
-}
-
-.main-footer.theme-ict {
-    background: linear-gradient(135deg, #17a2b8, #138496) !important;
-}
-.main-footer.theme-document {
-    background: linear-gradient(135deg, #556b2f, #2b2b2b) !important;
-}
-.main-footer.theme-scrum {
-    background: linear-gradient(135deg, #8B5CF6, #7C3AED) !important;
-}
+.main-footer strong, .main-footer .float-right { position: relative; z-index: 1; }
 </style>
+
+<script>
+$(document).ready(function() {
+    function adjustChatPosition() {
+        var footerHeight = $('.main-footer').outerHeight() || 50;
+        $('.chat-modal').css('bottom', (footerHeight + 20) + 'px');
+        $('.chat-widget').css('bottom', (footerHeight + 20) + 'px');
+    }
+    adjustChatPosition();
+    $(window).on('resize', adjustChatPosition);
+});
+</script>

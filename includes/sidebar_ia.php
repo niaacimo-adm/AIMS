@@ -38,6 +38,7 @@ if ($employee_id) {
     }
 }
 ?>
+
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="dashboard_ia.php" class="brand-link">
@@ -112,69 +113,21 @@ if ($employee_id) {
     <!-- /.sidebar -->
 </aside>
 
+
+
+
 <style>
-/* IA Profile Theme Colors */
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
-    background-color: #9C27B0;
-    border-color: #9C27B0;
-}
-
-.brand-link {
-    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
-}
-
-.brand-link .brand-text {
-    color: rgba(255, 255, 255, 0.9);
-}
-
-/* Custom styles for IA Profile sidebar */
-.main-sidebar {
-    background-color: #343a40 !important;
-}
-
-.nav-sidebar .nav-item > .nav-link {
-    border-left: 3px solid transparent;
-}
-
-.nav-sidebar .nav-item > .nav-link.active {
-    border-left-color: #9C27B0;
-}
-
-.nav-sidebar .nav-treeview .nav-item > .nav-link.active {
-    border-left-color: #E1BEE7;
-    background-color: rgba(156, 39, 176, 0.1);
-}
+/*
+ * Sidebar styles are driven by CSS variables defined in mainheader.php.
+ * Light / dark mode is toggled globally — no per-module colours.
+ */
 </style>
-
 <script>
-// Set IA theme when sidebar loads
 $(document).ready(function() {
-    // Set theme to IA
-    localStorage.setItem('currentTheme', 'ia');
-    
-    // Apply theme to header and footer
-    const theme = {
-        header: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-        footer: 'linear-gradient(135deg, #9C27B0, #7B1FA2)',
-        class: 'theme-ia'
-    };
-    
-    // Update header
-    const header = $('.main-header');
-    if (header.length) {
-        header.css('background', theme.header);
-        header.removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum');
-        header.addClass(theme.class);
+    // Sidebar loads — dark mode already applied by mainheader CSS variables.
+    // Re-apply dark mode class in case this page loaded fresh.
+    if (localStorage.getItem('darkMode') === '1') {
+        $('body').addClass('dark-mode');
     }
-
-    // Update footer
-    const footer = $('#mainFooter');
-    if (footer.length) {
-        footer.css('background', theme.footer);
-        footer.removeClass('theme-admin theme-service theme-inventory theme-file theme-ict theme-document theme-scrum');
-        footer.addClass(theme.class);
-    }
-    
-    console.log('IA Profile theme applied from sidebar');
 });
 </script>

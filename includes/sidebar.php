@@ -41,6 +41,78 @@ if ($employee_id) {
     }
 }
 ?>
+<style>
+/* Make sidebar a flex column with fixed height */
+.main-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 250px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* Brand logo stays at top */
+.brand-link {
+    flex-shrink: 0 !important;
+}
+
+/* Sidebar content becomes scrollable */
+.sidebar {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 20px !important;
+}
+
+/* Keep existing styles */
+.sidebar-dark-primary {
+    background-color: #2c3e50 !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
+    color: #c2c7d0 !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: #007bff !important;
+    color: white !important;
+    border-left: 4px solid #fff;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+.brand-link.bg-gradient-primary {
+    background:  #007bff 0%;
+}
+.nav-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1rem;
+}
+
+/* Custom scrollbar for better appearance */
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: #2c3e50;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+</style>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="dashboard.php" class="brand-link bg-gradient-primary">
@@ -253,7 +325,7 @@ if ($employee_id) {
     color: white !important;
 }
 .brand-link.bg-gradient-primary {
-    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%) !important;
+    background:  #007bff !important;
 }
 .nav-header {
     font-size: 0.8rem;

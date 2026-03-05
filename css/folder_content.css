@@ -1,505 +1,314 @@
+/* ================================================================
+   folder_content.css — Folder Contents View
+   Light & Dark mode via body.dark-mode
+   ================================================================ */
 
-        .file-explorer {
-            display: flex;
-            min-height: 600px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .sidebar {
-            width: 300px;
-            background: white;
-            border-right: 1px solid #dee2e6;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .folder-item, .folder-item-grid {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            position: relative;
-        }
-        
-        .folder-item:hover, .folder-item-grid:hover {
-            background-color: #e9ecef;
-        }
-        
-        .folder-icon {
-            font-size: 1.5rem;
-            margin-right: 10px;
-            color: #ffc107;
-        }
-        
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .file-item, .folder-item-grid {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-        }
-        
-        .file-item:hover, .folder-item-grid:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .file-icon {
-            font-size: 3rem;
-            color: #4361ee;
-            margin-bottom: 10px;
-        }
-        
-        .folder-icon-grid {
-            font-size: 3rem;
-            color: #ffc107;
-            margin-bottom: 10px;
-        }
-        
-        .locked-badge {
-            background: #dc3545;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            margin-left: 5px;
-        }
-        
-        .breadcrumb {
-            background: transparent;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-        
-        .current-folder {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #343a40;
-        }
-        
-        .upload-progress {
-            display: none;
-            margin-top: 10px;
-        }
-
-        .file-checkbox {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        #selectAllHeader {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        #selectAll {
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
-        .btn-group .btn {
-            margin: 0 2px;
-        }
-        .file-explorer {
-            display: flex;
-            min-height: 600px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #dee2e6;
-        }
-
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-right: 1px solid #dee2e6;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 25px;
-            overflow-y: auto;
-            background: white;
-        }
-
-        .folder-item, .folder-item-grid {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            border: 1px solid #e9ecef;
-        }
-
-        .folder-item:hover, .folder-item-grid:hover {
-            background-color: #f8f9fa;
-            border-color: #4361ee;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        .folder-icon {
-            font-size: 1.8rem;
-            margin-right: 15px;
-            color: #ffc107;
-        }
-
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
-            margin-top: 25px;
-        }
-
-        .folder-item-grid {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            height: 180px;
-            justify-content: center;
-        }
-
-        .folder-item-grid:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-
-        .file-icon {
-            font-size: 3.5rem;
-            color: #4361ee;
-            margin-bottom: 15px;
-        }
-
-        .folder-icon-grid {
-            font-size: 3.5rem;
-            color: #ffc107;
-            margin-bottom: 15px;
-        }
-
-        .locked-badge {
-            background: #dc3545;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .breadcrumb {
-            background: transparent;
-            padding: 0;
-            margin-bottom: 25px;
-            font-size: 1.1rem;
-        }
-
-        .current-folder {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 25px;
-            color: #2c3e50;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .upload-progress {
-            display: none;
-            margin-top: 15px;
-        }
-
-        .file-checkbox {
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-
-        #selectAllHeader {
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-
-        #selectAll {
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-
-        .btn-group .btn {
-            margin: 0 3px;
-            border-radius: 6px;
-        }
-
-        .folder-actions .dropdown-toggle {
-            border: none;
-            background: rgba(255,255,255,0.9);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .folder-item-grid:hover .folder-actions .dropdown-toggle {
-            opacity: 1;
-        }
-
-        .folder-stats {
-            font-weight: 600;
-            color: #495057;
-            margin: 8px 0;
-        }
-
-        .folder-creator {
-            color: #6c757d;
-            font-size: 0.85rem;
-        }
-
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px 12px 0 0 !important;
-            padding: 20px 25px;
-        }
-
-        .card-title {
-            margin-bottom: 0;
-            font-weight: 600;
-        }
-
-        .table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-            border-bottom: 2px solid #dee2e6;
-        }
-
-        .badge-warning {
-            background: linear-gradient(45deg, #ffc107, #ff8c00);
-            color: white;
-        }
-
-        .folder-actions {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
-        }
-
-        .folder-actions-btn {
-            background: none;
-            border: none;
-            padding: 5px 8px;
-            border-radius: 3px;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.2s, background-color 0.2s;
-            font-size: 14px;
-            z-index: 101;
-            position: relative;
-        }
-
-        .folder-actions-btn:hover {
-            opacity: 1;
-            background-color: rgba(0,0,0,0.1);
-        }
-
-        .folder-item:hover .folder-actions-btn,
-        .folder-item-grid:hover .folder-actions-btn {
-            opacity: 0.7;
-        }
-
-        .folder-actions-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            z-index: 1000;
-            min-width: 120px;
-            display: none;
-        }
-
-        .folder-actions-menu.show {
-            display: block;
-        }
-
-        .folder-action-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            width: 100%;
-            text-align: left;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-        }
-
-        .folder-action-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .folder-action-item i {
-            margin-right: 8px;
-            width: 16px;
-            text-align: center;
-        }
-
-        .folder-action-item.edit {
-            color: #007bff;
-        }
-
-        .folder-action-item.delete {
-            color: #dc3545;
-        }
-
-        /* For sidebar folder items */
-        .folder-item {
-            position: relative;
-            padding-right: 40px; /* Make space for the actions button */
-        }
-
-        .folder-item .folder-actions {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .folder-action-item.share {
-            color: #17a2b8;
-        }
-
-        .folder-action-item.manage-shares {
-            color: #6f42c1;
-        }
-
-        .select2-container {
-            width: 100% !important;
-        }
-
-        .badge-info { background-color: #17a2b8; }
-        .badge-primary { background-color: #007bff; }
-        .badge-warning { background-color: #ffc107; color: #212529; }
-        .badge-success { background-color: #28a745; }
-        .folder-actions {
-    position: relative;
-    display: inline-block;
+/* ── Layout ──────────────────────────────────────────────── */
+.file-explorer {
+    display: flex;
+    min-height: 600px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
 }
+
+/* ── Sidebar panel ───────────────────────────────────────── */
+.file-explorer > .sidebar {
+    width: 280px;
+    background: #fff;
+    border-right: 1px solid #dee2e6;
+    padding: 20px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+.file-explorer > .sidebar h5 { font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #800020; color: #343a40; }
+
+/* ── Main content ────────────────────────────────────────── */
+.file-explorer > .main-content {
+    flex: 1;
+    padding: 25px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+/* ── Folder items (sidebar list) ─────────────────────────── */
+.folder-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin: 6px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    border: 1px solid #e9ecef;
+    padding-right: 40px;
+}
+.folder-item:hover {
+    background-color: #f8f9fa;
+    border-color: #800020;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+}
+.folder-item.locked { background-color: #fff3cd; border-color: rgba(220,53,69,0.3); }
+
+.folder-icon       { font-size: 1.5rem; margin-right: 12px; color: #ffc107; }
+.folder-icon.locked{ color: #dc3545; }
+.folder-info       { flex: 1; min-width: 0; }
+.folder-name       { font-weight: 600; color: #343a40; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folder-stats      { font-size: 0.8rem; color: #6c757d; }
+.folder-creator    { color: #6c757d; font-size: 0.8rem; }
+
+/* ── Grid folders ────────────────────────────────────────── */
+.file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.folder-item-grid {
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    position: relative;
+    border: 1px solid transparent;
+}
+.folder-item-grid:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.14);
+    border-color: #800020;
+}
+
+.folder-icon-grid { font-size: 3rem; color: #ffc107; margin-bottom: 12px; }
+.file-icon        { font-size: 3rem; color: #4361ee; margin-bottom: 10px; }
+
+/* File type colours */
+.file-icon-pdf         { color: #dc3545 !important; }
+.file-icon-word        { color: #2b579a !important; }
+.file-icon-excel       { color: #217346 !important; }
+.file-icon-powerpoint  { color: #d24726 !important; }
+.file-icon-image       { color: #20c997 !important; }
+.file-icon-video       { color: #6f42c1 !important; }
+.file-icon-audio       { color: #fd7e14 !important; }
+.file-icon-archive     { color: #6c757d !important; }
+.file-icon-text        { color: #495057 !important; }
+.file-icon-default     { color: #007bff !important; }
+
+/* ── Badges ──────────────────────────────────────────────── */
+.locked-badge    { background: #dc3545; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+.no-access-badge { background: #6c757d; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; }
+
+/* ── Folder actions (⋮ button) ───────────────────────────── */
+.folder-actions {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    z-index: 10;
+}
+.folder-item-grid .folder-actions { top: 8px; right: 8px; transform: none; }
 
 .folder-actions-btn {
     background: none;
     border: none;
-    padding: 4px 8px;
+    padding: 5px 8px;
     border-radius: 4px;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.2s, background-color 0.2s;
+    font-size: 14px;
+    color: #495057;
 }
-
 .folder-item:hover .folder-actions-btn,
-.folder-item-grid:hover .folder-actions-btn {
-    opacity: 1;
-}
+.folder-item-grid:hover .folder-actions-btn { opacity: 1; }
+.folder-actions-btn:hover { background-color: rgba(0,0,0,0.08); }
 
 .folder-actions-menu {
     position: absolute;
     right: 0;
     top: 100%;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    z-index: 1000;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 1050;
     display: none;
-    min-width: 150px;
+    min-width: 160px;
+    padding: 4px 0;
 }
-
-.folder-actions-menu.show {
-    display: block;
-}
+.folder-actions-menu.show { display: block; }
 
 .folder-action-item {
-    display: block;
+    display: flex;
+    align-items: center;
     width: 100%;
     text-align: left;
     background: none;
     border: none;
-    padding: 8px 12px;
+    padding: 8px 14px;
     cursor: pointer;
     transition: background-color 0.2s;
+    font-size: 0.875rem;
+    color: #343a40;
 }
+.folder-action-item:hover   { background-color: #f8f9fa; }
+.folder-action-item i       { margin-right: 8px; width: 16px; text-align: center; }
+.folder-action-item.edit    { color: #007bff; }
+.folder-action-item.share   { color: #17a2b8; }
+.folder-action-item.manage-shares { color: #6f42c1; }
+.folder-action-item.delete  { color: #dc3545; }
 
-.folder-action-item:hover {
-    background-color: #f8f9fa;
-}
+/* ── Card chrome ─────────────────────────────────────────── */
+.card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.card-header { background: linear-gradient(135deg, #800020 0%, #5a0a1d 100%); color: white; border-radius: 12px 12px 0 0 !important; padding: 18px 22px; }
+.card-title  { margin-bottom: 0; font-weight: 600; }
 
-.folder-action-item.edit { color: #007bff; }
-.folder-action-item.share { color: #28a745; }
-.folder-action-item.manage-shares { color: #6c757d; }
-.folder-action-item.delete { color: #dc3545; }
+/* ── Table ───────────────────────────────────────────────── */
+.table th { background: #f8f9fa; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6; }
 
-.locked-badge {
-    background-color: #ffc107;
-    color: #212529;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.75em;
-    margin-left: 5px;
-}
+/* ── Current folder header ───────────────────────────────── */
+.current-folder { font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; color: #2c3e50; display: flex; align-items: center; gap: 12px; }
 
-/* File Type Colors */
-.file-icon-pdf { color: #dc3545 !important; } /* Red for PDF */
-.file-icon-word { color: #2b579a !important; } /* Blue for Word */
-.file-icon-excel { color: #217346 !important; } /* Green for Excel */
-.file-icon-powerpoint { color: #d24726 !important; } /* Orange for PowerPoint */
-.file-icon-image { color: #20c997 !important; } /* Teal for Images */
-.file-icon-video { color: #6f42c1 !important; } /* Purple for Video */
-.file-icon-audio { color: #fd7e14 !important; } /* Orange for Audio */
-.file-icon-archive { color: #6c757d !important; } /* Gray for Archives */
-.file-icon-text { color: #495057 !important; } /* Dark gray for Text */
-.file-icon-default { color: #007bff !important; } /* Blue for others */
+/* ── Upload helpers ──────────────────────────────────────── */
+.upload-progress { display: none; margin-top: 10px; }
+.file-checkbox, #selectAllHeader, #selectAll { transform: scale(1.2); cursor: pointer; }
+.btn-group .btn { margin: 0 3px; border-radius: 6px; }
 
-/* Update the getFileIcon function in PHP to use these classes */
+/* ── No-access folders ───────────────────────────────────── */
+.folder-item.no-access { opacity: 0.65; background-color: #f8f9fa; }
+.folder-item.no-access .folder-name { color: #6c757d; }
+.folder-item.no-access .folder-actions { display: none; }
+
+/* ── Breadcrumb ──────────────────────────────────────────── */
+.breadcrumb { background: transparent; padding: 0; margin-bottom: 20px; }
+
+/* ── Select2 ─────────────────────────────────────────────── */
+.select2-container { width: 100% !important; }
+
+/* ── Badge overrides ─────────────────────────────────────── */
+.badge-info    { background-color: #17a2b8; }
+.badge-primary { background-color: #800020; }
+.badge-warning { background-color: #ffc107; color: #212529; }
+.badge-success { background-color: #28a745; }
+
+
+/* ================================================================
+   DARK MODE OVERRIDES
+   ================================================================ */
+
+/* Layout backgrounds */
+body.dark-mode .file-explorer          { background: var(--body-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .file-explorer > .sidebar { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .file-explorer > .main-content { background: var(--card-bg) !important; }
+body.dark-mode .file-explorer > .sidebar h5   { color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+
+/* Folder items — sidebar list */
+body.dark-mode .folder-item              { border-color: var(--card-border) !important; background: var(--card-bg) !important; }
+body.dark-mode .folder-item:hover        { background: var(--table-stripe) !important; border-color: #6a8fbf !important; }
+body.dark-mode .folder-item.locked       { background: rgba(220,53,69,0.12) !important; }
+body.dark-mode .folder-item.no-access    { background: var(--body-bg) !important; }
+body.dark-mode .folder-name              { color: var(--text-primary) !important; }
+body.dark-mode .folder-stats, body.dark-mode .folder-creator { color: var(--text-muted) !important; }
+
+/* Grid folder cards */
+body.dark-mode .folder-item-grid         { background: var(--card-bg) !important; border-color: var(--card-border) !important; box-shadow: 0 3px 10px rgba(0,0,0,0.3) !important; }
+body.dark-mode .folder-item-grid:hover   { border-color: #6a8fbf !important; box-shadow: 0 8px 25px rgba(0,0,0,0.4) !important; }
+body.dark-mode .folder-item-grid .folder-name  { color: var(--text-primary) !important; }
+body.dark-mode .folder-item-grid .folder-stats { color: var(--text-muted) !important; }
+body.dark-mode .folder-item-grid .folder-creator { color: var(--text-muted) !important; }
+
+/* Actions dropdown */
+body.dark-mode .folder-actions-btn       { color: var(--text-muted) !important; }
+body.dark-mode .folder-actions-btn:hover { background-color: rgba(255,255,255,0.1) !important; }
+body.dark-mode .folder-actions-menu      { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .folder-action-item       { color: var(--dropdown-color) !important; }
+body.dark-mode .folder-action-item:hover { background: var(--table-stripe) !important; }
+body.dark-mode .folder-action-item.edit        { color: #7aabdf !important; }
+body.dark-mode .folder-action-item.share       { color: #5bc0de !important; }
+body.dark-mode .folder-action-item.manage-shares { color: #b39ddb !important; }
+body.dark-mode .folder-action-item.delete      { color: #f48fb1 !important; }
+
+/* Card */
+body.dark-mode .card        { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
+body.dark-mode .card-body   { background: var(--card-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .card-footer { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .card-title  { color: var(--text-primary) !important; }
+
+/* Content wrapper & page bg */
+body.dark-mode .content-wrapper    { background-color: var(--body-bg) !important; }
+body.dark-mode { background-color: var(--body-bg) !important; }
+
+/* Typography */
+body.dark-mode h1,body.dark-mode h2,body.dark-mode h3,
+body.dark-mode h4,body.dark-mode h5,body.dark-mode h6 { color: var(--text-primary) !important; }
+body.dark-mode p,body.dark-mode strong { color: var(--text-primary); }
+body.dark-mode .text-muted  { color: var(--text-muted) !important; }
+body.dark-mode .text-dark   { color: var(--text-primary) !important; }
+body.dark-mode span:not(.badge) { color: var(--text-primary); }
+body.dark-mode label { color: var(--text-primary) !important; }
+body.dark-mode .current-folder { color: var(--text-primary) !important; }
+
+/* Breadcrumb */
+body.dark-mode .breadcrumb { background: transparent !important; }
+body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
+body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
+body.dark-mode .breadcrumb-item + .breadcrumb-item::before { color: var(--text-muted) !important; }
+
+/* Tables */
+body.dark-mode .table { background: var(--table-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
+body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
+body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
+
+/* Forms */
+body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
+body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
+body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .form-check-label { color: var(--text-primary) !important; }
+
+/* Modals */
+body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .modal-header  { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
+body.dark-mode .modal-body    { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .modal-footer  { background: var(--modal-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .modal-footer .btn-secondary { background: #444 !important; border-color: #555 !important; color: #ccc !important; }
+body.dark-mode .close { color: var(--modal-header-color) !important; opacity: 1; }
+
+/* Alerts */
+body.dark-mode .alert { border-color: var(--card-border) !important; }
+body.dark-mode .alert-info    { background: #1e2f3e !important; color: #93c5fd !important; }
+body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
+body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
+body.dark-mode .alert-danger  { background: #2e1515 !important; color: #fca5a5 !important; }
+
+/* Dropdowns */
+body.dark-mode .dropdown-menu   { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
+body.dark-mode .dropdown-item   { color: var(--dropdown-color) !important; }
+body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
+
+/* HR */
+body.dark-mode hr { border-color: var(--card-border) !important; }
+
+/* Select2 */
+body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .select2-container--bootstrap4 .select2-selection__rendered { color: var(--input-color) !important; }
+body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
+body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
+
+/* Progress bar */
+body.dark-mode .progress { background-color: #2a2e35 !important; }

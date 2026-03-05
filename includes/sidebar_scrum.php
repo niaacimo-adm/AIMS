@@ -1,4 +1,3 @@
-
 <?php
 require_once '../includes/auth.php';
 require_once '../config/database.php';
@@ -42,6 +41,7 @@ if ($employee_id) {
     }
 }
 ?>
+
 <!-- Scrumboard Sidebar -->
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="dashboard.php" class="brand-link bg-gradient-primary">
@@ -120,42 +120,17 @@ if ($employee_id) {
     </div>
 </aside>
 <style>
-.sidebar-dark-primary {
-    background-color: #2c3e50 !important;
-}
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
-    color: #c2c7d0 !important;
-    border-radius: 0;
-    margin: 0;
-    padding: 0.75rem 1rem;
-}
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
-    background-color: #007bff !important;
-    color: white !important;
-    border-left: 4px solid #fff;
-}
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    color: white !important;
-}
-.brand-link.bg-gradient-primary {
-    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%) !important;
-}
-.nav-header {
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 1rem;
-}
+/*
+ * Sidebar styles are driven by CSS variables defined in mainheader.php.
+ * Light / dark mode is toggled globally — no per-module colours.
+ */
 </style>
 <script>
 $(document).ready(function() {
-    // Force set admin theme
-    localStorage.setItem('currentTheme', 'admin');
-    // Trigger theme update in mainheader
-    if (window.parent && window.parent.setTheme) {
-        window.parent.setTheme('admin');
+    // Sidebar loads — dark mode already applied by mainheader CSS variables.
+    // Re-apply dark mode class in case this page loaded fresh.
+    if (localStorage.getItem('darkMode') === '1') {
+        $('body').addClass('dark-mode');
     }
 });
 </script>

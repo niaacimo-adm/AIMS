@@ -530,19 +530,7 @@ $(document).ready(function() {
     }).buttons().container().appendTo('#maintenanceTable_wrapper .col-md-6:eq(0)');
     <?php endif; ?>
 
-    // Set ICT theme
-    const currentTheme = localStorage.getItem('currentTheme');
-    if (currentTheme !== 'ict') {
-        localStorage.setItem('currentTheme', 'ict');
-    }
-    document.cookie = 'current_module=ict; path=/; max-age=300';
-    
-    const theme = 'linear-gradient(135deg, #17a2b8, #138496)';
-    $('.main-header').css('background', theme);
-    $('#mainFooter').css('background', theme);
-    
-    $('.main-header').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
-    $('#mainFooter').removeClass('theme-admin theme-service theme-inventory theme-file').addClass('theme-ict');
+
 
     // View Maintenance Details
     $(document).on('click', '.view-maintenance', function() {
