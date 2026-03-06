@@ -3,50 +3,41 @@ ob_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
 
-// Get current page for active state
 $current_page = basename($_SERVER['PHP_SELF']);
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// Get employee data if user is logged in
-$employee_name = '';
-$employee_picture = '../dist/img/user2-160x160.jpg'; // Default image
-$employee_id = $_SESSION['emp_id'] ?? null;
+$employee_name    = '';
+$employee_picture = '../dist/img/user2-160x160.jpg';
+$employee_id      = $_SESSION['emp_id'] ?? null;
 
 if ($employee_id) {
-    // Database connection
-    $database = new Database();
-    $db = $database->getConnection();
-    
-    // Query to get employee name and picture
-    $query = "SELECT first_name, last_name, picture FROM employee WHERE emp_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("i", $employee_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        $employee_data = $result->fetch_assoc();
-        $employee_name = htmlspecialchars($employee_data['first_name'] . ' ' . $employee_data['last_name']);
-        
-        // Check if picture exists
-        if (!empty($employee_data['picture'])) {
-            $picture_path = '../dist/img/employees/' . $employee_data['picture'];
-            if (file_exists($picture_path)) {
-                $employee_picture = $picture_path;
-            }
+    $database_sb = new Database();
+    $db_sb = $database_sb->getConnection();
+    $q = "SELECT first_name, last_name, picture FROM employee WHERE emp_id = ?";
+    $st = $db_sb->prepare($q);
+    $st->bind_param("i", $employee_id);
+    $st->execute();
+    $r = $st->get_result();
+    if ($r->num_rows > 0) {
+        $ed = $r->fetch_assoc();
+        $employee_name = htmlspecialchars($ed['first_name'] . ' ' . $ed['last_name']);
+        if (!empty($ed['picture'])) {
+            $pp = '../dist/img/employees/' . $ed['picture'];
+            if (file_exists($pp)) $employee_picture = $pp;
         }
     }
 }
 ob_end_clean();
+
+/* These vars come from the parent (section_files.php): $folders, $section_name, $db, $user_emp_id */
+$sb_folders      = isset($folders) ? $folders : [];
+$sb_section_name = isset($section_name) ? $section_name : 'My Drive';
 ?>
 
-<aside class="main-sidebar sidebar-dark-maroon elevation-4">
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="file_management.php" class="brand-link bg-gradient-primary">
-      <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+    <a href="dashboard_ia.php" class="brand-link bg-gradient-primary">
+        <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
       <span class="brand-text font-weight-light"><b>NIA-ACIMO</b></span>
     </a>
 
@@ -69,28 +60,344 @@ ob_end_clean();
         </div>
       </div>
 
-        <!-- Sidebar Menu -->
+        <!-- New Folder Button - Windows Explorer style -->
+        <div class="sidebar-header">
+            <button class="btn-new-folder" data-toggle="modal" data-target="#createFolderModal">
+                <i class="fas fa-folder-plus"></i>
+                <span>New folder</span>
+            </button>
+        </div>
+
+        <!-- Navigation - Windows Explorer style -->
         <nav class="mt-2">
-            <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                
+                <!-- Quick Access Section -->
+                <li class="nav-header">Quick access</li>
+                
                 <li class="nav-item">
-                    <a href="file_management.php" class="nav-link <?= $current_page == 'file_management.php' ? 'active bg-maroon' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-tachometer-alt"></i>
-                        <p>Dashboard</p>
+                    <a href="file_management.php" class="nav-link <?= $current_page == 'file_management.php' ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-home"></i>
+                        <p>Home</p>
                     </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-toggle="modal" data-target="#uploadFileModal">
+                        <i class="nav-icon fas fa-cloud-upload-alt"></i>
+                        <p>Upload</p>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="if(typeof filterShared==='function')filterShared();return false;">
+                        <i class="nav-icon fas fa-share-alt"></i>
+                        <p>Shared with me</p>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="if(typeof filterImportant==='function')filterImportant();return false;">
+                        <i class="nav-icon far fa-star"></i>
+                        <p>Starred</p>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="if(typeof filterTrash==='function')filterTrash();return false;">
+                        <i class="nav-icon fas fa-trash"></i>
+                        <p>Trash</p>
+                    </a>
+                </li>
+                
+                <li class="nav-divider"></li>
+                
+                <!-- This PC / My Drive Section -->
+                <li class="nav-header">This PC</li>
+                
+                <!-- Root folder -->
+                <li class="nav-item" id="sbNavRootItem">
+                    <a href="#" class="nav-link sb-active" onclick="if(typeof showRootView==='function')showRootView();return false;">
+                        <i class="nav-icon fas fa-hdd"></i>
+                        <p><?= htmlspecialchars($sb_section_name) ?></p>
+                        <?php if (!empty($sb_folders)): ?>
+                            <span class="badge badge-info right"><?= count($sb_folders) ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+                
+                <!-- Folders with tree structure -->
+                <?php if (!empty($sb_folders)): ?>
+                    <?php foreach ($sb_folders as $sf): 
+                        $sf_access = isset($db) && function_exists('hasFolderPermission')
+                            ? hasFolderPermission($db, $sf['folder_id'], isset($user_emp_id) ? $user_emp_id : 0, 'view')
+                            : true;
+                        
+                        // Check if this folder has subfolders (you'll need to implement this logic)
+                        $has_subfolders = false; // Replace with actual check
+                    ?>
+                    <li class="nav-item <?= $has_subfolders ? 'has-treeview' : '' ?>" id="sbNavFolder_<?= $sf['folder_id'] ?>">
+                        <a href="#" 
+                           class="nav-link <?= !$sf_access ? 'disabled' : '' ?>"
+                           onclick="<?= $sf_access ? "openFolder({$sf['folder_id']},'" . htmlspecialchars(addslashes($sf['folder_name'])) . "',{$sf['is_locked']});return false;" : "showNoAccess();return false;" ?>">
+                            
+                            <?php if ($has_subfolders): ?>
+                                <i class="nav-icon fas fa-chevron-right"></i>
+                            <?php endif; ?>
+                            
+                            <i class="fas fa-folder folder-icon <?= $sf['is_locked'] ? 'locked' : '' ?>"></i>
+                            <p>
+                                <?= htmlspecialchars($sf['folder_name']) ?>
+                                <?php if ($sf['is_locked']): ?>
+                                    <i class="fas fa-lock ml-1" style="font-size: 11px;"></i>
+                                <?php endif; ?>
+                            </p>
+                            
+                            <?php if ($sf['file_count'] > 0): ?>
+                                <span class="badge badge-light right"><?= $sf['file_count'] ?></span>
+                            <?php endif; ?>
+                        </a>
+                        
+                        <?php if ($has_subfolders): ?>
+                            <ul class="nav nav-treeview">
+                                <!-- Subfolders would go here -->
+                            </ul>
+                        <?php endif; ?>
+                    </li>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                
+                <li class="nav-divider"></li>
+                
+                <!-- Storage info -->
+                <li class="nav-item storage-info">
+                    <div class="storage-bar">
+                        <div class="storage-bar-fill" style="width: 45%;"></div>
+                    </div>
+                    <div class="storage-details">
+                        <span><i class="fas fa-cloud"></i> 4.5 GB of 10 GB used</span>
+                        <a href="#" class="float-right">Get more storage</a>
+                    </div>
                 </li>
             </ul>
         </nav>
     </div>
 </aside>
-<style>
-/*
- * Sidebar styles are driven by CSS variables defined in mainheader.php.
- * Light / dark mode is toggled globally — no per-module colours.
- */
 
-/* =========================================================
-   DARK MODE OVERRIDES — applied via body.dark-mode
-   ========================================================= */
+<style>
+/* Windows Explorer style sidebar */
+.main-sidebar {
+    background: #2c3e50 !important;
+    box-shadow: none !important;
+}
+
+.main-sidebar .sidebar {
+    background: #2c3e50 !important;
+}
+
+.brand-link {
+    background: #1e2b38 !important;
+    border-bottom: 1px solid #3a4a5a !important;
+    padding: 15px !important;
+}
+
+.brand-link .brand-text {
+    color: #ecf0f1 !important;
+    font-weight: 500 !important;
+}
+
+/* User panel */
+.user-panel {
+    border-bottom: 1px solid #3a4a5a !important;
+    padding-bottom: 15px !important;
+    margin-bottom: 10px !important;
+}
+
+.user-panel .info a {
+    color: #ecf0f1 !important;
+    font-size: 14px;
+}
+
+/* New folder button - Windows Explorer style */
+.sidebar-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid #3a4a5a;
+}
+
+.btn-new-folder {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    background: #34495e;
+    color: #ecf0f1;
+    border: 1px solid #4a5a6a;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-new-folder:hover {
+    background: #3d566e;
+    border-color: #5a6a7a;
+}
+
+.btn-new-folder i {
+    color: #f1c40f;
+    font-size: 14px;
+}
+
+/* Navigation headers */
+.nav-header {
+    padding: 8px 15px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #95a5a6;
+    list-style: none;
+}
+
+/* Navigation items - Windows Explorer style */
+.nav-sidebar > .nav-item {
+    margin: 2px 0;
+}
+
+.nav-sidebar > .nav-item > .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 8px 15px;
+    color: #bdc3c7;
+    border-radius: 0;
+    transition: all 0.2s;
+    gap: 10px;
+}
+
+.nav-sidebar > .nav-item > .nav-link:hover {
+    background: #34495e;
+    color: #ecf0f1;
+}
+
+.nav-sidebar > .nav-item > .nav-link.active,
+.nav-sidebar > .nav-item > .nav-link.sb-active {
+    background: #2980b9;
+    color: #fff;
+}
+
+.nav-sidebar > .nav-item > .nav-link.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Icons */
+.nav-sidebar .nav-icon {
+    width: 20px;
+    text-align: center;
+    font-size: 14px;
+    margin-right: 0;
+}
+
+.folder-icon {
+    color: #f1c40f;
+    font-size: 14px;
+    width: 20px;
+    text-align: center;
+}
+
+.folder-icon.locked {
+    color: #e67e22;
+}
+
+/* Tree view for subfolders */
+.nav-treeview {
+    padding-left: 35px;
+    list-style: none;
+}
+
+.nav-treeview .nav-item {
+    margin: 2px 0;
+}
+
+.nav-treeview .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 6px 15px;
+    color: #bdc3c7;
+    font-size: 13px;
+    gap: 8px;
+}
+
+.nav-treeview .nav-link:hover {
+    background: #34495e;
+    color: #ecf0f1;
+}
+
+/* Badges */
+.nav-sidebar .badge {
+    margin-left: auto;
+    font-weight: 400;
+    background: #3a4a5a;
+    color: #bdc3c7;
+    padding: 2px 6px;
+    font-size: 11px;
+}
+
+.nav-sidebar .nav-link.active .badge,
+.nav-sidebar .nav-link.sb-active .badge {
+    background: #1f6a9a;
+    color: #fff;
+}
+
+/* Divider */
+.nav-divider {
+    height: 1px;
+    margin: 10px 15px;
+    background: #3a4a5a;
+    list-style: none;
+}
+
+/* Storage info - Windows Explorer style */
+.storage-info {
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.storage-bar {
+    height: 4px;
+    background: #3a4a5a;
+    border-radius: 2px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.storage-bar-fill {
+    height: 100%;
+    background: #3498db;
+    border-radius: 2px;
+}
+
+.storage-details {
+    font-size: 11px;
+    color: #95a5a6;
+}
+
+.storage-details i {
+    margin-right: 5px;
+    font-size: 11px;
+}
+
+.storage-details a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.storage-details a:hover {
+    text-decoration: underline;
+}
+
 body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
@@ -152,12 +459,18 @@ body.dark-mode aside.main-sidebar { background-color: var(--sidebar-bg) !importa
     background:  #007bff !important;
 }
 </style>
+
 <script>
 $(document).ready(function() {
-    // Sidebar loads — dark mode already applied by mainheader CSS variables.
-    // Re-apply dark mode class in case this page loaded fresh.
     if (localStorage.getItem('darkMode') === '1') {
         $('body').addClass('dark-mode');
     }
+    
+    // Initialize treeview for folders with subfolders
+    $('.has-treeview > .nav-link').click(function(e) {
+        e.preventDefault();
+        $(this).parent().toggleClass('menu-open');
+        $(this).find('.fa-chevron-right').toggleClass('fa-chevron-down');
+    });
 });
 </script>

@@ -869,7 +869,7 @@
                                             $stmt->bind_param("ssssisii", $file_name, $unique_name, $file_type, $file_size, $description, $section_id_value, $folder_id_val, $user_emp_id);
                                         } else {
                                             $stmt = $db->prepare("INSERT INTO files (file_name, file_path, file_type, file_size, section_id, folder_id, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                                            $stmt->bind_param("ssssiiii", $file_name, $unique_name, $file_type, $file_size, $section_id_value, $folder_id_val, $user_emp_id);
+                                            $stmt->bind_param("ssssiii", $file_name, $unique_name, $file_type, $file_size, $section_id_value, $folder_id_val, $user_emp_id);
                                         }
 
                                         if ($stmt->execute()) {
@@ -957,289 +957,544 @@
     <title><?= htmlspecialchars($section_name) ?> Files</title>
     
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="../css/section_files.css">
     
-    <!-- Modern CSS Additions -->
     <style>
+        /* Modern CSS Variables for theming */
         :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --success-color: #4cc9f0;
-            --info-color: #4895ef;
-            --warning-color: #f72585;
-            --danger-color: #e63946;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --sidebar-width: 280px;
-            --border-radius: 12px;
-            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s ease;
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            
+            /* Light mode */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --card-bg: #ffffff;
+            --hover-bg: #f1f5f9;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --header-bg: #ffffff;
+            --sidebar-bg: #ffffff;
+            --toolbar-bg: #ffffff;
+            
+            /* Spacing */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            
+            /* Border radius */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            
+            /* Transitions */
+            --transition-fast: 150ms;
+            --transition-normal: 250ms;
+            --transition-slow: 350ms;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
-        .modern-card {
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            border: none;
-            transition: var(--transition);
-            margin-bottom: 1.5rem;
+        /* Dark mode */
+        body.dark-mode {
+            --bg-primary: #1e293b;
+            --bg-secondary: #0f172a;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --card-bg: #1e293b;
+            --hover-bg: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --header-bg: #1e293b;
+            --sidebar-bg: #1e293b;
+            --toolbar-bg: #1e293b;
         }
 
-        .modern-card:hover {
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            transform: translateY(-2px);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .modern-card .card-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
-            border: none;
-            padding: 1.25rem 1.5rem;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color var(--transition-normal), color var(--transition-normal);
         }
 
-        .modern-card .card-body {
-            padding: 1.5rem;
+        /* Modern scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
 
-        .btn-modern {
-            border-radius: 8px;
-            padding: 0.5rem 1.25rem;
-            font-weight: 600;
-            transition: var(--transition);
-            border: none;
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
         }
 
-        .btn-modern-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: var(--radius-sm);
         }
 
-        .btn-modern-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.3);
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
 
-        .file-explorer {
+        /* Layout */
+        .explorer-shell {
             display: flex;
-            gap: 1.5rem;
-            min-height: 600px;
+            height: calc(100vh - 57px - 57px);
+            overflow: hidden;
         }
 
-        .sidebar {
-            width: var(--sidebar-width);
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 1.5rem;
-            height: fit-content;
+        /* Right Content */
+        .explorer-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .sidebar h5 {
-            color: var(--dark-color);
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 2px solid var(--primary-color);
-        }
-
-        .folder-item {
+        /* Modern Toolbar */
+        .explorer-toolbar {
+            background: var(--toolbar-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--spacing-sm) var(--spacing-lg);
             display: flex;
             align-items: center;
-            padding: 0.875rem;
-            margin-bottom: 0.5rem;
-            border-radius: 8px;
-            transition: var(--transition);
-            cursor: pointer;
-            border: 1px solid transparent;
+            gap: var(--spacing-md);
+            flex-shrink: 0;
         }
 
-        .folder-item:hover {
-            background: rgba(67, 97, 238, 0.05);
-            border-color: var(--primary-color);
-            transform: translateX(4px);
-        }
-
-        .folder-item.locked {
-            background: rgba(230, 57, 70, 0.05);
-            border-color: rgba(230, 57, 70, 0.2);
-        }
-
-        .folder-icon {
-            font-size: 1.25rem;
-            margin-right: 0.75rem;
-            color: var(--primary-color);
-        }
-
-        .folder-icon.locked {
-            color: var(--danger-color);
-        }
-
-        .folder-info {
+        .breadcrumb-nav {
             flex: 1;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
         }
 
-        .folder-name {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.25rem;
+        .breadcrumb-nav a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color var(--transition-fast);
         }
 
-        .folder-stats {
-            font-size: 0.8rem;
-            color: #6c757d;
+        .breadcrumb-nav a:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
         }
 
-        .locked-badge, .no-access-badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            margin-left: 0.5rem;
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xs) var(--spacing-md);
+            gap: var(--spacing-sm);
+            width: 300px;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
         }
 
-        .locked-badge {
-            background: var(--danger-color);
-            color: white;
+        .search-bar:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        .no-access-badge {
-            background: #6c757d;
-            color: white;
-        }
-
-        .folder-actions {
-            position: relative;
-        }
-
-        .folder-actions-btn {
-            background: none;
+        .search-bar input {
             border: none;
-            color: #6c757d;
-            padding: 0.25rem;
-            border-radius: 4px;
-            transition: var(--transition);
-        }
-
-        .folder-actions-btn:hover {
-            background: rgba(0, 0, 0, 0.1);
-            color: var(--dark-color);
-        }
-
-        .folder-actions-menu {
-            position: absolute;
-            right: 0;
-            top: 100%;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            padding: 0.5rem;
-            min-width: 180px;
-            z-index: 1000;
-            display: none;
-        }
-
-        .folder-actions-menu.show {
-            display: block;
-        }
-
-        .folder-action-item {
-            display: block;
+            background: transparent;
+            outline: none;
+            font-size: 0.875rem;
             width: 100%;
-            text-align: left;
-            background: none;
-            border: none;
-            padding: 0.5rem 0.75rem;
-            border-radius: 4px;
-            transition: var(--transition);
-            color: var(--dark-color);
+            color: var(--text-primary);
+        }
+
+        .search-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-bar i {
+            color: var(--text-muted);
             font-size: 0.875rem;
         }
 
-        .folder-action-item:hover {
-            background: rgba(67, 97, 238, 0.1);
-            color: var(--primary-color);
-        }
-
-        .main-content {
-            flex: 1;
-        }
-
-        .current-folder {
-            background: white;
-            padding: 1.25rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            margin-bottom: 1.5rem;
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: var(--dark-color);
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .folder-item-grid {
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 1.25rem;
-            text-align: center;
-            transition: var(--transition);
+        .toolbar-btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            font-size: 0.875rem;
+            font-weight: 500;
             cursor: pointer;
-            border: 1px solid transparent;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            transition: all var(--transition-fast);
         }
 
-        .folder-item-grid:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+        .toolbar-btn:hover {
+            background: var(--hover-bg);
             border-color: var(--primary-color);
         }
 
-        .folder-icon-grid {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
+        .toolbar-btn.primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .toolbar-btn.primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Explorer Body */
+        .explorer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        /* Section Title */
+        .exp-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Quick Access Chips */
+        .quick-access-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .qa-chip {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .qa-chip:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .qa-chip i {
             color: var(--primary-color);
         }
 
-        .table-modern {
-            background: white;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--box-shadow);
+        /* Folder Grid */
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
         }
 
-        .table-modern thead th {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
+        .folder-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg) var(--spacing-md);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .folder-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .folder-card .fc-menu-btn {
+            position: absolute;
+            top: var(--spacing-xs);
+            right: var(--spacing-xs);
+            background: transparent;
             border: none;
-            padding: 1rem;
+            color: var(--text-muted);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            opacity: 0;
+            transition: all var(--transition-fast);
+        }
+
+        .folder-card:hover .fc-menu-btn {
+            opacity: 1;
+        }
+
+        .folder-card .fc-menu-btn:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .fc-icon {
+            font-size: 2.5rem;
+            color: #fbbf24;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .fc-icon.locked {
+            color: var(--danger-color);
+        }
+
+        .fc-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-word;
+            line-height: 1.4;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .fc-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Google Drive Style File List */
+        .gd-file-list {
+            width: 100%;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .gd-header {
+            display: grid;
+            grid-template-columns: 40px 1fr 180px 180px 120px 120px;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
             font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .table-modern tbody td {
-            padding: 0.875rem;
-            border-color: #f1f3f4;
-            vertical-align: middle;
+        .gd-file-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 180px 180px 120px 120px;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background var(--transition-fast);
         }
 
-        .table-modern tbody tr:hover {
-            background: rgba(67, 97, 238, 0.03);
+        .gd-file-row:hover {
+            background: var(--hover-bg);
         }
 
+        .gd-file-row:hover .gd-col-actions {
+            opacity: 1;
+        }
+
+        .gd-col-check {
+            display: flex;
+            align-items: center;
+        }
+
+        .gd-col-name {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            min-width: 0;
+        }
+
+        .gd-file-icon {
+            font-size: 1.125rem;
+            flex-shrink: 0;
+        }
+
+        .gd-file-name {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .gd-col-owner {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .gd-owner-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .gd-col-date {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .gd-col-size {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .gd-col-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+            position: relative;
+        }
+
+        .gd-action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            transition: all var(--transition-fast);
+        }
+
+        .gd-action-btn:hover {
+            background: var(--hover-bg);
+            color: var(--primary-color);
+        }
+
+        .gd-file-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 180px;
+            z-index: 1000;
+            padding: var(--spacing-xs) 0;
+        }
+
+        .gd-file-menu.show {
+            display: block;
+        }
+
+        .gd-menu-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            transition: background var(--transition-fast);
+        }
+
+        .gd-menu-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .gd-menu-item i {
+            width: 16px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .gd-menu-danger {
+            color: var(--danger-color) !important;
+        }
+
+        .gd-menu-danger i {
+            color: var(--danger-color) !important;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-lg);
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+            display: block;
+        }
+
+        /* Activity Panel */
         .activity-panel {
             position: fixed;
             top: 0;
             right: -400px;
             width: 400px;
             height: 100vh;
-            background: white;
-            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
-            transition: var(--transition);
+            background: var(--card-bg);
+            border-left: 1px solid var(--border-color);
+            box-shadow: var(--shadow-xl);
+            transition: right var(--transition-normal);
             z-index: 1050;
         }
 
@@ -1247,87 +1502,280 @@
             right: 0;
         }
 
-        .search-box {
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 1rem;
-            margin-bottom: 1.5rem;
+        .activity-panel .card {
+            height: 100%;
+            border: none;
+            border-radius: 0;
+            background: var(--card-bg);
         }
 
-        .file-drop-zone {
-            border: 2px dashed #dee2e6;
-            border-radius: var(--border-radius);
-            padding: 2rem;
+        .activity-panel .card-header {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--spacing-md) var(--spacing-lg);
+        }
+
+        .activity-panel .card-title {
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Folder Actions Menu */
+        .folder-actions-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 180px;
+            z-index: 1000;
+            padding: var(--spacing-xs) 0;
+        }
+
+        .folder-actions-menu.show {
+            display: block;
+        }
+
+        .folder-action-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            transition: background var(--transition-fast);
+        }
+
+        .folder-action-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .folder-action-item i {
+            width: 16px;
             text-align: center;
-            transition: var(--transition);
-            background: #fafbfc;
+            color: var(--text-muted);
+        }
+
+        .folder-action-item.delete {
+            color: var(--danger-color);
+        }
+
+        .folder-action-item.delete i {
+            color: var(--danger-color);
+        }
+
+        /* File Drop Zone */
+        .file-drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            transition: all var(--transition-fast);
+            background: var(--bg-tertiary);
+            cursor: pointer;
         }
 
         .file-drop-zone.dragover {
             border-color: var(--primary-color);
-            background: rgba(67, 97, 238, 0.05);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .file-drop-zone:hover {
+            border-color: var(--primary-color);
         }
 
         .file-item {
             display: flex;
-            justify-content: between;
             align-items: center;
-            padding: 0.75rem;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            border: 1px solid #f1f3f4;
+            justify-content: space-between;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-xs);
         }
 
         .file-info {
             display: flex;
             align-items: center;
+            gap: var(--spacing-md);
             flex: 1;
         }
 
         .file-icon {
-            font-size: 1.25rem;
-            margin-right: 0.75rem;
+            font-size: 1rem;
             color: var(--primary-color);
         }
 
-        .modal-modern .modal-content {
-            border-radius: var(--border-radius);
+        .file-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .file-size {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: var(--spacing-xs);
+        }
+
+        .file-remove {
+            background: transparent;
             border: none;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: var(--spacing-xs);
+            border-radius: 50%;
+            transition: all var(--transition-fast);
         }
 
-        .modal-modern .modal-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        .file-remove:hover {
+            background: var(--hover-bg);
+            color: var(--danger-color);
+        }
+
+        /* Upload Progress */
+        .upload-progress {
+            margin-top: var(--spacing-md);
+        }
+
+        .progress {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: var(--primary-color);
+            transition: width var(--transition-normal);
+        }
+
+        /* File View Modal */
+        .fv-modal .modal-dialog {
+            max-width: 900px;
+        }
+
+        .fv-modal .modal-content {
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-xl);
+            background: var(--card-bg);
+        }
+
+        .fv-modal .modal-header {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--spacing-md) var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .fv-modal .modal-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .fv-header-btn {
+            background: transparent;
             border: none;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
         }
 
-        .form-control-modern {
-            border-radius: 8px;
-            border: 1px solid #e1e5e9;
-            padding: 0.75rem;
-            transition: var(--transition);
+        .fv-header-btn:hover {
+            background: var(--hover-bg);
+            color: var(--primary-color);
         }
 
-        .form-control-modern:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        .fv-modal .modal-body {
+            padding: 0;
+            min-height: 480px;
+            display: flex;
+        }
+
+        .fv-preview-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-lg);
+            background: var(--bg-secondary);
+        }
+
+        .fv-info-panel {
+            width: 260px;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-color);
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+
+        .fv-info-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            font-size: 0.875rem;
+        }
+
+        .fv-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-sm);
+            font-size: 0.8125rem;
+        }
+
+        .fv-info-label {
+            color: var(--text-muted);
+        }
+
+        .fv-info-value {
+            color: var(--text-primary);
+            text-align: right;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .gd-header {
+                grid-template-columns: 40px 1fr 150px 150px 100px 100px;
+            }
+            
+            .gd-file-row {
+                grid-template-columns: 40px 1fr 150px 150px 100px 100px;
+            }
         }
 
         @media (max-width: 768px) {
-            .file-explorer {
-                flex-direction: column;
+            .explorer-toolbar {
+                flex-wrap: wrap;
             }
             
-            .sidebar {
+            .search-bar {
                 width: 100%;
+                order: 1;
             }
             
-            .file-grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            .folder-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             }
             
             .activity-panel {
@@ -1341,361 +1789,193 @@
 <div class="wrapper">
     <?php include '../includes/mainheader.php'; ?>
     <?php include '../includes/sidebar_file.php'; ?>
-    
-    <div class="content-wrapper">
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="m-0 text-dark"><?= htmlspecialchars($section_name) ?> Files</h1>
-                        <p class="text-muted mb-0">Manage and organize your files efficiently</p>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="file_management.php" class="text-decoration-none">File Management</a></li>
-                            <li class="breadcrumb-item active text-primary"><?= htmlspecialchars($section_name) ?></li>
-                        </ol>
-                    </div>
-                </div>
+
+    <div class="content-wrapper" style="padding:0; min-height:unset; overflow:hidden;">
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
+                <i class="fas fa-check-circle mr-2"></i><?= $_SESSION['success'] ?>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-        </div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+                <i class="fas fa-exclamation-triangle mr-2"></i><?= $_SESSION['error'] ?>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
 
-        <section class="content">
-            <div class="container-fluid">
-                <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success alert-dismissible modern-card">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            <span><?= $_SESSION['success'] ?></span>
-                        </div>
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <div class="explorer-shell">
+            <!-- Right Content -->
+            <div class="explorer-right">
+                <!-- Toolbar -->
+                <div class="explorer-toolbar">
+                    <!-- Breadcrumb -->
+                    <div class="breadcrumb-nav" id="explorerBreadcrumb">
+                        <a href="file_management.php"><i class="fas fa-layer-group mr-1"></i>File Management</a>
+                        <span class="mx-1">/</span>
+                        <span id="breadcrumbSection"><?= htmlspecialchars($section_name) ?></span>
+                        <span id="breadcrumbFolder"></span>
                     </div>
-                    <?php unset($_SESSION['success']); ?>
-                <?php endif; ?>
-                
-                <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible modern-card">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <span><?= $_SESSION['error'] ?></span>
-                        </div>
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    </div>
-                    <?php unset($_SESSION['error']); ?>
-                <?php endif; ?>
 
-                <!-- Quick Actions Card -->
-                <div class="modern-card">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <h5 class="card-title mb-4">
-                                    <i class="fas fa-rocket mr-2 text-primary"></i>
-                                    Quick Actions
-                                </h5>
-                            </div>
-                            <div class="col-md-4 text-right">
-                                <button class="btn btn-modern btn-modern-primary mr-2" data-toggle="modal" data-target="#uploadFileModal">
-                                    <i class="fas fa-upload mr-1"></i> Upload File
-                                </button>
-                                <button class="btn btn-modern btn-success" data-toggle="modal" data-target="#createFolderModal">
-                                    <i class="fas fa-folder-plus mr-1"></i> New Folder
-                                </button>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <div class="text-center p-3 border rounded">
-                                    <i class="fas fa-folder fa-2x text-primary mb-2"></i>
-                                    <h5 class="mb-1"><?= count($folders) ?></h5>
-                                    <small class="text-muted">Total Folders</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="text-center p-3 border rounded">
-                                    <i class="fas fa-file fa-2x text-success mb-2"></i>
-                                    <h5 class="mb-1"><?= count($files) ?></h5>
-                                    <small class="text-muted">Total Files</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="text-center p-3 border rounded">
-                                    <i class="fas fa-lock fa-2x text-warning mb-2"></i>
-                                    <h5 class="mb-1"><?= count(array_filter($folders, function($f) { return $f['is_locked']; })) ?></h5>
-                                    <small class="text-muted">Protected</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="text-center p-3 border rounded">
-                                    <i class="fas fa-share-alt fa-2x text-info mb-2"></i>
-                                    <h5 class="mb-1"><?= count($folders) ?></h5>
-                                    <small class="text-muted">Shared</small>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Activity log -->
+                    <button class="toolbar-btn" id="toggleActivityPanel">
+                        <i class="fas fa-history"></i> Activity
+                    </button>
+
+                    <!-- Upload -->
+                    <button class="toolbar-btn primary" data-toggle="modal" data-target="#uploadFileModal">
+                        <i class="fas fa-upload"></i> Upload Files
+                    </button>
+
+                    <!-- Search -->
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="explorerSearch" placeholder="Search files & folders…">
                     </div>
                 </div>
 
-                <!-- Main File Explorer -->
-                <div class="modern-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0">
-                            <i class="fas fa-folder mr-2"></i>
-                            File Explorer
-                        </h3>
-                        <div class="card-tools">
-                            <button class="btn btn-sm btn-light mr-2" id="toggleActivityPanel">
-                                <i class="fas fa-history mr-1"></i> Activity Log
-                            </button>
-                            <button class="btn btn-sm btn-light" onclick="toggleView()">
-                                <i class="fas fa-th mr-1"></i> Toggle View
-                            </button>
+                <!-- Body -->
+                <div class="explorer-body" id="explorerBody">
+                    <!-- Quick Access chips -->
+                    <p class="exp-section-title">Quick Access</p>
+                    <div class="quick-access-grid">
+                        <div class="qa-chip" data-toggle="modal" data-target="#uploadFileModal">
+                            <i class="fas fa-upload"></i> Upload File
+                        </div>
+                        <div class="qa-chip" data-toggle="modal" data-target="#createFolderModal">
+                            <i class="fas fa-folder-plus"></i> New Folder
+                        </div>
+                        <div class="qa-chip">
+                            <i class="fas fa-folder"></i>
+                            <?= count($folders) ?> Folders
+                        </div>
+                        <div class="qa-chip">
+                            <i class="fas fa-file"></i>
+                            <?= count($files) ?> Files
+                        </div>
+                        <div class="qa-chip">
+                            <i class="fas fa-lock"></i>
+                            <?= count(array_filter($folders, fn($f) => $f['is_locked'])) ?> Protected
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="file-explorer">
-                            <!-- Sidebar with folder tree -->
-                            <div class="sidebar">
-                                <h5><i class="fas fa-folder-tree mr-2"></i>Folders</h5>
-                                <div id="folderTree">
-                                    <?php foreach ($folders as $folder): 
-                                        $has_access = hasFolderPermission($db, $folder['folder_id'], $user_emp_id, 'view');
-                                        $can_edit = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'edit_folder');
-                                        $can_share = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'share_folder');
-                                        $can_delete = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'delete_folder');
-                                        $can_manage_shares = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares');
-                                    ?>
-                                        <div class="folder-item <?= $folder['is_locked'] ? 'locked' : '' ?> <?= !$has_access ? 'no-access' : '' ?>" 
-                                            data-folder-id="<?= $folder['folder_id'] ?>"
-                                            data-locked="<?= $folder['is_locked'] ?>"
-                                            data-has-access="<?= $has_access ? '1' : '0' ?>">
-                                            <i class="fas fa-folder folder-icon <?= $folder['is_locked'] ? 'locked' : '' ?> <?= !$has_access ? 'text-muted' : '' ?>"></i>
-                                            <div class="folder-info">
-                                                <div class="folder-name">
-                                                    <?= htmlspecialchars($folder['folder_name']) ?>
-                                                    <?php if ($folder['is_locked']): ?>
-                                                        <span class="locked-badge">Locked</span>
-                                                    <?php endif; ?>
-                                                    <?php if (!$has_access): ?>
-                                                        <span class="no-access-badge">No Access</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="folder-stats">
-                                                    <?= $folder['file_count'] ?> files, 
-                                                    <?= $folder['subfolder_count'] ?> subfolders
-                                                </div>
-                                            </div>
-                                            <div class="folder-actions">
-                                                <button class="folder-actions-btn" onclick="toggleFolderMenu(this, event)">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <div class="folder-actions-menu">
-                                                    <?php if ($can_edit): ?>
-                                                    <button class="folder-action-item edit" onclick="editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars($folder['folder_name']) ?>', '<?= htmlspecialchars($folder['description']) ?>')">
-                                                        <i class="fas fa-edit mr-2"></i>Edit
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if ($can_share): ?>
-                                                    <button class="folder-action-item share" 
-                                                            onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
-                                                        <i class="fas fa-share-alt mr-2"></i>Share
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
-                                                    <button class="folder-action-item manage-shares" 
-                                                            onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
-                                                        <i class="fas fa-users mr-2"></i>Manage Access
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if ($can_delete): ?>
-                                                    <button class="folder-action-item delete" 
-                                                            onclick="deleteFolder(<?= $folder['folder_id'] ?>, 
-                                                                                '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', 
-                                                                                <?= $folder['is_locked'] ?>)">
-                                                        <i class="fas fa-trash mr-2"></i>Delete
-                                                    </button>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
+
+                    <!-- Folders grid -->
+                    <?php if (!empty($folders)): ?>
+                        <p class="exp-section-title">Folders</p>
+                        <div class="folder-grid" id="rootFolderGrid">
+                            <?php foreach ($folders as $folder):
+                                $has_access = hasFolderPermission($db, $folder['folder_id'], $user_emp_id, 'view');
+                                $can_edit   = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'edit_folder');
+                                $can_share  = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'share_folder');
+                                $can_delete = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'delete_folder');
+                            ?>
+                            <div class="folder-card" id="folderCard_<?= $folder['folder_id'] ?>"
+                                 ondblclick="<?= $has_access ? "openFolder({$folder['folder_id']}, '" . htmlspecialchars(addslashes($folder['folder_name'])) . "', {$folder['is_locked']})" : "showNoAccess()" ?>">
+                                <button class="fc-menu-btn" onclick="toggleFolderMenu(this, event)"><i class="fas fa-ellipsis-v"></i></button>
+                                <div class="folder-actions-menu">
+                                    <?php if ($can_edit): ?>
+                                    <button class="folder-action-item" onclick="editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', '<?= htmlspecialchars(addslashes($folder['description'] ?? '')) ?>')">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($can_share): ?>
+                                    <button class="folder-action-item" onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
+                                        <i class="fas fa-share-alt"></i> Share
+                                    </button>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
+                                    <button class="folder-action-item" onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
+                                        <i class="fas fa-users"></i> Manage Access
+                                    </button>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($can_delete): ?>
+                                    <button class="folder-action-item delete" onclick="deleteFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', <?= $folder['is_locked'] ?>)">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                    <?php endif; ?>
                                 </div>
+                                <i class="nav icon fas fa-folder fc-icon <?= $folder['is_locked'] ? 'locked' : '' ?>"></i>
+                                <div class="fc-name"><?= htmlspecialchars($folder['folder_name']) ?></div>
+                                <div class="fc-meta"><?= $folder['file_count'] ?> files<?= $folder['subfolder_count'] > 0 ? ', ' . $folder['subfolder_count'] . ' sub' : '' ?></div>
                             </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
 
-                            <!-- Main content area -->
-                            <div class="main-content">
-                                <div class="current-folder">
-                                    <i class="fas fa-folder text-primary mr-2"></i> Root Directory
-                                    <small class="text-muted ml-2"><?= count($folders) ?> folders, <?= count($files) ?> files</small>
+                    <!-- Files section -->
+                    <p class="exp-section-title">Files</p>
+                    <?php if (empty($files)): ?>
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <p class="mb-1" style="font-size: 1rem; font-weight: 500;">No files yet</p>
+                            <p style="font-size: 0.875rem;">Upload a file to get started</p>
+                        </div>
+                    <?php else: ?>
+                        <!-- Google Drive style file list -->
+                        <div class="gd-file-list">
+                            <!-- Header row -->
+                            <div class="gd-header">
+                                <div class="gd-col-check"><input type="checkbox" id="selectAllFiles"></div>
+                                <div class="gd-col-name">Name</div>
+                                <div class="gd-col-owner">Owner</div>
+                                <div class="gd-col-date">Last modified</div>
+                                <div class="gd-col-size">File size</div>
+                                <div class="gd-col-actions"></div>
+                            </div>
+                            <!-- File rows -->
+                            <?php foreach ($files as $file): ?>
+                            <div class="gd-file-row" ondblclick="viewFileModal(<?= $file['file_id'] ?>)">
+                                <div class="gd-col-check">
+                                    <input type="checkbox" class="file-checkbox" value="<?= $file['file_id'] ?>">
                                 </div>
-                                
-                                <!-- Folders Grid View -->
-                                <div class="file-grid" id="foldersGrid">
-                                    <?php foreach ($folders as $folder): ?>
-                                        <div class="folder-item-grid" 
-                                            data-folder-id="<?= $folder['folder_id'] ?>"
-                                            data-locked="<?= $folder['is_locked'] ?>">
-                                            <div class="folder-header position-relative">
-                                                <i class="fas fa-folder folder-icon-grid <?= $folder['is_locked'] ? 'text-danger' : '' ?>"></i>
-                                                <div class="folder-actions position-absolute" style="top: 10px; right: 10px;">
-                                                    <button class="folder-actions-btn" onclick="toggleFolderMenu(this, event)">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <div class="folder-actions-menu">
-                                                        <button class="folder-action-item edit" onclick="editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars($folder['folder_name']) ?>', '<?= htmlspecialchars($folder['description']) ?>')">
-                                                            <i class="fas fa-edit mr-2"></i>Edit
-                                                        </button>
-                                                        <button class="folder-action-item share" 
-                                                                onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
-                                                            <i class="fas fa-share-alt mr-2"></i>Share
-                                                        </button>
-                                                        <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
-                                                        <button class="folder-action-item manage-shares" 
-                                                                onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
-                                                            <i class="fas fa-users mr-2"></i>Manage Access
-                                                        </button>
-                                                        <?php endif; ?>
-                                                        <button class="folder-action-item delete" 
-                                                                onclick="deleteFolder(<?= $folder['folder_id'] ?>, 
-                                                                                    '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', 
-                                                                                    <?= $folder['is_locked'] ?>)">
-                                                            <i class="fas fa-trash mr-2"></i>Delete
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="folder-name">
-                                                <?= htmlspecialchars($folder['folder_name']) ?>
-                                                <?php if ($folder['is_locked']): ?>
-                                                    <br><span class="badge badge-danger mt-1">Locked</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="folder-stats small text-muted">
-                                                <?= $folder['file_count'] ?> files
-                                                <?php if ($folder['subfolder_count'] > 0): ?>
-                                                    <br><?= $folder['subfolder_count'] ?> subfolders
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
+                                <div class="gd-col-name">
+                                    <i class="fas fa-file-<?= getFileIcon($file['file_type']) ?> gd-file-icon"></i>
+                                    <span class="gd-file-name"><?= htmlspecialchars($file['file_name']) ?></span>
                                 </div>
-
-                                <!-- Files Section -->
-                                <div class="modern-card mt-4">
-                                    <div class="card-header">
-                                        <h5 class="card-title mb-0">
-                                            <i class="fas fa-file mr-2"></i>
-                                            Files (<?= count($files) ?>)
-                                        </h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <!-- Search Box -->
-                                        <div class="search-box">
-                                            <form id="searchForm" class="form-inline">
-                                                <div class="input-group w-100">
-                                                    <input type="text" class="form-control form-control-modern" id="searchInput" placeholder="Search files by name, type, or description...">
-                                                    <div class="input-group-append">
-                                                        <button type="submit" class="btn btn-modern btn-modern-primary">
-                                                            <i class="fas fa-search"></i> Search
-                                                        </button>
-                                                        <button type="button" id="clearSearch" class="btn btn-modern btn-light">
-                                                            <i class="fas fa-times"></i> Clear
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-
-                                        <?php if (empty($files)): ?>
-                                            <div class="text-center py-5">
-                                                <i class="fas fa-file fa-4x text-muted mb-3"></i>
-                                                <h5 class="text-muted">No files in this directory</h5>
-                                                <p class="text-muted">Upload your first file to get started</p>
-                                                <button class="btn btn-modern btn-modern-primary" data-toggle="modal" data-target="#uploadFileModal">
-                                                    <i class="fas fa-upload mr-1"></i> Upload File
-                                                </button>
-                                            </div>
-                                        <?php else: ?>
-                                            <div class="table-modern">
-                                                <div class="card-header d-flex justify-content-between align-items-center">
-                                                    <span>File Management</span>
-                                                    <div>
-                                                        <button type="button" class="btn btn-sm btn-danger" id="deleteSelectedFiles" style="display: none;">
-                                                            <i class="fas fa-trash mr-1"></i> Delete Selected
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover mb-0">
-                                                        <thead>
-                                                            <tr>
-                                                                <th width="30">
-                                                                    <input type="checkbox" id="selectAllFiles">
-                                                                </th>
-                                                                <th>File Name</th>
-                                                                <th>Type</th>
-                                                                <th>Size</th>
-                                                                <th>Uploaded By</th>
-                                                                <th>Date Uploaded</th>
-                                                                <th>Actions</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <?php foreach ($files as $file): ?>
-                                                            <tr>
-                                                                <td>
-                                                                    <input type="checkbox" class="file-checkbox" value="<?= $file['file_id'] ?>">
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <i class="fas fa-file-<?= getFileIcon($file['file_type']) ?> text-primary mr-2"></i>
-                                                                        <div>
-                                                                            <div class="font-weight-bold"><?= htmlspecialchars($file['file_name']) ?></div>
-                                                                            <?php if (!empty($file['description'])): ?>
-                                                                                <small class="text-muted"><?= htmlspecialchars($file['description']) ?></small>
-                                                                            <?php endif; ?>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td><span class="badge badge-light"><?= strtoupper($file['file_type']) ?></span></td>
-                                                                <td><?= formatFileSize($file['file_size']) ?></td>
-                                                                <td><?= htmlspecialchars($file['uploaded_by'] ?? 'Unknown') ?></td>
-                                                                <td><?= date('M j, Y H:i', strtotime($file['created_at'])) ?></td>
-                                                                <td>
-                                                                    <div class="btn-group">
-                                                                        <a href="view_file.php?id=<?= $file['file_id'] ?>" 
-                                                                            class="btn btn-sm btn-outline-primary" title="View">
-                                                                            <i class="fas fa-eye"></i>
-                                                                        </a>
-                                                                        <a href="download_file.php?id=<?= $file['file_id'] ?>" 
-                                                                            class="btn btn-sm btn-outline-success" title="Download">
-                                                                            <i class="fas fa-download"></i>
-                                                                        </a>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                            <?php endforeach; ?>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
+                                <div class="gd-col-owner">
+                                    <span class="gd-owner-avatar"><?= strtoupper(substr($file['uploaded_by'] ?? 'U', 0, 1)) ?></span>
+                                    <span><?= htmlspecialchars($file['uploaded_by'] ?? 'me') ?></span>
+                                </div>
+                                <div class="gd-col-date"><?= date('M j, Y', strtotime($file['created_at'])) ?></div>
+                                <div class="gd-col-size"><?= formatFileSize($file['file_size']) ?></div>
+                                <div class="gd-col-actions">
+                                    <button class="gd-action-btn" title="Share" onclick="event.stopPropagation()"><i class="fas fa-user-plus"></i></button>
+                                    <a class="gd-action-btn" href="download_file.php?id=<?= $file['file_id'] ?>" title="Download" onclick="event.stopPropagation()"><i class="fas fa-download"></i></a>
+                                    <button class="gd-action-btn" title="Edit" onclick="event.stopPropagation(); openFileEdit(<?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>', '<?= htmlspecialchars(addslashes($file['description'] ?? '')) ?>')"><i class="fas fa-pencil-alt"></i></button>
+                                    <button class="gd-action-btn gd-action-more" title="More actions"
+                                            onclick="event.stopPropagation(); toggleFileMenu(this, event, <?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>')">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="gd-file-menu">
+                                        <button class="gd-menu-item" onclick="viewFileModal(<?= $file['file_id'] ?>)"><i class="fas fa-eye"></i> Preview</button>
+                                        <button class="gd-menu-item" onclick="openFileEdit(<?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>', '<?= htmlspecialchars(addslashes($file['description'] ?? '')) ?>')"><i class="fas fa-pencil-alt"></i> Rename</button>
+                                        <a class="gd-menu-item" href="download_file.php?id=<?= $file['file_id'] ?>"><i class="fas fa-download"></i> Download</a>
+                                        <button class="gd-menu-item"><i class="fas fa-share-alt"></i> Share</button>
+                                        <hr style="margin:4px 0; border-color: var(--border-color);">
+                                        <button class="gd-menu-item gd-menu-danger" onclick="deleteFile(<?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>')"><i class="fas fa-trash"></i> Move to Trash</button>
                                     </div>
                                 </div>
                             </div>
+                            <?php endforeach; ?>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
+                    <?php endif; ?>
+                </div><!-- /explorer-body -->
+            </div><!-- /explorer-right -->
+        </div><!-- /explorer-shell -->
+    </div><!-- /content-wrapper -->
 
     <?php include '../includes/mainfooter.php'; ?>
-</div>
-
+</div><!-- /wrapper -->
 
 <!-- Activity Panel -->
 <div class="activity-panel" id="activityPanel">
@@ -1718,29 +1998,24 @@
 <!-- Create Folder Modal -->
 <div class="modal fade" id="createFolderModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content modal-modern">
+        <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-folder-plus mr-2"></i>Create New Folder</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="folderForm" method="POST">
                 <input type="hidden" name="action" value="create_folder">
                 <input type="hidden" name="section_id" value="<?= $section_id ?>">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="folderName"><i class="fas fa-folder mr-1 text-warning"></i> Folder Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-modern" id="folderName" name="folder_name" 
+                        <label for="folderName">Folder Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="folderName" name="folder_name" 
                                placeholder="Enter folder name..." required autocomplete="off">
                     </div>
                     <div class="form-group">
-                        <label for="description"><i class="fas fa-comment mr-1"></i> Description <small class="text-muted">(optional)</small></label>
-                        <textarea class="form-control form-control-modern" id="description" name="description" rows="2" 
-                                  placeholder="Brief description of this folder..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="password"><i class="fas fa-lock mr-1 text-warning"></i> Password Protection <small class="text-muted">(optional)</small></label>
+                        <label for="password">Password Protection <small class="text-muted">(optional)</small></label>
                         <div class="input-group">
-                            <input type="password" class="form-control form-control-modern" id="password" name="password" 
+                            <input type="password" class="form-control" id="password" name="password" 
                                    placeholder="Leave blank for no password" autocomplete="new-password">
                             <div class="input-group-append">
                                 <button type="button" class="btn btn-outline-secondary" id="toggleCreatePassword">
@@ -1748,12 +2023,12 @@
                                 </button>
                             </div>
                         </div>
-                        <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>If set, users must enter the password to open this folder.</small>
+                        <small class="form-text text-muted">If set, users must enter the password to open this folder.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times mr-1"></i>Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-folder-plus mr-1"></i>Create Folder</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Folder</button>
                 </div>
             </form>
         </div>
@@ -1783,6 +2058,7 @@
         </div>
     </div>
 </div>
+
 <!-- Edit Folder Modal -->
 <div class="modal fade" id="editFolderModal" tabindex="-1">
     <div class="modal-dialog">
@@ -1799,10 +2075,6 @@
                     <div class="form-group">
                         <label for="editFolderName">Folder Name *</label>
                         <input type="text" class="form-control" id="editFolderName" name="folder_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editDescription">Description</label>
-                        <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
                     </div>
                     
                     <div class="form-group">
@@ -1840,39 +2112,21 @@
 <!-- Upload File Modal -->
 <div class="modal fade" id="uploadFileModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content modal-modern">
+        <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-cloud-upload-alt mr-2"></i>Upload Files</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="uploadForm" enctype="multipart/form-data" method="POST" action="section_files.php?section_id=<?= $section_id ?>">
                 <div class="modal-body">
                     <!-- Upload destination info -->
-                    <div class="alert alert-info d-flex align-items-center mb-3" style="border-radius:8px;">
+                    <div class="alert alert-info d-flex align-items-center mb-3">
                         <i class="fas fa-info-circle mr-2 fa-lg"></i>
                         <div>
                             <strong>Upload Destination:</strong> Files will be saved to the 
                             <strong><?= htmlspecialchars($section_name) ?></strong> section root.
-                            <?php if (!empty($folders)): ?>
-                                To upload into a folder, open the folder first then click Upload.
-                            <?php endif; ?>
                         </div>
                     </div>
-
-                    <?php if (!empty($folders)): ?>
-                    <!-- Optional folder selector -->
-                    <div class="form-group">
-                        <label for="uploadFolderSelect"><i class="fas fa-folder mr-1 text-warning"></i> Upload Into Folder <small class="text-muted">(optional)</small></label>
-                        <select class="form-control" id="uploadFolderSelect" name="folder_id">
-                            <option value="">— Section Root (no folder) —</option>
-                            <?php foreach ($folders as $f): ?>
-                                <option value="<?= $f['folder_id'] ?>"><?= htmlspecialchars($f['folder_name']) ?> (<?= $f['file_count'] ?> files)</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <?php else: ?>
-                    <input type="hidden" name="folder_id" value="">
-                    <?php endif; ?>
 
                     <!-- File Drop Zone -->
                     <div class="file-drop-zone" id="fileDropZone">
@@ -1896,14 +2150,14 @@
                     <!-- File Description -->
                     <div class="form-group mt-3">
                         <label for="fileDescription"><i class="fas fa-comment mr-1"></i>Description <small class="text-muted">(applies to all files)</small></label>
-                        <textarea class="form-control form-control-modern" id="fileDescription" name="description" rows="2" placeholder="Optional description..."></textarea>
+                        <textarea class="form-control" id="fileDescription" name="description" rows="2" placeholder="Optional description..."></textarea>
                     </div>
                     
                     <input type="hidden" name="section_id" value="<?= $section_id ?>">
                     <input type="hidden" name="action" value="upload_files">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fas fa-times mr-1"></i>Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="uploadFilesBtn" disabled>
                         <i class="fas fa-upload mr-2"></i>Upload Files
                     </button>
@@ -2011,1493 +2265,737 @@
         </div>
     </div>
 </div>
+
+<!-- File View Modal -->
+<div class="modal fade fv-modal" id="fileViewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i id="fvFileIcon" class="fas fa-file mr-2" style="font-size:20px; flex-shrink:0;"></i>
+                <h5 class="modal-title" id="fvFileName">Loading…</h5>
+                <div class="fv-header-actions">
+                    <a id="fvDownloadBtn" href="#" class="fv-header-btn" title="Download"><i class="fas fa-download"></i></a>
+                    <button class="fv-header-btn" title="Edit" onclick="openCurrentFileEdit()"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="fv-header-btn" title="Share"><i class="fas fa-share-alt"></i></button>
+                    <button class="fv-header-btn" title="Star"><i class="far fa-star"></i></button>
+                    <button type="button" class="fv-header-btn" data-dismiss="modal" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Preview -->
+                <div class="fv-preview-area" id="fvPreviewArea">
+                    <div class="fv-no-preview" id="fvLoadingSpinner">
+                        <i class="fas fa-spinner fa-spin" style="font-size:40px; color:var(--primary-color);"></i>
+                    </div>
+                </div>
+                <!-- Info panel -->
+                <div class="fv-info-panel">
+                    <div class="fv-info-title">File Details</div>
+                    <div class="fv-info-row"><span class="fv-info-label">Type</span><span class="fv-info-value" id="fvFileType">—</span></div>
+                    <div class="fv-info-row"><span class="fv-info-label">Size</span><span class="fv-info-value" id="fvFileSize">—</span></div>
+                    <div class="fv-info-row"><span class="fv-info-label">Owner</span><span class="fv-info-value" id="fvOwner">—</span></div>
+                    <div class="fv-info-row"><span class="fv-info-label">Modified</span><span class="fv-info-value" id="fvDate">—</span></div>
+                    <div class="fv-info-row"><span class="fv-info-label">Location</span><span class="fv-info-value" id="fvLocation">—</span></div>
+                    <hr style="margin:10px 0;">
+                    <div class="fv-info-title">Description</div>
+                    <div id="fvDescription" style="color:var(--text-muted); font-size:12px;">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Edit Modal -->
+<div class="modal fade" id="fileEditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--primary-color);">
+                <h5 class="modal-title text-white"><i class="fas fa-pencil-alt mr-2"></i>Edit File</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>File Name</label>
+                    <input type="text" class="form-control" id="editFileNameInput">
+                </div>
+                <input type="hidden" id="editFileIdInput">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" style="background: var(--primary-color); border-color: var(--primary-color);" onclick="saveFileEdit()">
+                    <i class="fas fa-save mr-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include '../includes/footer.php'; ?>
 
 <script>
-    let folderToDelete = null;
-    $(document).ready(function() {
-        let currentFolderId = null;
-        
-        // Toggle password visibility for create folder modal
-        $('#toggleCreatePassword').click(function() {
-            const field = $('#password');
-            field.attr('type', field.attr('type') === 'password' ? 'text' : 'password');
-            $(this).find('i').toggleClass('fa-eye fa-eye-slash');
-        });
+let folderToDelete = null;
+let selectedFiles = [];
 
-        // Toggle password visibility for edit modal
-        $('#toggleEditPassword').click(function() {
-            const passwordField = $('#editPassword');
-            const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
-            passwordField.attr('type', type);
-            $(this).find('i').toggleClass('fa-eye fa-eye-slash');
-        });
-        
-        // Toggle password visibility for delete modal
-        $('#toggleDeletePassword').click(function() {
-            const passwordField = $('#deletePassword');
-            const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
-            passwordField.attr('type', type);
-            $(this).find('i').toggleClass('fa-eye fa-eye-slash');
-        });
-        
-        // Handle remove password checkbox
-        $('#removePasswordCheck').change(function() {
-            if ($(this).is(':checked')) {
-                $('#passwordFields').hide();
-                // Add hidden field to indicate password removal
-                if ($('#removePasswordField').length === 0) {
-                    $('#editFolderForm').append('<input type="hidden" name="remove_password" id="removePasswordField" value="1">');
-                }
-            } else {
-                $('#passwordFields').show();
-                $('#removePasswordField').remove();
-            }
-        });
+$(document).ready(function() {
+    let currentFolderId = null;
+    
+    // Toggle password visibility
+    $('#toggleCreatePassword').click(function() {
+        const field = $('#password');
+        field.attr('type', field.attr('type') === 'password' ? 'text' : 'password');
+        $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+    });
 
-        // Toggle activity panel
-        $('#toggleActivityPanel').click(function() {
-            $('#activityPanel').toggleClass('active');
-            if ($('#activityPanel').hasClass('active')) {
-                loadActivityLogs();
+    $('#toggleEditPassword').click(function() {
+        const passwordField = $('#editPassword');
+        const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
+        passwordField.attr('type', type);
+        $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+    });
+    
+    $('#toggleDeletePassword').click(function() {
+        const passwordField = $('#deletePassword');
+        const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
+        passwordField.attr('type', type);
+        $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+    });
+    
+    // Handle remove password checkbox
+    $('#removePasswordCheck').change(function() {
+        if ($(this).is(':checked')) {
+            $('#passwordFields').hide();
+            if ($('#removePasswordField').length === 0) {
+                $('#editFolderForm').append('<input type="hidden" name="remove_password" id="removePasswordField" value="1">');
             }
-        });
-        
-        // Close activity panel
-        $('#closeActivityPanel').click(function() {
+        } else {
+            $('#passwordFields').show();
+            $('#removePasswordField').remove();
+        }
+    });
+
+    // Toggle activity panel
+    $('#toggleActivityPanel').click(function() {
+        $('#activityPanel').toggleClass('active');
+    });
+    
+    $('#closeActivityPanel').click(function() {
+        $('#activityPanel').removeClass('active');
+    });
+    
+    $(document).click(function(e) {
+        if ($('#activityPanel').hasClass('active') && 
+            !$(e.target).closest('#activityPanel').length && 
+            !$(e.target).is('#toggleActivityPanel')) {
             $('#activityPanel').removeClass('active');
-        });
-        
-        // Close activity panel when clicking outside
-        $(document).click(function(e) {
-            if ($('#activityPanel').hasClass('active') && 
-                !$(e.target).closest('#activityPanel').length && 
-                !$(e.target).is('#toggleActivityPanel')) {
-                $('#activityPanel').removeClass('active');
-            }
-        });
-        
-        // Enhanced folder click handler with permission checking
-        $(document).on('click', '.folder-item, .folder-item-grid', function(e) {
-            if ($(e.target).closest('.folder-actions').length || 
-                $(e.target).hasClass('folder-actions-btn') ||
-                $(e.target).hasClass('folder-action-item') ||
-                $(e.target).closest('.folder-action-item').length) {
-                return;
-            }
-            
-            const folderId = $(this).data('folder-id');
-            const isLocked = $(this).data('locked') == 1;
-            
-            // Check permissions before proceeding
-            checkFolderPermission(folderId, isLocked);
-        });
-
-        // Function to check folder permissions
-        function checkFolderPermission(folderId, isLocked) {
-            $.ajax({
-                url: 'section_files.php?section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: {
-                    action: 'check_folder_permission',
-                    folder_id: folderId
-                },
-                success: function(response) {
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.has_permission) {
-                            // User has permission, handle locked/unlocked state
-                            if (isLocked) {
-                                $('#unlockFolderId').val(folderId);
-                                $('#unlockFolderModal').modal('show');
-                            } else {
-                                openFolder(folderId);
-                            }
-                        } else {
-                            // User doesn't have permission
-                            Swal.fire({
-                                title: 'Access Denied',
-                                text: 'You do not have permission to access this folder.',
-                                icon: 'warning',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    } catch (e) {
-                        console.error('Permission check error:', e);
-                        Swal.fire('Error!', 'Unable to check folder permissions.', 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Permission check AJAX error:', error);
-                    Swal.fire('Error!', 'Failed to check permissions.', 'error');
-                }
-            });
         }
-        
-        // Unlock folder
-        $('#unlockFolderBtn').click(function() {
-            const folderId = $('#unlockFolderId').val();
-            const password = $('#unlockPassword').val();
-            
-            if (!password) {
-                Swal.fire('Error!', 'Please enter a password', 'error');
-                return;
-            }
-            
-            $.ajax({
-                url: 'section_files.php?section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: {
-                    action: 'unlock_folder',
-                    folder_id: folderId,
-                    password: password
-                },
-                success: function(response) {
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.success) {
-                            $('#unlockFolderModal').modal('hide');
-                            $('#unlockPassword').val('');
-                            openFolder(folderId);
-                        } else {
-                            Swal.fire('Error!', result.message || 'Invalid password', 'error');
-                        }
-                    } catch (e) {
-                        Swal.fire('Error!', 'Error parsing server response', 'error');
-                        console.error('Parse error:', e, 'Response:', response);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    Swal.fire('Error!', 'Server error occurred: ' + error, 'error');
-                    console.error('AJAX error:', error);
-                }
-            });
+    });
+    
+    // Explorer search
+    $('#explorerSearch').on('input', function() {
+        const q = this.value.toLowerCase();
+        $('.folder-card').each(function() {
+            const name = $(this).find('.fc-name').text().toLowerCase();
+            $(this).toggle(name.includes(q));
         });
-        
-        function openFolder(folderId) {
-            window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
-        }
-        
-        function loadActivityLogs() {
-            $.ajax({
-                url: 'get_activity_logs.php',
-                type: 'GET',
-                data: {
-                    section_id: '<?= $section_id ?>',
-                    folder_id: currentFolderId
-                },
-                success: function(response) {
-                    $('#activityLogs').html(response);
-                }
-            });
-        }
-        
-        // Upload file handled by the uploadFiles() function below
-
-
-        function handleAjaxResponse(response, successCallback, errorCallback) {
-            try {
-                // Try to parse as JSON
-                const result = typeof response === 'string' ? JSON.parse(response) : response;
-                
-                if (result.success) {
-                    if (successCallback) successCallback(result);
-                } else {
-                    if (errorCallback) {
-                        errorCallback(result.message || 'Operation failed');
-                    } else {
-                        Swal.fire('Error!', result.message || 'Operation failed', 'error');
-                    }
-                }
-            } catch (e) {
-                console.error('Response parsing error:', e, 'Response:', response);
-                if (errorCallback) {
-                    errorCallback('Invalid server response');
-                } else {
-                    Swal.fire('Error!', 'Invalid server response. Please check console.', 'error');
-                }
-            }
-        }
-
-        // Usage example for folder operations:
-        $('#editFolderForm').submit(function(e) {
-            e.preventDefault();
-            
-            const submitBtn = $(this).find('button[type="submit"]');
-            const originalText = submitBtn.html();
-            submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating...');
-            
-            $.ajax({
-                url: 'section_files.php?section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: $(this).serialize(),
-                success: function(response) {
-                    submitBtn.prop('disabled', false).html(originalText);
-                    
-                    handleAjaxResponse(response, 
-                        function(result) {
-                            Swal.fire('Success!', result.message, 'success').then(() => {
-                                $('#editFolderModal').modal('hide');
-                                location.reload();
-                            });
-                        },
-                        function(error) {
-                            Swal.fire('Error!', error, 'error');
-                        }
-                    );
-                },
-                error: function(xhr, status, error) {
-                    submitBtn.prop('disabled', false).html(originalText);
-                    Swal.fire('Error!', 'Request failed: ' + error, 'error');
-                }
-            });
-        });
-
-       // Confirm delete folder - DEBUG VERSION
-        $('#confirmDeleteFolder').click(function() {
-            if (!folderToDelete) {
-                console.error('folderToDelete is not set!');
-                Swal.fire('Error!', 'Folder information not found.', 'error');
-                return;
-            }
-            
-            const folderId = folderToDelete.id;
-            const folderName = folderToDelete.name;
-            const isLocked = folderToDelete.locked;
-            const password = isLocked ? $('#deletePassword').val() : '';
-            
-            console.log('Confirm delete clicked:', {folderId, folderName, isLocked, password});
-            
-            if (isLocked && !password) {
-                Swal.fire('Error!', 'Please enter the folder password', 'error');
-                return;
-            }
-            
-            const deleteBtn = $(this);
-            const originalText = deleteBtn.html();
-            deleteBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Deleting...');
-            
-            console.log('Sending AJAX request...');
-            
-            $.ajax({
-                url: 'section_files.php?section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: {
-                    action: 'delete_folder',
-                    folder_id: folderId,
-                    password: password
-                },
-                success: function(response) {
-                    console.log('Server response:', response);
-                    deleteBtn.prop('disabled', false).html(originalText);
-                    
-                    try {
-                        const result = JSON.parse(response);
-                        console.log('Parsed result:', result);
-                        
-                        if (result.success) {
-                            Swal.fire({
-                                title: 'Deleted!',
-                                text: result.message || 'Folder has been deleted.',
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                $('#deleteFolderModal').modal('hide');
-                                location.reload();
-                            });
-                        } else {
-                            console.log('Delete failed:', result);
-                            if (result.password_required) {
-                                $('#passwordVerification').show();
-                                $('#deleteFolderMessage').html(`Are you sure you want to delete the folder "<strong>${folderName}</strong>"? This action cannot be undone.`);
-                                Swal.fire('Error!', result.message, 'error');
-                            } else {
-                                Swal.fire('Error!', result.message || 'Delete failed', 'error');
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Parse error:', e, 'Response:', response);
-                        Swal.fire('Error!', 'Invalid server response: ' + response, 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX error:', error, 'Status:', status, 'xhr:', xhr);
-                    deleteBtn.prop('disabled', false).html(originalText);
-                    Swal.fire('Error!', 'Failed to delete folder: ' + error, 'error');
-                }
-            });
+        $('.gd-file-row').each(function() {
+            const name = $(this).find('.gd-file-name').text().toLowerCase();
+            $(this).toggle(name.includes(q));
         });
     });
 
-    // Toggle folder actions menu
-    function toggleFolderMenu(button, event) {
-        event.stopPropagation();
-        event.preventDefault();
-        
-        const menu = button.nextElementSibling;
-        const isShowing = menu.classList.contains('show');
-        
-        // Close all other menus
-        document.querySelectorAll('.folder-actions-menu').forEach(m => {
-            m.classList.remove('show');
-        });
-        
-        if (!isShowing) {
-            menu.classList.add('show');
-        } else {
-            menu.classList.remove('show');
+    // Folder permission check
+    $(document).on('click', '.folder-card', function(e) {
+        if ($(e.target).closest('.fc-menu-btn, .folder-actions-menu, .folder-action-item').length > 0) {
+            return;
         }
         
-        // Close menu when clicking elsewhere
-        const closeMenu = (e) => {
-            if (!menu.contains(e.target) && e.target !== button) {
-                menu.classList.remove('show');
-                document.removeEventListener('click', closeMenu);
-            }
-        };
+        const folderId = $(this).attr('id').replace('folderCard_', '');
+        const isLocked = $(this).find('.fc-icon').hasClass('locked');
         
-        setTimeout(() => {
-            document.addEventListener('click', closeMenu);
-        }, 10);
-    }
-
-    // Edit folder function
-    function editFolder(folderId, folderName, description) {
-        $('#editFolderId').val(folderId);
-        $('#editFolderName').val(folderName);
-        $('#editDescription').val(description);
-        $('#editPassword').val('');
-        $('#removePasswordCheck').prop('checked', false);
-        $('#passwordFields').show();
-        $('#removePasswordField').remove();
-        $('#editFolderModal').modal('show');
-        
-        // Close the menu
-        document.querySelectorAll('.folder-actions-menu').forEach(m => {
-            m.classList.remove('show');
-        });
-    }
-
-    // Delete folder function
-    function deleteFolder(folderId, folderName, isLocked) {
-        console.log('deleteFolder called with:', {folderId, folderName, isLocked});
-        
-        // Close any open menus
-        $('.folder-actions-menu').removeClass('show');
-        
-        folderToDelete = {
-            id: folderId,
-            name: folderName,
-            locked: Boolean(isLocked)
-        };
-        
-        console.log('folderToDelete set to:', folderToDelete);
-        
-        // Reset and show modal
-        $('#deletePassword').val('');
-        $('#passwordVerification').toggle(isLocked == 1 || isLocked === true);
-        $('#deleteFolderMessage').html(`Are you sure you want to delete the folder "<strong>${folderName}</strong>"? This action cannot be undone.`);
-        
-        $('#deleteFolderModal').modal('show');
-    }
-    // Share folder function
-    function shareFolder(folderId, folderName) {
-        $('#shareFolderId').val(folderId);
-        $('#shareFolderModal .modal-title').html('Share Folder: ' + folderName);
-        $('#shareEmployees').empty();
-        
-        // Load employees via AJAX
         $.ajax({
             url: 'section_files.php?section_id=<?= $section_id ?>',
             type: 'POST',
             data: {
-                action: 'get_employees'
+                action: 'check_folder_permission',
+                folder_id: folderId
+            },
+            success: function(response) {
+                try {
+                    const result = JSON.parse(response);
+                    if (result.has_permission) {
+                        if (isLocked) {
+                            $('#unlockFolderId').val(folderId);
+                            $('#unlockFolderModal').modal('show');
+                        } else {
+                            window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
+                        }
+                    } else {
+                        Swal.fire({
+                            title: 'Access Denied',
+                            text: 'You do not have permission to access this folder.',
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                } catch (e) {
+                    console.error('Permission check error:', e);
+                }
+            }
+        });
+    });
+
+    // Unlock folder
+    $('#unlockFolderBtn').click(function() {
+        const folderId = $('#unlockFolderId').val();
+        const password = $('#unlockPassword').val();
+        
+        if (!password) {
+            Swal.fire('Error!', 'Please enter a password', 'error');
+            return;
+        }
+        
+        $.ajax({
+            url: 'section_files.php?section_id=<?= $section_id ?>',
+            type: 'POST',
+            data: {
+                action: 'unlock_folder',
+                folder_id: folderId,
+                password: password
             },
             success: function(response) {
                 try {
                     const result = JSON.parse(response);
                     if (result.success) {
-                        result.employees.forEach(function(employee) {
-                            $('#shareEmployees').append(
-                                $('<option>', {
-                                    value: employee.emp_id,
-                                    text: employee.full_name + ' (' + employee.department + ')'
-                                })
-                            );
-                        });
-                        
-                        // Initialize Select2
-                        $('#shareEmployees').select2({
-                            placeholder: "Select employees...",
-                            allowClear: true
-                        });
-                        
-                        $('#shareFolderModal').modal('show');
+                        $('#unlockFolderModal').modal('hide');
+                        $('#unlockPassword').val('');
+                        window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
+                    } else {
+                        Swal.fire('Error!', result.message || 'Invalid password', 'error');
                     }
                 } catch (e) {
-                    console.error('Error loading employees:', e);
+                    console.error('Parse error:', e);
                 }
             }
         });
+    });
+
+    // Edit folder form submission
+    $('#editFolderForm').submit(function(e) {
+        e.preventDefault();
         
-        // Close the menu
-        document.querySelectorAll('.folder-actions-menu').forEach(m => {
-                m.classList.remove('show');
-            });
-        }
-
-        // Manage shares function
-        function manageShares(folderId, folderName) {
-            $.ajax({
-                url: 'section_files.php?section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: {
-                    action: 'get_shares',
-                    folder_id: folderId
-                },
-                success: function(response) {
-                    $('#manageSharesContent').html(response);
-                    $('#manageSharesModal').modal('show');
-                },
-                error: function(xhr, status, error) {
-                    Swal.fire('Error!', 'Failed to load shares: ' + error, 'error');
-                }
-            });
-            
-            // Close the menu
-            document.querySelectorAll('.folder-actions-menu').forEach(m => {
-                m.classList.remove('show');
-            });
-        }
-
-        // Share folder form submission
-        $('#shareFolderForm').submit(function(e) {
-            e.preventDefault();
-            
-            const formData = $(this).serialize();
-            const shareBtn = $('#shareFolderBtn');
-            const originalText = shareBtn.html();
-            
-            shareBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sharing...');
-            
-            $.ajax({
-                url: 'section_files.php?section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: formData,
-                success: function(response) {
-                    shareBtn.prop('disabled', false).html(originalText);
-                    
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.success) {
-                            Swal.fire({
-                                title: 'Success!',
-                                text: result.message,
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                $('#shareFolderModal').modal('hide');
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Error!',
-                                text: result.message,
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    } catch (e) {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Invalid server response',
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                },
-                error: function(xhr, status, error) {
-                    shareBtn.prop('disabled', false).html(originalText);
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to share folder: ' + error,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            });
-        });
-
-        // Revoke access handler
-        $(document).on('click', '.revoke-access', function() {
-            const shareId = $(this).data('share-id');
-            const employeeName = $(this).data('employee-name');
-            
-            Swal.fire({
-                title: 'Revoke Access?',
-                html: `Are you sure you want to revoke <strong>${employeeName}</strong>'s access to this folder?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, revoke access!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: 'section_files.php?section_id=<?= $section_id ?>',
-                        type: 'POST',
-                        data: {
-                            action: 'revoke_access',
-                            share_id: shareId
-                        },
-                        success: function(response) {
-                            try {
-                                const result = JSON.parse(response);
-                                if (result.success) {
-                                    Swal.fire({
-                                        title: 'Access Revoked!',
-                                        text: result.message,
-                                        icon: 'success',
-                                        confirmButtonText: 'OK'
-                                    }).then(() => {
-                                        // Refresh the shares list
-                                        const folderId = $('#shareFolderId').val();
-                                        if (folderId) {
-                                            manageShares(folderId, '');
-                                        }
-                                    });
-                                } else {
-                                    Swal.fire('Error!', result.message, 'error');
-                                }
-                            } catch (e) {
-                                Swal.fire('Error!', 'Invalid server response', 'error');
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            Swal.fire('Error!', 'Failed to revoke access: ' + error, 'error');
-                        }
-                    });
-                }
-            });
-        });
-        function handlePermissionError(message) {
-            Swal.fire({
-                title: 'Access Denied',
-                text: message || 'You do not have permission to perform this action.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-
-        // File Upload Functionality with Progress Tracking
-let selectedFiles = [];
-
-// Initialize file upload functionality
-function initFileUpload() {
-    const dropZone = $('#fileDropZone');
-    const fileInput = $('#fileInput');
-    const browseBtn = $('#browseFilesBtn');
-    
-    // Browse files button - FIXED: Use proper event handling
-    browseBtn.off('click').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        fileInput.trigger('click');
-    });
-    
-    // File input change
-    fileInput.off('change').on('change', function(e) {
-        handleFiles(e.target.files);
-    });
-    
-    // Drag and drop functionality
-    dropZone.off('dragover dragleave drop').on('dragover', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.addClass('dragover');
-    }).on('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.removeClass('dragover');
-    }).on('drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.removeClass('dragover');
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating...');
         
-        const files = e.originalEvent.dataTransfer.files;
-        handleFiles(files);
-    });
-    
-    // Click on drop zone to browse
-    dropZone.off('click').on('click', function(e) {
-        // Only trigger if clicking directly on drop zone, not on buttons
-        if (e.target === this || $(e.target).hasClass('file-drop-zone')) {
-            fileInput.trigger('click');
-        }
-    });
-}
-
-// Handle selected files
-function handleFiles(files) {
-    const maxFiles = 10;
-    const maxFileSize = 500 * 1024 * 1024; // 500MB in bytes
-    
-    if (!files || files.length === 0) return;
-    
-    // Convert FileList to Array
-    const newFiles = Array.from(files);
-    
-    // Check if adding these files would exceed the limit
-    if (selectedFiles.length + newFiles.length > maxFiles) {
-        Swal.fire('Error!', `You can only upload up to ${maxFiles} files at once.`, 'error');
-        return;
-    }
-    
-    // Add new files to selection
-    newFiles.forEach(file => {
-        if (selectedFiles.length < maxFiles) {
-            // Check if file already exists
-            const fileExists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
-            
-            // Check file size
-            if (file.size > maxFileSize) {
-                Swal.fire('Error!', `File "${file.name}" exceeds the 500MB size limit.`, 'error');
-                return;
-            }
-            
-            if (!fileExists) {
-                selectedFiles.push(file);
-            }
-        }
-    });
-    
-    updateFileList();
-    updateUploadButton();
-}
-
-// Update the file list UI
-function updateFileList() {
-    const container = $('#selectedFilesContainer');
-    const list = $('#selectedFilesList');
-    const count = $('#fileCount');
-    
-    list.empty();
-    
-    if (selectedFiles.length === 0) {
-        container.hide();
-        return;
-    }
-    
-    selectedFiles.forEach((file, index) => {
-        const fileItem = createFileItem(file, index);
-        list.append(fileItem);
-    });
-    
-    count.text(selectedFiles.length);
-    container.show();
-    
-    // Show total size
-    const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
-    $('#totalSize').remove();
-    container.append(`<div id="totalSize" class="small text-muted mt-2">Total size: ${formatFileSize(totalSize)}</div>`);
-}
-
-// Create file item element
-function createFileItem(file, index) {
-    const fileSize = formatFileSize(file.size);
-    const fileExtension = file.name.split('.').pop().toLowerCase();
-    const fileIcon = getFileIcon(fileExtension);
-    
-    return `
-        <div class="file-item" data-index="${index}">
-            <div class="file-info">
-                <i class="fas fa-file-${fileIcon} file-icon"></i>
-                <div class="file-details">
-                    <div class="file-name">${escapeHtml(file.name)}</div>
-                    <div class="file-size">${fileSize}</div>
-                </div>
-            </div>
-            <button type="button" class="file-remove" onclick="removeFile(${index})">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-}
-
-// Remove file from selection
-function removeFile(index) {
-    selectedFiles.splice(index, 1);
-    updateFileList();
-    updateUploadButton();
-}
-
-function updateUploadButton() {
-    const uploadBtn = $('#uploadFilesBtn');
-    uploadBtn.prop('disabled', selectedFiles.length === 0);
-}
-
-// Escape HTML to prevent XSS
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Upload form submission with proper handling
-$('#uploadForm').off('submit').on('submit', function(e) {
-    e.preventDefault();
-    e.stopImmediatePropagation(); // Prevent any other handlers
-    
-    if (selectedFiles.length === 0) {
-        Swal.fire('Error!', 'Please select at least one file to upload.', 'error');
-        return false;
-    }
-    
-    // Prevent multiple simultaneous uploads
-    const uploadBtn = $('#uploadFilesBtn');
-    if (uploadBtn.prop('disabled')) {
-        console.log('Upload already in progress...');
-        return false;
-    }
-    
-    uploadFiles();
-    return false;
-});
-
-// Separate function for file upload
-function uploadFiles() {
-    // Create progress UI
-    createProgressUI();
-    
-    const formData = new FormData();
-    
-    // Add files
-    selectedFiles.forEach(file => {
-        formData.append('files[]', file);
-    });
-    
-    // Add other form data
-    formData.append('description', $('#fileDescription').val());
-    formData.append('section_id', '<?= $section_id ?>');
-    formData.append('folder_id', '');
-    formData.append('action', 'upload_files');
-    
-    const uploadBtn = $('#uploadFilesBtn');
-    const originalText = uploadBtn.html();
-    
-    uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
-    
-    $.ajax({
-        url: 'section_files.php?section_id=<?= $section_id ?>',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        xhr: function() {
-            const xhr = new window.XMLHttpRequest();
-            
-            // Upload progress
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    updateOverallProgress(percentComplete);
-                }
-            }, false);
-            
-            return xhr;
-        },
-        success: function(response) {
-            uploadBtn.prop('disabled', false).html(originalText);
-            
-            try {
-                const result = typeof response === 'string' ? JSON.parse(response) : response;
+        $.ajax({
+            url: 'section_files.php?section_id=<?= $section_id ?>',
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                submitBtn.prop('disabled', false).html(originalText);
                 
-                if (result.success) {
-                    // Update progress to 100%
-                    updateOverallProgress(100);
-                    
-                    setTimeout(() => {
+                try {
+                    const result = JSON.parse(response);
+                    if (result.success) {
                         Swal.fire({
                             title: 'Success!',
-                            html: `
-                                <div class="text-left">
-                                    <p>Successfully uploaded ${result.uploaded_count} file(s)</p>
-                                    ${result.uploaded_files && result.uploaded_files.length > 0 ? 
-                                        '<div class="mt-2"><strong>Uploaded files:</strong><ul class="pl-3">' + 
-                                        result.uploaded_files.map(file => `<li>${file.name} (${formatFileSize(file.size)})</li>`).join('') + 
-                                        '</ul></div>' : ''}
-                                </div>
-                            `,
+                            text: result.message,
                             icon: 'success',
                             confirmButtonText: 'OK'
                         }).then(() => {
-                            $('#uploadFileModal').modal('hide');
-                            resetUploadForm();
+                            $('#editFolderModal').modal('hide');
                             location.reload();
                         });
-                    }, 500);
-                } else {
-                    Swal.fire({
-                        title: 'Upload Complete',
-                        html: `
-                            <div class="text-left">
-                                <p>Uploaded: ${result.uploaded_count || 0} files</p>
-                                <p>Failed: ${result.failed_count || 0} files</p>
-                                ${result.errors && result.errors.length > 0 ? 
-                                    '<div class="mt-2"><strong>Errors:</strong><ul class="pl-3 text-danger">' + 
-                                    result.errors.map(error => `<li>${error}</li>`).join('') + 
-                                    '</ul></div>' : ''}
-                            </div>
-                        `,
-                        icon: result.uploaded_count > 0 ? 'warning' : 'error',
-                        confirmButtonText: 'OK'
-                    });
-                    
-                    if (result.errors && result.errors.length > 0) {
-                        console.error('Upload errors:', result.errors);
+                    } else {
+                        Swal.fire('Error!', result.message, 'error');
                     }
+                } catch (e) {
+                    Swal.fire('Error!', 'Invalid server response', 'error');
                 }
-            } catch (e) {
-                console.error('Parse error:', e, 'Response:', response);
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Invalid server response. Please check console for details.',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
+            },
+            error: function() {
+                submitBtn.prop('disabled', false).html(originalText);
+                Swal.fire('Error!', 'Request failed', 'error');
             }
-            
-            // Remove progress UI
-            removeProgressUI();
-        },
-        error: function(xhr, status, error) {
-            uploadBtn.prop('disabled', false).html(originalText);
-            console.error('AJAX error:', error, 'Status:', status);
-            Swal.fire({
-                title: 'Error!',
-                text: 'Failed to upload files: ' + error,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-            
-            // Remove progress UI
-            removeProgressUI();
-        }
-    });
-}
-
-// Reset upload form
-function resetUploadForm() {
-    selectedFiles = [];
-    $('#fileInput').val('');
-    $('#fileDescription').val('');
-    $('#selectedFilesContainer').hide();
-    $('#selectedFilesList').empty();
-    $('#fileCount').text('0');
-    $('#uploadFilesBtn').prop('disabled', true);
-}
-
-// Initialize file upload when modal is shown - FIXED VERSION
-$('#uploadFileModal').off('show.bs.modal').on('show.bs.modal', function() {
-    resetUploadForm();
-    // Use a small timeout to ensure DOM is fully ready
-    setTimeout(function() {
-        initFileUpload();
-    }, 50);
-});
-
-// Also clean up when modal is hidden
-$('#uploadFileModal').off('hide.bs.modal').on('hide.bs.modal', function() {
-    // Remove any progress UI
-    removeProgressUI();
-    // Reset the form completely
-    resetUploadForm();
-});
-// Format file size
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Get file icon based on extension
-function getFileIcon(extension) {
-    const icons = {
-        'pdf': 'pdf',
-        'doc': 'word',
-        'docx': 'word',
-        'xls': 'excel',
-        'xlsx': 'excel',
-        'ppt': 'powerpoint',
-        'pptx': 'powerpoint',
-        'jpg': 'image',
-        'jpeg': 'image',
-        'png': 'image',
-        'gif': 'image',
-        'zip': 'archive',
-        'rar': 'archive',
-        'txt': 'alt',
-        'mp4': 'video',
-        'avi': 'video',
-        'mov': 'video',
-        'mp3': 'audio',
-        'wav': 'audio'
-    };
-    
-    return icons[extension] || 'file';
-}
-
-// Upload form submission with progress tracking
-$('#uploadForm').submit(function(e) {
-    e.preventDefault();
-    
-    if (selectedFiles.length === 0) {
-        Swal.fire('Error!', 'Please select at least one file to upload.', 'error');
-        return;
-    }
-    
-    // Create progress UI
-    createProgressUI();
-    
-    const formData = new FormData();
-    
-    // Add files
-    selectedFiles.forEach(file => {
-        formData.append('files[]', file);
-    });
-    
-    // Add other form data
-    formData.append('description', $('#fileDescription').val());
-    formData.append('section_id', '<?= $section_id ?>');
-    formData.append('folder_id', '');
-    formData.append('action', 'upload_files');
-    
-    const uploadBtn = $('#uploadFilesBtn');
-    const originalText = uploadBtn.html();
-    
-    uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
-    
-    $.ajax({
-        url: 'section_files.php?section_id=<?= $section_id ?>',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        xhr: function() {
-            const xhr = new window.XMLHttpRequest();
-            
-            // Upload progress
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    updateOverallProgress(percentComplete);
-                }
-            }, false);
-            
-            return xhr;
-        },
-        success: function(response) {
-            uploadBtn.prop('disabled', false).html(originalText);
-            
-            try {
-                const result = JSON.parse(response);
-                if (result.success) {
-                    // Update progress to 100%
-                    updateOverallProgress(100);
-                    
-                    setTimeout(() => {
-                        Swal.fire({
-                            title: 'Success!',
-                            html: `
-                                <div class="text-left">
-                                    <p>Successfully uploaded ${result.uploaded_count} file(s)</p>
-                                    ${result.uploaded_files && result.uploaded_files.length > 0 ? 
-                                        '<div class="mt-2"><strong>Uploaded files:</strong><ul class="pl-3">' + 
-                                        result.uploaded_files.map(file => `<li>${file.name} (${formatFileSize(file.size)})</li>`).join('') + 
-                                        '</ul></div>' : ''}
-                                </div>
-                            `,
-                            icon: 'success',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            $('#uploadFileModal').modal('hide');
-                            resetUploadForm();
-                            location.reload();
-                        });
-                    }, 500);
-                } else {
-                    Swal.fire({
-                        title: 'Upload Complete',
-                        html: `
-                            <div class="text-left">
-                                <p>Uploaded: ${result.uploaded_count || 0} files</p>
-                                <p>Failed: ${result.failed_count || 0} files</p>
-                                ${result.errors && result.errors.length > 0 ? 
-                                    '<div class="mt-2"><strong>Errors:</strong><ul class="pl-3 text-danger">' + 
-                                    result.errors.map(error => `<li>${error}</li>`).join('') + 
-                                    '</ul></div>' : ''}
-                            </div>
-                        `,
-                        icon: result.uploaded_count > 0 ? 'warning' : 'error',
-                        confirmButtonText: 'OK'
-                    });
-                    
-                    if (result.errors && result.errors.length > 0) {
-                        console.error('Upload errors:', result.errors);
-                    }
-                }
-            } catch (e) {
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Invalid server response',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-                console.error('Parse error:', e, 'Response:', response);
-            }
-            
-            // Remove progress UI
-            removeProgressUI();
-        },
-        error: function(xhr, status, error) {
-            uploadBtn.prop('disabled', false).html(originalText);
-            Swal.fire({
-                title: 'Error!',
-                text: 'Failed to upload files: ' + error,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-            console.error('AJAX error:', error);
-            
-            // Remove progress UI
-            removeProgressUI();
-        }
-    });
-});
-
-// Create progress UI
-function createProgressUI() {
-    // Remove existing progress UI if any
-    removeProgressUI();
-    
-    const progressHTML = `
-        <div class="upload-progress mt-3" id="uploadProgress">
-            <div class="progress mb-2">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                     role="progressbar" 
-                     style="width: 0%" 
-                     aria-valuenow="0" 
-                     aria-valuemin="0" 
-                     aria-valuemax="100">
-                    <span class="progress-text">0%</span>
-                </div>
-            </div>
-            <div class="progress-info text-center">
-                <small class="text-muted" id="progressStatus">Preparing upload...</small>
-            </div>
-        </div>
-    `;
-    
-    $('#selectedFilesContainer').after(progressHTML);
-}
-
-// Update overall progress
-function updateOverallProgress(percent) {
-    const progressBar = $('#uploadProgress .progress-bar');
-    const progressText = $('#uploadProgress .progress-text');
-    const progressStatus = $('#progressStatus');
-    
-    progressBar.css('width', percent + '%');
-    progressBar.attr('aria-valuenow', percent);
-    progressText.text(Math.round(percent) + '%');
-    
-    if (percent < 100) {
-        progressStatus.text(`Uploading... ${Math.round(percent)}%`);
-    } else {
-        progressStatus.text('Processing...');
-    }
-}
-
-// Remove progress UI
-function removeProgressUI() {
-    $('#uploadProgress').remove();
-}
-
-// Reset upload form
-function resetUploadForm() {
-    selectedFiles = [];
-    $('#fileInput').val('');
-    $('#fileDescription').val('');
-    $('#selectedFilesContainer').hide();
-    $('#selectedFilesList').empty();
-    $('#fileCount').text('0');
-    $('#uploadFilesBtn').prop('disabled', true);
-    removeProgressUI();
-}
-
-// Initialize file upload when modal is shown
-$('#uploadFileModal').on('show.bs.modal', function() {
-    resetUploadForm();
-    initFileUpload();
-});
-
-// File selection and deletion functionality
-$(document).ready(function() {
-    // Select All functionality
-    $('#selectAllFiles').change(function() {
-        $('.file-checkbox').prop('checked', this.checked);
-        toggleDeleteButton();
-    });
-    
-    // Individual checkbox functionality
-    $(document).on('change', '.file-checkbox', function() {
-        // If all checkboxes are checked, check the select all checkbox
-        const totalCheckboxes = $('.file-checkbox').length;
-        const checkedCheckboxes = $('.file-checkbox:checked').length;
-        $('#selectAllFiles').prop('checked', totalCheckboxes === checkedCheckboxes);
-        
-        toggleDeleteButton();
-    });
-    
-    // Toggle delete button visibility
-    function toggleDeleteButton() {
-        const checkedCount = $('.file-checkbox:checked').length;
-        if (checkedCount > 0) {
-            $('#deleteSelectedFiles').show().html(`<i class="fas fa-trash mr-1"></i> Delete Selected (${checkedCount})`);
-        } else {
-            $('#deleteSelectedFiles').hide();
-        }
-    }
-    
-    // Delete selected files
-    $('#deleteSelectedFiles').click(function() {
-        const selectedFiles = [];
-        $('.file-checkbox:checked').each(function() {
-            selectedFiles.push($(this).val());
         });
-        
-        if (selectedFiles.length === 0) {
-            Swal.fire('Error!', 'Please select at least one file to delete.', 'error');
+    });
+
+    // Delete folder confirmation
+    $('#confirmDeleteFolder').click(function() {
+        if (!folderToDelete) {
+            Swal.fire('Error!', 'Folder information not found.', 'error');
             return;
         }
         
-        Swal.fire({
-            title: 'Delete Files?',
-            html: `Are you sure you want to delete <strong>${selectedFiles.length}</strong> selected file(s)?<br><small class="text-muted">This action cannot be undone.</small>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete them!',
-            cancelButtonText: 'Cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                deleteSelectedFiles(selectedFiles);
-            }
-        });
-    });
-    
-    // Function to delete selected files
-    function deleteSelectedFiles(fileIds) {
-        const deleteBtn = $('#deleteSelectedFiles');
+        const folderId = folderToDelete.id;
+        const folderName = folderToDelete.name;
+        const isLocked = folderToDelete.locked;
+        const password = isLocked ? $('#deletePassword').val() : '';
+        
+        if (isLocked && !password) {
+            Swal.fire('Error!', 'Please enter the folder password', 'error');
+            return;
+        }
+        
+        const deleteBtn = $(this);
         const originalText = deleteBtn.html();
         deleteBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Deleting...');
         
         $.ajax({
-            url: 'delete_files.php',
+            url: 'section_files.php?section_id=<?= $section_id ?>',
             type: 'POST',
             data: {
-                action: 'delete_files',
-                file_ids: fileIds,
-                section_id: '<?= $section_id ?>'
+                action: 'delete_folder',
+                folder_id: folderId,
+                password: password
             },
             success: function(response) {
                 deleteBtn.prop('disabled', false).html(originalText);
                 
-                // Enhanced response handling
-                let result;
                 try {
-                    result = typeof response === 'string' ? JSON.parse(response) : response;
+                    const result = JSON.parse(response);
+                    if (result.success) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: result.message || 'Folder has been deleted.',
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            $('#deleteFolderModal').modal('hide');
+                            location.reload();
+                        });
+                    } else {
+                        if (result.password_required) {
+                            $('#passwordVerification').show();
+                            $('#deleteFolderMessage').html(`Are you sure you want to delete the folder "<strong>${folderName}</strong>"? This action cannot be undone.`);
+                        }
+                        Swal.fire('Error!', result.message || 'Delete failed', 'error');
+                    }
                 } catch (e) {
-                    // console.error('JSON Parse Error:', e, 'Raw response:', response);
-                    Swal.fire({
-                        title: 'Success!',
-                        text: 'Files deleted successfully (response parsing issue).',
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        location.reload();
-                    });
-                    return;
-                }
-                
-                if (result && result.success) {
-                    Swal.fire({
-                        title: 'Deleted!',
-                        text: result.message || 'Selected files have been deleted.',
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: result.message || 'Failed to delete files.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
+                    console.error('Parse error:', e);
+                    Swal.fire('Error!', 'Invalid server response', 'error');
                 }
             },
-            error: function(xhr, status, error) {
+            error: function() {
                 deleteBtn.prop('disabled', false).html(originalText);
-                console.error('AJAX Error:', {
-                    status: status,
-                    error: error,
-                    responseText: xhr.responseText
-                });
-                
-                // Even if AJAX fails, assume success and reload (since it might still work server-side)
-                Swal.fire({
-                    title: 'Completed',
-                    text: 'Delete operation completed. Refreshing page...',
-                    icon: 'info',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    location.reload();
-                });
+                Swal.fire('Error!', 'Failed to delete folder', 'error');
             }
         });
-    }
-});
+    });
 
-// Initialize file upload when modal is shown
-$('#uploadFileModal').on('show.bs.modal', function() {
-    resetUploadForm();
+    // Initialize file upload
     initFileUpload();
 });
 
-// Fixed file upload initialization
-function initFileUpload() {
-    const dropZone = $('#fileDropZone');
-    const fileInput = $('#fileInput');
-    const browseBtn = $('#browseFilesBtn');
-    
-    // Clear any existing event handlers to prevent duplicates
-    browseBtn.off('click');
-    fileInput.off('change');
-    dropZone.off('dragover dragleave drop click');
-    
-    // Browse files button - FIXED: Direct click handler
-    browseBtn.on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        fileInput[0].click(); // Use native DOM element instead of jQuery
-    });
-    
-    // File input change
-    fileInput.on('change', function(e) {
-        handleFiles(e.target.files);
-    });
-    
-    // Drag and drop functionality
-    dropZone.on('dragover', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.addClass('dragover');
-    });
-    
-    dropZone.on('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.removeClass('dragover');
-    });
-    
-    dropZone.on('drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.removeClass('dragover');
-        
-        const files = e.originalEvent.dataTransfer.files;
-        handleFiles(files);
-    });
-    
-    // Click on drop zone to browse - FIXED: Prevent recursion
-    dropZone.on('click', function(e) {
-        // Only trigger if clicking directly on drop zone background, not on buttons or content
-        if (e.target === this || $(e.target).hasClass('file-drop-zone')) {
-            e.preventDefault();
-            e.stopPropagation();
-            fileInput[0].click(); // Use native DOM element
-        }
-    });
-}
-// Search functionality
-$(document).ready(function() {
-    // Search form submission
-    $('#searchForm').submit(function(e) {
-        e.preventDefault();
-        performSearch();
-    });
-    
-    // Clear search
-    $('#clearSearch').click(function() {
-        $('#searchInput').val('');
-        performSearch();
-    });
-    
-    // Real-time search (optional)
-    $('#searchInput').on('input', function() {
-        performSearch();
-    });
-    
-    function performSearch() {
-        const searchTerm = $('#searchInput').val().toLowerCase();
-        
-        $('table tbody tr').each(function() {
-            const rowText = $(this).text().toLowerCase();
-            if (rowText.includes(searchTerm)) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        });
-        
-        // Update file count
-        const visibleCount = $('table tbody tr:visible').length;
-        $('h5').first().text('Files (' + visibleCount + ')');
+// Global functions
+function openFolder(folderId, folderName, isLocked) {
+    if (isLocked) {
+        $('#unlockFolderId').val(folderId);
+        $('#unlockFolderModal').modal('show');
+        return;
     }
-});
-
-// Modal file viewing
-$(document).on('click', '.view-file-btn', function() {
-    const fileId = $(this).data('file-id');
-    
-    // Show loading
-    Swal.fire({
-        title: 'Loading file...',
-        text: 'Please wait',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Fetch file details via AJAX
-    $.ajax({
-        url: 'view_file.php?ajax=true&id=' + fileId,
-        type: 'GET',
-        success: function(response) {
-            Swal.close();
-            
-            if (response.success) {
-                showFileModal(response.file);
-            } else {
-                Swal.fire('Error!', 'Failed to load file', 'error');
-            }
-        },
-        error: function() {
-            Swal.fire('Error!', 'Failed to load file', 'error');
-        }
-    });
-});
-
-function showFileModal(file) {
-    const modalContent = `
-        <div class="file-modal">
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="file-preview-container mb-3">
-                        ${getFilePreviewHTML(file)}
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="file-info">
-                        <h5>File Information</h5>
-                        <table class="table table-sm">
-                            <tr><td><strong>Name:</strong></td><td>${file.file_name}</td></tr>
-                            <tr><td><strong>Type:</strong></td><td>${file.file_type.toUpperCase()}</td></tr>
-                            <tr><td><strong>Size:</strong></td><td>${formatFileSize(file.file_size)}</td></tr>
-                            <tr><td><strong>Uploaded By:</strong></td><td>${file.uploaded_by}</td></tr>
-                            <tr><td><strong>Date:</strong></td><td>${new Date(file.created_at).toLocaleDateString()}</td></tr>
-                            ${file.description ? `<tr><td><strong>Description:</strong></td><td>${file.description}</td></tr>` : ''}
-                        </table>
-                    </div>
-                    <div class="file-actions mt-3">
-                        <a href="download_file.php?id=${file.file_id}" class="btn btn-success btn-block mb-2">
-                            <i class="fas fa-download mr-2"></i>Download
-                        </a>
-                        <button class="btn btn-primary btn-block" onclick="editFileModal(${file.file_id})">
-                            <i class="fas fa-edit mr-2"></i>Edit
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    Swal.fire({
-        title: file.file_name,
-        html: modalContent,
-        width: '90%',
-        showCloseButton: true,
-        showConfirmButton: false
-    });
+    window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
 }
 
-function getFilePreviewHTML(file) {
-    // Simple preview based on file type
-    const fileType = file.file_type.toLowerCase();
+function showNoAccess() {
+    Swal.fire({ title: 'Access Denied', text: 'You do not have permission to access this folder.', icon: 'warning' });
+}
+
+function showRootView() {
+    document.getElementById('rootView').style.display = '';
+    document.getElementById('folderView').style.display = 'none';
+    document.getElementById('breadcrumbFolder').textContent = '';
+    $('.sb-nav-link').removeClass('sb-active');
+    $('#sbNavRootItem').addClass('sb-active');
+}
+
+// Toggle folder menu
+function toggleFolderMenu(button, event) {
+    event.stopPropagation();
+    event.preventDefault();
     
-    if (['jpg', 'jpeg', 'png', 'gif'].includes(fileType)) {
-        return `<img src="../uploads/${file.file_path}" class="img-fluid" alt="${file.file_name}" style="max-height: 400px;">`;
-    } else if (fileType === 'pdf') {
-        return `<iframe src="../uploads/${file.file_path}" width="100%" height="400" style="border: none;"></iframe>`;
-    } else {
-        return `
-            <div class="text-center">
-                <i class="fas fa-file-${getFileIcon(file.file_type)} fa-5x mb-3"></i>
-                <p class="text-muted">Preview not available for this file type</p>
-            </div>
-        `;
+    const menu = button.nextElementSibling;
+    const isShowing = menu.classList.contains('show');
+    
+    $('.folder-actions-menu').removeClass('show');
+    
+    if (!isShowing) {
+        menu.classList.add('show');
+        
+        setTimeout(() => {
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menu.contains(e.target) && e.target !== button) {
+                    menu.classList.remove('show');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }, 10);
     }
 }
-// Check permission before performing actions
-function checkActionPermission(folderId, action, callback) {
+
+// Toggle file menu
+function toggleFileMenu(btn, event, fileId, fileName) {
+    event.stopPropagation();
+    const menu = btn.nextElementSibling;
+    const isOpen = menu.classList.contains('show');
+    $('.gd-file-menu').removeClass('show');
+    if (!isOpen) {
+        menu.classList.add('show');
+        setTimeout(() => {
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menu.contains(e.target)) {
+                    menu.classList.remove('show');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }, 10);
+    }
+}
+
+// Edit folder
+function editFolder(folderId, folderName, description) {
+    $('#editFolderId').val(folderId);
+    $('#editFolderName').val(folderName);
+    $('#editDescription').val(description);
+    $('#editPassword').val('');
+    $('#removePasswordCheck').prop('checked', false);
+    $('#passwordFields').show();
+    $('#removePasswordField').remove();
+    $('#editFolderModal').modal('show');
+    $('.folder-actions-menu').removeClass('show');
+}
+
+// Delete folder
+function deleteFolder(folderId, folderName, isLocked) {
+    $('.folder-actions-menu').removeClass('show');
+    
+    folderToDelete = {
+        id: folderId,
+        name: folderName,
+        locked: Boolean(isLocked)
+    };
+    
+    $('#deletePassword').val('');
+    $('#passwordVerification').toggle(isLocked == 1 || isLocked === true);
+    $('#deleteFolderMessage').html(`Are you sure you want to delete the folder "<strong>${folderName}</strong>"? This action cannot be undone.`);
+    
+    $('#deleteFolderModal').modal('show');
+}
+
+// Share folder
+function shareFolder(folderId, folderName) {
+    $('#shareFolderId').val(folderId);
+    $('#shareFolderModal .modal-title').html('Share Folder: ' + folderName);
+    $('#shareEmployees').empty();
+    
     $.ajax({
-        url: 'check_permission.php', // You'll need to create this file
+        url: 'section_files.php?section_id=<?= $section_id ?>',
         type: 'POST',
         data: {
-            folder_id: folderId,
-            action: action
+            action: 'get_employees'
         },
         success: function(response) {
             try {
                 const result = JSON.parse(response);
-                if (result.has_permission) {
-                    callback();
-                } else {
-                    Swal.fire({
-                        title: 'Permission Denied',
-                        text: 'You do not have permission to perform this action.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
+                if (result.success) {
+                    result.employees.forEach(function(employee) {
+                        $('#shareEmployees').append(
+                            $('<option>', {
+                                value: employee.emp_id,
+                                text: employee.full_name + ' (' + employee.department + ')'
+                            })
+                        );
                     });
+                    
+                    $('#shareEmployees').select2({
+                        placeholder: "Select employees...",
+                        allowClear: true
+                    });
+                    
+                    $('#shareFolderModal').modal('show');
                 }
             } catch (e) {
-                console.error('Permission check error:', e);
-                Swal.fire('Error!', 'Unable to check permissions.', 'error');
+                console.error('Error loading employees:', e);
+            }
+        }
+    });
+    
+    $('.folder-actions-menu').removeClass('show');
+}
+
+// Manage shares
+function manageShares(folderId, folderName) {
+    $.ajax({
+        url: 'section_files.php?section_id=<?= $section_id ?>',
+        type: 'POST',
+        data: {
+            action: 'get_shares',
+            folder_id: folderId
+        },
+        success: function(response) {
+            $('#manageSharesContent').html(response);
+            $('#manageSharesModal').modal('show');
+        },
+        error: function() {
+            Swal.fire('Error!', 'Failed to load shares', 'error');
+        }
+    });
+    
+    $('.folder-actions-menu').removeClass('show');
+}
+
+// File view modal
+function viewFileModal(fileId) {
+    $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-spinner fa-spin" style="font-size:40px; color:var(--primary-color);"></i></div>');
+    $('#fvFileName').text('Loading…');
+    $('#fileViewModal').modal('show');
+
+    $.ajax({
+        url: 'view_file.php',
+        type: 'GET',
+        data: { id: fileId, ajax: 'true' },
+        success: function(resp) {
+            try {
+                const d = typeof resp === 'string' ? JSON.parse(resp) : resp;
+                if (!d.success) {
+                    $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-exclamation-circle text-danger fa-3x"></i><p class="mt-2">Could not load file.</p></div>');
+                    return;
+                }
+                const f = d.file;
+
+                // Header
+                const iconMap = {
+                    pdf: 'fas fa-file-pdf text-danger',
+                    doc: 'fas fa-file-word text-primary',
+                    docx: 'fas fa-file-word text-primary',
+                    xls: 'fas fa-file-excel text-success',
+                    xlsx: 'fas fa-file-excel text-success',
+                    ppt: 'fas fa-file-powerpoint text-warning',
+                    pptx: 'fas fa-file-powerpoint text-warning',
+                    jpg: 'fas fa-file-image text-info',
+                    jpeg: 'fas fa-file-image text-info',
+                    png: 'fas fa-file-image text-info',
+                    gif: 'fas fa-file-image text-info',
+                    mp4: 'fas fa-file-video text-danger',
+                    avi: 'fas fa-file-video text-danger',
+                    txt: 'fas fa-file-alt text-dark',
+                    zip: 'fas fa-file-archive text-secondary',
+                    rar: 'fas fa-file-archive text-secondary',
+                    mp3: 'fas fa-file-audio text-info'
+                };
+                const iconClass = iconMap[f.file_type.toLowerCase()] || 'fas fa-file text-secondary';
+                $('#fvFileIcon').attr('class', iconClass + ' mr-2').css('font-size', '20px');
+                $('#fvFileName').text(f.file_name);
+                $('#fvDownloadBtn').attr('href', 'download_file.php?id=' + f.file_id);
+
+                // Info panel
+                $('#fvFileType').text(f.file_type.toUpperCase());
+                $('#fvFileSize').text(formatBytes(f.file_size));
+                $('#fvOwner').text(f.uploaded_by || 'me');
+                $('#fvDate').text(f.created_at ? new Date(f.created_at).toLocaleDateString() : '—');
+                $('#fvLocation').text(f.folder_name || 'Root');
+                $('#fvDescription').text(f.description || '—');
+
+                // Preview
+                const type = f.file_type.toLowerCase();
+                let preview = '';
+                if (['jpg','jpeg','png','gif'].includes(type)) {
+                    preview = '<img src="../uploads/' + (f.file_path||'') + '" style="max-width:100%;max-height:440px;border-radius:var(--radius-md);box-shadow:var(--shadow-md);" onerror="this.parentNode.innerHTML=\'<div class=fv-no-preview><div class=fv-file-type-badge>'+f.file_type.toUpperCase()+'</div><p>Preview unavailable</p></div>\'">';
+                } else if (type === 'pdf') {
+                    preview = '<iframe src="../uploads/' + (f.file_path||'') + '" style="width:100%;height:460px;border:none;border-radius:var(--radius-md);"></iframe>';
+                } else {
+                    preview = '<div class="fv-no-preview"><div class="fv-file-type-badge">'+f.file_type.toUpperCase()+'</div><p style="margin-top:12px;font-size:15px;font-weight:600;">'+f.file_name+'</p><p style="font-size:13px;margin-top:4px;">No preview available</p><a href="download_file.php?id='+f.file_id+'" class="btn btn-primary mt-3"><i class="fas fa-download mr-2"></i>Download</a></div>';
+                }
+                $('#fvPreviewArea').html(preview);
+
+                window._fvCurrentFile = f;
+            } catch(e) {
+                $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-exclamation-circle text-danger fa-3x"></i><p class="mt-2">Error loading file.</p></div>');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'Failed to check permissions.', 'error');
+            $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-exclamation-circle text-danger fa-3x"></i><p class="mt-2">Failed to load file.</p></div>');
         }
     });
 }
+
+function formatBytes(bytes) {
+    if (!bytes || bytes == 0) return '0 B';
+    const k = 1024, sizes = ['B','KB','MB','GB'];
+    const i = Math.floor(Math.log(bytes)/Math.log(k));
+    return parseFloat((bytes/Math.pow(k,i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function openCurrentFileEdit() {
+    if (window._fvCurrentFile) {
+        $('#fileViewModal').modal('hide');
+        setTimeout(() => openFileEdit(window._fvCurrentFile.file_id, window._fvCurrentFile.file_name, window._fvCurrentFile.description || ''), 300);
+    }
+}
+
+function openFileEdit(fileId, fileName, description) {
+    $('#editFileIdInput').val(fileId);
+    $('#editFileNameInput').val(fileName);
+    $('#fileEditModal').modal('show');
+}
+
+function saveFileEdit() {
+    const fileId = $('#editFileIdInput').val();
+    const fileName = $('#editFileNameInput').val().trim();
+    if (!fileName) {
+        Swal.fire('Validation', 'File name cannot be empty.', 'warning');
+        return;
+    }
+
+    $.ajax({
+        url: 'view_file.php',
+        type: 'POST',
+        data: { action:'update_file', file_id:fileId, file_name:fileName },
+        success: function(resp) {
+            try {
+                const r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+                if (r.success) {
+                    $('#fileEditModal').modal('hide');
+                    Swal.fire({
+                        title: 'Saved!',
+                        text: r.message,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Error', r.message, 'error');
+                }
+            } catch(e) {
+                Swal.fire('Error', 'Invalid server response', 'error');
+            }
+        }
+    });
+}
+
+function deleteFile(fileId, fileName) {
+    Swal.fire({
+        title: 'Move to Trash?',
+        html: 'Move <strong>' + fileName + '</strong> to trash?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Move to Trash'
+    }).then(result => {
+        if (result.isConfirmed) {
+            $.post('section_files.php?section_id=<?= $section_id ?>', { action:'delete_file', file_id:fileId }, function(resp) {
+                try {
+                    const r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+                    if (r.success) {
+                        Swal.fire({
+                            title: 'Moved!',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', r.message || 'Delete failed', 'error');
+                    }
+                } catch(e) {
+                    location.reload();
+                }
+            });
+        }
+    });
+}
+
+// Share folder form submission
+$('#shareFolderForm').submit(function(e) {
+    e.preventDefault();
+    
+    const formData = $(this).serialize();
+    const shareBtn = $('#shareFolderBtn');
+    const originalText = shareBtn.html();
+    
+    shareBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sharing...');
+    
+    $.ajax({
+        url: 'section_files.php?section_id=<?= $section_id ?>',
+        type: 'POST',
+        data: formData,
+        success: function(response) {
+            shareBtn.prop('disabled', false).html(originalText);
+            
+            try {
+                const result = JSON.parse(response);
+                if (result.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: result.message,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        $('#shareFolderModal').modal('hide');
+                    });
+                } else {
+                    Swal.fire('Error!', result.message, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error!', 'Invalid server response', 'error');
+            }
+        },
+        error: function() {
+            shareBtn.prop('disabled', false).html(originalText);
+            Swal.fire('Error!', 'Failed to share folder', 'error');
+        }
+    });
+});
+
+// Revoke access
+$(document).on('click', '.revoke-access', function() {
+    const shareId = $(this).data('share-id');
+    const employeeName = $(this).data('employee-name');
+    
+    Swal.fire({
+        title: 'Revoke Access?',
+        html: `Are you sure you want to revoke <strong>${employeeName}</strong>'s access?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, revoke access!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'section_files.php?section_id=<?= $section_id ?>',
+                type: 'POST',
+                data: {
+                    action: 'revoke_access',
+                    share_id: shareId
+                },
+                success: function(response) {
+                    try {
+                        const result = JSON.parse(response);
+                        if (result.success) {
+                            Swal.fire({
+                                title: 'Access Revoked!',
+                                text: result.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                const folderId = $('#shareFolderId').val();
+                                if (folderId) {
+                                    manageShares(folderId, '');
+                                }
+                            });
+                        } else {
+                            Swal.fire('Error!', result.message, 'error');
+                        }
+                    } catch (e) {
+                        Swal.fire('Error!', 'Invalid server response', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error!', 'Failed to revoke access', 'error');
+                }
+            });
+        }
+    });
+});
 
 // Update share permissions
 $(document).on('click', '.update-share', function() {
@@ -3538,66 +3036,346 @@ $(document).on('click', '.update-share', function() {
                 Swal.fire('Error!', 'Invalid server response', 'error');
             }
         },
-        error: function(xhr, status, error) {
+        error: function() {
             updateBtn.prop('disabled', false).html(originalText);
-            Swal.fire('Error!', 'Failed to update permissions: ' + error, 'error');
+            Swal.fire('Error!', 'Failed to update permissions', 'error');
         }
     });
 });
 
-// Auto-save when permission level changes (optional feature)
-$(document).on('change', '.permission-select, .expiry-input', function() {
-    const row = $(this).closest('tr');
-    const shareId = row.find('.permission-select').data('share-id');
-    const employeeName = row.find('.update-share').data('employee-name');
+// File Upload Functionality
+function initFileUpload() {
+    const dropZone = $('#fileDropZone');
+    const fileInput = $('#fileInput');
+    const browseBtn = $('#browseFilesBtn');
     
-    // You can add auto-save functionality here if desired
-    // For now, we'll just enable the update button
-    row.find('.update-share').prop('disabled', false);
+    browseBtn.off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.trigger('click');
+    });
+    
+    fileInput.off('change').on('change', function(e) {
+        handleFiles(e.target.files);
+    });
+    
+    dropZone.off('dragover dragleave drop click').on('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.addClass('dragover');
+    }).on('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.removeClass('dragover');
+    }).on('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.removeClass('dragover');
+        
+        const files = e.originalEvent.dataTransfer.files;
+        handleFiles(files);
+    }).on('click', function(e) {
+        if (e.target === this || $(e.target).hasClass('file-drop-zone')) {
+            fileInput.trigger('click');
+        }
+    });
+}
+
+function handleFiles(files) {
+    const maxFiles = 10;
+    const maxFileSize = 500 * 1024 * 1024;
+    
+    if (!files || files.length === 0) return;
+    
+    const newFiles = Array.from(files);
+    
+    if (selectedFiles.length + newFiles.length > maxFiles) {
+        Swal.fire('Error!', `You can only upload up to ${maxFiles} files at once.`, 'error');
+        return;
+    }
+    
+    newFiles.forEach(file => {
+        if (selectedFiles.length < maxFiles) {
+            const fileExists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+            
+            if (file.size > maxFileSize) {
+                Swal.fire('Error!', `File "${file.name}" exceeds the 500MB size limit.`, 'error');
+                return;
+            }
+            
+            if (!fileExists) {
+                selectedFiles.push(file);
+            }
+        }
+    });
+    
+    updateFileList();
+    updateUploadButton();
+}
+
+function updateFileList() {
+    const container = $('#selectedFilesContainer');
+    const list = $('#selectedFilesList');
+    const count = $('#fileCount');
+    
+    list.empty();
+    
+    if (selectedFiles.length === 0) {
+        container.hide();
+        return;
+    }
+    
+    selectedFiles.forEach((file, index) => {
+        const fileItem = createFileItem(file, index);
+        list.append(fileItem);
+    });
+    
+    count.text(selectedFiles.length);
+    container.show();
+    
+    const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+    $('#totalSize').remove();
+    container.append(`<div id="totalSize" class="small text-muted mt-2">Total size: ${formatFileSize(totalSize)}</div>`);
+}
+
+function createFileItem(file, index) {
+    const fileSize = formatFileSize(file.size);
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const fileIcon = getFileIcon(fileExtension);
+    
+    return `
+        <div class="file-item" data-index="${index}">
+            <div class="file-info">
+                <i class="fas fa-file-${fileIcon} file-icon"></i>
+                <div>
+                    <div class="file-name">${escapeHtml(file.name)}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+            </div>
+            <button type="button" class="file-remove" onclick="removeFile(${index})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    updateFileList();
+    updateUploadButton();
+}
+
+function updateUploadButton() {
+    $('#uploadFilesBtn').prop('disabled', selectedFiles.length === 0);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getFileIcon(extension) {
+    const icons = {
+        'pdf': 'pdf',
+        'doc': 'word',
+        'docx': 'word',
+        'xls': 'excel',
+        'xlsx': 'excel',
+        'ppt': 'powerpoint',
+        'pptx': 'powerpoint',
+        'jpg': 'image',
+        'jpeg': 'image',
+        'png': 'image',
+        'gif': 'image',
+        'zip': 'archive',
+        'rar': 'archive',
+        'txt': 'alt',
+        'mp4': 'video',
+        'avi': 'video',
+        'mov': 'video',
+        'mp3': 'audio',
+        'wav': 'audio'
+    };
+    return icons[extension] || 'file';
+}
+
+// Upload form submission
+$('#uploadForm').off('submit').on('submit', function(e) {
+    e.preventDefault();
+    
+    if (selectedFiles.length === 0) {
+        Swal.fire('Error!', 'Please select at least one file to upload.', 'error');
+        return false;
+    }
+    
+    const uploadBtn = $('#uploadFilesBtn');
+    if (uploadBtn.prop('disabled')) {
+        return false;
+    }
+    
+    uploadFiles();
+    return false;
 });
 
-function toggleView() {
-    const foldersGrid = document.getElementById('foldersGrid');
-    const isGridView = foldersGrid.style.display !== 'none';
+function uploadFiles() {
+    createProgressUI();
     
-    if (isGridView) {
-        foldersGrid.style.display = 'none';
-        // Show list view (you would need to implement this)
+    const formData = new FormData();
+    
+    selectedFiles.forEach(file => {
+        formData.append('files[]', file);
+    });
+    
+    formData.append('description', $('#fileDescription').val());
+    formData.append('section_id', '<?= $section_id ?>');
+    formData.append('folder_id', '');
+    formData.append('action', 'upload_files');
+    
+    const uploadBtn = $('#uploadFilesBtn');
+    const originalText = uploadBtn.html();
+    
+    uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
+    
+    $.ajax({
+        url: 'section_files.php?section_id=<?= $section_id ?>',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhr: function() {
+            const xhr = new window.XMLHttpRequest();
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    updateOverallProgress(percentComplete);
+                }
+            }, false);
+            return xhr;
+        },
+        success: function(response) {
+            uploadBtn.prop('disabled', false).html(originalText);
+            
+            try {
+                const result = typeof response === 'string' ? JSON.parse(response) : response;
+                
+                if (result.success) {
+                    updateOverallProgress(100);
+                    
+                    setTimeout(() => {
+                        Swal.fire({
+                            title: 'Success!',
+                            html: `<p>Successfully uploaded ${result.uploaded_count} file(s)</p>`,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            $('#uploadFileModal').modal('hide');
+                            resetUploadForm();
+                            location.reload();
+                        });
+                    }, 500);
+                } else {
+                    Swal.fire({
+                        title: 'Upload Complete',
+                        html: `
+                            <p>Uploaded: ${result.uploaded_count || 0} files</p>
+                            <p>Failed: ${result.failed_count || 0} files</p>
+                        `,
+                        icon: result.uploaded_count > 0 ? 'warning' : 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (e) {
+                console.error('Parse error:', e);
+                Swal.fire('Error!', 'Invalid server response', 'error');
+            }
+            
+            removeProgressUI();
+        },
+        error: function(xhr, status, error) {
+            uploadBtn.prop('disabled', false).html(originalText);
+            Swal.fire('Error!', 'Failed to upload files: ' + error, 'error');
+            removeProgressUI();
+        }
+    });
+}
+
+function createProgressUI() {
+    removeProgressUI();
+    
+    const progressHTML = `
+        <div class="upload-progress mt-3" id="uploadProgress">
+            <div class="progress mb-2">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     style="width: 0%" 
+                     aria-valuenow="0" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+            </div>
+            <div class="progress-info text-center">
+                <small class="text-muted" id="progressStatus">Preparing upload...</small>
+            </div>
+        </div>
+    `;
+    
+    $('#selectedFilesContainer').after(progressHTML);
+}
+
+function updateOverallProgress(percent) {
+    const progressBar = $('#uploadProgress .progress-bar');
+    const progressStatus = $('#progressStatus');
+    
+    progressBar.css('width', percent + '%');
+    progressBar.attr('aria-valuenow', percent);
+    
+    if (percent < 100) {
+        progressStatus.text(`Uploading... ${Math.round(percent)}%`);
     } else {
-        foldersGrid.style.display = 'grid';
+        progressStatus.text('Processing...');
     }
 }
 
-// Enhanced folder hover effects
-document.addEventListener('DOMContentLoaded', function() {
-    // Add smooth animations
-    const folderItems = document.querySelectorAll('.folder-item, .folder-item-grid');
-    folderItems.forEach(item => {
-        item.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-        });
-        item.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
+function removeProgressUI() {
+    $('#uploadProgress').remove();
+}
 
-    // Add loading states
-    const buttons = document.querySelectorAll('.btn-modern');
-    buttons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (this.type === 'submit' || this.getAttribute('type') === 'submit') {
-                const originalText = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading...';
-                this.disabled = true;
-                
-                // Revert after 3 seconds if still loading
-                setTimeout(() => {
-                    this.innerHTML = originalText;
-                    this.disabled = false;
-                }, 3000);
-            }
-        });
-    });
+function resetUploadForm() {
+    selectedFiles = [];
+    $('#fileInput').val('');
+    $('#fileDescription').val('');
+    $('#selectedFilesContainer').hide();
+    $('#selectedFilesList').empty();
+    $('#fileCount').text('0');
+    $('#uploadFilesBtn').prop('disabled', true);
+    removeProgressUI();
+}
+
+// Initialize file upload when modal is shown
+$('#uploadFileModal').on('show.bs.modal', function() {
+    resetUploadForm();
+    setTimeout(function() {
+        initFileUpload();
+    }, 50);
+});
+
+$('#uploadFileModal').on('hide.bs.modal', function() {
+    removeProgressUI();
+    resetUploadForm();
+});
+
+// Select all files
+$('#selectAllFiles').change(function() {
+    $('.file-checkbox').prop('checked', this.checked);
 });
 </script>
 </body>
@@ -3631,6 +3409,7 @@ function getFileIcon($fileType) {
     
     return $icons[$type] ?? 'file text-secondary';
 }
+
 function formatFileSize($bytes) {
     if ($bytes == 0) return '0 Bytes';
     

@@ -103,13 +103,20 @@ $stats['manager_files'] = $stmt->get_result()->fetch_assoc()['manager_files'];
         .section-card:nth-child(8n+1) { 
             border-left-color: #800020; 
         }
+        /* Force full-width layout — no sidebar */
+        .main-sidebar,
+        .control-sidebar { display: none !important; }
+        .wrapper,
+        .content-wrapper,
+        .main-footer { margin-left: 0 !important; width: 100% !important; }
+        .main-header { margin-left: 0 !important; width: 100% !important; }
+        body.sidebar-mini.layout-fixed .content-wrapper { margin-left: 0 !important; }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">
         <?php include '../includes/mainheader.php'; ?>
-        <?php include '../includes/sidebar_file.php'; ?>
-        <div class="content-wrapper">
+        <div class="content-wrapper" style="margin-left: 0 !important; width: 100% !important;">
 
             <div class="content-header">
                 <div class="container-fluid">

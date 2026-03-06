@@ -236,12 +236,11 @@
                         $has_error = true;
                     }
                 } else {
-                    // Handle file upload errors...
-                    // (keep your existing error handling code here)
+                    $upload_results[] = ['file' => $_FILES['files']['name'][$i] ?? 'unknown', 'success' => false, 'message' => 'Upload error code: ' . $_FILES['files']['error'][$i]];
+                    $has_error = true;
                 }
             }
             
-            // Prepare response message
             $success_count = count(array_filter($upload_results, function($result) {
                 return $result['success'];
             }));
@@ -439,7 +438,6 @@
             exit();
         }
         
-        // Fetch existing shares for this folder
         try {
             $shares_stmt = $db->prepare("SELECT fs.*, 
                                     CONCAT(e.first_name, ' ', e.last_name) as employee_name,
@@ -534,7 +532,6 @@
         $permission_level = $_POST['permission_level'] ?? 'view';
         $expires_at = !empty($_POST['expires_at']) ? $_POST['expires_at'] : null;
         
-        // Validate inputs
         if (empty($folder_id) || !is_numeric($folder_id)) {
             echo json_encode(['success' => false, 'message' => 'Invalid folder ID.']);
             exit();
@@ -550,7 +547,6 @@
             exit();
         }
         
-        // Ensure employee_ids is an array
         if (!is_array($employee_ids)) {
             $employee_ids = [$employee_ids];
         }
@@ -560,23 +556,19 @@
         $errors = [];
         
         foreach ($employee_ids as $emp_id) {
-            // Validate employee ID
             if (empty($emp_id) || !is_numeric($emp_id)) {
                 $error_count++;
                 continue;
             }
             
-            // Check if share already exists and is active
             $check_stmt = $db->prepare("SELECT share_id FROM folder_shares WHERE folder_id = ? AND shared_with_emp_id = ? AND is_active = TRUE");
             $check_stmt->bind_param("ii", $folder_id, $emp_id);
             $check_stmt->execute();
             $check_result = $check_stmt->get_result();
             
             if ($check_result->num_rows === 0) {
-                // Insert new share - use correct column name shared_by_emp_id
                 $insert_stmt = $db->prepare("INSERT INTO folder_shares (folder_id, shared_by_emp_id, shared_with_emp_id, permission_level, expires_at) VALUES (?, ?, ?, ?, ?)");
                 
-                // Handle null expiry date
                 if (empty($expires_at)) {
                     $insert_stmt->bind_param("iiiss", $folder_id, $user_emp_id, $emp_id, $permission_level, $expires_at);
                 } else {
@@ -586,7 +578,6 @@
                 if ($insert_stmt->execute()) {
                     $success_count++;
                     
-                    // Log sharing activity
                     try {
                         $log_stmt = $db->prepare("INSERT INTO folder_activity_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'created', ?, ?)");
                         $log_description = "Folder shared with employee ID: {$emp_id} with {$permission_level} permissions";
@@ -594,7 +585,6 @@
                         $log_stmt->bind_param("iiss", $folder_id, $user_emp_id, $log_description, $ip);
                         $log_stmt->execute();
                     } catch (Exception $e) {
-                        // Log error but don't fail the main operation
                         error_log("Failed to log folder share activity: " . $e->getMessage());
                     }
                 } else {
@@ -602,7 +592,7 @@
                     $errors[] = "Failed to share with employee ID: {$emp_id} - " . $db->error;
                 }
             } else {
-                $error_count++; // Share already exists
+                $error_count++;
             }
         }
         
@@ -628,7 +618,6 @@
         $stmt->bind_param("i", $share_id);
         
         if ($stmt->execute()) {
-            // Log revoke activity
             $log_stmt = $db->prepare("INSERT INTO folder_activity_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'deleted', ?, ?)");
             $log_description = "Folder access revoked";
             $ip = $_SERVER['REMOTE_ADDR'];
@@ -657,6 +646,7 @@
     while ($row = $shares_result->fetch_assoc()) {
         $folder_shares[] = $row;
     }
+    
     // Fetch all employees for sharing (excluding current user)
     $employees_stmt = $db->prepare("SELECT e.emp_id, 
                                     CONCAT(e.first_name, ' ', e.last_name) as full_name, 
@@ -672,6 +662,7 @@
     while ($row = $employees_result->fetch_assoc()) {
         $all_employees[] = $row;
     }
+    
     // Fetch employees from the same section for easier sharing
     $section_employees_stmt = $db->prepare("SELECT e.emp_id, 
                                         CONCAT(e.first_name, ' ', e.last_name) as full_name, 
@@ -689,7 +680,8 @@
     while ($row = $section_employees_result->fetch_assoc()) {
         $section_employees[] = $row;
     }
-    // Fetch subfolders
+    
+    // Fetch subfolders with hierarchical data
     $subfolders_stmt = $db->prepare("SELECT f.*, 
                                             CONCAT(e.first_name, ' ', e.last_name) as creator_name,
                                             (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
@@ -742,11 +734,11 @@ function hasFolderPermission($db, $folder_id, $user_emp_id, $permission_type = '
     if ($creator_result->num_rows > 0) {
         $folder_data = $creator_result->fetch_assoc();
         if ($folder_data['created_by'] == $user_emp_id) {
-            return true; // Creator has full access
+            return true;
         }
     }
     
-    // Check shared permissions - use correct column name shared_with_emp_id
+    // Check shared permissions
     $share_stmt = $db->prepare("SELECT permission_level, expires_at 
                               FROM folder_shares 
                               WHERE folder_id = ? AND shared_with_emp_id = ? AND is_active = TRUE 
@@ -758,12 +750,11 @@ function hasFolderPermission($db, $folder_id, $user_emp_id, $permission_type = '
     if ($share_result->num_rows > 0) {
         $share_data = $share_result->fetch_assoc();
         
-        // Fixed permission hierarchy according to requirements
         $permission_hierarchy = [
-            'view' => 1,      // Can only view files
-            'upload' => 2,    // Can view and upload files
-            'edit' => 3,      // Can view, upload, edit files, and download
-            'manage' => 4     // Full access (create/edit/delete folders, manage shares, etc.)
+            'view' => 1,
+            'upload' => 2,
+            'edit' => 3,
+            'manage' => 4
         ];
         
         $required_level = $permission_hierarchy[$permission_type] ?? 0;
@@ -772,7 +763,7 @@ function hasFolderPermission($db, $folder_id, $user_emp_id, $permission_type = '
         return $user_level >= $required_level;
     }
     
-    return false; // No permission found
+    return false;
 }
 
 // Helper function to check specific actions based on permission level
@@ -786,23 +777,22 @@ function canPerformAction($db, $folder_id, $user_emp_id, $action) {
     if ($creator_result->num_rows > 0) {
         $folder_data = $creator_result->fetch_assoc();
         if ($folder_data['created_by'] == $user_emp_id) {
-            return true; // Creator has full access to everything
+            return true;
         }
     }
     
-    // Define required permissions for each action according to your requirements
     $permission_map = [
-        'view_files' => 'view',           // View files only
-        'upload_files' => 'upload',       // Upload files
-        'download_files' => 'edit',       // Download requires edit permission
-        'edit_files' => 'edit',           // Edit files
-        'delete_files' => 'manage',       // Delete files requires manage permission
-        'create_folder' => 'manage',      // Create folder requires manage permission
-        'edit_folder' => 'manage',        // Edit folder requires manage permission
-        'delete_folder' => 'manage',      // Delete folder requires manage permission
-        'share_folder' => 'manage',       // Share folder requires manage permission
-        'manage_shares' => 'manage',      // Manage shares requires manage permission
-        'edit_share' => 'manage'          // Edit share requires manage permission
+        'view_files' => 'view',
+        'upload_files' => 'upload',
+        'download_files' => 'edit',
+        'edit_files' => 'edit',
+        'delete_files' => 'manage',
+        'create_folder' => 'manage',
+        'edit_folder' => 'manage',
+        'delete_folder' => 'manage',
+        'share_folder' => 'manage',
+        'manage_shares' => 'manage',
+        'edit_share' => 'manage'
     ];
     
     $required_permission = $permission_map[$action] ?? 'manage';
@@ -823,7 +813,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $permission_level = $_POST['permission_level'] ?? 'view';
     $expires_at = !empty($_POST['expires_at']) ? $_POST['expires_at'] : null;
     
-    // Check if user has manage permission for this folder
     $share_stmt = $db->prepare("SELECT folder_id FROM folder_shares WHERE share_id = ?");
     $share_stmt->bind_param("i", $share_id);
     $share_stmt->execute();
@@ -838,12 +827,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             exit();
         }
         
-        // Update the share
         $update_stmt = $db->prepare("UPDATE folder_shares SET permission_level = ?, expires_at = ? WHERE share_id = ?");
         $update_stmt->bind_param("ssi", $permission_level, $expires_at, $share_id);
         
         if ($update_stmt->execute()) {
-            // Log the activity
             $log_stmt = $db->prepare("INSERT INTO folder_activity_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'modified', ?, ?)");
             $log_description = "Share permissions updated to {$permission_level}";
             $ip = $_SERVER['REMOTE_ADDR'];
@@ -859,7 +846,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     exit();
 }
+    function buildFolderTree($db, $parent_id = null, $user_emp_id = null, $level = 0) {
+        $tree = [];
+        $query = "SELECT f.*, 
+                         CONCAT(e.first_name, ' ', e.last_name) as creator_name,
+                         (SELECT COUNT(*) FROM files WHERE folder_id = f.folder_id) as file_count,
+                         (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as subfolder_count
+                  FROM folders f 
+                  LEFT JOIN employee e ON f.created_by = e.emp_id 
+                  WHERE f.parent_folder_id " . ($parent_id === null ? "IS NULL" : "= ?") . "
+                  ORDER BY f.folder_name";
+        
+        $stmt = $db->prepare($query);
+        if ($parent_id !== null) {
+            $stmt->bind_param("i", $parent_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        while ($row = $result->fetch_assoc()) {
+            $row['level'] = $level;
+            $row['children'] = buildFolderTree($db, $row['folder_id'], $user_emp_id, $level + 1);
+            $tree[] = $row;
+        }
+        
+        return $tree;
+    }
+
+    // Get the full folder tree starting from the root
+    $full_folder_tree = buildFolderTree($db, null, $user_emp_id);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -868,7 +885,804 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <title><?= htmlspecialchars($folder_name) ?> - Contents</title>
     
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="../css/folder_content.css">
+    
+    <style>
+        /* Modern CSS Variables for theming */
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            
+            /* Light mode - FIXED: Making sidebar light */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --card-bg: #ffffff;
+            --hover-bg: #f1f5f9;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --header-bg: #ffffff;
+            --sidebar-bg: #ffffff; /* Light sidebar background */
+            --toolbar-bg: #ffffff;
+            
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            
+            --transition-fast: 150ms;
+            --transition-normal: 250ms;
+            --transition-slow: 350ms;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Dark mode - only changes colors, not the layout */
+        body.dark-mode {
+            --bg-primary: #1e293b;
+            --bg-secondary: #0f172a;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --card-bg: #1e293b;
+            --hover-bg: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --header-bg: #1e293b;
+            --sidebar-bg: #1e293b; /* Dark sidebar background for dark mode */
+            --toolbar-bg: #1e293b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+        }
+
+        /* Modern scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: var(--radius-sm);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Layout */
+        .file-explorer {
+            display: flex;
+            height: calc(100vh - 57px - 57px - 120px);
+            overflow: hidden;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            margin: var(--spacing-lg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Left Sidebar - Folder Tree - FIXED: Light background */
+        .file-explorer .sidebar {
+            width: 300px;
+            background: var(--sidebar-bg); /* Uses variable that's light in light mode */
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--sidebar-bg);
+        }
+
+        .sidebar-header h5 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .sidebar-header h5 i {
+            color: var(--primary-color);
+        }
+
+        #folderTree {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-sm);
+            background: var(--sidebar-bg);
+        }
+
+        /* Tree Structure */
+        .tree {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .tree-item {
+            position: relative;
+            margin: 2px 0;
+        }
+
+        .tree-item .tree-node {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border: 1px solid transparent;
+            position: relative;
+            font-size: 0.875rem;
+            background: var(--sidebar-bg);
+        }
+
+        .tree-item .tree-node:hover {
+            background: var(--hover-bg);
+            border-color: var(--border-color);
+        }
+
+        .tree-item .tree-node.active {
+            background: rgba(37, 99, 235, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .tree-item .tree-node.locked {
+            background: rgba(239, 68, 68, 0.05);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .tree-indent {
+            width: calc(20px * var(--level, 0));
+            flex-shrink: 0;
+        }
+
+        .tree-expander {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .tree-expander:hover {
+            color: var(--primary-color);
+        }
+
+        .tree-expander i {
+            font-size: 0.75rem;
+        }
+
+        .tree-icon {
+            width: 20px;
+            text-align: center;
+            margin-right: var(--spacing-xs);
+            color: #fbbf24;
+            flex-shrink: 0;
+        }
+
+        .tree-icon.locked {
+            color: var(--danger-color);
+        }
+
+        .tree-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .tree-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .tree-badge {
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            border-radius: var(--radius-sm);
+            margin-left: auto;
+        }
+
+        .tree-badge.locked {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .tree-children {
+            list-style: none;
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        /* Folder Actions in Tree */
+        .tree-actions {
+            position: relative;
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+            margin-left: auto;
+        }
+
+        .tree-node:hover .tree-actions {
+            opacity: 1;
+        }
+
+        .tree-actions-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tree-actions-btn:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .tree-actions-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 160px;
+            z-index: 1000;
+            padding: var(--spacing-xs) 0;
+        }
+
+        .tree-actions-menu.show {
+            display: block;
+        }
+
+        .tree-action-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            color: var(--text-primary);
+            transition: background var(--transition-fast);
+        }
+
+        .tree-action-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .tree-action-item i {
+            width: 16px;
+            color: var(--text-muted);
+        }
+
+        .tree-action-item.delete {
+            color: var(--danger-color);
+        }
+
+        .tree-action-item.delete i {
+            color: var(--danger-color);
+        }
+
+        /* Main Content - keep all your existing styles for main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+
+        .current-folder {
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .current-folder i {
+            color: var(--primary-color);
+        }
+
+        .current-folder .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--warning-color);
+            color: white;
+            border-radius: var(--radius-sm);
+        }
+
+        .content-toolbar {
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .toolbar-btn:hover {
+            background: var(--hover-bg);
+            border-color: var(--primary-color);
+        }
+
+        .toolbar-btn.primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .toolbar-btn.primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .search-container {
+            flex: 1;
+            max-width: 300px;
+            margin-left: auto;
+            position: relative;
+        }
+
+        .search-container i {
+            position: absolute;
+            left: var(--spacing-sm);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) 2rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all var(--transition-fast);
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        .section-header {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .folder-item-grid {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg) var(--spacing-md);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .folder-item-grid:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .folder-item-grid .folder-icon-grid {
+            font-size: 2.5rem;
+            color: #fbbf24;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .folder-item-grid .folder-icon-grid.locked {
+            color: var(--danger-color);
+        }
+
+        .folder-item-grid .folder-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-word;
+            line-height: 1.4;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .folder-item-grid .folder-stats {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .folder-item-grid .folder-creator {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
+        }
+
+        .file-list {
+            width: 100%;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .file-header {
+            display: grid;
+            grid-template-columns: 40px 1fr 100px 140px 140px 120px;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .file-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 100px 140px 140px 120px;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .file-row:hover {
+            background: var(--hover-bg);
+        }
+
+        .file-row:hover .file-actions-col {
+            opacity: 1;
+        }
+
+        .file-check-col {
+            display: flex;
+            align-items: center;
+        }
+
+        .file-name-col {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            min-width: 0;
+        }
+
+        .file-icon {
+            font-size: 1.125rem;
+            flex-shrink: 0;
+        }
+
+        .file-name {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .file-type-col {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .file-size-col {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .file-date-col {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .file-actions-col {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+
+        .file-action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            transition: all var(--transition-fast);
+        }
+
+        .file-action-btn:hover {
+            background: var(--hover-bg);
+            color: var(--primary-color);
+        }
+
+        .text-primary { color: #3b82f6; }
+        .text-success { color: #10b981; }
+        .text-danger { color: #ef4444; }
+        .text-warning { color: #f59e0b; }
+        .text-info { color: #06b6d4; }
+        .text-secondary { color: #64748b; }
+
+        .file-drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            transition: all var(--transition-fast);
+            background: var(--bg-tertiary);
+            cursor: pointer;
+        }
+
+        .file-drop-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .file-drop-zone:hover {
+            border-color: var(--primary-color);
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            flex: 1;
+        }
+
+        .file-info .file-icon {
+            font-size: 1rem;
+            color: var(--primary-color);
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-details .file-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .file-details .file-size {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .file-remove {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: var(--spacing-xs);
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+
+        .file-remove:hover {
+            background: var(--hover-bg);
+            color: var(--danger-color);
+        }
+
+        .upload-progress {
+            margin-top: var(--spacing-md);
+        }
+
+        .progress {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: var(--primary-color);
+            transition: width var(--transition-normal);
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-lg);
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+            display: block;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 0.875rem;
+        }
+
+        .select-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .select-bar label {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        @media (max-width: 1024px) {
+            .file-header, .file-row {
+                grid-template-columns: 40px 1fr 80px 100px 100px 80px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .file-explorer {
+                flex-direction: column;
+                margin: var(--spacing-sm);
+            }
+            
+            .file-explorer .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+            
+            .folder-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+            
+            .file-header, .file-row {
+                grid-template-columns: 40px 1fr 80px 100px 80px 60px;
+            }
+            
+            .file-type-col, .file-size-col {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -902,277 +1716,248 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <section class="content">
             <div class="container-fluid">
                 <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success alert-dismissible">
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        <?= $_SESSION['success'] ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle mr-2"></i><?= $_SESSION['success'] ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                     <?php unset($_SESSION['success']); ?>
                 <?php endif; ?>
                 
                 <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-danger alert-dismissible">
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        <?= $_SESSION['error'] ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i><?= $_SESSION['error'] ?>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-folder-open mr-2"></i>
-                            Folder Contents
-                        </h3>
-                        <div class="card-tools">
+                <div class="file-explorer">
+                    <!-- Sidebar with complete folder tree -->
+                    <div class="sidebar">
+                        <div class="sidebar-header">
+                            <h5>
+                                <i class="fas fa-folder-tree"></i>
+                                Folder Tree
+                            </h5>
+                        </div>
+                        <div id="folderTree">
+                            <?php if (!empty($full_folder_tree)): ?>
+                                <ul class="tree">
+                                    <?php foreach ($full_folder_tree as $folder_item): 
+                                        $is_creator = ($folder_item['created_by'] == $user_emp_id);
+                                        $has_access = $is_creator || hasFolderPermission($db, $folder_item['folder_id'], $user_emp_id, 'view');
+                                        $is_current = ($folder_item['folder_id'] == $folder_id);
+                                    ?>
+                                    <li class="tree-item" data-folder-id="<?= $folder_item['folder_id'] ?>">
+                                        <div class="tree-node <?= $folder_item['is_locked'] ? 'locked' : '' ?> <?= !$has_access ? 'no-access' : '' ?> <?= $is_current ? 'active' : '' ?>" 
+                                             data-folder-id="<?= $folder_item['folder_id'] ?>"
+                                             data-locked="<?= $folder_item['is_locked'] ?>"
+                                             onclick="navigateToFolder(<?= $folder_item['folder_id'] ?>, <?= $folder_item['is_locked'] ?>)">
+                                            <div class="tree-expander" onclick="toggleTreeBranch(this, event)">
+                                                <i class="fas fa-<?= !empty($folder_item['children']) ? 'chevron-right' : 'empty' ?>"></i>
+                                            </div>
+                                            <i class="fas fa-folder tree-icon <?= $folder_item['is_locked'] ? 'locked' : '' ?>"></i>
+                                            <div class="tree-content">
+                                                <span class="tree-name"><?= htmlspecialchars($folder_item['folder_name']) ?></span>
+                                                <?php if ($folder_item['subfolder_count'] > 0): ?>
+                                                    <span class="tree-badge"><?= $folder_item['subfolder_count'] ?></span>
+                                                <?php endif; ?>
+                                                <?php if ($folder_item['is_locked']): ?>
+                                                    <span class="tree-badge locked"><i class="fas fa-lock"></i></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="tree-actions">
+                                                <button class="tree-actions-btn" onclick="toggleTreeMenu(this, event)">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="tree-actions-menu">
+                                                    <?php if (canPerformAction($db, $folder_item['folder_id'], $user_emp_id, 'edit_folder')): ?>
+                                                    <button class="tree-action-item" 
+                                                            onclick="editFolder(<?= $folder_item['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder_item['folder_name'])) ?>', '<?= htmlspecialchars(addslashes($folder_item['description'] ?? '')) ?>', <?= $folder_item['is_locked'] ?>)">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if (canPerformAction($db, $folder_item['folder_id'], $user_emp_id, 'share_folder')): ?>
+                                                    <button class="tree-action-item" 
+                                                            onclick="shareFolder(<?= $folder_item['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder_item['folder_name'])) ?>')">
+                                                        <i class="fas fa-share-alt"></i> Share
+                                                    </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if (canPerformAction($db, $folder_item['folder_id'], $user_emp_id, 'manage_shares')): ?>
+                                                    <button class="tree-action-item" 
+                                                            onclick="manageShares(<?= $folder_item['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder_item['folder_name'])) ?>')">
+                                                        <i class="fas fa-users"></i> Manage Access
+                                                    </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if (canPerformAction($db, $folder_item['folder_id'], $user_emp_id, 'delete_folder')): ?>
+                                                    <button class="tree-action-item delete" 
+                                                            onclick="deleteFolder(<?= $folder_item['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder_item['folder_name'])) ?>', <?= $folder_item['is_locked'] ?>)">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php if (!empty($folder_item['children'])): ?>
+                                            <?= renderTreeChildren($folder_item['children'], $db, $user_emp_id, $folder_id) ?>
+                                        <?php endif; ?>
+                                    </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php else: ?>
+                                <div class="empty-state">
+                                    <i class="fas fa-folder-open"></i>
+                                    <p>No folders found</p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+<div class="main-content">
+                        <div class="current-folder">
+                            <i class="fas fa-folder-open"></i>
+                            <?= htmlspecialchars($folder_name) ?>
+                            <?php if ($is_locked): ?>
+                                <span class="badge"><i class="fas fa-lock"></i> Protected</span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="content-toolbar">
                             <?php if (canPerformAction($db, $folder_id, $user_emp_id, 'upload_files')): ?>
-                            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#uploadFileModal">
-                                <i class="fas fa-upload mr-1"></i> Upload File
+                            <button class="toolbar-btn primary" data-toggle="modal" data-target="#uploadFileModal">
+                                <i class="fas fa-upload"></i> Upload
                             </button>
                             <?php endif; ?>
                             
                             <?php if (canPerformAction($db, $folder_id, $user_emp_id, 'create_folder')): ?>
-                            <button class="btn btn-success btn-sm ml-1" data-toggle="modal" data-target="#createFolderModal">
-                                <i class="fas fa-folder-plus mr-1"></i> New Folder
+                            <button class="toolbar-btn" data-toggle="modal" data-target="#createFolderModal">
+                                <i class="fas fa-folder-plus"></i> New Folder
                             </button>
                             <?php endif; ?>
                             
-                            <button class="btn btn-secondary btn-sm ml-1" onclick="window.history.back()">
-                                <i class="fas fa-arrow-left mr-1"></i> Back
+                            <button class="toolbar-btn" onclick="window.history.back()">
+                                <i class="fas fa-arrow-left"></i> Back
                             </button>
+                            
+                            <div class="search-container">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchInput" placeholder="Search in this folder...">
+                            </div>
                         </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="file-explorer">
-                            <!-- Sidebar with folder tree -->
-                            <div class="sidebar">
-                                <h5><i class="fas fa-folder-tree mr-2"></i>Subfolders</h5>
-                                <div id="folderTree">
-                                    <?php foreach ($subfolders as $subfolder): 
-                                            $is_creator = ($subfolder['created_by'] == $user_emp_id);
-                                            $has_access = $is_creator || hasFolderPermission($db, $subfolder['folder_id'], $user_emp_id, 'view');
-                                        ?>
-                                            <div class="folder-item <?= $subfolder['is_locked'] ? 'locked' : '' ?> <?= !$has_access ? 'no-access' : '' ?>" 
-                                                data-folder-id="<?= $subfolder['folder_id'] ?>"
-                                                data-locked="<?= $subfolder['is_locked'] ?>"
-                                                data-has-access="<?= $has_access ? '1' : '0' ?>"
-                                                data-is-creator="<?= $is_creator ? '1' : '0' ?>">
-                                            <i class="fas fa-folder folder-icon <?= $subfolder['is_locked'] ? 'locked' : '' ?>"></i>
-                                            <div class="folder-info">
-                                                <div class="folder-name">
-                                                    <?= htmlspecialchars($subfolder['folder_name']) ?>
-                                                    <?php if ($subfolder['is_locked']): ?>
-                                                        <span class="locked-badge">Locked</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="folder-stats">
-                                                    <?= $subfolder['file_count'] ?> files, 
-                                                    <?= $subfolder['subfolder_count'] ?> subfolders
-                                                </div>
+
+                        <div class="content-area">
+                            <?php if (!empty($subfolders)): ?>
+                                <div class="section-header">
+                                    <i class="fas fa-folder"></i>
+                                    Subfolders (<?= count($subfolders) ?>)
+                                </div>
+                                <div class="folder-grid">
+                                    <?php foreach ($subfolders as $subfolder): ?>
+                                        <div class="folder-item-grid" 
+                                            data-folder-id="<?= $subfolder['folder_id'] ?>"
+                                            data-locked="<?= $subfolder['is_locked'] ?>"
+                                            onclick="navigateToFolder(<?= $subfolder['folder_id'] ?>, <?= $subfolder['is_locked'] ?>)">
+                                            
+                                            <i class="fas fa-folder folder-icon-grid <?= $subfolder['is_locked'] ? 'locked' : '' ?>"></i>
+                                            <div class="folder-name">
+                                                <?= htmlspecialchars($subfolder['folder_name']) ?>
+                                                <?php if ($subfolder['is_locked']): ?>
+                                                    <br><span class="locked-badge">Locked</span>
+                                                <?php endif; ?>
                                             </div>
-                                            <!-- Add folder actions dropdown -->
-                                            <div class="folder-actions">
-                                                <button class="folder-actions-btn" onclick="toggleFolderMenu(this, event)">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <div class="folder-actions-menu">
-                                                    <?php if (canPerformAction($db, $subfolder['folder_id'], $user_emp_id, 'edit_folder')): ?>
-                                                    <button class="folder-action-item edit" 
-                                                            onclick="editFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
-                                                                            '<?= htmlspecialchars(addslashes($subfolder['description'] ?? '')) ?>', 
-                                                                            <?= $subfolder['is_locked'] ?>)">
-                                                        <i class="fas fa-edit mr-2"></i>Edit
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if (canPerformAction($db, $subfolder['folder_id'], $user_emp_id, 'share_folder')): ?>
-                                                    <button class="folder-action-item share" 
-                                                            onclick="shareFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
-                                                        <i class="fas fa-share-alt mr-2"></i>Share
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if (canPerformAction($db, $subfolder['folder_id'], $user_emp_id, 'manage_shares')): ?>
-                                                    <button class="folder-action-item manage-shares" 
-                                                            onclick="manageShares(<?= $subfolder['folder_id'] ?>, 
-                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
-                                                        <i class="fas fa-users mr-2"></i>Manage Access
-                                                    </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if (canPerformAction($db, $subfolder['folder_id'], $user_emp_id, 'delete_folder')): ?>
-                                                    <button class="folder-action-item delete" 
-                                                            onclick="deleteFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                            '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
-                                                                            <?= $subfolder['is_locked'] ?>)">
-                                                        <i class="fas fa-trash mr-2"></i>Delete
-                                                    </button>
-                                                    <?php endif; ?>
-                                                </div>
+                                            <div class="folder-stats">
+                                                <?= $subfolder['file_count'] ?> files
+                                                <?php if ($subfolder['subfolder_count'] > 0): ?>
+                                                    , <?= $subfolder['subfolder_count'] ?> subfolders
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="folder-creator">
+                                                <?= htmlspecialchars($subfolder['creator_name'] ?? 'Unknown') ?>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
-                                    <?php if (empty($subfolders)): ?>
-                                        <div class="text-muted text-center py-3">
-                                            <i class="fas fa-folder-open fa-2x mb-2"></i>
-                                            <p>No subfolders</p>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
-                            </div>
+                            <?php endif; ?>
 
-                            <!-- Main content area -->
-                            <div class="main-content">
-                                <div class="current-folder">
-                                    <i class="fas fa-folder-open"></i> <?= htmlspecialchars($folder_name) ?>
-                                    <?php if ($is_locked): ?>
-                                        <span class="badge badge-warning ml-2"><i class="fas fa-lock"></i> Protected</span>
-                                    <?php endif; ?>
+                            <div class="section-header" style="<?= empty($subfolders) ? 'margin-top: 0;' : '' ?>">
+                                <i class="fas fa-file"></i>
+                                Files (<?= count($files) ?>)
+                            </div>
+                            
+                            <?php if (empty($files)): ?>
+                                <div class="empty-state">
+                                    <i class="fas fa-file-alt"></i>
+                                    <p>No files in this folder</p>
                                 </div>
-                                
-                                <!-- Subfolders Grid -->
-                                <?php if (!empty($subfolders)): ?>
-                                    <h5>Subfolders (<?= count($subfolders) ?>)</h5>
-                                    <div class="file-grid">
-                                        <?php foreach ($subfolders as $subfolder): ?>
-                                            <div class="folder-item-grid position-relative" 
-                                                data-folder-id="<?= $subfolder['folder_id'] ?>"
-                                                data-locked="<?= $subfolder['is_locked'] ?>">
-                                                
-                                                <!-- Folder actions -->
-                                                <div class="folder-actions position-absolute" style="top: 10px; right: 10px;">
-                                                    <button class="folder-actions-btn" onclick="toggleFolderMenu(this, event)">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <div class="folder-actions-menu">
-                                                        <button class="folder-action-item edit" 
-                                                                onclick="editFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
-                                                                                '<?= htmlspecialchars(addslashes($subfolder['description'] ?? '')) ?>', 
-                                                                                <?= $subfolder['is_locked'] ?>)">
-                                                            <i class="fas fa-edit mr-2"></i>Edit
-                                                        </button>
-                                                        <button class="folder-action-item share" 
-                                                                onclick="shareFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
-                                                            <i class="fas fa-share-alt mr-2"></i>Share
-                                                        </button>
-                                                        <?php if (canPerformAction($db, $subfolder['folder_id'], $user_emp_id, 'manage_shares')): ?>
-                                                        <button class="folder-action-item manage-shares" 
-                                                                onclick="manageShares(<?= $subfolder['folder_id'] ?>, 
-                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>')">
-                                                            <i class="fas fa-users mr-2"></i>Manage Access
-                                                        </button>
-                                                        <?php endif; ?>
-                                                        <button class="folder-action-item delete" 
-                                                                onclick="deleteFolder(<?= $subfolder['folder_id'] ?>, 
-                                                                                '<?= htmlspecialchars(addslashes($subfolder['folder_name'])) ?>', 
-                                                                                <?= $subfolder['is_locked'] ?>)">
-                                                            <i class="fas fa-trash mr-2"></i>Delete
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                
-                                                <i class="fas fa-folder folder-icon-grid <?= $subfolder['is_locked'] ? 'text-danger' : '' ?>"></i>
-                                                <div class="folder-name">
-                                                    <?= htmlspecialchars($subfolder['folder_name']) ?>
-                                                    <?php if ($subfolder['is_locked']): ?>
-                                                        <br><span class="badge badge-danger">Locked</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="folder-stats small text-muted">
-                                                    <?= $subfolder['file_count'] ?> files
-                                                    <?php if ($subfolder['subfolder_count'] > 0): ?>
-                                                        , <?= $subfolder['subfolder_count'] ?> subfolders
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="folder-creator small text-muted">
-                                                    Created by: <?= htmlspecialchars($subfolder['creator_name'] ?? 'Unknown') ?>
-                                                </div>
+                            <?php else: ?>
+                                <form id="deleteFilesForm" method="POST" action="folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>">
+                                    <input type="hidden" name="action" value="delete_files">
+                                    
+                                    <div class="select-bar">
+                                        <label>
+                                            <input type="checkbox" id="selectAll" class="mr-2">
+                                            Select All
+                                        </label>
+                                        <button type="button" id="deleteSelectedBtn" class="toolbar-btn" style="color: var(--danger-color);" disabled>
+                                            <i class="fas fa-trash"></i> Delete Selected
+                                        </button>
+                                    </div>
+
+                                    <div class="file-list">
+                                        <div class="file-header">
+                                            <div class="file-check-col"></div>
+                                            <div class="file-name-col">Name</div>
+                                            <div class="file-type-col">Type</div>
+                                            <div class="file-size-col">Size</div>
+                                            <div class="file-date-col">Uploaded</div>
+                                            <div class="file-actions-col"></div>
+                                        </div>
+                                        
+                                        <?php foreach ($files as $file): ?>
+                                        <div class="file-row" onclick="viewFile(<?= $file['file_id'] ?>)">
+                                            <div class="file-check-col">
+                                                <input type="checkbox" name="file_ids[]" value="<?= $file['file_id'] ?>" class="file-checkbox" onclick="event.stopPropagation()">
                                             </div>
+                                            <div class="file-name-col">
+                                                <i class="fas fa-file-<?= getFileIcon($file['file_type']) ?> file-icon <?= getFileIconClass($file['file_type']) ?>"></i>
+                                                <span class="file-name"><?= htmlspecialchars($file['file_name']) ?></span>
+                                            </div>
+                                            <div class="file-type-col"><?= strtoupper($file['file_type']) ?></div>
+                                            <div class="file-size-col"><?= formatFileSize($file['file_size']) ?></div>
+                                            <div class="file-date-col"><?= date('M j, Y', strtotime($file['created_at'])) ?></div>
+                                            <div class="file-actions-col">
+                                                <a href="view_file.php?id=<?= $file['file_id'] ?>" class="file-action-btn" title="View" onclick="event.stopPropagation()">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                
+                                                <?php if (canPerformAction($db, $folder_id, $user_emp_id, 'download_files')): ?>
+                                                <a href="download_file.php?id=<?= $file['file_id'] ?>" class="file-action-btn" title="Download" onclick="event.stopPropagation()">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <?php endif; ?>
+                                                
+                                                <?php if (canPerformAction($db, $folder_id, $user_emp_id, 'delete_files')): ?>
+                                                <button type="button" class="file-action-btn delete-single-file" 
+                                                        data-file-id="<?= $file['file_id'] ?>" 
+                                                        data-file-name="<?= htmlspecialchars($file['file_name']) ?>" 
+                                                        title="Delete"
+                                                        onclick="event.stopPropagation()">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
                                         <?php endforeach; ?>
                                     </div>
-                                <?php endif; ?>
-
-                                <!-- Files Grid -->
-                                <h5 class="mt-4">Files (<?= count($files) ?>)</h5>
-                                <?php if (empty($files)): ?>
-                                    <div class="alert alert-info text-center">
-                                        <i class="fas fa-info-circle mr-2"></i>
-                                        No files in this folder.
-                                    </div>
-                                <?php else: ?>
-                                    <form id="deleteFilesForm" method="POST" action="folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>">
-                                        <input type="hidden" name="action" value="delete_files">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <div>
-                                                <input type="checkbox" id="selectAll" class="mr-2">
-                                                <label for="selectAll">Select All</label>
-                                            </div>
-                                            <button type="button" id="deleteSelectedBtn" class="btn btn-danger btn-sm" disabled>
-                                                <i class="fas fa-trash mr-1"></i> Delete Selected
-                                            </button>
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th width="30px"><input type="checkbox" id="selectAllHeader"></th>
-                                                        <th>File Name</th>
-                                                        <th>Type</th>
-                                                        <th>Size</th>
-                                                        <th>Uploaded By</th>
-                                                        <th>Date Uploaded</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php foreach ($files as $file): ?>
-                                                    <tr>
-                                                        <td>
-                                                            <input type="checkbox" name="file_ids[]" value="<?= $file['file_id'] ?>" class="file-checkbox">
-                                                        </td>
-                                                        <td>
-                                                            <i class="fas fa-file-<?= getFileIcon($file['file_type']) ?> text-primary mr-2"></i>
-                                                            <?= htmlspecialchars($file['file_name']) ?>
-                                                        </td>
-                                                        <td><?= strtoupper($file['file_type']) ?></td>
-                                                        <td><?= formatFileSize($file['file_size']) ?></td>
-                                                        <td><?= htmlspecialchars($file['uploaded_by'] ?? 'Unknown') ?></td>
-                                                        <td><?= date('M j, Y H:i', strtotime($file['created_at'])) ?></td>
-                                                        <td>
-                                                            <div class="btn-group">
-                                                                <a href="view_file.php?id=<?= $file['file_id'] ?>" 
-                                                                class="btn btn-info btn-sm" title="View">
-                                                                    <i class="fas fa-eye"></i>
-                                                                </a>
-                                                                
-                                                                <?php if (canPerformAction($db, $folder_id, $user_emp_id, 'download_files')): ?>
-                                                                <a href="download_file.php?id=<?= $file['file_id'] ?>" 
-                                                                class="btn btn-success btn-sm" title="Download">
-                                                                    <i class="fas fa-download"></i>
-                                                                </a>
-                                                                <?php endif; ?>
-                                                                
-                                                                <?php if (canPerformAction($db, $folder_id, $user_emp_id, 'delete_files')): ?>
-                                                                <button type="button" class="btn btn-danger btn-sm delete-single-file" 
-                                                                        data-file-id="<?= $file['file_id'] ?>" 
-                                                                        data-file-name="<?= htmlspecialchars($file['file_name']) ?>" 
-                                                                        title="Delete">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
+                                </form>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1188,34 +1973,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Upload File to <?= htmlspecialchars($folder_name) ?></h5>
+                <h5 class="modal-title"><i class="fas fa-cloud-upload-alt mr-2"></i>Upload Files</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <div class="form-group">
-                        <label for="fileInput">Select Files *</label>
-                        <input type="file" class="form-control-file" id="fileInput" name="files[]" multiple required>
-                        <small class="form-text text-muted">Maximum file size: 500MB per file. You can select multiple files.</small>
-                        <div class="upload-progress" id="uploadProgress">
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            <small class="progress-text">0%</small>
+                    <div class="file-drop-zone" id="fileDropZone">
+                        <div class="drop-zone-content">
+                            <i class="fas fa-cloud-upload-alt fa-3x mb-3" style="color: var(--text-muted);"></i>
+                            <h5>Drag & Drop files here</h5>
+                            <p class="text-muted mb-2">or click to browse</p>
+                            <input type="file" id="fileInput" name="files[]" multiple accept="*/*" style="display: none;">
+                            <button type="button" class="toolbar-btn primary mt-2" id="browseFilesBtn">
+                                <i class="fas fa-folder-open mr-2"></i>Browse Files
+                            </button>
                         </div>
-                        <div id="fileList" class="mt-2"></div>
                     </div>
-                    <div class="form-group">
+                    
+                    <div class="selected-files-container mt-3" id="selectedFilesContainer" style="display: none;">
+                        <h6><i class="fas fa-list mr-1"></i>Selected Files (<span id="fileCount">0</span>)</h6>
+                        <div class="selected-files-list" id="selectedFilesList"></div>
+                    </div>
+                    
+                    <div class="form-group mt-3">
                         <label for="fileDescription">Description (Optional)</label>
-                        <textarea class="form-control" id="fileDescription" name="description" rows="3" placeholder="Optional file description"></textarea>
+                        <textarea class="form-control" id="fileDescription" name="description" rows="2" placeholder="Optional file description"></textarea>
                     </div>
+                    
+                    <div class="upload-progress" id="uploadProgress" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="progress-text">0%</small>
+                    </div>
+                    
                     <input type="hidden" name="action" value="upload_file">
                     <input type="hidden" name="section_id" value="<?= $section_id ?>">
                     <input type="hidden" name="folder_id" value="<?= $folder_id ?>">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="uploadBtn">Upload File</button>
+                    <button type="submit" class="btn btn-primary" id="uploadBtn">Upload Files</button>
                 </div>
             </form>
         </div>
@@ -1227,7 +2025,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Create New Subfolder</h5>
+                <h5 class="modal-title"><i class="fas fa-folder-plus mr-2"></i>Create New Subfolder</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="folderForm" method="POST" action="folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>">
@@ -1236,17 +2034,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <input type="hidden" name="parent_folder_id" value="<?= $folder_id ?>">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="folderName">Folder Name *</label>
+                        <label for="folderName">Folder Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="folderName" name="folder_name" required>
                     </div>
                     <div class="form-group">
                         <label for="description">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="password">Password (Optional - for folder protection)</label>
-                        <input type="password" class="form-control" id="password" name="password" 
-                               placeholder="Leave blank for no password">
+                        <label for="password">Password Protection <small class="text-muted">(optional)</small></label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Leave blank for no password">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary" id="toggleCreatePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
                         <small class="form-text text-muted">If set, users will need to enter password to access this folder.</small>
                     </div>
                 </div>
@@ -1277,12 +2082,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     </div>
                     <div class="form-group">
                         <label for="editDescription">Description</label>
-                        <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
+                        <textarea class="form-control" id="editDescription" name="description" rows="2"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="editPassword">New Password (Optional - leave blank to keep current)</label>
-                        <input type="password" class="form-control" id="editPassword" name="password" 
-                               placeholder="Enter new password to change">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="editPassword" name="password" 
+                                   placeholder="Enter new password to change">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary" id="toggleEditPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
                         <small class="form-text text-muted">If set, this will change the folder password.</small>
                     </div>
                     <div class="form-group form-check">
@@ -1299,7 +2111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     </div>
 </div>
 
-
+<!-- Manage Shares Modal -->
 <div class="modal fade" id="manageSharesModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -1316,6 +2128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
     </div>
 </div>
+
 <!-- Share Folder Modal -->
 <div class="modal fade" id="shareFolderModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -1392,313 +2205,133 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
     </div>
 </div>
+
 <?php include '../includes/footer.php'; ?>
-
-<script>
-// Replace the entire initializeUpload function with this:
-function initializeUpload() {
-    $(document).ready(function() {
-        // Initialize Select2
-        if ($.fn.select2) {
-            $('.select2').select2({
-                placeholder: "Select employees...",
-                allowClear: true,
-                width: '100%'
-            });
+<?php
+// Helper function to render tree children recursively
+function renderTreeChildren($children, $db, $user_emp_id, $current_folder_id) {
+    if (empty($children)) return '';
+    
+    $html = '<ul class="tree-children">';
+    foreach ($children as $child) {
+        $is_creator = ($child['created_by'] == $user_emp_id);
+        $has_access = $is_creator || hasFolderPermission($db, $child['folder_id'], $user_emp_id, 'view');
+        $is_current = ($child['folder_id'] == $current_folder_id);
+        
+        $html .= '<li class="tree-item" data-folder-id="' . $child['folder_id'] . '">';
+        $html .= '<div class="tree-node ' . ($child['is_locked'] ? 'locked' : '') . ' ' . (!$has_access ? 'no-access' : '') . ' ' . ($is_current ? 'active' : '') . '" 
+                        data-folder-id="' . $child['folder_id'] . '"
+                        data-locked="' . $child['is_locked'] . '"
+                        onclick="navigateToFolder(' . $child['folder_id'] . ', ' . $child['is_locked'] . ')">';
+        $html .= '<div class="tree-expander" onclick="toggleTreeBranch(this, event)">';
+        $html .= '<i class="fas fa-' . (!empty($child['children']) ? 'chevron-right' : 'empty') . '"></i>';
+        $html .= '</div>';
+        $html .= '<i class="fas fa-folder tree-icon ' . ($child['is_locked'] ? 'locked' : '') . '"></i>';
+        $html .= '<div class="tree-content">';
+        $html .= '<span class="tree-name">' . htmlspecialchars($child['folder_name']) . '</span>';
+        if ($child['subfolder_count'] > 0) {
+            $html .= '<span class="tree-badge">' . $child['subfolder_count'] . '</span>';
         }
-
-        // File input change handler for multiple files
-        $('#fileInput').on('change', function() {
-            const files = this.files;
-            const fileList = $('#fileList');
-            fileList.empty();
-            
-            if (files.length > 0) {
-                fileList.append('<strong>Selected files:</strong><br>');
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    // Validate file size (500MB)
-                    const maxSize = 500 * 1024 * 1024;
-                    if (file.size > maxSize) {
-                        fileList.append('<span class="text-danger">' + file.name + ' (Too large - exceeds 500MB limit)</span><br>');
-                    } else {
-                        fileList.append('<span class="text-success">' + file.name + ' (' + formatFileSize(file.size) + ')</span><br>');
-                    }
-                }
-            }
-        });
-
-        // Upload multiple files functionality
-        $('#uploadForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const uploadBtn = $('#uploadBtn');
-            const originalText = uploadBtn.html();
-            const files = $('#fileInput')[0].files;
-            
-            if (files.length === 0) {
-                Swal.fire({
-                    title: 'No Files Selected',
-                    text: 'Please select at least one file to upload.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-            
-            // Validate file sizes before upload
-            let hasOversizedFile = false;
-            const maxSize = 500 * 1024 * 1024;
-            for (let i = 0; i < files.length; i++) {
-                if (files[i].size > maxSize) {
-                    hasOversizedFile = true;
-                    break;
-                }
-            }
-            
-            if (hasOversizedFile) {
-                Swal.fire({
-                    title: 'File Too Large',
-                    text: 'One or more files exceed the 500MB size limit. Please remove them and try again.',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-            
-            // Show loading state
-            uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
-            $('#uploadProgress').show();
-            
-            $.ajax({
-                url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                xhr: function() {
-                    var xhr = new window.XMLHttpRequest();
-                    xhr.upload.addEventListener("progress", function(evt) {
-                        if (evt.lengthComputable) {
-                            var percentComplete = (evt.loaded / evt.total) * 100;
-                            $('.progress-bar').css('width', percentComplete + '%');
-                            $('.progress-text').text(percentComplete.toFixed(1) + '%');
-                        }
-                    }, false);
-                    return xhr;
-                },
-                success: function(response) {
-                    uploadBtn.prop('disabled', false).html(originalText);
-                    $('#uploadProgress').hide();
-                    
-                    try {
-                        const result = typeof response === 'string' ? JSON.parse(response) : response;
-                        if (result.success || result.results) {
-                            // Show detailed results
-                            let message = result.message || 'Upload completed!';
-                            let html = '<div class="text-left"><strong>' + message + '</strong><br><br>';
-                            
-                            if (result.results) {
-                                result.results.forEach(function(fileResult) {
-                                    const icon = fileResult.success ? '✓' : '✗';
-                                    const color = fileResult.success ? 'text-success' : 'text-danger';
-                                    html += '<span class="' + color + '">' + icon + ' ' + fileResult.file + ': ' + fileResult.message + '</span><br>';
-                                });
-                            }
-                            
-                            html += '</div>';
-                            
-                            Swal.fire({
-                                title: result.success ? 'Success!' : 'Upload Completed',
-                                html: html,
-                                icon: result.success ? 'success' : 'info',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                $('#uploadFileModal').modal('hide');
-                                $('#uploadForm')[0].reset();
-                                $('#fileList').empty();
-                                if (result.success) {
-                                    location.reload();
-                                }
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Error!',
-                                text: result.message || 'Upload failed',
-                                icon: 'error',
-                                confirmButtonText: 'OK'
-                            });
-                        }
-                    } catch (e) {
-                        console.error('Parse error:', e, 'Response:', response);
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Invalid server response. Please check console for details.',
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                },
-                error: function(xhr, status, error) {
-                    uploadBtn.prop('disabled', false).html(originalText);
-                    $('#uploadProgress').hide();
-                    console.error('AJAX error:', error, 'Status:', status, 'xhr:', xhr);
-                    Swal.fire({
-                        title: 'Upload Failed!',
-                        text: 'Failed to upload files: ' + error,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            });
-        });
-
-        // Helper function to format file size
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        if ($child['is_locked']) {
+            $html .= '<span class="tree-badge locked"><i class="fas fa-lock"></i></span>';
         }
-    });
-}
-
-// Update folder click handler - ensure it checks view permission
-$(document).on('click', '.folder-item, .folder-item-grid', function(e) {
-    // Check if the click was on the actions button or menu
-    if ($(e.target).closest('.folder-actions, .folder-actions-btn, .folder-actions-menu, .folder-action-item').length > 0) {
-        return; // Don't navigate if clicking on actions
+        $html .= '</div>';
+        $html .= '<div class="tree-actions">';
+        $html .= '<button class="tree-actions-btn" onclick="toggleTreeMenu(this, event)"><i class="fas fa-ellipsis-v"></i></button>';
+        $html .= '<div class="tree-actions-menu">';
+        
+        if (canPerformAction($db, $child['folder_id'], $user_emp_id, 'edit_folder')) {
+            $html .= '<button class="tree-action-item" onclick="editFolder(' . $child['folder_id'] . ', \'' . htmlspecialchars(addslashes($child['folder_name'])) . '\', \'' . htmlspecialchars(addslashes($child['description'] ?? '')) . '\', ' . $child['is_locked'] . ')"><i class="fas fa-edit"></i> Edit</button>';
+        }
+        if (canPerformAction($db, $child['folder_id'], $user_emp_id, 'share_folder')) {
+            $html .= '<button class="tree-action-item" onclick="shareFolder(' . $child['folder_id'] . ', \'' . htmlspecialchars(addslashes($child['folder_name'])) . '\')"><i class="fas fa-share-alt"></i> Share</button>';
+        }
+        if (canPerformAction($db, $child['folder_id'], $user_emp_id, 'manage_shares')) {
+            $html .= '<button class="tree-action-item" onclick="manageShares(' . $child['folder_id'] . ', \'' . htmlspecialchars(addslashes($child['folder_name'])) . '\')"><i class="fas fa-users"></i> Manage Access</button>';
+        }
+        if (canPerformAction($db, $child['folder_id'], $user_emp_id, 'delete_folder')) {
+            $html .= '<button class="tree-action-item delete" onclick="deleteFolder(' . $child['folder_id'] . ', \'' . htmlspecialchars(addslashes($child['folder_name'])) . '\', ' . $child['is_locked'] . ')"><i class="fas fa-trash"></i> Delete</button>';
+        }
+        
+        $html .= '</div></div></div>';
+        
+        if (!empty($child['children'])) {
+            $html .= renderTreeChildren($child['children'], $db, $user_emp_id, $current_folder_id);
+        }
+        
+        $html .= '</li>';
     }
+    $html .= '</ul>';
     
-    const folderId = $(this).data('folder-id');
-    const isLocked = $(this).data('locked') == 1;
-    
-    // Check if user has at least view permission for this folder
-    $.ajax({
-        url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
-        type: 'POST',
-        data: {
-            action: 'check_folder_access',
-            folder_id: folderId
-        },
-        success: function(response) {
-            try {
-                const result = JSON.parse(response);
-                if (result.has_access) {
-                    if (isLocked) {
-                        $('#unlockFolderId').val(folderId);
-                        $('#unlockFolderModal').modal('show');
-                    } else {
-                        window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
-                    }
-                } else {
-                    Swal.fire({
-                        title: 'Access Denied',
-                        text: 'You do not have permission to access this folder.',
-                        icon: 'warning',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            } catch (e) {
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Failed to check folder access.',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-            }
-        },
-        error: function() {
-            Swal.fire({
-                title: 'Error',
-                text: 'Failed to check folder access.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    });
-});
-
-// Unlock folder form submission
-$('#unlockFolderForm').submit(function(e) {
-    e.preventDefault();
-    
-    const formData = $(this).serialize();
-    const folderId = $('#unlockFolderId').val();
-    
-    $.ajax({
-        url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
-        type: 'POST',
-        data: formData,
-        success: function(response) {
-            try {
-                const result = typeof response === 'string' ? JSON.parse(response) : response;
-                if (result.success) {
-                    $('#unlockFolderModal').modal('hide');
-                    // Store unlocked state in session
-                    if (typeof result.unlocked_folders !== 'undefined') {
-                        // Redirect to the unlocked folder
-                        window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
-                    }
-                } else {
-                    Swal.fire({
-                        title: 'Incorrect Password',
-                        text: result.message || 'The password you entered is incorrect.',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            } catch (e) {
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Invalid server response',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-            }
-        },
-        error: function(xhr, status, error) {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Failed to unlock folder: ' + error,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    });
-});
-
-// Initialize when jQuery is available
-if (window.jQuery) {
-    initializeUpload();
-} else {
-    // Wait for jQuery to load
-    var script = document.createElement('script');
-    script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
-    script.onload = initializeUpload;
-    document.head.appendChild(script);
+    return $html;
 }
-// Delete functionality
+?>
+<script>
+let selectedFiles = [];
+
 $(document).ready(function() {
+    // Initialize Select2
+    if ($.fn.select2) {
+        $('.select2').select2({
+            placeholder: "Select employees...",
+            allowClear: true,
+            width: '100%'
+        });
+    }
+
+    // Toggle password visibility
+    $('#toggleCreatePassword').click(function() {
+        const field = $('#password');
+        field.attr('type', field.attr('type') === 'password' ? 'text' : 'password');
+        $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+    });
+
+    $('#toggleEditPassword').click(function() {
+        const field = $('#editPassword');
+        field.attr('type', field.attr('type') === 'password' ? 'text' : 'password');
+        $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+    });
+
+    // Remove password checkbox
+    $('#removePassword').change(function() {
+        if ($(this).prop('checked')) {
+            $('#editPassword').prop('disabled', true).val('').attr('placeholder', 'Password will be removed');
+        } else {
+            $('#editPassword').prop('disabled', false);
+        }
+    });
+
+    // Search functionality
+    $('#searchInput').on('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        // Filter folders
+        $('.folder-item-grid').each(function() {
+            const name = $(this).find('.folder-name').text().toLowerCase();
+            $(this).toggle(name.includes(searchTerm));
+        });
+        
+        // Filter files
+        $('.file-row').each(function() {
+            const name = $(this).find('.file-name').text().toLowerCase();
+            $(this).toggle(name.includes(searchTerm));
+        });
+    });
+
     // Select all checkboxes
-    $('#selectAllHeader, #selectAll').change(function() {
-        const isChecked = $(this).prop('checked');
-        $('.file-checkbox').prop('checked', isChecked);
+    $('#selectAll').change(function() {
+        $('.file-checkbox').prop('checked', $(this).prop('checked'));
         updateDeleteButton();
     });
 
     // Individual checkbox change
     $(document).on('change', '.file-checkbox', function() {
-        updateDeleteButton();
-        // Update select all checkbox state
         const totalCheckboxes = $('.file-checkbox').length;
         const checkedCheckboxes = $('.file-checkbox:checked').length;
-        $('#selectAllHeader, #selectAll').prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
+        $('#selectAll').prop('checked', totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0);
+        updateDeleteButton();
     });
 
-    // Update delete button state
     function updateDeleteButton() {
         const checkedCount = $('.file-checkbox:checked').length;
         $('#deleteSelectedBtn').prop('disabled', checkedCount === 0);
@@ -1715,14 +2348,12 @@ $(document).ready(function() {
         if (checkedCount === 0) return;
 
         Swal.fire({
-            title: 'Are you sure?',
-            text: 'You are about to delete ' + checkedCount + ' file(s). This action cannot be undone.',
+            title: 'Delete Files?',
+            html: `Are you sure you want to delete <strong>${checkedCount}</strong> selected file(s)?<br><br>This action cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete them!',
-            cancelButtonText: 'Cancel'
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, delete them!'
         }).then((result) => {
             if (result.isConfirmed) {
                 $('#deleteFilesForm').submit();
@@ -1736,17 +2367,14 @@ $(document).ready(function() {
         const fileName = $(this).data('file-name');
 
         Swal.fire({
-            title: 'Are you sure?',
-            text: 'You are about to delete "' + fileName + '". This action cannot be undone.',
+            title: 'Delete File?',
+            html: `Are you sure you want to delete "<strong>${fileName}</strong>"?<br><br>This action cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, delete it!'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Create a temporary form for single file deletion
                 const form = $('<form>').attr({
                     method: 'POST',
                     action: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>'
@@ -1768,174 +2396,189 @@ $(document).ready(function() {
             }
         });
     });
-});
 
-// Folder operations
-$(document).ready(function() {
-    // Edit folder button click
-    $(document).on('click', '.edit-folder-btn', function(e) {
-        e.stopPropagation();
-        
-        const folderId = $(this).data('folder-id');
-        const folderName = $(this).data('folder-name');
-        const description = $(this).data('description');
-        const isLocked = $(this).data('is-locked');
-        
-        $('#editFolderId').val(folderId);
-        $('#editFolderName').val(folderName);
-        $('#editDescription').val(description);
-        $('#editPassword').val('');
-        $('#removePassword').prop('checked', false);
-        
-        if (isLocked == 1) {
-            $('#editPassword').attr('placeholder', 'Enter new password to change current one');
-        } else {
-            $('#editPassword').attr('placeholder', 'Add password to protect folder');
-        }
-        
-        $('#editFolderModal').modal('show');
-    });
-    
-    // Remove password checkbox handler
-    $('#removePassword').change(function() {
-        if ($(this).prop('checked')) {
-            $('#editPassword').prop('disabled', true).val('').attr('placeholder', 'Password will be removed');
-        } else {
-            $('#editPassword').prop('disabled', false);
-            if ($('#editFolderId').val()) {
-                const isLocked = $('.edit-folder-btn[data-folder-id="' + $('#editFolderId').val() + '"]').data('is-locked');
-                $('#editPassword').attr('placeholder', isLocked == 1 ? 
-                    'Enter new password to change current one' : 'Add password to protect folder');
-            }
-        }
-    });
-    
-    // Delete folder button click
-    $(document).on('click', '.delete-folder-btn', function(e) {
-        e.stopPropagation();
-        
-        const folderId = $(this).data('folder-id');
-        const folderName = $(this).data('folder-name');
-        
-        Swal.fire({
-            title: 'Are you sure?',
-            html: `You are about to delete the folder "<strong>${folderName}</strong>" and all its contents (files and subfolders).<br><br>This action cannot be undone!`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true,
-            preConfirm: () => {
-                return fetch('folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `action=delete_folder&folder_id=${folderId}`
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.text();
-                })
-                .catch(error => {
-                    Swal.showValidationMessage(`Request failed: ${error}`);
-                });
-            },
-            allowOutsideClick: () => !Swal.isLoading()
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    title: 'Deleted!',
-                    text: 'The folder has been deleted.',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    location.reload();
-                });
-            }
-        });
-    });
-    
-    // Edit folder form submission
-    $('#editFolderForm').submit(function(e) {
+    // Unlock folder form
+    $('#unlockFolderForm').submit(function(e) {
         e.preventDefault();
         
         const formData = $(this).serialize();
-        
-        if ($('#removePassword').prop('checked')) {
-            formData += '&password=';
-        }
+        const folderId = $('#unlockFolderId').val();
         
         $.ajax({
             url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
             type: 'POST',
             data: formData,
             success: function(response) {
-                $('#editFolderModal').modal('hide');
-                Swal.fire({
-                    title: 'Success!',
-                    text: 'Folder updated successfully!',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    location.reload();
-                });
+                try {
+                    const result = JSON.parse(response);
+                    if (result.success) {
+                        $('#unlockFolderModal').modal('hide');
+                        window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
+                    } else {
+                        Swal.fire({
+                            title: 'Incorrect Password',
+                            text: result.message || 'The password you entered is incorrect.',
+                            icon: 'error'
+                        });
+                    }
+                } catch (e) {
+                    Swal.fire('Error!', 'Invalid server response', 'error');
+                }
+            }
+        });
+    });
+
+    // Share folder form
+    $('#shareFolderForm').submit(function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        const shareBtn = $('#shareFolderBtn');
+        const originalText = shareBtn.html();
+        
+        shareBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sharing...');
+        
+        $.ajax({
+            url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                shareBtn.prop('disabled', false).html(originalText);
+                
+                if (response.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: response.message,
+                        icon: 'success'
+                    }).then(() => {
+                        $('#shareFolderModal').modal('hide');
+                        $('#shareFolderForm')[0].reset();
+                        $('#shareEmployees').val(null).trigger('change');
+                    });
+                } else {
+                    Swal.fire('Error!', response.message || 'Failed to share folder.', 'error');
+                }
             },
-            error: function(xhr, status, error) {
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Failed to update folder: ' + error,
-                    icon: 'error',
-                    confirmButtonText: 'OK'
+            error: function() {
+                shareBtn.prop('disabled', false).html(originalText);
+                Swal.fire('Error!', 'Failed to share folder.', 'error');
+            }
+        });
+    });
+
+    // Revoke access
+    $(document).on('click', '.revoke-access', function() {
+        const shareId = $(this).data('share-id');
+        const employeeName = $(this).data('employee-name');
+        
+        Swal.fire({
+            title: 'Revoke Access?',
+            html: `Are you sure you want to revoke <strong>${employeeName}</strong>'s access?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, revoke access!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
+                    type: 'POST',
+                    data: {
+                        action: 'revoke_access',
+                        share_id: shareId
+                    },
+                    success: function(response) {
+                        try {
+                            const result = JSON.parse(response);
+                            if (result.success) {
+                                Swal.fire({
+                                    title: 'Access Revoked!',
+                                    text: result.message,
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Error!', result.message, 'error');
+                            }
+                        } catch (e) {
+                            Swal.fire('Error!', 'Invalid server response', 'error');
+                        }
+                    }
                 });
             }
         });
     });
+
+    // Initialize file upload
+    initFileUpload();
 });
 
-// Toggle folder actions menu
-function toggleFolderMenu(button, event) {
+// Global functions
+function navigateToFolder(folderId, isLocked) {
+    if (isLocked) {
+        $('#unlockFolderId').val(folderId);
+        $('#unlockFolderModal').modal('show');
+    } else {
+        window.location.href = 'folder_contents.php?folder_id=' + folderId + '&section_id=<?= $section_id ?>';
+    }
+}
+
+function toggleTreeBranch(expander, event) {
+    event.stopPropagation();
+    const treeItem = $(expander).closest('.tree-item');
+    const children = treeItem.find('> .tree-children');
+    const icon = $(expander).find('i');
+    
+    if (children.is(':visible')) {
+        children.slideUp(200);
+        icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+    } else {
+        children.slideDown(200);
+        icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+        // Load children if not loaded (you can implement AJAX here)
+        loadFolderChildren(treeItem, $(expander).closest('.tree-node').data('folder-id'));
+    }
+}
+
+function loadFolderChildren(treeItem, folderId) {
+    const childrenContainer = treeItem.find('> .tree-children');
+    // You can implement AJAX loading of subfolders here
+    // For now, just show a message
+    if (childrenContainer.find('.tree-item').length === 1) {
+        childrenContainer.html('<li class="tree-item"><div class="tree-node"><div class="tree-indent"></div><span class="tree-name">No subfolders</span></div></li>');
+    }
+}
+
+function toggleTreeMenu(button, event) {
     event.stopPropagation();
     event.preventDefault();
     
     const menu = button.nextElementSibling;
-    const isShowing = menu.classList.contains('show');
+    $('.tree-actions-menu').removeClass('show');
     
-    // Close all other menus
-    document.querySelectorAll('.folder-actions-menu').forEach(m => {
-        m.classList.remove('show');
-    });
-    
-    if (!isShowing) {
+    if (!menu.classList.contains('show')) {
         menu.classList.add('show');
-    } else {
-        menu.classList.remove('show');
+        
+        setTimeout(() => {
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menu.contains(e.target) && e.target !== button) {
+                    menu.classList.remove('show');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }, 10);
     }
-    
-    // Close menu when clicking elsewhere
-    const closeMenu = (e) => {
-        if (!menu.contains(e.target) && e.target !== button) {
-            menu.classList.remove('show');
-            document.removeEventListener('click', closeMenu);
-        }
-    };
-    
-    setTimeout(() => {
-        document.addEventListener('click', closeMenu);
-    }, 10);
 }
 
-// Edit folder function
 function editFolder(folderId, folderName, description, isLocked) {
     $('#editFolderId').val(folderId);
     $('#editFolderName').val(folderName);
     $('#editDescription').val(description);
     $('#editPassword').val('');
     $('#removePassword').prop('checked', false);
+    $('#editPassword').prop('disabled', false);
     
     if (isLocked == 1) {
         $('#editPassword').attr('placeholder', 'Enter new password to change current one');
@@ -1944,24 +2587,17 @@ function editFolder(folderId, folderName, description, isLocked) {
     }
     
     $('#editFolderModal').modal('show');
-    
-    // Close the menu
-    document.querySelectorAll('.folder-actions-menu').forEach(m => {
-        m.classList.remove('show');
-    });
+    $('.tree-actions-menu').removeClass('show');
 }
 
-// Delete folder function
 function deleteFolder(folderId, folderName, isLocked) {
     Swal.fire({
-        title: 'Are you sure?',
-        html: `You are about to delete the folder "<strong>${folderName}</strong>" and all its contents (files and subfolders).<br><br>This action cannot be undone!`,
+        title: 'Delete Folder?',
+        html: `Are you sure you want to delete "<strong>${folderName}</strong>" and all its contents?<br><br>This action cannot be undone.`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        confirmButtonColor: '#ef4444',
         confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel',
         showLoaderOnConfirm: true,
         preConfirm: () => {
             return fetch('folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>', {
@@ -1972,36 +2608,28 @@ function deleteFolder(folderId, folderName, isLocked) {
                 body: `action=delete_folder&folder_id=${folderId}`
             })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
+                if (!response.ok) throw new Error('Network response was not ok');
                 return response.text();
             })
             .catch(error => {
                 Swal.showValidationMessage(`Request failed: ${error}`);
             });
-        },
-        allowOutsideClick: () => !Swal.isLoading()
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             Swal.fire({
                 title: 'Deleted!',
                 text: 'The folder has been deleted.',
-                icon: 'success',
-                confirmButtonText: 'OK'
+                icon: 'success'
             }).then(() => {
                 location.reload();
             });
         }
     });
     
-    // Close the menu
-    document.querySelectorAll('.folder-actions-menu').forEach(m => {
-        m.classList.remove('show');
-    });
+    $('.tree-actions-menu').removeClass('show');
 }
 
-// Share folder function
 function shareFolder(folderId, folderName) {
     $('#shareFolderForm input[name="folder_id"]').val(folderId);
     $('#shareFolderModal .modal-title').html('Share Folder: ' + folderName);
@@ -2009,176 +2637,247 @@ function shareFolder(folderId, folderName) {
     $('#permissionLevel').val('view');
     $('#expiresAt').val('');
     $('#shareFolderModal').modal('show');
+    $('.tree-actions-menu').removeClass('show');
+}
+
+function manageShares(folderId, folderName) {
+    const modal = $('#manageSharesModal');
+    const content = $('#manageSharesContent');
     
-    // Close the menu
-    document.querySelectorAll('.folder-actions-menu').forEach(m => {
-        m.classList.remove('show');
+    content.html(`
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="mt-2">Loading shared access information...</p>
+        </div>
+    `);
+    
+    modal.find('.modal-title').text('Manage Shared Access: ' + folderName);
+    modal.modal('show');
+    
+    $.ajax({
+        url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
+        type: 'POST',
+        data: {
+            action: 'get_shares',
+            folder_id: folderId
+        },
+        success: function(response) {
+            content.html(response);
+        },
+        error: function() {
+            content.html(`
+                <div class="alert alert-danger text-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Failed to load shared access information.
+                </div>
+            `);
+        }
+    });
+    
+    $('.tree-actions-menu').removeClass('show');
+}
+
+function viewFile(fileId) {
+    window.location.href = 'view_file.php?id=' + fileId;
+}
+
+// File Upload Functions
+function initFileUpload() {
+    const dropZone = $('#fileDropZone');
+    const fileInput = $('#fileInput');
+    const browseBtn = $('#browseFilesBtn');
+    
+    browseBtn.off('click').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.trigger('click');
+    });
+    
+    fileInput.off('change').on('change', function(e) {
+        handleFiles(e.target.files);
+    });
+    
+    dropZone.off('dragover dragleave drop click').on('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.addClass('dragover');
+    }).on('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.removeClass('dragover');
+    }).on('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.removeClass('dragover');
+        
+        const files = e.originalEvent.dataTransfer.files;
+        handleFiles(files);
+    }).on('click', function(e) {
+        if (e.target === this || $(e.target).hasClass('drop-zone-content')) {
+            fileInput.trigger('click');
+        }
     });
 }
 
-
-function validateShareForm() {
-    const employeeIds = $('#shareEmployees').val();
+function handleFiles(files) {
+    const maxFiles = 10;
+    const maxFileSize = 500 * 1024 * 1024;
     
-    if (!employeeIds || employeeIds.length === 0) {
-        Swal.fire({
-            title: 'Selection Required',
-            text: 'Please select at least one employee to share with.',
-            icon: 'warning',
-            confirmButtonText: 'OK'
-        });
-        return false;
+    if (!files || files.length === 0) return;
+    
+    const newFiles = Array.from(files);
+    
+    if (selectedFiles.length + newFiles.length > maxFiles) {
+        Swal.fire('Error!', `You can only upload up to ${maxFiles} files at once.`, 'error');
+        return;
     }
     
-    const permissionLevel = $('#permissionLevel').val();
-    if (!permissionLevel) {
-        Swal.fire({
-            title: 'Permission Required',
-            text: 'Please select a permission level.',
-            icon: 'warning',
-            confirmButtonText: 'OK'
-        });
-        return false;
-    }
+    newFiles.forEach(file => {
+        if (selectedFiles.length < maxFiles) {
+            const fileExists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+            
+            if (file.size > maxFileSize) {
+                Swal.fire('Error!', `File "${file.name}" exceeds the 500MB size limit.`, 'error');
+                return;
+            }
+            
+            if (!fileExists) {
+                selectedFiles.push(file);
+            }
+        }
+    });
     
-    return true;
+    updateFileList();
 }
-// Share folder form submission
-$('#shareFolderForm').submit(function(e) {
+
+function updateFileList() {
+    const container = $('#selectedFilesContainer');
+    const list = $('#selectedFilesList');
+    const count = $('#fileCount');
+    
+    list.empty();
+    
+    if (selectedFiles.length === 0) {
+        container.hide();
+        return;
+    }
+    
+    selectedFiles.forEach((file, index) => {
+        const fileSize = formatFileSize(file.size);
+        
+        const fileItem = `
+            <div class="file-item" data-index="${index}">
+                <div class="file-info">
+                    <i class="fas fa-file file-icon"></i>
+                    <div class="file-details">
+                        <div class="file-name">${escapeHtml(file.name)}</div>
+                        <div class="file-size">${fileSize}</div>
+                    </div>
+                </div>
+                <button type="button" class="file-remove" onclick="removeFile(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        list.append(fileItem);
+    });
+    
+    count.text(selectedFiles.length);
+    container.show();
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    updateFileList();
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Upload form submission
+$('#uploadForm').submit(function(e) {
     e.preventDefault();
     
-    const formData = $(this).serialize();
-    const shareBtn = $('#shareFolderBtn');
-    const originalText = shareBtn.html();
+    if (selectedFiles.length === 0) {
+        Swal.fire('Error!', 'Please select at least one file to upload.', 'error');
+        return;
+    }
     
-    shareBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sharing...');
+    const formData = new FormData(this);
+    
+    formData.delete('files[]');
+    selectedFiles.forEach(file => {
+        formData.append('files[]', file);
+    });
+    
+    const uploadBtn = $('#uploadBtn');
+    const originalText = uploadBtn.html();
+    const progress = $('#uploadProgress');
+    
+    uploadBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Uploading...');
+    progress.show();
     
     $.ajax({
         url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
         type: 'POST',
         data: formData,
-        dataType: 'json', // Explicitly expect JSON response
-        success: function(response) {
-            shareBtn.prop('disabled', false).html(originalText);
-            
-            // Response should already be parsed as JSON due to dataType: 'json'
-            if (response.success) {
-                Swal.fire({
-                    title: 'Success!',
-                    text: response.message,
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    $('#shareFolderModal').modal('hide');
-                    // Reset form
-                    $('#shareFolderForm')[0].reset();
-                    $('#shareEmployees').val(null).trigger('change');
-                });
-            } else {
-                Swal.fire({
-                    title: 'Error!',
-                    text: response.message || 'Failed to share folder.',
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-            }
-        },
-        error: function(xhr, status, error) {
-            shareBtn.prop('disabled', false).html(originalText);
-            
-            console.error('AJAX Error:', {
-                status: xhr.status,
-                statusText: xhr.statusText,
-                responseText: xhr.responseText,
-                error: error
+        processData: false,
+        contentType: false,
+        xhr: function() {
+            const xhr = new window.XMLHttpRequest();
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    $('.progress-bar').css('width', percentComplete + '%');
+                    $('.progress-text').text(Math.round(percentComplete) + '%');
+                }
             });
+            return xhr;
+        },
+        success: function(response) {
+            uploadBtn.prop('disabled', false).html(originalText);
+            progress.hide();
             
-            let errorMessage = 'Failed to share folder: ';
-            
-            if (xhr.status === 0) {
-                errorMessage += 'Network error. Please check your connection.';
-            } else if (xhr.status === 500) {
-                errorMessage += 'Server error. Please try again later.';
-            } else {
-                errorMessage += error || 'Unknown error occurred.';
-            }
-            
-            // Try to parse response text for more details
             try {
-                const response = JSON.parse(xhr.responseText);
-                if (response && response.message) {
-                    errorMessage = response.message;
+                const result = JSON.parse(response);
+                if (result.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: result.message,
+                        icon: 'success'
+                    }).then(() => {
+                        $('#uploadFileModal').modal('hide');
+                        $('#uploadForm')[0].reset();
+                        selectedFiles = [];
+                        updateFileList();
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error!', result.message || 'Upload failed', 'error');
                 }
             } catch (e) {
-                // If not JSON, use the generic error message
+                Swal.fire('Error!', 'Upload completed but server response was invalid.', 'warning');
+                setTimeout(() => location.reload(), 2000);
             }
-            
-            Swal.fire({
-                title: 'Error!',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
+        },
+        error: function() {
+            uploadBtn.prop('disabled', false).html(originalText);
+            progress.hide();
+            Swal.fire('Error!', 'Failed to upload files.', 'error');
         }
-    });
-});
-
-
-// Revoke access handler
-$(document).on('click', '.revoke-access', function() {
-    const shareId = $(this).data('share-id');
-    const employeeName = $(this).data('employee-name');
-    
-    Swal.fire({
-        title: 'Revoke Access?',
-        html: `Are you sure you want to revoke <strong>${employeeName}</strong>'s access to this folder?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, revoke access!',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
-                type: 'POST',
-                data: {
-                    action: 'revoke_access',
-                    share_id: shareId
-                },
-                success: function(response) {
-                    try {
-                        const result = JSON.parse(response);
-                        if (result.success) {
-                            Swal.fire({
-                                title: 'Access Revoked!',
-                                text: result.message,
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                location.reload();
-                            });
-                        } else {
-                            Swal.fire('Error!', result.message, 'error');
-                        }
-                    } catch (e) {
-                        Swal.fire('Error!', 'Invalid server response', 'error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    Swal.fire('Error!', 'Failed to revoke access: ' + error, 'error');
-                }
-            });
-        }
-    });
-});
-
-// Initialize Select2 for employee selection
-$(document).ready(function() {
-    $('.select2').select2({
-        placeholder: "Select employees...",
-        allowClear: true
     });
 });
 
@@ -2211,8 +2910,7 @@ $(document).on('click', '.update-share', function() {
                     Swal.fire({
                         title: 'Success!',
                         text: `Permissions updated for ${employeeName}`,
-                        icon: 'success',
-                        confirmButtonText: 'OK'
+                        icon: 'success'
                     });
                 } else {
                     Swal.fire('Error!', result.message, 'error');
@@ -2221,99 +2919,69 @@ $(document).on('click', '.update-share', function() {
                 Swal.fire('Error!', 'Invalid server response', 'error');
             }
         },
-        error: function(xhr, status, error) {
+        error: function() {
             updateBtn.prop('disabled', false).html(originalText);
-            Swal.fire('Error!', 'Failed to update permissions: ' + error, 'error');
+            Swal.fire('Error!', 'Failed to update permissions.', 'error');
         }
     });
 });
-
-// Auto-save when permission level changes (optional)
-$(document).on('change', '.permission-select', function() {
-    const shareId = $(this).data('share-id');
-    const employeeName = $(this).closest('tr').find('.employee-name').text();
-    const permissionLevel = $(this).val();
-    const expiresAt = $(this).closest('tr').find('.expiry-input').val();
-    
-    // You can add auto-save functionality here if desired
-    console.log('Permission changed for share:', shareId, 'to:', permissionLevel);
-});
-
-// Manage shares function
-function manageShares(folderId, folderName) {
-    const modal = $('#manageSharesModal');
-    const content = $('#manageSharesContent');
-    
-    // Show loading state
-    content.html(`
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
-            </div>
-            <p class="mt-2">Loading shared access information...</p>
-        </div>
-    `);
-    
-    modal.find('.modal-title').text('Manage Shared Access: ' + folderName);
-    modal.modal('show');
-    
-    // Load shares content via AJAX
-    $.ajax({
-        url: 'folder_contents.php?folder_id=<?= $folder_id ?>&section_id=<?= $section_id ?>',
-        type: 'POST',
-        data: {
-            action: 'get_shares',
-            folder_id: folderId
-        },
-        success: function(response) {
-            content.html(response);
-        },
-        error: function(xhr, status, error) {
-            content.html(`
-                <div class="alert alert-danger text-center">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    Failed to load shared access information: ${error}
-                </div>
-            `);
-        }
-    });
-    
-    // Close the menu
-    document.querySelectorAll('.folder-actions-menu').forEach(m => {
-        m.classList.remove('show');
-    });
-}
 </script>
 </body>
 </html>
 
 <?php
-// Helper functions
 function getFileIcon($fileType) {
     $type = strtolower($fileType);
     $icons = [
-        'pdf' => 'pdf text-danger',
-        'doc' => 'word text-primary',
-        'docx' => 'word text-primary',
-        'xls' => 'excel text-success',
-        'xlsx' => 'excel text-success',
-        'ppt' => 'powerpoint text-warning',
-        'pptx' => 'powerpoint text-warning',
-        'jpg' => 'image text-info',
-        'jpeg' => 'image text-info',
-        'png' => 'image text-info',
-        'gif' => 'image text-info',
-        'zip' => 'archive text-secondary',
-        'rar' => 'archive text-secondary',
-        'txt' => 'text text-dark',
-        'mp4' => 'video text-danger',
-        'avi' => 'video text-danger',
-        'mov' => 'video text-danger',
-        'mp3' => 'audio text-info',
-        'wav' => 'audio text-info'
+        'pdf' => 'pdf',
+        'doc' => 'word',
+        'docx' => 'word',
+        'xls' => 'excel',
+        'xlsx' => 'excel',
+        'ppt' => 'powerpoint',
+        'pptx' => 'powerpoint',
+        'jpg' => 'image',
+        'jpeg' => 'image',
+        'png' => 'image',
+        'gif' => 'image',
+        'zip' => 'archive',
+        'rar' => 'archive',
+        'txt' => 'alt',
+        'mp4' => 'video',
+        'avi' => 'video',
+        'mov' => 'video',
+        'mp3' => 'audio',
+        'wav' => 'audio'
     ];
     
-    return $icons[$type] ?? 'file text-secondary';
+    return $icons[$type] ?? 'file';
+}
+
+function getFileIconClass($fileType) {
+    $type = strtolower($fileType);
+    $classes = [
+        'pdf' => 'text-danger',
+        'doc' => 'text-primary',
+        'docx' => 'text-primary',
+        'xls' => 'text-success',
+        'xlsx' => 'text-success',
+        'ppt' => 'text-warning',
+        'pptx' => 'text-warning',
+        'jpg' => 'text-info',
+        'jpeg' => 'text-info',
+        'png' => 'text-info',
+        'gif' => 'text-info',
+        'zip' => 'text-secondary',
+        'rar' => 'text-secondary',
+        'txt' => 'text-dark',
+        'mp4' => 'text-danger',
+        'avi' => 'text-danger',
+        'mov' => 'text-danger',
+        'mp3' => 'text-info',
+        'wav' => 'text-info'
+    ];
+    
+    return $classes[$type] ?? 'text-secondary';
 }
 
 function formatFileSize($bytes) {
