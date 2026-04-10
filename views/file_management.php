@@ -260,5 +260,18 @@ $stats['manager_files'] = $stmt->get_result()->fetch_assoc()['manager_files'];
         <?php include '../includes/mainfooter.php'; ?>
     </div>
     <?php include '../includes/footer.php'; ?>
+<?php if (!empty($_SESSION['swal_error'])): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: <?= json_encode($_SESSION['swal_error']['title']) ?>,
+        text:  <?= json_encode($_SESSION['swal_error']['text']) ?>,
+        icon:  <?= json_encode($_SESSION['swal_error']['icon']) ?>,
+        confirmButtonColor: '#800020',
+        confirmButtonText: 'OK'
+    });
+});
+</script>
+<?php unset($_SESSION['swal_error']); endif; ?>
 </body>
 </html>

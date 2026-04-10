@@ -5,19 +5,24 @@ require_once '../config/database.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['emp_id'])) {
-    echo json_encode(['count' => 0]);
+    echo json_encode(['success' => false, 'message' => 'Not authenticated']);
     exit();
 }
 
-$database = new Database();
-$db = $database->getConnection();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
+    $database = new Database();
+    $db = $database->getConnection();
 
-$query = "SELECT COUNT(*) as unread_count FROM admin_notifications 
-        WHERE admin_emp_id = ? AND is_read = 0";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $_SESSION['emp_id']);
-$stmt->execute();
-$result = $stmt->get_result();
-$count = $result->fetch_assoc()['unread_count'];
+    // FIX: table is `notifications`, PK is `notification_id`, owner column is `emp_id`
+    $query = "DELETE FROM notifications WHERE notification_id = ? AND emp_id = ?";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param("ii", $_POST['id'], $_SESSION['emp_id']);
 
-echo json_encode(['count' => $count]);
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid request']);
+}

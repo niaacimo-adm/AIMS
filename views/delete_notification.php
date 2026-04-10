@@ -12,11 +12,12 @@ if (!isset($_SESSION['emp_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     $database = new Database();
     $db = $database->getConnection();
-    
-    $query = "DELETE FROM admin_notifications WHERE id = ? AND admin_emp_id = ?";
+
+    // FIX: table is `notifications`, PK is `notification_id`, owner column is `emp_id`
+    $query = "DELETE FROM notifications WHERE notification_id = ? AND emp_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("ii", $_POST['id'], $_SESSION['emp_id']);
-    
+
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);
     } else {

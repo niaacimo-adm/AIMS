@@ -12,11 +12,12 @@ if (!isset($_SESSION['emp_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $database = new Database();
     $db = $database->getConnection();
-    
-    $query = "UPDATE admin_notifications SET is_read = 1 WHERE admin_emp_id = ?";
+
+    // FIX: table is `notifications`, column is `emp_id`
+    $query = "UPDATE notifications SET is_read = 1 WHERE emp_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $_SESSION['emp_id']);
-    
+
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);
     } else {

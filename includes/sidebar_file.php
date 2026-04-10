@@ -32,6 +32,30 @@ ob_end_clean();
 /* These vars come from the parent (section_files.php): $folders, $section_name, $db, $user_emp_id */
 $sb_folders      = isset($folders) ? $folders : [];
 $sb_section_name = isset($section_name) ? $section_name : 'My Drive';
+
+// Build recursive folder tree for the sidebar
+function sbBuildTree($db, $parent_id) {
+    $children = [];
+    if (!$db) return $children;
+    $st = $db->prepare("SELECT f.folder_id, f.folder_name, f.is_locked,
+        (SELECT COUNT(*) FROM folders WHERE parent_folder_id = f.folder_id) as child_count
+        FROM folders f WHERE f.parent_folder_id = ? ORDER BY f.folder_name");
+    if (!$st) return $children;
+    $st->bind_param("i", $parent_id);
+    $st->execute();
+    $res = $st->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $row['children'] = sbBuildTree($db, $row['folder_id']);
+        $children[] = $row;
+    }
+    return $children;
+}
+
+$sb_db = isset($db) ? $db : null;
+foreach ($sb_folders as &$sf) {
+    $sf['children'] = sbBuildTree($sb_db, $sf['folder_id']);
+}
+unset($sf);
 ?>
 
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
@@ -60,115 +84,93 @@ $sb_section_name = isset($section_name) ? $section_name : 'My Drive';
         </div>
       </div>
 
-        <!-- New Folder Button - Windows Explorer style -->
-        <div class="sidebar-header">
-            <button class="btn-new-folder" data-toggle="modal" data-target="#createFolderModal">
-                <i class="fas fa-folder-plus"></i>
-                <span>New folder</span>
-            </button>
-        </div>
 
-        <!-- Navigation - Windows Explorer style -->
+
+        <!-- Navigation -->
         <nav class="mt-2">
-            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-                
-                <!-- Quick Access Section -->
-                <li class="nav-header">Quick access</li>
-                
+            <ul class="nav nav-pills nav-sidebar flex-column" role="menu">
+
+                <!-- ── THIS PC ─────────────────────────────────── -->
+                <li class="nav-header">This PC</li>
+
+                <li class="nav-item" id="sbNavRootItem">
+                    <?php
+                    $current_page = basename($_SERVER['PHP_SELF']);
+                    $hdd_href = ($current_page === 'folder_contents.php')
+                        ? 'section_files.php?section_id=' . (isset($section_id) ? urlencode($section_id) : '')
+                        : 'folder_contents.php?section_id=' . (isset($section_id) ? urlencode($section_id) : '');
+                    ?>
+                    <a href="<?= $hdd_href ?>" class="nav-link sb-active" id="sbRootLink">
+                        <i class="nav-icon fas fa-hdd"></i>
+                        <p><?= htmlspecialchars($sb_section_name) ?></p>
+                    </a>
+                </li>
+
+                <!-- ── QUICK ACCESS ────────────────────────────── -->
+                <li class="nav-header">Quick Access</li>
+
                 <li class="nav-item">
                     <a href="file_management.php" class="nav-link <?= $current_page == 'file_management.php' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-home"></i>
                         <p>Home</p>
                     </a>
                 </li>
-                
+
                 <li class="nav-item">
                     <a href="#" class="nav-link" data-toggle="modal" data-target="#uploadFileModal">
                         <i class="nav-icon fas fa-cloud-upload-alt"></i>
                         <p>Upload</p>
                     </a>
                 </li>
-                
+
+                <!-- Uploaded Files: collapsible with search bar -->
+                <li class="nav-item" id="sbUploadedItem">
+                    <a href="#" class="nav-link" id="sbUploadedToggle"
+                       onclick="sbToggleUploaded();return false;">
+                        <i class="nav-icon fas fa-file-upload"></i>
+                        <p>Uploaded Files
+                            <i class="right fas fa-angle-left" id="sbUploadedArrow"></i>
+                        </p>
+                    </a>
+                    <div id="sbUploadedPanel" style="display:none;padding:4px 8px 8px;">
+                        <div class="sb-search-wrap">
+                            <i class="fas fa-search sb-search-icon"></i>
+                            <input type="text" id="sbFileSearch" class="sb-search-input" placeholder="Search files&hellip;" autocomplete="off">
+                        </div>
+                        <div id="sbFileResults">
+                            <div class="sb-loading"><i class="fas fa-spinner fa-spin"></i> Loading&hellip;</div>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- ── VIEWS ───────────────────────────────────── -->
+                <li class="nav-header">Views</li>
+
                 <li class="nav-item">
-                    <a href="#" class="nav-link" onclick="if(typeof filterShared==='function')filterShared();return false;">
+                    <a href="#" class="nav-link" id="sbSharedLink"
+                       onclick="if(typeof filterShared==='function'){filterShared();sbSetActive(this);}return false;">
                         <i class="nav-icon fas fa-share-alt"></i>
                         <p>Shared with me</p>
                     </a>
                 </li>
-                
+
                 <li class="nav-item">
-                    <a href="#" class="nav-link" onclick="if(typeof filterImportant==='function')filterImportant();return false;">
-                        <i class="nav-icon far fa-star"></i>
+                    <a href="starred_files.php" class="nav-link <?= basename($_SERVER['PHP_SELF']) === 'starred_files.php' ? 'active' : '' ?>" id="sbStarredLink">
+                        <i class="nav-icon fas fa-star" style="color:#f59e0b;"></i>
                         <p>Starred</p>
                     </a>
                 </li>
-                
+
                 <li class="nav-item">
-                    <a href="#" class="nav-link" onclick="if(typeof filterTrash==='function')filterTrash();return false;">
+                    <a href="#" class="nav-link" id="sbTrashLink"
+                       onclick="if(typeof filterTrash==='function'){filterTrash();sbSetActive(this);}return false;">
                         <i class="nav-icon fas fa-trash"></i>
                         <p>Trash</p>
                     </a>
                 </li>
-                
+
                 <li class="nav-divider"></li>
-                
-                <!-- This PC / My Drive Section -->
-                <li class="nav-header">This PC</li>
-                
-                <!-- Root folder -->
-                <li class="nav-item" id="sbNavRootItem">
-                    <a href="#" class="nav-link sb-active" onclick="if(typeof showRootView==='function')showRootView();return false;">
-                        <i class="nav-icon fas fa-hdd"></i>
-                        <p><?= htmlspecialchars($sb_section_name) ?></p>
-                        <?php if (!empty($sb_folders)): ?>
-                            <span class="badge badge-info right"><?= count($sb_folders) ?></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
-                
-                <!-- Folders with tree structure -->
-                <?php if (!empty($sb_folders)): ?>
-                    <?php foreach ($sb_folders as $sf): 
-                        $sf_access = isset($db) && function_exists('hasFolderPermission')
-                            ? hasFolderPermission($db, $sf['folder_id'], isset($user_emp_id) ? $user_emp_id : 0, 'view')
-                            : true;
-                        
-                        // Check if this folder has subfolders (you'll need to implement this logic)
-                        $has_subfolders = false; // Replace with actual check
-                    ?>
-                    <li class="nav-item <?= $has_subfolders ? 'has-treeview' : '' ?>" id="sbNavFolder_<?= $sf['folder_id'] ?>">
-                        <a href="#" 
-                           class="nav-link <?= !$sf_access ? 'disabled' : '' ?>"
-                           onclick="<?= $sf_access ? "openFolder({$sf['folder_id']},'" . htmlspecialchars(addslashes($sf['folder_name'])) . "',{$sf['is_locked']});return false;" : "showNoAccess();return false;" ?>">
-                            
-                            <?php if ($has_subfolders): ?>
-                                <i class="nav-icon fas fa-chevron-right"></i>
-                            <?php endif; ?>
-                            
-                            <i class="fas fa-folder folder-icon <?= $sf['is_locked'] ? 'locked' : '' ?>"></i>
-                            <p>
-                                <?= htmlspecialchars($sf['folder_name']) ?>
-                                <?php if ($sf['is_locked']): ?>
-                                    <i class="fas fa-lock ml-1" style="font-size: 11px;"></i>
-                                <?php endif; ?>
-                            </p>
-                            
-                            <?php if ($sf['file_count'] > 0): ?>
-                                <span class="badge badge-light right"><?= $sf['file_count'] ?></span>
-                            <?php endif; ?>
-                        </a>
-                        
-                        <?php if ($has_subfolders): ?>
-                            <ul class="nav nav-treeview">
-                                <!-- Subfolders would go here -->
-                            </ul>
-                        <?php endif; ?>
-                    </li>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-                
-                <li class="nav-divider"></li>
-                
+
                 <!-- Storage info -->
                 <li class="nav-item storage-info">
                     <div class="storage-bar">
@@ -311,10 +313,20 @@ $sb_section_name = isset($section_name) ? $section_name : 'My Drive';
     color: #e67e22;
 }
 
-/* Tree view for subfolders */
+/* ── Sections / Uploaded collapsible arrows ──────────────────── */
+.nav-sidebar .nav-link p .fa-angle-left {
+    transition: transform 0.2s ease;
+}
+#sbSectionsItem.sb-open > .nav-link #sbSectionsArrow,
+#sbUploadedItem.sb-open  > .nav-link #sbUploadedArrow {
+    transform: rotate(-90deg);
+}
+
+/* Treeview sub-list */
 .nav-treeview {
-    padding-left: 35px;
+    padding-left: 0;
     list-style: none;
+    background: rgba(0,0,0,0.12);
 }
 
 .nav-treeview .nav-item {
@@ -455,22 +467,208 @@ body.dark-mode .select2-results__option--highlighted { background: var(--sidebar
 
 body.dark-mode .sidebar { background-color: var(--sidebar-bg) !important; }
 body.dark-mode aside.main-sidebar { background-color: var(--sidebar-bg) !important; }
-.brand-link.bg-gradient-primary {
-    background:  #007bff !important;
+.brand-link.bg-gradient-primary { background: #007bff !important; }
+
+/* Folder icons inside treeview */
+.nav-treeview .nav-folder-icon {
+    color: #f1c40f;
+    font-size: 13px;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-right: 4px;
 }
+.nav-treeview .nav-folder-icon.locked { color: #e67e22; }
+.nav-treeview .nav-link { display: flex; align-items: center; gap: 6px;
+    padding: 6px 15px 6px 22px; color: #bdc3c7; font-size: 13px; transition: background .15s; }
+.nav-treeview .nav-link:hover { background: #34495e; color: #ecf0f1; }
+.nav-treeview .nav-link.sb-active,
+.nav-treeview .nav-link.active  { background: #2980b9; color: #fff; }
+.nav-treeview .nav-link.disabled { opacity:.5; pointer-events:none; }
+
+/* Sections icon colour */
+.sb-folder-open-icon { color: #f1c40f !important; }
+
+/* ── Uploaded-files search panel ─────────────────────────────── */
+.sb-search-wrap {
+    display: flex; align-items: center; gap: 6px;
+    background: #3a4a5a; border: 1px solid #4a5a6a;
+    border-radius: 4px; padding: 5px 9px; margin-bottom: 5px;
+}
+.sb-search-icon { color: #7f8c8d; font-size: 11px; flex-shrink: 0; }
+.sb-search-input {
+    background: transparent; border: none; outline: none;
+    color: #ecf0f1; font-size: 12px; width: 100%;
+}
+.sb-search-input::placeholder { color: #7f8c8d; }
+
+#sbFileResults {
+    max-height: 200px; overflow-y: auto; border-radius: 3px;
+}
+#sbFileResults::-webkit-scrollbar { width: 4px; }
+#sbFileResults::-webkit-scrollbar-track { background: #2c3e50; }
+#sbFileResults::-webkit-scrollbar-thumb { background: #4a5a6a; border-radius: 2px; }
+
+.sb-loading { color: #7f8c8d; font-size: 12px; padding: 7px 4px; text-align: center; }
+.sb-file-row {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 6px; border-radius: 3px; cursor: pointer;
+    font-size: 12px; color: #bdc3c7; transition: background .15s;
+}
+.sb-file-row:hover { background: #34495e; color: #ecf0f1; }
+.sb-file-row i { font-size: 12px; width: 14px; text-align: center; flex-shrink: 0; }
+.sb-file-row span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-empty { color: #7f8c8d; font-size: 12px; padding: 7px 4px; text-align: center; }
+
+/* ── Sidebar Folder Tree ─────────────────────────────────────── */
+#sbFolderTreePanel { max-height: 50vh; overflow-y: auto; }
+#sbFolderTreePanel::-webkit-scrollbar { width: 3px; }
+#sbFolderTreePanel::-webkit-scrollbar-thumb { background: #4a5a6a; border-radius: 2px; }
+
+.sb-tree-row {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 8px; cursor: pointer; font-size: 12px;
+    color: #bdc3c7; transition: background .15s; white-space: nowrap;
+    border-radius: 3px; margin: 1px 4px;
+}
+.sb-tree-row:hover { background: #34495e; color: #ecf0f1; }
+.sb-tree-row.sb-tree-active { background: #2980b9; color: #fff; }
+.sb-tree-row.sb-tree-active .sb-tree-folder-icon { color: #fff; }
+
+.sb-tree-arrow { width: 12px; flex-shrink: 0; font-size: 9px; color: #7f8c8d;
+    transition: transform .15s; display: inline-flex; align-items: center; }
+.sb-tree-arrow.open { transform: rotate(90deg); }
+.sb-tree-arrow-hidden { opacity: 0; pointer-events: none; }
+
+.sb-tree-folder-icon { color: #f1c40f; font-size: 12px; flex-shrink: 0; }
+.sb-tree-locked { color: #e67e22 !important; }
+.sb-tree-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.sb-tree-lock-badge { font-size: 9px; color: #e67e22; flex-shrink: 0; }
 </style>
 
 <script>
 $(document).ready(function() {
-    if (localStorage.getItem('darkMode') === '1') {
-        $('body').addClass('dark-mode');
-    }
-    
-    // Initialize treeview for folders with subfolders
-    $('.has-treeview > .nav-link').click(function(e) {
-        e.preventDefault();
-        $(this).parent().toggleClass('menu-open');
-        $(this).find('.fa-chevron-right').toggleClass('fa-chevron-down');
-    });
+    if (localStorage.getItem('darkMode') === '1') $('body').addClass('dark-mode');
 });
+
+/* ── Sidebar folder tree toggle ──────────────────────────────── */
+function sbToggleFolderTree() {
+    var $panel = $('#sbFolderTreePanel');
+    var $arrow = $('#sbFolderTreeArrow');
+    if ($panel.is(':visible')) {
+        $panel.slideUp(180);
+        $arrow.css('transform', '');
+    } else {
+        $panel.slideDown(180);
+        $arrow.css('transform', 'rotate(-90deg)');
+    }
+}
+
+/* ── Folder tree row click: expand/collapse + navigate ───────── */
+function sbTreeClick(e, folderId, isLocked, folderName, hasChildren, subId) {
+    e.stopPropagation();
+    var $row = $(e.currentTarget);
+    var $arr = $('#arr_' + folderId);
+
+    // Toggle children
+    if (hasChildren) {
+        var $sub = $('#' + subId);
+        if ($sub.is(':visible')) {
+            $sub.slideUp(150);
+            $arr.removeClass('open');
+        } else {
+            $sub.slideDown(150);
+            $arr.addClass('open');
+        }
+    }
+
+    // Highlight active
+    $('.sb-tree-row').removeClass('sb-tree-active');
+    $row.addClass('sb-tree-active');
+
+    // Navigate to folder
+    if (typeof openFolder === 'function') {
+        openFolder(folderId, folderName, isLocked);
+    } else if (typeof navigateToFolder === 'function') {
+        navigateToFolder(folderId, isLocked);
+    }
+}
+
+/* ── Active state helper ─────────────────────────────────────── */
+function sbSetActive(el) {
+    $('.nav-sidebar .nav-link').removeClass('active sb-active');
+    $(el).addClass('sb-active');
+}
+
+/* ── Fallback showRootView (used if page doesn't define its own) ─ */
+if (typeof showRootView === 'undefined') {
+    function showRootView() {
+        window.location.href = 'section_files.php?section_id=<?= isset($section_id) ? urlencode($section_id) : '' ?>';
+    }
+}
+
+
+/* ── Uploaded Files toggle + lazy load ──────────────────────── */
+var _sbUploaded = false;
+function sbToggleUploaded() {
+    var $item  = $('#sbUploadedItem');
+    var $panel = $('#sbUploadedPanel');
+    if ($item.hasClass('sb-open')) {
+        $panel.slideUp(180); $item.removeClass('sb-open');
+    } else {
+        $panel.slideDown(180); $item.addClass('sb-open');
+        if (!_sbUploaded) { _sbUploaded = true; sbLoadFiles(''); }
+    }
+}
+
+/* ── Debounced search ────────────────────────────────────────── */
+var _sbTimer = null;
+$(document).on('input', '#sbFileSearch', function() {
+    var q = $(this).val();
+    clearTimeout(_sbTimer);
+    _sbTimer = setTimeout(function(){ sbLoadFiles(q); }, 300);
+});
+
+/* ── AJAX load uploaded files ────────────────────────────────── */
+function sbLoadFiles(query) {
+    $('#sbFileResults').html('<div class="sb-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>');
+    $.post(window.location.pathname + window.location.search,
+           { action: 'get_sidebar_files', query: query || '' },
+    function(resp) {
+        try {
+            var r = (typeof resp === 'string') ? JSON.parse(resp) : resp;
+            if (r.success && r.files && r.files.length) {
+                var iconMap = {
+                    pdf:'file-pdf text-danger', doc:'file-word text-primary', docx:'file-word text-primary',
+                    xls:'file-excel text-success', xlsx:'file-excel text-success',
+                    ppt:'file-powerpoint text-warning', pptx:'file-powerpoint text-warning',
+                    jpg:'file-image text-info', jpeg:'file-image text-info', png:'file-image text-info',
+                    gif:'file-image text-info', zip:'file-archive text-secondary', rar:'file-archive text-secondary',
+                    txt:'file-alt text-muted', mp4:'file-video text-danger',
+                    avi:'file-video text-danger', mp3:'file-audio text-info', wav:'file-audio text-info'
+                };
+                var html = '';
+                $.each(r.files, function(i, f) {
+                    var ext  = (f.file_type || '').toLowerCase();
+                    var icon = iconMap[ext] || 'file text-secondary';
+                    var name = _sbEsc(f.file_name);
+                    html += '<div class="sb-file-row" title="'+name+'" onclick="viewFileModal('+f.file_id+')">'
+                          + '<i class="fas fa-' + icon + '"></i><span>' + name + '</span></div>';
+                });
+                $('#sbFileResults').html(html);
+            } else {
+                $('#sbFileResults').html('<div class="sb-empty"><i class="fas fa-inbox mr-1"></i>'
+                    + (r.files && r.files.length === 0 ? 'No files found' : (r.message || 'No files')) + '</div>');
+            }
+        } catch(e) {
+            $('#sbFileResults').html('<div class="sb-empty text-danger"><i class="fas fa-exclamation-circle mr-1"></i> Error loading</div>');
+        }
+    }).fail(function() {
+        $('#sbFileResults').html('<div class="sb-empty text-danger"><i class="fas fa-exclamation-circle mr-1"></i> Load failed</div>');
+    });
+}
+
+function _sbEsc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>

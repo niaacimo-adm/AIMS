@@ -68,20 +68,12 @@
     $section_id = isset($_GET['section_id']) ? $_GET['section_id'] : '';
     // Validate user access to this section
     if (!userBelongsToSection($db, $user_emp_id, $section_id)) {
-        $_SESSION['error'] = "You do not have access to this section.";
-        
-        // Redirect to user's default section or file management
-        $default_section_stmt = $db->prepare("SELECT section_id FROM employee WHERE emp_id = ?");
-        $default_section_stmt->bind_param("i", $user_emp_id);
-        $default_section_stmt->execute();
-        $default_section_result = $default_section_stmt->get_result();
-        
-        if ($default_section_result->num_rows > 0) {
-            $user_section = $default_section_result->fetch_assoc();
-            header("Location: section_files.php?section_id=" . ($user_section['section_id'] ?: 'manager'));
-        } else {
-            header("Location: file_management.php");
-        }
+        $_SESSION['swal_error'] = [
+            'title' => 'Access Denied',
+            'text'  => 'You do not have permission to access this section.',
+            'icon'  => 'error'
+        ];
+        header("Location: file_management.php");
         exit();
     }
     // Fetch section details
@@ -904,6 +896,199 @@
                         $has_permission = hasFolderPermission($db, $folder_id, $user_emp_id, 'view');
                         echo json_encode(['has_permission' => $has_permission]);
                     exit();
+
+                    // ── Sidebar uploaded files list ───────────────────────
+                    case 'get_sidebar_files':
+                        $sq   = isset($_POST['query']) ? trim($_POST['query']) : '';
+                        $like = '%' . $db->real_escape_string($sq) . '%';
+                        if ($section_id === 'manager') {
+                            $sf_st = $db->prepare(
+                                "SELECT file_id, file_name, file_type FROM files
+                                 WHERE (section_id IS NULL OR section_id=0)
+                                   AND (is_deleted IS NULL OR is_deleted=0)
+                                   AND file_name LIKE ?
+                                 ORDER BY created_at DESC LIMIT 60");
+                            $sf_st->bind_param('s', $like);
+                        } else {
+                            $sf_st = $db->prepare(
+                                "SELECT file_id, file_name, file_type FROM files
+                                 WHERE section_id=?
+                                   AND (is_deleted IS NULL OR is_deleted=0)
+                                   AND file_name LIKE ?
+                                 ORDER BY created_at DESC LIMIT 60");
+                            $sf_st->bind_param('is', $section_id, $like);
+                        }
+                        $sf_st->execute();
+                        $sf_res = $sf_st->get_result();
+                        $sf_arr = [];
+                        while ($row = $sf_res->fetch_assoc()) $sf_arr[] = $row;
+                        echo json_encode(['success' => true, 'files' => $sf_arr]);
+                    exit();
+
+                    // ── Soft-delete (move to trash) ───────────────────────
+                    case 'delete_file':
+                        $del_id = intval($_POST['file_id'] ?? 0);
+                        $chk = $db->query("SHOW COLUMNS FROM files LIKE 'is_deleted'");
+                        if ($chk && $chk->num_rows > 0) {
+                            $d = $db->prepare("UPDATE files SET is_deleted=1, deleted_at=NOW(), deleted_by=? WHERE file_id=?");
+                            $d->bind_param('ii', $user_emp_id, $del_id);
+                            $d->execute();
+                        } else {
+                            $d = $db->prepare("DELETE FROM files WHERE file_id=?");
+                            $d->bind_param('i', $del_id);
+                            $d->execute();
+                        }
+                        echo json_encode(['success' => true, 'message' => 'Moved to trash.']);
+                    exit();
+
+                    // ── Restore from trash ────────────────────────────────
+                    case 'restore_file':
+                        $rst_id = intval($_POST['file_id'] ?? 0);
+                        $rst = $db->prepare("UPDATE files SET is_deleted=0, deleted_at=NULL, deleted_by=NULL WHERE file_id=?");
+                        if ($rst) {
+                            $rst->bind_param('i', $rst_id);
+                            $rst->execute();
+                            echo json_encode(['success' => true, 'message' => 'File restored.']);
+                        } else {
+                            echo json_encode(['success' => false, 'message' => 'Restore not supported.']);
+                        }
+                    exit();
+
+                    // ── Permanent delete ──────────────────────────────────
+                    case 'permanent_delete_file':
+                        $pd_id  = intval($_POST['file_id'] ?? 0);
+                        $pd_sel = $db->prepare("SELECT file_path FROM files WHERE file_id=?");
+                        $pd_sel->bind_param('i', $pd_id);
+                        $pd_sel->execute();
+                        $pd_res = $pd_sel->get_result();
+                        if ($pd_res->num_rows > 0) {
+                            $pd_row = $pd_res->fetch_assoc();
+                            $pd_del = $db->prepare("DELETE FROM files WHERE file_id=?");
+                            $pd_del->bind_param('i', $pd_id);
+                            $pd_del->execute();
+                            $fp = '../uploads/' . $pd_row['file_path'];
+                            if (file_exists($fp)) @unlink($fp);
+                            echo json_encode(['success' => true, 'message' => 'File permanently deleted.']);
+                        } else {
+                            echo json_encode(['success' => false, 'message' => 'File not found.']);
+                        }
+                    exit();
+
+                    // ── Toggle star ───────────────────────────────────────
+                    case 'toggle_star':
+                        $ts_id   = intval($_POST['file_id'] ?? 0);
+                        $ts_star = intval($_POST['starred'] ?? 1);
+                        $ts_chk  = $db->query("SHOW COLUMNS FROM files LIKE 'is_starred'");
+                        if ($ts_chk && $ts_chk->num_rows > 0) {
+                            $ts = $db->prepare("UPDATE files SET is_starred=? WHERE file_id=?");
+                            $ts->bind_param('ii', $ts_star, $ts_id);
+                            $ts->execute();
+                            echo json_encode(['success' => true]);
+                        } else {
+                            echo json_encode(['success' => false, 'message' => 'Star column not found.']);
+                        }
+                    exit();
+
+                    // ── Get starred files ─────────────────────────────────
+                    case 'get_starred_files':
+                        $star_chk = $db->query("SHOW COLUMNS FROM files LIKE 'is_starred'");
+                        if ($star_chk && $star_chk->num_rows > 0) {
+                            $star_q = "SELECT f.*, CONCAT(e.first_name,' ',e.last_name) AS uploaded_by_name
+                                       FROM files f
+                                       LEFT JOIN employee e ON f.uploaded_by = e.emp_id
+                                       WHERE f.is_starred = 1
+                                         AND (f.is_deleted IS NULL OR f.is_deleted=0)
+                                         AND (f.uploaded_by=? OR EXISTS(
+                                               SELECT 1 FROM folder_shares fs
+                                               WHERE fs.folder_id=f.folder_id
+                                                 AND fs.shared_with_emp_id=?
+                                                 AND fs.is_active=1))
+                                       ORDER BY f.file_name";
+                            $star_st = $db->prepare($star_q);
+                            $star_st->bind_param('ii', $user_emp_id, $user_emp_id);
+                            $star_st->execute();
+                            $star_res = $star_st->get_result();
+                            $star_arr = [];
+                            while ($row = $star_res->fetch_assoc()) $star_arr[] = $row;
+                            echo json_encode(['success' => true, 'files' => $star_arr]);
+                        } else {
+                            echo json_encode(['success' => true, 'files' => [],
+                                             'message' => 'Star feature not available. Add is_starred column to files table.']);
+                        }
+                    exit();
+
+                    // ── Get shared items (folders + files) ────────────────
+                    case 'get_shared_items':
+                        $sh_fq = "SELECT fo.*,
+                                         CONCAT(e.first_name,' ',e.last_name)  AS creator_name,
+                                         CONCAT(se.first_name,' ',se.last_name) AS shared_by_name,
+                                         fs.permission_level,
+                                         (SELECT COUNT(*) FROM files ff
+                                          WHERE ff.folder_id=fo.folder_id
+                                            AND (ff.is_deleted IS NULL OR ff.is_deleted=0)) AS file_count
+                                  FROM folder_shares fs
+                                  JOIN folders fo  ON fs.folder_id=fo.folder_id
+                                  LEFT JOIN employee e  ON fo.created_by=e.emp_id
+                                  LEFT JOIN employee se ON fs.shared_by_emp_id=se.emp_id
+                                  WHERE fs.shared_with_emp_id=?
+                                    AND fs.is_active=1
+                                    AND (fs.expires_at IS NULL OR fs.expires_at > NOW())
+                                  ORDER BY fo.folder_name";
+                        $sh_fst = $db->prepare($sh_fq);
+                        $sh_fst->bind_param('i', $user_emp_id);
+                        $sh_fst->execute();
+                        $sh_folders = [];
+                        $sh_fr = $sh_fst->get_result();
+                        while ($row = $sh_fr->fetch_assoc()) $sh_folders[] = $row;
+
+                        $sh_fls = "SELECT f.*, fo.folder_name,
+                                          CONCAT(e.first_name,' ',e.last_name)  AS uploaded_by_name,
+                                          CONCAT(se.first_name,' ',se.last_name) AS shared_by_name
+                                   FROM folder_shares fs
+                                   JOIN folders fo ON fs.folder_id=fo.folder_id
+                                   JOIN files   f  ON f.folder_id=fo.folder_id
+                                   LEFT JOIN employee e  ON f.uploaded_by=e.emp_id
+                                   LEFT JOIN employee se ON fs.shared_by_emp_id=se.emp_id
+                                   WHERE fs.shared_with_emp_id=?
+                                     AND fs.is_active=1
+                                     AND (fs.expires_at IS NULL OR fs.expires_at > NOW())
+                                     AND (f.is_deleted IS NULL OR f.is_deleted=0)
+                                   ORDER BY f.file_name";
+                        $sh_fls_st = $db->prepare($sh_fls);
+                        $sh_fls_st->bind_param('i', $user_emp_id);
+                        $sh_fls_st->execute();
+                        $sh_files = [];
+                        $sh_flr = $sh_fls_st->get_result();
+                        while ($row = $sh_flr->fetch_assoc()) $sh_files[] = $row;
+
+                        echo json_encode(['success' => true, 'folders' => $sh_folders, 'files' => $sh_files]);
+                    exit();
+
+                    // ── Get trash ─────────────────────────────────────────
+                    case 'get_trash_files':
+                        $tr_chk = $db->query("SHOW COLUMNS FROM files LIKE 'is_deleted'");
+                        if ($tr_chk && $tr_chk->num_rows > 0) {
+                            $tr_q = "SELECT f.*,
+                                            CONCAT(e.first_name,' ',e.last_name)  AS uploaded_by_name,
+                                            CONCAT(de.first_name,' ',de.last_name) AS deleted_by_name
+                                     FROM files f
+                                     LEFT JOIN employee e  ON f.uploaded_by=e.emp_id
+                                     LEFT JOIN employee de ON f.deleted_by=de.emp_id
+                                     WHERE f.is_deleted=1 AND f.uploaded_by=?
+                                     ORDER BY f.deleted_at DESC";
+                            $tr_st = $db->prepare($tr_q);
+                            $tr_st->bind_param('i', $user_emp_id);
+                            $tr_st->execute();
+                            $tr_arr = [];
+                            $tr_r = $tr_st->get_result();
+                            while ($row = $tr_r->fetch_assoc()) $tr_arr[] = $row;
+                            echo json_encode(['success' => true, 'files' => $tr_arr]);
+                        } else {
+                            echo json_encode(['success' => true, 'files' => [],
+                                'message' => 'Trash requires is_deleted column. Run: ALTER TABLE files ADD COLUMN is_deleted TINYINT(1) DEFAULT 0, ADD COLUMN deleted_at DATETIME NULL, ADD COLUMN deleted_by INT NULL;']);
+                        }
+                    exit();
+
             }
         }
     }
@@ -958,832 +1143,7 @@
     
     <?php include '../includes/header.php'; ?>
     
-    <style>
-        /* Modern CSS Variables for theming */
-        :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --secondary-color: #64748b;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --info-color: #3b82f6;
-            
-            /* Light mode */
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8fafc;
-            --bg-tertiary: #f1f5f9;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-            --card-bg: #ffffff;
-            --hover-bg: #f1f5f9;
-            --shadow-color: rgba(0, 0, 0, 0.05);
-            --header-bg: #ffffff;
-            --sidebar-bg: #ffffff;
-            --toolbar-bg: #ffffff;
-            
-            /* Spacing */
-            --spacing-xs: 0.25rem;
-            --spacing-sm: 0.5rem;
-            --spacing-md: 1rem;
-            --spacing-lg: 1.5rem;
-            --spacing-xl: 2rem;
-            
-            /* Border radius */
-            --radius-sm: 0.375rem;
-            --radius-md: 0.5rem;
-            --radius-lg: 0.75rem;
-            --radius-xl: 1rem;
-            
-            /* Transitions */
-            --transition-fast: 150ms;
-            --transition-normal: 250ms;
-            --transition-slow: 350ms;
-            
-            /* Shadows */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
 
-        /* Dark mode */
-        body.dark-mode {
-            --bg-primary: #1e293b;
-            --bg-secondary: #0f172a;
-            --bg-tertiary: #334155;
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-            --card-bg: #1e293b;
-            --hover-bg: #334155;
-            --shadow-color: rgba(0, 0, 0, 0.3);
-            --header-bg: #1e293b;
-            --sidebar-bg: #1e293b;
-            --toolbar-bg: #1e293b;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            transition: background-color var(--transition-normal), color var(--transition-normal);
-        }
-
-        /* Modern scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-tertiary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--text-muted);
-            border-radius: var(--radius-sm);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-secondary);
-        }
-
-        /* Layout */
-        .explorer-shell {
-            display: flex;
-            height: calc(100vh - 57px - 57px);
-            overflow: hidden;
-        }
-
-        /* Right Content */
-        .explorer-right {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        /* Modern Toolbar */
-        .explorer-toolbar {
-            background: var(--toolbar-bg);
-            border-bottom: 1px solid var(--border-color);
-            padding: var(--spacing-sm) var(--spacing-lg);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            flex-shrink: 0;
-        }
-
-        .breadcrumb-nav {
-            flex: 1;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .breadcrumb-nav a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color var(--transition-fast);
-        }
-
-        .breadcrumb-nav a:hover {
-            color: var(--primary-hover);
-            text-decoration: underline;
-        }
-
-        .search-bar {
-            display: flex;
-            align-items: center;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-xs) var(--spacing-md);
-            gap: var(--spacing-sm);
-            width: 300px;
-            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-        }
-
-        .search-bar:focus-within {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .search-bar input {
-            border: none;
-            background: transparent;
-            outline: none;
-            font-size: 0.875rem;
-            width: 100%;
-            color: var(--text-primary);
-        }
-
-        .search-bar input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .search-bar i {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-
-        .toolbar-btn {
-            padding: var(--spacing-xs) var(--spacing-md);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-color);
-            background: var(--bg-primary);
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            transition: all var(--transition-fast);
-        }
-
-        .toolbar-btn:hover {
-            background: var(--hover-bg);
-            border-color: var(--primary-color);
-        }
-
-        .toolbar-btn.primary {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        .toolbar-btn.primary:hover {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-        /* Explorer Body */
-        .explorer-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: var(--spacing-lg);
-        }
-
-        /* Section Title */
-        .exp-section-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin: var(--spacing-lg) 0 var(--spacing-md) 0;
-            padding-bottom: var(--spacing-xs);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        /* Quick Access Chips */
-        .quick-access-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--spacing-sm);
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .qa-chip {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-sm) var(--spacing-lg);
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .qa-chip:hover {
-            border-color: var(--primary-color);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
-        }
-
-        .qa-chip i {
-            color: var(--primary-color);
-        }
-
-        /* Folder Grid */
-        .folder-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-xl);
-        }
-
-        .folder-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-lg) var(--spacing-md);
-            text-align: center;
-            cursor: pointer;
-            transition: all var(--transition-normal);
-            position: relative;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .folder-card:hover {
-            border-color: var(--primary-color);
-            box-shadow: var(--shadow-lg);
-            transform: translateY(-2px);
-        }
-
-        .folder-card .fc-menu-btn {
-            position: absolute;
-            top: var(--spacing-xs);
-            right: var(--spacing-xs);
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: var(--spacing-xs);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            opacity: 0;
-            transition: all var(--transition-fast);
-        }
-
-        .folder-card:hover .fc-menu-btn {
-            opacity: 1;
-        }
-
-        .folder-card .fc-menu-btn:hover {
-            background: var(--hover-bg);
-            color: var(--text-primary);
-        }
-
-        .fc-icon {
-            font-size: 2.5rem;
-            color: #fbbf24;
-            margin-bottom: var(--spacing-sm);
-        }
-
-        .fc-icon.locked {
-            color: var(--danger-color);
-        }
-
-        .fc-name {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            word-break: break-word;
-            line-height: 1.4;
-            margin-bottom: var(--spacing-xs);
-        }
-
-        .fc-meta {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        /* Google Drive Style File List */
-        .gd-file-list {
-            width: 100%;
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
-
-        .gd-header {
-            display: grid;
-            grid-template-columns: 40px 1fr 180px 180px 120px 120px;
-            align-items: center;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-tertiary);
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .gd-file-row {
-            display: grid;
-            grid-template-columns: 40px 1fr 180px 180px 120px 120px;
-            align-items: center;
-            padding: var(--spacing-sm) var(--spacing-md);
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-            transition: background var(--transition-fast);
-        }
-
-        .gd-file-row:hover {
-            background: var(--hover-bg);
-        }
-
-        .gd-file-row:hover .gd-col-actions {
-            opacity: 1;
-        }
-
-        .gd-col-check {
-            display: flex;
-            align-items: center;
-        }
-
-        .gd-col-name {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            min-width: 0;
-        }
-
-        .gd-file-icon {
-            font-size: 1.125rem;
-            flex-shrink: 0;
-        }
-
-        .gd-file-name {
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-weight: 500;
-        }
-
-        .gd-col-owner {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .gd-owner-avatar {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-            color: white;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .gd-col-date {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .gd-col-size {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .gd-col-actions {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-            opacity: 0;
-            transition: opacity var(--transition-fast);
-            position: relative;
-        }
-
-        .gd-action-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            transition: all var(--transition-fast);
-        }
-
-        .gd-action-btn:hover {
-            background: var(--hover-bg);
-            color: var(--primary-color);
-        }
-
-        .gd-file-menu {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
-            min-width: 180px;
-            z-index: 1000;
-            padding: var(--spacing-xs) 0;
-        }
-
-        .gd-file-menu.show {
-            display: block;
-        }
-
-        .gd-menu-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            width: 100%;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            transition: background var(--transition-fast);
-        }
-
-        .gd-menu-item:hover {
-            background: var(--hover-bg);
-        }
-
-        .gd-menu-item i {
-            width: 16px;
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        .gd-menu-danger {
-            color: var(--danger-color) !important;
-        }
-
-        .gd-menu-danger i {
-            color: var(--danger-color) !important;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: var(--spacing-xl) var(--spacing-lg);
-            color: var(--text-muted);
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: var(--spacing-md);
-            display: block;
-        }
-
-        /* Activity Panel */
-        .activity-panel {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            width: 400px;
-            height: 100vh;
-            background: var(--card-bg);
-            border-left: 1px solid var(--border-color);
-            box-shadow: var(--shadow-xl);
-            transition: right var(--transition-normal);
-            z-index: 1050;
-        }
-
-        .activity-panel.active {
-            right: 0;
-        }
-
-        .activity-panel .card {
-            height: 100%;
-            border: none;
-            border-radius: 0;
-            background: var(--card-bg);
-        }
-
-        .activity-panel .card-header {
-            background: var(--bg-tertiary);
-            border-bottom: 1px solid var(--border-color);
-            padding: var(--spacing-md) var(--spacing-lg);
-        }
-
-        .activity-panel .card-title {
-            color: var(--text-primary);
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        /* Folder Actions Menu */
-        .folder-actions-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
-            min-width: 180px;
-            z-index: 1000;
-            padding: var(--spacing-xs) 0;
-        }
-
-        .folder-actions-menu.show {
-            display: block;
-        }
-
-        .folder-action-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            width: 100%;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            transition: background var(--transition-fast);
-        }
-
-        .folder-action-item:hover {
-            background: var(--hover-bg);
-        }
-
-        .folder-action-item i {
-            width: 16px;
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        .folder-action-item.delete {
-            color: var(--danger-color);
-        }
-
-        .folder-action-item.delete i {
-            color: var(--danger-color);
-        }
-
-        /* File Drop Zone */
-        .file-drop-zone {
-            border: 2px dashed var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-xl);
-            text-align: center;
-            transition: all var(--transition-fast);
-            background: var(--bg-tertiary);
-            cursor: pointer;
-        }
-
-        .file-drop-zone.dragover {
-            border-color: var(--primary-color);
-            background: rgba(37, 99, 235, 0.05);
-        }
-
-        .file-drop-zone:hover {
-            border-color: var(--primary-color);
-        }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--spacing-xs);
-        }
-
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            flex: 1;
-        }
-
-        .file-icon {
-            font-size: 1rem;
-            color: var(--primary-color);
-        }
-
-        .file-name {
-            font-weight: 500;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-        }
-
-        .file-size {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-left: var(--spacing-xs);
-        }
-
-        .file-remove {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: var(--spacing-xs);
-            border-radius: 50%;
-            transition: all var(--transition-fast);
-        }
-
-        .file-remove:hover {
-            background: var(--hover-bg);
-            color: var(--danger-color);
-        }
-
-        /* Upload Progress */
-        .upload-progress {
-            margin-top: var(--spacing-md);
-        }
-
-        .progress {
-            background: var(--bg-tertiary);
-            border-radius: var(--radius-lg);
-            height: 8px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            background: var(--primary-color);
-            transition: width var(--transition-normal);
-        }
-
-        /* File View Modal */
-        .fv-modal .modal-dialog {
-            max-width: 900px;
-        }
-
-        .fv-modal .modal-content {
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-xl);
-            background: var(--card-bg);
-        }
-
-        .fv-modal .modal-header {
-            background: var(--bg-tertiary);
-            border-bottom: 1px solid var(--border-color);
-            padding: var(--spacing-md) var(--spacing-lg);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-        }
-
-        .fv-modal .modal-title {
-            font-size: 0.9375rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            flex: 1;
-        }
-
-        .fv-header-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            transition: all var(--transition-fast);
-        }
-
-        .fv-header-btn:hover {
-            background: var(--hover-bg);
-            color: var(--primary-color);
-        }
-
-        .fv-modal .modal-body {
-            padding: 0;
-            min-height: 480px;
-            display: flex;
-        }
-
-        .fv-preview-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--spacing-lg);
-            background: var(--bg-secondary);
-        }
-
-        .fv-info-panel {
-            width: 260px;
-            background: var(--bg-primary);
-            border-left: 1px solid var(--border-color);
-            padding: var(--spacing-lg);
-            overflow-y: auto;
-        }
-
-        .fv-info-title {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: var(--spacing-md);
-            font-size: 0.875rem;
-        }
-
-        .fv-info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-sm);
-            font-size: 0.8125rem;
-        }
-
-        .fv-info-label {
-            color: var(--text-muted);
-        }
-
-        .fv-info-value {
-            color: var(--text-primary);
-            text-align: right;
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .gd-header {
-                grid-template-columns: 40px 1fr 150px 150px 100px 100px;
-            }
-            
-            .gd-file-row {
-                grid-template-columns: 40px 1fr 150px 150px 100px 100px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .explorer-toolbar {
-                flex-wrap: wrap;
-            }
-            
-            .search-bar {
-                width: 100%;
-                order: 1;
-            }
-            
-            .folder-grid {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            }
-            
-            .activity-panel {
-                width: 100%;
-                right: -100%;
-            }
-        }
-    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -1869,44 +1229,115 @@
                     <!-- Folders grid -->
                     <?php if (!empty($folders)): ?>
                         <p class="exp-section-title">Folders</p>
-                        <div class="folder-grid" id="rootFolderGrid">
+                        <div class="gd-file-list mb-4">
+                            <!-- Header row -->
+                            <div class="gd-header">
+                                <div class="gd-col-check"><input type="checkbox" id="selectAllFolders"></div>
+                                <div class="gd-col-name">Name</div>
+                                <div class="gd-col-owner">Owner</div>
+                                <div class="gd-col-date">Created</div>
+                                <div class="gd-col-size">Items</div>
+                                <div class="gd-col-actions"></div>
+                            </div>
+                            <!-- Folder rows -->
                             <?php foreach ($folders as $folder):
                                 $has_access = hasFolderPermission($db, $folder['folder_id'], $user_emp_id, 'view');
                                 $can_edit   = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'edit_folder');
                                 $can_share  = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'share_folder');
                                 $can_delete = canPerformAction($db, $folder['folder_id'], $user_emp_id, 'delete_folder');
+                                $total_items = $folder['file_count'] + $folder['subfolder_count'];
                             ?>
-                            <div class="folder-card" id="folderCard_<?= $folder['folder_id'] ?>"
-                                 ondblclick="<?= $has_access ? "openFolder({$folder['folder_id']}, '" . htmlspecialchars(addslashes($folder['folder_name'])) . "', {$folder['is_locked']})" : "showNoAccess()" ?>">
-                                <button class="fc-menu-btn" onclick="toggleFolderMenu(this, event)"><i class="fas fa-ellipsis-v"></i></button>
-                                <div class="folder-actions-menu">
+                            <div class="gd-file-row folder-row" 
+                                id="folderRow_<?= $folder['folder_id'] ?>"
+                                ondblclick="<?= $has_access ? "openFolder({$folder['folder_id']}, '" . htmlspecialchars(addslashes($folder['folder_name'])) . "', {$folder['is_locked']})" : "showNoAccess()" ?>">
+                                
+                                <div class="gd-col-check">
+                                    <input type="checkbox" class="folder-checkbox" value="<?= $folder['folder_id'] ?>">
+                                </div>
+                                
+                                <!-- In the folder row, replace the icon line with this: -->
+                                <div class="gd-col-name">
+                                    <i class="fas fa-folder <?= $folder['is_locked'] ? 'fa-folder-locked' : '' ?> gd-file-icon" 
+                                    style="color: <?= $folder['is_locked'] ? '#ef4444' : '#fbbf24' ?>"></i>
+                                    <span class="gd-file-name"><?= htmlspecialchars($folder['folder_name']) ?></span>
+                                    <?php if ($folder['is_locked']): ?>
+                                        <span class="badge badge-danger ml-2" style="font-size:10px"><i class="fas fa-lock"></i> Protected</span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="gd-col-owner">
+                                    <span class="gd-owner-avatar"><?= strtoupper(substr($folder['creator_name'] ?? 'U', 0, 1)) ?></span>
+                                    <span><?= htmlspecialchars($folder['creator_name'] ?? 'me') ?></span>
+                                </div>
+                                
+                                <div class="gd-col-date"><?= date('M j, Y', strtotime($folder['created_at'])) ?></div>
+                                
+                                <div class="gd-col-size">
+                                    <?= $folder['file_count'] ?> file<?= $folder['file_count'] != 1 ? 's' : '' ?>
+                                    <?php if ($folder['subfolder_count'] > 0): ?>
+                                        <span class="text-muted">, <?= $folder['subfolder_count'] ?> subfolder<?= $folder['subfolder_count'] != 1 ? 's' : '' ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="gd-col-actions">
                                     <?php if ($can_edit): ?>
-                                    <button class="folder-action-item" onclick="editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', '<?= htmlspecialchars(addslashes($folder['description'] ?? '')) ?>')">
-                                        <i class="fas fa-edit"></i> Edit
+                                    <button class="gd-action-btn" title="Edit" onclick="event.stopPropagation(); editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', '<?= htmlspecialchars(addslashes($folder['description'] ?? '')) ?>')">
+                                        <i class="fas fa-pencil-alt"></i>
                                     </button>
                                     <?php endif; ?>
                                     
                                     <?php if ($can_share): ?>
-                                    <button class="folder-action-item" onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
-                                        <i class="fas fa-share-alt"></i> Share
-                                    </button>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
-                                    <button class="folder-action-item" onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
-                                        <i class="fas fa-users"></i> Manage Access
+                                    <button class="gd-action-btn" title="Share" onclick="event.stopPropagation(); shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
+                                        <i class="fas fa-user-plus"></i>
                                     </button>
                                     <?php endif; ?>
                                     
                                     <?php if ($can_delete): ?>
-                                    <button class="folder-action-item delete" onclick="deleteFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', <?= $folder['is_locked'] ?>)">
-                                        <i class="fas fa-trash"></i> Delete
+                                    <button class="gd-action-btn" title="Delete" onclick="event.stopPropagation(); deleteFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', <?= $folder['is_locked'] ?>)">
+                                        <i class="fas fa-trash" style="color: #ef4444;"></i>
                                     </button>
                                     <?php endif; ?>
+                                    
+                                    <button class="gd-action-btn gd-action-more" title="More actions"
+                                            onclick="event.stopPropagation(); toggleFolderMenuModern(this, event, <?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    
+                                    <!-- Modern dropdown menu -->
+                                    <div class="gd-file-menu folder-menu-<?= $folder['folder_id'] ?>">
+                                        <?php if ($has_access): ?>
+                                        <button class="gd-menu-item" onclick="openFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', <?= $folder['is_locked'] ?>)">
+                                            <i class="fas fa-folder-open"></i> Open
+                                        </button>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($can_edit): ?>
+                                        <button class="gd-menu-item" onclick="editFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', '<?= htmlspecialchars(addslashes($folder['description'] ?? '')) ?>')">
+                                            <i class="fas fa-edit"></i> Rename/Edit
+                                        </button>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($can_share): ?>
+                                        <button class="gd-menu-item" onclick="shareFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
+                                            <i class="fas fa-share-alt"></i> Share
+                                        </button>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (canPerformAction($db, $folder['folder_id'], $user_emp_id, 'manage_shares')): ?>
+                                        <button class="gd-menu-item" onclick="manageShares(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>')">
+                                            <i class="fas fa-users-cog"></i> Manage Access
+                                        </button>
+                                        <?php endif; ?>
+                                        
+                                        <hr style="margin:4px 0; border-color: var(--border-color);">
+                                        
+                                        <?php if ($can_delete): ?>
+                                        <button class="gd-menu-item gd-menu-danger" onclick="deleteFolder(<?= $folder['folder_id'] ?>, '<?= htmlspecialchars(addslashes($folder['folder_name'])) ?>', <?= $folder['is_locked'] ?>)">
+                                            <i class="fas fa-trash"></i> Delete Folder
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
-                                <i class="nav icon fas fa-folder fc-icon <?= $folder['is_locked'] ? 'locked' : '' ?>"></i>
-                                <div class="fc-name"><?= htmlspecialchars($folder['folder_name']) ?></div>
-                                <div class="fc-meta"><?= $folder['file_count'] ?> files<?= $folder['subfolder_count'] > 0 ? ', ' . $folder['subfolder_count'] . ' sub' : '' ?></div>
                             </div>
                             <?php endforeach; ?>
                         </div>
@@ -2268,25 +1699,27 @@
 
 <!-- File View Modal -->
 <div class="modal fade fv-modal" id="fileViewModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <i id="fvFileIcon" class="fas fa-file mr-2" style="font-size:20px; flex-shrink:0;"></i>
-                <h5 class="modal-title" id="fvFileName">Loading…</h5>
+                <h5 class="modal-title text-truncate" id="fvFileName" style="max-width:420px;">Loading…</h5>
                 <div class="fv-header-actions">
                     <a id="fvDownloadBtn" href="#" class="fv-header-btn" title="Download"><i class="fas fa-download"></i></a>
                     <button class="fv-header-btn" title="Edit" onclick="openCurrentFileEdit()"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="fv-header-btn" title="Share"><i class="fas fa-share-alt"></i></button>
-                    <button class="fv-header-btn" title="Star"><i class="far fa-star"></i></button>
+                    <button class="fv-header-btn fv-star-btn" id="fvStarBtn" title="Star" onclick="toggleCurrentFileStar()"><i class="far fa-star"></i></button>
                     <button type="button" class="fv-header-btn" data-dismiss="modal" title="Close"><i class="fas fa-times"></i></button>
                 </div>
             </div>
-            <div class="modal-body">
-                <!-- Preview -->
-                <div class="fv-preview-area" id="fvPreviewArea">
-                    <div class="fv-no-preview" id="fvLoadingSpinner">
-                        <i class="fas fa-spinner fa-spin" style="font-size:40px; color:var(--primary-color);"></i>
-                    </div>
+            <div class="modal-body p-0 d-flex" style="min-height:340px;">
+                <!-- Icon display (no preview) -->
+                <div class="fv-icon-area d-flex flex-column align-items-center justify-content-center flex-grow-1">
+                    <i id="fvBigIcon" class="fas fa-file fv-big-icon"></i>
+                    <span id="fvTypeBadge" class="fv-type-badge">—</span>
+                    <p id="fvFileNameSub" class="fv-file-name-sub text-truncate">—</p>
+                    <a id="fvDownloadBtn2" href="#" class="btn btn-primary btn-sm mt-1" target="_blank">
+                        <i class="fas fa-download mr-1"></i> Download File
+                    </a>
                 </div>
                 <!-- Info panel -->
                 <div class="fv-info-panel">
@@ -2298,7 +1731,14 @@
                     <div class="fv-info-row"><span class="fv-info-label">Location</span><span class="fv-info-value" id="fvLocation">—</span></div>
                     <hr style="margin:10px 0;">
                     <div class="fv-info-title">Description</div>
-                    <div id="fvDescription" style="color:var(--text-muted); font-size:12px;">—</div>
+                    <div id="fvDescription" style="color:var(--text-muted); font-size:0.8rem; margin-bottom:1rem;">—</div>
+                    <hr style="margin:10px 0;">
+                    <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="openCurrentFileEdit()">
+                        <i class="fas fa-pencil-alt mr-1"></i> Edit File
+                    </button>
+                    <button class="btn btn-sm w-100" id="fvStarBtn2" onclick="toggleCurrentFileStar()" style="border:1px solid #f59e0b; color:#b45309; background:transparent;">
+                        <i class="far fa-star mr-1"></i> <span id="fvStarBtnLabel">Add to Starred</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -2746,8 +2186,8 @@ function manageShares(folderId, folderName) {
 
 // File view modal
 function viewFileModal(fileId) {
-    $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-spinner fa-spin" style="font-size:40px; color:var(--primary-color);"></i></div>');
     $('#fvFileName').text('Loading…');
+    $('#fvBigIcon').attr('class', 'fas fa-spinner fa-spin fv-big-icon');
     $('#fileViewModal').modal('show');
 
     $.ajax({
@@ -2758,35 +2198,36 @@ function viewFileModal(fileId) {
             try {
                 const d = typeof resp === 'string' ? JSON.parse(resp) : resp;
                 if (!d.success) {
-                    $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-exclamation-circle text-danger fa-3x"></i><p class="mt-2">Could not load file.</p></div>');
+                    $('#fvBigIcon').attr('class', 'fas fa-exclamation-circle text-danger fv-big-icon');
+                    $('#fvFileName').text('Could not load file');
                     return;
                 }
                 const f = d.file;
 
-                // Header
                 const iconMap = {
                     pdf: 'fas fa-file-pdf text-danger',
-                    doc: 'fas fa-file-word text-primary',
-                    docx: 'fas fa-file-word text-primary',
-                    xls: 'fas fa-file-excel text-success',
-                    xlsx: 'fas fa-file-excel text-success',
-                    ppt: 'fas fa-file-powerpoint text-warning',
-                    pptx: 'fas fa-file-powerpoint text-warning',
-                    jpg: 'fas fa-file-image text-info',
-                    jpeg: 'fas fa-file-image text-info',
-                    png: 'fas fa-file-image text-info',
-                    gif: 'fas fa-file-image text-info',
-                    mp4: 'fas fa-file-video text-danger',
-                    avi: 'fas fa-file-video text-danger',
+                    doc: 'fas fa-file-word text-primary',   docx: 'fas fa-file-word text-primary',
+                    xls: 'fas fa-file-excel text-success',  xlsx: 'fas fa-file-excel text-success',
+                    ppt: 'fas fa-file-powerpoint text-warning', pptx: 'fas fa-file-powerpoint text-warning',
+                    jpg: 'fas fa-file-image text-info',     jpeg: 'fas fa-file-image text-info',
+                    png: 'fas fa-file-image text-info',     gif:  'fas fa-file-image text-info',
+                    mp4: 'fas fa-file-video text-danger',   avi:  'fas fa-file-video text-danger',
                     txt: 'fas fa-file-alt text-dark',
-                    zip: 'fas fa-file-archive text-secondary',
-                    rar: 'fas fa-file-archive text-secondary',
+                    zip: 'fas fa-file-archive text-secondary', rar: 'fas fa-file-archive text-secondary',
                     mp3: 'fas fa-file-audio text-info'
                 };
                 const iconClass = iconMap[f.file_type.toLowerCase()] || 'fas fa-file text-secondary';
+
+                // Header
                 $('#fvFileIcon').attr('class', iconClass + ' mr-2').css('font-size', '20px');
                 $('#fvFileName').text(f.file_name);
+
+                // Icon display area
+                $('#fvBigIcon').attr('class', iconClass + ' fv-big-icon');
+                $('#fvTypeBadge').text(f.file_type.toUpperCase());
+                $('#fvFileNameSub').text(f.file_name);
                 $('#fvDownloadBtn').attr('href', 'download_file.php?id=' + f.file_id);
+                $('#fvDownloadBtn2').attr('href', 'download_file.php?id=' + f.file_id);
 
                 // Info panel
                 $('#fvFileType').text(f.file_type.toUpperCase());
@@ -2796,25 +2237,19 @@ function viewFileModal(fileId) {
                 $('#fvLocation').text(f.folder_name || 'Root');
                 $('#fvDescription').text(f.description || '—');
 
-                // Preview
-                const type = f.file_type.toLowerCase();
-                let preview = '';
-                if (['jpg','jpeg','png','gif'].includes(type)) {
-                    preview = '<img src="../uploads/' + (f.file_path||'') + '" style="max-width:100%;max-height:440px;border-radius:var(--radius-md);box-shadow:var(--shadow-md);" onerror="this.parentNode.innerHTML=\'<div class=fv-no-preview><div class=fv-file-type-badge>'+f.file_type.toUpperCase()+'</div><p>Preview unavailable</p></div>\'">';
-                } else if (type === 'pdf') {
-                    preview = '<iframe src="../uploads/' + (f.file_path||'') + '" style="width:100%;height:460px;border:none;border-radius:var(--radius-md);"></iframe>';
-                } else {
-                    preview = '<div class="fv-no-preview"><div class="fv-file-type-badge">'+f.file_type.toUpperCase()+'</div><p style="margin-top:12px;font-size:15px;font-weight:600;">'+f.file_name+'</p><p style="font-size:13px;margin-top:4px;">No preview available</p><a href="download_file.php?id='+f.file_id+'" class="btn btn-primary mt-3"><i class="fas fa-download mr-2"></i>Download</a></div>';
-                }
-                $('#fvPreviewArea').html(preview);
+                // Star state
+                const starred = f.is_starred ? true : false;
+                _updateStarUI(starred);
 
                 window._fvCurrentFile = f;
             } catch(e) {
-                $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-exclamation-circle text-danger fa-3x"></i><p class="mt-2">Error loading file.</p></div>');
+                $('#fvBigIcon').attr('class', 'fas fa-exclamation-circle text-danger fv-big-icon');
+                $('#fvFileName').text('Error loading file');
             }
         },
         error: function() {
-            $('#fvPreviewArea').html('<div class="fv-no-preview"><i class="fas fa-exclamation-circle text-danger fa-3x"></i><p class="mt-2">Failed to load file.</p></div>');
+            $('#fvBigIcon').attr('class', 'fas fa-exclamation-circle text-danger fv-big-icon');
+            $('#fvFileName').text('Failed to load file');
         }
     });
 }
@@ -2873,35 +2308,360 @@ function saveFileEdit() {
     });
 }
 
+/* ================================================================
+   FILE OPERATIONS
+   ================================================================ */
+
+/* Shared helpers */
+function _esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+function _fmtBytes(b) {
+    if (!b || b==0) return '0 B';
+    var k=1024, s=['B','KB','MB','GB'], i=Math.floor(Math.log(b)/Math.log(k));
+    return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i];
+}
+var _iconMap = {
+    pdf:'file-pdf text-danger', doc:'file-word text-primary', docx:'file-word text-primary',
+    xls:'file-excel text-success', xlsx:'file-excel text-success',
+    ppt:'file-powerpoint text-warning', pptx:'file-powerpoint text-warning',
+    jpg:'file-image text-info', jpeg:'file-image text-info', png:'file-image text-info',
+    gif:'file-image text-info', zip:'file-archive text-secondary', rar:'file-archive text-secondary',
+    txt:'file-alt text-muted', mp4:'file-video text-danger',
+    avi:'file-video text-danger', mp3:'file-audio text-info', wav:'file-audio text-info'
+};
+function _fileIcon(ext) { return _iconMap[(ext||'').toLowerCase()] || 'file text-secondary'; }
+
+/* Move to trash */
 function deleteFile(fileId, fileName) {
     Swal.fire({
         title: 'Move to Trash?',
-        html: 'Move <strong>' + fileName + '</strong> to trash?',
+        html: 'Move <strong>' + _esc(fileName) + '</strong> to trash?',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Move to Trash'
-    }).then(result => {
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: '<i class="fas fa-trash mr-1"></i> Move to Trash'
+    }).then(function(result) {
         if (result.isConfirmed) {
-            $.post('section_files.php?section_id=<?= $section_id ?>', { action:'delete_file', file_id:fileId }, function(resp) {
+            $.post('section_files.php?section_id=<?= $section_id ?>',
+                   { action: 'delete_file', file_id: fileId },
+            function(resp) {
                 try {
-                    const r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+                    var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
                     if (r.success) {
-                        Swal.fire({
-                            title: 'Moved!',
-                            icon: 'success',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => location.reload());
-                    } else {
-                        Swal.fire('Error', r.message || 'Delete failed', 'error');
-                    }
-                } catch(e) {
-                    location.reload();
-                }
+                        Swal.fire({ title:'Moved to Trash', icon:'success', timer:1400, showConfirmButton:false })
+                            .then(function(){ location.reload(); });
+                    } else { Swal.fire('Error', r.message||'Delete failed', 'error'); }
+                } catch(e) { location.reload(); }
             });
         }
     });
+}
+
+/* Restore from trash */
+function restoreFile(fileId, fileName) {
+    Swal.fire({
+        title: 'Restore File?',
+        html: 'Restore <strong>' + _esc(fileName) + '</strong> from trash?',
+        icon: 'question', showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: '<i class="fas fa-trash-restore mr-1"></i> Restore'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.post('section_files.php?section_id=<?= $section_id ?>',
+                   { action: 'restore_file', file_id: fileId },
+            function(resp) {
+                try {
+                    var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
+                    if (r.success) {
+                        Swal.fire({ title:'Restored!', icon:'success', timer:1400, showConfirmButton:false })
+                            .then(function(){ filterTrash(); });
+                    } else { Swal.fire('Error', r.message, 'error'); }
+                } catch(e) { filterTrash(); }
+            });
+        }
+    });
+}
+
+/* Permanent delete — requires checkbox confirmation */
+function permanentDeleteFile(fileId, fileName) {
+    Swal.fire({
+        title: 'Permanently Delete?',
+        html: '<p>You are about to <strong>permanently delete</strong>:</p>'
+            + '<p style="margin:8px 0;font-weight:600;color:#ef4444;word-break:break-all">' + _esc(fileName) + '</p>'
+            + '<p><strong style="color:#ef4444">This cannot be undone!</strong></p>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Yes, Delete Forever',
+        input: 'checkbox',
+        inputValue: 0,
+        inputPlaceholder: 'I understand this action is permanent and cannot be undone',
+        preConfirm: function(checked) {
+            if (!checked) {
+                Swal.showValidationMessage('Please check the box to confirm you understand');
+                return false;
+            }
+        }
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.post('section_files.php?section_id=<?= $section_id ?>',
+                   { action: 'permanent_delete_file', file_id: fileId },
+            function(resp) {
+                try {
+                    var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
+                    if (r.success) {
+                        Swal.fire({ title:'Permanently Deleted', icon:'success', timer:1400, showConfirmButton:false })
+                            .then(function(){ filterTrash(); });
+                    } else { Swal.fire('Error', r.message, 'error'); }
+                } catch(e) { filterTrash(); }
+            });
+        }
+    });
+}
+
+/* Star / unstar (from grid/table) */
+function toggleStarFile(fileId, currentStar) {
+    var newStar = currentStar ? 0 : 1;
+    $.post('section_files.php?section_id=<?= $section_id ?>',
+           { action: 'toggle_star', file_id: fileId, starred: newStar },
+    function(resp) {
+        try {
+            var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
+            if (r.success) filterStarred();
+        } catch(e) {}
+    });
+}
+
+/* Star UI helper */
+function _updateStarUI(starred) {
+    const ic  = starred ? 'fas fa-star' : 'far fa-star';
+    const col = starred ? '#f59e0b' : '';
+    $('#fvStarBtn i').attr('class', ic).css('color', col);
+    $('#fvStarBtn2 i').attr('class', ic + ' mr-1').css('color', col);
+    $('#fvStarBtnLabel').text(starred ? 'Remove from Starred' : 'Add to Starred');
+    $('#fvStarBtn2').css({ background: starred ? '#fffbeb' : 'transparent' });
+}
+
+/* Star toggle from file view modal */
+function toggleCurrentFileStar() {
+    if (!window._fvCurrentFile) return;
+    const fileId    = window._fvCurrentFile.file_id;
+    const isStarred = window._fvCurrentFile.is_starred ? true : false;
+    $.post('section_files.php?section_id=<?= $section_id ?>',
+        { action: 'toggle_star', file_id: fileId, starred: isStarred ? 0 : 1 },
+        function(resp) {
+            try {
+                const r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+                if (r.success) {
+                    window._fvCurrentFile.is_starred = !isStarred;
+                    _updateStarUI(!isStarred);
+                    Swal.fire({
+                        title: !isStarred ? 'Added to Starred' : 'Removed from Starred',
+                        icon: 'success', timer: 1200, showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Error', r.message || 'Could not update star.', 'error');
+                }
+            } catch(e) { console.error('Star error:', e); }
+        }
+    );
+}
+
+/* ================================================================
+   SIDEBAR VIEW FILTERS
+   ================================================================ */
+
+function _sbSetActive(id) {
+    $('.nav-sidebar .nav-link').removeClass('sb-active active');
+    if (id) $('#'+id).addClass('sb-active');
+}
+
+/* ── Shared with me ─────────────────────────────────────────── */
+function filterShared() {
+    _sbSetActive('sbSharedLink');
+    var body = document.getElementById('explorerBody');
+    if (!body) return;
+    body.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i>'
+                   + '<p class="mt-2 text-muted">Loading shared items&hellip;</p></div>';
+
+    $.post('section_files.php?section_id=<?= $section_id ?>', { action: 'get_shared_items' },
+    function(resp) {
+        try {
+            var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
+            var html = '';
+
+            /* Shared folders */
+            if (r.folders && r.folders.length > 0) {
+                html += '<p class="exp-section-title"><i class="fas fa-folder mr-1" style="color:#fbbf24"></i> Shared Folders (' + r.folders.length + ')</p>';
+                html += '<div class="folder-grid">';
+                r.folders.forEach(function(f) {
+                    var bc = {view:'info',upload:'primary',edit:'warning',manage:'success'}[f.permission_level] || 'secondary';
+                    html += '<div class="folder-card" ondblclick="openFolder('+f.folder_id+',&apos;'+_esc(f.folder_name)+'&apos;,'+f.is_locked+')">'
+                          + '<i class="fas fa-folder fc-icon"></i>'
+                          + '<div class="fc-name">' + _esc(f.folder_name) + '</div>'
+                          + '<div class="fc-meta">' + (f.file_count||0) + ' files'
+                          + ' &bull; <span class="badge badge-' + bc + '" style="font-size:10px">' + (f.permission_level||'view') + '</span></div>'
+                          + '<div class="fc-meta" style="font-size:11px">By: ' + _esc(f.shared_by_name||'—') + '</div>'
+                          + '</div>';
+                });
+                html += '</div>';
+            }
+
+            /* Shared files */
+            if (r.files && r.files.length > 0) {
+                html += '<p class="exp-section-title" style="margin-top:20px"><i class="fas fa-file-alt mr-1"></i> Shared Files (' + r.files.length + ')</p>';
+                html += _buildFileTable(r.files, { showFolder: true, showSharedBy: true });
+            }
+
+            if ((!r.folders||!r.folders.length) && (!r.files||!r.files.length)) {
+                html = '<div class="empty-state"><i class="fas fa-share-alt"></i>'
+                     + '<p class="mb-1" style="font-size:1rem;font-weight:500">Nothing shared with you yet</p>'
+                     + '<p style="font-size:.875rem">Items shared by colleagues will appear here</p></div>';
+            }
+            body.innerHTML = html;
+        } catch(e) {
+            body.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle text-danger"></i><p>Error loading shared items</p></div>';
+        }
+    });
+}
+
+/* ── Starred ─────────────────────────────────────────────────── */
+function filterStarred() {
+    _sbSetActive('sbStarredLink');
+    var body = document.getElementById('explorerBody');
+    if (!body) return;
+    body.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#f59e0b"></i>'
+                   + '<p class="mt-2 text-muted">Loading starred files&hellip;</p></div>';
+
+    $.post('section_files.php?section_id=<?= $section_id ?>', { action: 'get_starred_files' },
+    function(resp) {
+        try {
+            var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
+            var html = '';
+            if (r.files && r.files.length > 0) {
+                html += '<p class="exp-section-title"><i class="fas fa-star mr-1" style="color:#f59e0b"></i> Starred Files (' + r.files.length + ')</p>';
+                html += _buildFileTable(r.files, { showStar: true, starIsOn: true });
+            } else {
+                html = '<div class="empty-state"><i class="far fa-star" style="color:#f59e0b;opacity:.6"></i>'
+                     + '<p class="mb-1" style="font-size:1rem;font-weight:500">No starred files</p>'
+                     + '<p style="font-size:.875rem">Star files to find them quickly here</p></div>';
+                if (r.message) html += '<p class="text-center text-muted small px-3">' + _esc(r.message) + '</p>';
+            }
+            body.innerHTML = html;
+        } catch(e) {
+            body.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle text-danger"></i><p>Error loading starred files</p></div>';
+        }
+    });
+}
+function filterImportant() { filterStarred(); } /* backward-compat alias */
+
+/* ── Trash ───────────────────────────────────────────────────── */
+function filterTrash() {
+    _sbSetActive('sbTrashLink');
+    var body = document.getElementById('explorerBody');
+    if (!body) return;
+    body.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-danger"></i>'
+                   + '<p class="mt-2 text-muted">Loading trash&hellip;</p></div>';
+
+    $.post('section_files.php?section_id=<?= $section_id ?>', { action: 'get_trash_files' },
+    function(resp) {
+        try {
+            var r = (typeof resp==='string') ? JSON.parse(resp) : resp;
+            var html = '';
+            if (r.files && r.files.length > 0) {
+                html += '<div class="alert alert-warning d-flex align-items-start mb-3" style="font-size:.85rem">'
+                      + '<i class="fas fa-exclamation-triangle mr-2 mt-1"></i>'
+                      + '<span>Files in Trash can be <strong>restored</strong> or <strong>permanently deleted</strong>. '
+                      + 'Permanent deletion <strong>cannot be undone</strong> and requires a confirmation checkbox.</span></div>';
+
+                html += '<p class="exp-section-title"><i class="fas fa-trash mr-1"></i> Trash (' + r.files.length + ' item' + (r.files.length>1?'s':'') + ')</p>';
+                html += '<div class="gd-file-list">';
+                html += '<div class="gd-header">'
+                      + '<div class="gd-col-check"></div>'
+                      + '<div class="gd-col-name">Name</div>'
+                      + '<div class="gd-col-owner">Owner</div>'
+                      + '<div class="gd-col-date">Deleted On</div>'
+                      + '<div class="gd-col-size">Size</div>'
+                      + '<div class="gd-col-actions">Actions</div>'
+                      + '</div>';
+
+                r.files.forEach(function(f) {
+                    var icon    = _fileIcon(f.file_type);
+                    var delDate = f.deleted_at ? new Date(f.deleted_at).toLocaleDateString() : '—';
+                    var owner   = _esc(f.uploaded_by_name || 'me');
+                    html += '<div class="gd-file-row" style="opacity:.75">'
+                          + '<div class="gd-col-check"></div>'
+                          + '<div class="gd-col-name">'
+                          + '<i class="fas fa-' + icon + ' gd-file-icon"></i>'
+                          + '<span class="gd-file-name" style="text-decoration:line-through;color:var(--text-muted,#999)">' + _esc(f.file_name) + '</span>'
+                          + '</div>'
+                          + '<div class="gd-col-owner"><span class="gd-owner-avatar">' + owner.charAt(0).toUpperCase() + '</span>' + owner + '</div>'
+                          + '<div class="gd-col-date">' + delDate + '</div>'
+                          + '<div class="gd-col-size">' + _fmtBytes(f.file_size) + '</div>'
+                          + '<div class="gd-col-actions" style="opacity:1">'
+                          + '<button class="gd-action-btn" title="Restore" onclick="event.stopPropagation();restoreFile('+f.file_id+',&apos;'+_esc(f.file_name)+'&apos;)">'
+                          + '<i class="fas fa-trash-restore" style="color:#10b981"></i></button>'
+                          + '<button class="gd-action-btn" title="Delete Permanently" onclick="event.stopPropagation();permanentDeleteFile('+f.file_id+',&apos;'+_esc(f.file_name)+'&apos;)">'
+                          + '<i class="fas fa-times-circle" style="color:#ef4444"></i></button>'
+                          + '</div>'
+                          + '</div>';
+                });
+                html += '</div>';
+            } else {
+                html = '<div class="empty-state"><i class="fas fa-trash" style="opacity:.4"></i>'
+                     + '<p class="mb-1" style="font-size:1rem;font-weight:500">Trash is empty</p>'
+                     + '<p style="font-size:.875rem">Deleted files will appear here</p></div>';
+                if (r.message) html += '<p class="text-center text-muted small px-3">' + _esc(r.message) + '</p>';
+            }
+            body.innerHTML = html;
+        } catch(e) {
+            body.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle text-danger"></i><p>Error loading trash</p></div>';
+        }
+    });
+}
+
+/* Reusable file list table builder */
+function _buildFileTable(files, opts) {
+    opts = opts || {};
+    var html = '<div class="gd-file-list">';
+    html += '<div class="gd-header">'
+          + '<div class="gd-col-check"><input type="checkbox"></div>'
+          + '<div class="gd-col-name">Name</div>'
+          + '<div class="gd-col-owner">' + (opts.showSharedBy ? 'Shared by' : 'Owner') + '</div>'
+          + '<div class="gd-col-date">Date</div>'
+          + '<div class="gd-col-size">Size</div>'
+          + '<div class="gd-col-actions"></div>'
+          + '</div>';
+    files.forEach(function(f) {
+        var icon    = _fileIcon(f.file_type);
+        var date    = f.created_at ? new Date(f.created_at).toLocaleDateString() : '—';
+        var owner   = _esc(opts.showSharedBy ? (f.shared_by_name||'—') : (f.uploaded_by_name||'me'));
+        var starred = f.is_starred ? 1 : 0;
+        html += '<div class="gd-file-row" ondblclick="viewFileModal('+f.file_id+')">'
+              + '<div class="gd-col-check"><input type="checkbox" class="file-checkbox" value="' + f.file_id + '"></div>'
+              + '<div class="gd-col-name">'
+              + '<i class="fas fa-' + icon + ' gd-file-icon"></i>'
+              + '<span class="gd-file-name">' + _esc(f.file_name) + '</span>'
+              + (opts.showFolder && f.folder_name ? '<span class="badge badge-secondary ml-2" style="font-size:10px">' + _esc(f.folder_name) + '</span>' : '')
+              + '</div>'
+              + '<div class="gd-col-owner"><span class="gd-owner-avatar">' + owner.charAt(0).toUpperCase() + '</span>' + owner + '</div>'
+              + '<div class="gd-col-date">' + date + '</div>'
+              + '<div class="gd-col-size">' + _fmtBytes(f.file_size) + '</div>'
+              + '<div class="gd-col-actions">';
+        if (opts.showStar) {
+            html += '<button class="gd-action-btn" title="' + (starred?'Unstar':'Star') + '" onclick="event.stopPropagation();toggleStarFile(' + f.file_id + ',' + starred + ')">'
+                  + '<i class="' + (starred?'fas':'far') + ' fa-star" style="color:#f59e0b"></i></button>';
+        }
+        html += '<a class="gd-action-btn" href="download_file.php?id=' + f.file_id + '" title="Download" onclick="event.stopPropagation()">'
+              + '<i class="fas fa-download"></i></a>'
+              + '<button class="gd-action-btn" title="Move to Trash" onclick="event.stopPropagation();deleteFile('+f.file_id+',&apos;'+_esc(f.file_name)+'&apos;)">'
+              + '<i class="fas fa-trash" style="color:#ef4444"></i></button>'
+              + '</div></div>';
+    });
+    html += '</div>';
+    return html;
 }
 
 // Share folder form submission
@@ -3376,6 +3136,42 @@ $('#uploadFileModal').on('hide.bs.modal', function() {
 // Select all files
 $('#selectAllFiles').change(function() {
     $('.file-checkbox').prop('checked', this.checked);
+});
+
+// Modern folder menu toggle (like file menu)
+function toggleFolderMenuModern(btn, event, folderId, folderName) {
+    event.stopPropagation();
+    const menu = btn.nextElementSibling;
+    const isOpen = menu.classList.contains('show');
+    
+    // Close all other menus
+    $('.gd-file-menu').removeClass('show');
+    
+    if (!isOpen) {
+        menu.classList.add('show');
+        
+        // Close when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menu.contains(e.target) && e.target !== btn) {
+                    menu.classList.remove('show');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }, 10);
+    }
+}
+
+// Select all folders
+$(document).on('change', '#selectAllFolders', function() {
+    $('.folder-checkbox').prop('checked', this.checked);
+});
+
+// Add hover effect for folder rows
+$(document).on('mouseenter', '.folder-row', function() {
+    $(this).find('.gd-col-actions').css('opacity', '1');
+}).on('mouseleave', '.folder-row', function() {
+    $(this).find('.gd-col-actions').css('opacity', '');
 });
 </script>
 </body>

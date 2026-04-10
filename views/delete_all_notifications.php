@@ -12,11 +12,12 @@ if (!isset($_SESSION['emp_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $database = new Database();
     $db = $database->getConnection();
-    
-    $query = "DELETE FROM admin_notifications WHERE admin_emp_id = ?";
+
+    // FIX: table is `notifications`, column is `emp_id` (not admin_notifications / admin_emp_id)
+    $query = "DELETE FROM notifications WHERE emp_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $_SESSION['emp_id']);
-    
+
     if ($stmt->execute()) {
         echo json_encode(['success' => true]);
     } else {

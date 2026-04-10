@@ -37,9 +37,7 @@ if ($employee_id) {
 <nav class="main-header navbar navbar-expand">
     <ul class="navbar-nav me-auto">
         <li class="nav-item">
-            <a class="nav-link sidebar-toggle" data-widget="pushmenu" href="#" role="button">
-                <i class="fas fa-bars"></i>
-            </a>
+            <a class="nav-link" id="sidebarToggleBtn" href="#" role="button"><i class="fas fa-bars"></i></a>
         </li>
         <li class="nav-item dropdown apps-dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false">
@@ -296,8 +294,9 @@ if ($employee_id) {
                 <?php
                 // ORIGINAL PHP CODE for all notifications modal
                 if (isset($_SESSION['emp_id'])) {
-                    $query = "SELECT * FROM admin_notifications 
-                            WHERE admin_emp_id = ? 
+                    // FIX: corrected table name to `notifications` and column to `emp_id`
+                    $query = "SELECT * FROM notifications 
+                            WHERE emp_id = ? 
                             ORDER BY created_at DESC";
                     $stmt = $db->prepare($query);
                     $stmt->bind_param("i", $_SESSION['emp_id']);
@@ -327,10 +326,10 @@ if ($employee_id) {
                                             </td>
                                             <td><?= time_elapsed_string($notification['created_at']) ?></td>
                                             <td>
-                                                <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['id'] ?>">
+                                                <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['notification_id'] ?>">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['id'] ?>">
+                                                <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['notification_id'] ?>">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </td>
@@ -353,7 +352,7 @@ if ($employee_id) {
                 <button type="button" class="btn btn-outline-danger" id="modalDeleteAll">
                     <i class="fas fa-trash me-1"></i> Delete All
                 </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -456,21 +455,12 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* HEADER */
+/* HEADER — position/sizing handled by mainheader.css; only theme vars here */
 .main-header {
     background: var(--header-bg) !important;
     color: var(--header-color) !important;
     border-bottom: 1px solid var(--header-border) !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 1030 !important;
-    width: 100%;
-    transition: left 0.3s ease-in-out, width 0.3s ease-in-out, background 0.3s ease;
 }
-body:not(.sidebar-collapse) .main-header { left: 250px; width: calc(100% - 250px); }
-body.sidebar-collapse .main-header { left: 0; width: 100%; }
-@media (max-width: 768px) { .main-header { left: 0 !important; width: 100% !important; } }
 
 .main-header .nav-link,
 .main-header .navbar-nav .nav-link {
@@ -555,14 +545,12 @@ body.sidebar-collapse .main-header { left: 0; width: 100%; }
     display: flex; align-items: center; justify-content: center;
 }
 
-/* SIDEBAR */
+/* SIDEBAR — position/sizing handled by mainheader.css; only theme vars here */
 .main-sidebar {
     background-color: var(--sidebar-bg) !important;
-    position: fixed !important; top: 0 !important; left: 0 !important;
-    height: 100vh !important; width: 250px !important;
     display: flex !important; flex-direction: column !important;
     overflow: hidden !important;
-    transition: background-color 0.3s ease;
+    /* DO NOT set margin-left, position, width, height here — mainheader.css owns those */
 }
 .brand-link { flex-shrink: 0 !important; }
 .sidebar {
@@ -628,14 +616,11 @@ body.sidebar-collapse .main-header { left: 0; width: 100%; }
 .card-header { background: var(--card-bg) !important; border-bottom: 1px solid var(--card-border) !important; }
 .card-footer { background: var(--card-bg) !important; border-top: 1px solid var(--card-border) !important; }
 
-/* CONTENT WRAPPER */
+/* CONTENT WRAPPER — margin/sizing handled by mainheader.css; only theme vars here */
 .content-wrapper {
     background-color: var(--body-bg) !important;
-    margin-left: 250px !important; min-height: 100vh;
     color: var(--text-primary);
-    transition: background-color 0.3s ease;
 }
-@media (max-width: 768px) { .content-wrapper { margin-left: 0 !important; } }
 
 /* TABLES */
 .table { color: var(--text-primary) !important; }
@@ -663,18 +648,12 @@ select.form-control option { background: var(--input-bg) !important; color: var(
 .modal-title { color: var(--modal-header-color) !important; }
 .modal-header .close { color: var(--modal-header-color) !important; }
 
-/* FOOTER */
+/* FOOTER — position/sizing handled by mainheader.css; only theme vars here */
 .main-footer {
     background: var(--footer-bg) !important;
     color: var(--footer-color) !important;
     border-top: 1px solid var(--footer-border) !important;
-    position: sticky !important; bottom: 0 !important; z-index: 1020 !important;
-    width: 100%;
-    transition: left 0.3s ease-in-out, width 0.3s ease-in-out, background 0.3s ease;
 }
-body:not(.sidebar-collapse) .main-footer { left: 250px; width: calc(100% - 250px); }
-body.sidebar-collapse .main-footer { left: 0; width: 100%; }
-@media (max-width: 768px) { .main-footer { left: 0 !important; width: 100% !important; } }
 
 /* CHAT */
 .chat-icon {
@@ -727,29 +706,72 @@ $(document).ready(function() {
         const baseUrl = window.location.origin + '/NIA-PROJECT/views/';
         console.log('Base URL:', baseUrl);
 
-        // Fix pushmenu functionality for Bootstrap 4
-        $('[data-widget="pushmenu"]').click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+        // ══════════════════════════════════════════════════════════════
+        // SIDEBAR TOGGLE — drives layout via CSS variable --sidebar-offset
+        // Setting the var on :root instantly moves header/content/footer.
+        // Body classes only control the sidebar's own margin-left.
+        // ══════════════════════════════════════════════════════════════
 
-            // Use AdminLTE if available
-            if (typeof $ !== 'undefined' && $.fn.pushMenu) {
-                $('body').pushMenu('toggle');
+        var MOBILE_BP = 991;
+        var root = document.documentElement;
+
+        function isMobile() { return window.innerWidth <= MOBILE_BP; }
+
+        function setOffset(px) {
+            root.style.setProperty('--sidebar-offset', px + 'px');
+        }
+
+        function closeMobileSidebar() {
+            $('body').removeClass('sidebar-open');
+            $('#sidebarBackdrop').remove();
+        }
+
+        // Restore desktop state on load
+        if (!isMobile()) {
+            if (localStorage.getItem('sidebar-collapsed') === 'true') {
+                $('body').addClass('sidebar-collapse');
+                setOffset(0);
             } else {
-                // Manual toggle for sidebar
-                $('body').toggleClass('sidebar-collapse');
-                $('body').toggleClass('sidebar-open');
+                setOffset(250);
             }
+        }
 
-            // Update localStorage for persistence
-            const isCollapsed = $('body').hasClass('sidebar-collapse');
-            localStorage.setItem('sidebar-collapsed', isCollapsed);
+        $('#sidebarToggleBtn').on('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            if (isMobile()) {
+                var opening = !$('body').hasClass('sidebar-open');
+                $('body').toggleClass('sidebar-open', opening);
+
+                if (opening) {
+                    if (!$('#sidebarBackdrop').length) {
+                        $('<div id="sidebarBackdrop" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);z-index:1044;"></div>')
+                            .appendTo('body')
+                            .on('click', closeMobileSidebar);
+                    }
+                } else {
+                    closeMobileSidebar();
+                }
+            } else {
+                var isCollapsed = $('body').toggleClass('sidebar-collapse').hasClass('sidebar-collapse');
+                setOffset(isCollapsed ? 0 : 250);
+                localStorage.setItem('sidebar-collapsed', isCollapsed ? 'true' : 'false');
+            }
         });
 
-        // Check for saved sidebar state on page load
-        if (localStorage.getItem('sidebar-collapsed') === 'true') {
-            $('body').addClass('sidebar-collapse');
-        }
+        // Clean up on resize crossing the breakpoint
+        $(window).on('resize', function() {
+            if (!isMobile()) {
+                closeMobileSidebar();
+                var isCollapsed = $('body').hasClass('sidebar-collapse');
+                setOffset(isCollapsed ? 0 : 250);
+            } else {
+                $('body').removeClass('sidebar-collapse');
+                // CSS @media rule handles offset = 0 on mobile
+                root.style.removeProperty('--sidebar-offset');
+            }
+        });
 
         // Fullscreen toggle
         $('[data-widget="fullscreen"]').click(function(e) {
@@ -780,6 +802,7 @@ $(document).ready(function() {
             $.ajax({
                 url: baseUrl + 'mark_all_notifications_read.php',
                 type: 'POST',
+                dataType: 'json',
                 data: {
                     emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
                 },
@@ -813,6 +836,7 @@ $(document).ready(function() {
                 $.ajax({
                     url: baseUrl + 'delete_all_notifications.php',
                     type: 'POST',
+                    dataType: 'json',
                     data: {
                         emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
                     },
@@ -903,8 +927,9 @@ $(document).ready(function() {
 
             if (confirm('Are you sure you want to delete this notification?')) {
                 $.ajax({
-                    url: '../views/delete_notification.php',
+                    url: baseUrl + 'delete_notification.php',
                     type: 'POST',
+                    dataType: 'json',
                     data: {
                         id: notificationId
                     },

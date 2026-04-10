@@ -1,1069 +1,1070 @@
 <?php
 require_once '../config/database.php';
 
-// Start session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// Database connection
 $database = new Database();
-$db = $database->getConnection();
+$db       = $database->getConnection();
 
-// Get employee ID from URL
 $emp_id = $_GET['emp_id'] ?? null;
 if (!$emp_id) {
-    $_SESSION['toast'] = [
-        'type' => 'error',
-        'message' => 'Employee ID is required'
-    ];
-    header("Location: emp.list.php");
-    exit();
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'Employee ID is required'];
+    header("Location: emp.list.php"); exit();
 }
 
-// Main employee query
-$query = "SELECT 
-            e.*,
-            es.status_name as employment_status,
-            es.color as employment_color,
-            o.office_name,
-            o.manager_emp_id as office_manager_id,
-            m.first_name as office_manager_first_name,
-            m.last_name as office_manager_last_name,
-            p.position_name,
-            ap.status_name as appointment_status,
-            ap.color as appointment_color,
-            (SELECT COUNT(*) FROM office WHERE manager_emp_id = e.emp_id) as is_office_manager
-          FROM employee e
-          LEFT JOIN employment_status es ON e.employment_status_id = es.status_id
-          LEFT JOIN office o ON e.office_id = o.office_id
-          LEFT JOIN employee m ON o.manager_emp_id = m.emp_id
-          LEFT JOIN position p ON e.position_id = p.position_id
-          LEFT JOIN appointment_status ap ON e.appointment_status_id = ap.appointment_id
-          WHERE e.emp_id = ?";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $emp_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$employee = $result->fetch_assoc();
+// ── Main employee query ──────────────────────────────────────────────────────
+$stmt = $db->prepare("SELECT e.*, es.status_name as employment_status, es.color as employment_color,
+    o.office_name, o.manager_emp_id as office_manager_id,
+    m.first_name as office_manager_first_name, m.last_name as office_manager_last_name,
+    p.position_name, ap.status_name as appointment_status, ap.color as appointment_color,
+    (SELECT COUNT(*) FROM office WHERE manager_emp_id = e.emp_id) as is_office_manager
+  FROM employee e
+  LEFT JOIN employment_status es ON e.employment_status_id = es.status_id
+  LEFT JOIN office o ON e.office_id = o.office_id
+  LEFT JOIN employee m ON o.manager_emp_id = m.emp_id
+  LEFT JOIN position p ON e.position_id = p.position_id
+  LEFT JOIN appointment_status ap ON e.appointment_status_id = ap.appointment_id
+  WHERE e.emp_id = ?");
+$stmt->bind_param("i", $emp_id); $stmt->execute();
+$r = $stmt->get_result(); $employee = $r->fetch_assoc();
+$r->free(); $stmt->close();
 
 if (!$employee) {
-    $_SESSION['toast'] = [
-        'type' => 'error',
-        'message' => 'Employee not found'
-    ];
-    header("Location: emp.list.php");
-    exit();
+    $_SESSION['toast'] = ['type' => 'error', 'message' => 'Employee not found'];
+    header("Location: emp.list.php"); exit();
 }
 
-// Get all sections where this employee is head
-$query = "SELECT 
-            s.section_id, 
-            s.section_name, 
-            s.section_code,
-            o.office_name
-          FROM section s
-          LEFT JOIN office o ON s.office_id = o.office_id
-          WHERE s.head_emp_id = ?";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $emp_id);
-$stmt->execute();
-$section_result = $stmt->get_result();
-$sections_as_head = [];
-while ($row = $section_result->fetch_assoc()) {
-    $sections_as_head[] = $row;
-}
+// ── Sections where employee is head ─────────────────────────────────────────
+$stmt = $db->prepare("SELECT s.section_id, s.section_name, s.section_code, o.office_name
+                      FROM section s LEFT JOIN office o ON s.office_id = o.office_id
+                      WHERE s.head_emp_id = ?");
+$stmt->bind_param("i", $emp_id); $stmt->execute();
+$r = $stmt->get_result(); $sections_as_head = [];
+while ($row = $r->fetch_assoc()) { $sections_as_head[] = $row; }
+$r->free(); $stmt->close();
 
-// Get all unit sections where this employee is head
-$query = "SELECT 
-            us.unit_id, 
-            us.unit_name, 
-            us.unit_code,
-            s.section_name,
-            s.section_id
-          FROM unit_section us
-          LEFT JOIN section s ON us.section_id = s.section_id
-          WHERE us.head_emp_id = ?";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $emp_id);
-$stmt->execute();
-$unit_result = $stmt->get_result();
-$units_as_head = [];
-while ($row = $unit_result->fetch_assoc()) {
-    $units_as_head[] = $row;
-}
+// ── Unit sections where employee is head ─────────────────────────────────────
+$stmt = $db->prepare("SELECT us.unit_id, us.unit_name, us.unit_code, s.section_name, s.section_id
+                      FROM unit_section us LEFT JOIN section s ON us.section_id = s.section_id
+                      WHERE us.head_emp_id = ?");
+$stmt->bind_param("i", $emp_id); $stmt->execute();
+$r = $stmt->get_result(); $units_as_head = [];
+while ($row = $r->fetch_assoc()) { $units_as_head[] = $row; }
+$r->free(); $stmt->close();
 
-// Get current section/unit assignment (if any)
-$query = "SELECT 
-            s.section_name,
-            s.section_id,
-            s.head_emp_id as section_head_id,
-            sh.first_name as section_head_first_name,
-            sh.last_name as section_head_last_name,
-            us.unit_name,
-            us.unit_id,
-            us.head_emp_id as unit_head_id,
-            uh.first_name as unit_head_first_name,
-            uh.last_name as unit_head_last_name
-          FROM employee e
-          LEFT JOIN section s ON e.section_id = s.section_id
-          LEFT JOIN employee sh ON s.head_emp_id = sh.emp_id
-          LEFT JOIN unit_section us ON e.unit_section_id = us.unit_id
-          LEFT JOIN employee uh ON us.head_emp_id = uh.emp_id
-          WHERE e.emp_id = ?";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $emp_id);
-$stmt->execute();
+// ── Current section/unit assignment ──────────────────────────────────────────
+$stmt = $db->prepare("SELECT s.section_name, s.section_id,
+    sh.first_name as section_head_first_name, sh.last_name as section_head_last_name,
+    us.unit_name, us.unit_id,
+    uh.first_name as unit_head_first_name, uh.last_name as unit_head_last_name
+  FROM employee e
+  LEFT JOIN section s ON e.section_id = s.section_id
+  LEFT JOIN employee sh ON s.head_emp_id = sh.emp_id
+  LEFT JOIN unit_section us ON e.unit_section_id = us.unit_id
+  LEFT JOIN employee uh ON us.head_emp_id = uh.emp_id
+  WHERE e.emp_id = ?");
+$stmt->bind_param("i", $emp_id); $stmt->execute();
 $current_assignment = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-// Handle file upload for "My Files" section
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['employee_file'])) {
+// ── Handle file upload ────────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['employee_files'])) {
+    $uploadSuccess = 0; $uploadErrors = [];
     try {
         $targetDir = "../dist/files/employees/{$emp_id}/";
-        if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0777, true);
+        if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true)) throw new Exception("Could not create upload directory.");
+        if (!is_writable($targetDir)) throw new Exception("Upload directory is not writable.");
+        $allowed = ['pdf','doc','docx','xls','xlsx','ppt','pptx','jpg','jpeg','png','gif'];
+        foreach ($_FILES['employee_files']['name'] as $key => $name) {
+            if ($_FILES['employee_files']['error'][$key] !== UPLOAD_ERR_OK) { $uploadErrors[] = "Error with '{$name}'."; continue; }
+            $fileName = basename($name); $targetFile = $targetDir.$fileName;
+            $fileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
+            if (file_exists($targetFile))                                { $uploadErrors[] = "'{$fileName}' already exists."; continue; }
+            if ($_FILES['employee_files']['size'][$key] > 200*1024*1024) { $uploadErrors[] = "'{$fileName}' too large."; continue; }
+            if (!in_array($fileType, $allowed))                          { $uploadErrors[] = "'{$fileName}' type not allowed."; continue; }
+            if (move_uploaded_file($_FILES['employee_files']['tmp_name'][$key], $targetFile)) { $uploadSuccess++; }
+            else { $uploadErrors[] = "Error uploading '{$fileName}'."; }
         }
-        
-        $fileName = basename($_FILES["employee_file"]["name"]);
-        $targetFile = $targetDir . $fileName;
-        $fileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
-        
-        // Check if file already exists
-        if (file_exists($targetFile)) {
-            throw new Exception("File already exists.");
-        }
-        
-        if ($_FILES["employee_file"]["size"] > 200 * 1024 * 1024) {
-            throw new Exception("File is too large (max 200MB).");
-        }
-        
-        // Allow certain file formats
-        $allowedTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif'];
-        if (!in_array($fileType, $allowedTypes)) {
-            throw new Exception("Only PDF, DOC, XLS, PPT, JPG, PNG files are allowed.");
-        }
-        
-        if (move_uploaded_file($_FILES["employee_file"]["tmp_name"], $targetFile)) {
-            $_SESSION['toast'] = [
-                'type' => 'success',
-                'message' => 'File uploaded successfully!'
-            ];
-        } else {
-            throw new Exception("Error uploading file.");
-        }
-    } catch (Exception $e) {
-        $_SESSION['toast'] = [
-            'type' => 'error',
-            'message' => $e->getMessage()
-        ];
-    }
-    header("Location: emp.profile.php?emp_id=" . $emp_id);
-    exit();
+        $msg = $uploadSuccess > 0
+            ? "{$uploadSuccess} file(s) uploaded!" . (!empty($uploadErrors) ? " ".count($uploadErrors)." failed." : "")
+            : "No files uploaded. " . implode(" ", $uploadErrors);
+        $_SESSION['toast'] = ['type' => $uploadSuccess > 0 ? 'success' : 'error', 'message' => $msg];
+    } catch (Exception $e) { $_SESSION['toast'] = ['type' => 'error', 'message' => $e->getMessage()]; }
+    header("Location: emp.profile.php?emp_id={$emp_id}"); exit();
 }
 
-// Handle file deletion
+// ── Handle file deletion ──────────────────────────────────────────────────────
 if (isset($_GET['delete_file'])) {
-    $filePath = "../dist/files/employees/{$emp_id}/" . basename($_GET['delete_file']);
-    if (file_exists($filePath)) {
-        unlink($filePath);
-        $_SESSION['toast'] = [
-            'type' => 'success',
-            'message' => 'File deleted successfully!'
-        ];
-    } else {
-        $_SESSION['toast'] = [
-            'type' => 'error',
-            'message' => 'File not found!'
-        ];
-    }
-    header("Location: emp.profile.php?emp_id=" . $emp_id);
-    exit();
+    $fp = "../dist/files/employees/{$emp_id}/" . basename($_GET['delete_file']);
+    if (file_exists($fp)) { unlink($fp); $_SESSION['toast'] = ['type' => 'success', 'message' => 'File deleted!']; }
+    else                  { $_SESSION['toast'] = ['type' => 'error',   'message' => 'File not found!']; }
+    header("Location: emp.profile.php?emp_id={$emp_id}"); exit();
 }
 
-// Get list of uploaded files
+// ── Handle bulk delete with password confirmation ─────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_all_files'])) {
+    $confirm_pw = $_POST['delete_all_password'] ?? '';
+    if (empty($confirm_pw)) {
+        $_SESSION['toast'] = ['type' => 'error', 'message' => 'Password is required to delete files.'];
+        header("Location: emp.profile.php?emp_id={$emp_id}"); exit();
+    }
+    // Verify the logged-in user's password (admin performing the action)
+    $logged_in_id = $_SESSION['emp_id'] ?? 0;
+    $pw_stmt = $db->prepare("SELECT password FROM users WHERE employee_id = ?");
+    $pw_stmt->bind_param("i", $logged_in_id);
+    $pw_stmt->execute();
+    $pw_row = $pw_stmt->get_result()->fetch_assoc();
+    $pw_stmt->close();
+    if (!$pw_row || !password_verify($confirm_pw, $pw_row['password'])) {
+        $_SESSION['toast'] = ['type' => 'error', 'message' => 'Incorrect password. No files were deleted.'];
+        header("Location: emp.profile.php?emp_id={$emp_id}"); exit();
+    }
+    $selected = $_POST['selected_files'] ?? [];
+    if (empty($selected)) {
+        $_SESSION['toast'] = ['type' => 'warning', 'message' => 'No files selected for deletion.'];
+        header("Location: emp.profile.php?emp_id={$emp_id}"); exit();
+    }
+    $deleted = 0;
+    $dir = "../dist/files/employees/{$emp_id}/";
+    foreach ($selected as $fname) {
+        $fp = $dir . basename($fname);
+        if (file_exists($fp)) { unlink($fp); $deleted++; }
+    }
+    $_SESSION['toast'] = ['type' => 'success', 'message' => "{$deleted} file(s) deleted successfully."];
+    header("Location: emp.profile.php?emp_id={$emp_id}"); exit();
+}
+
+// ── Uploaded files list ───────────────────────────────────────────────────────
 $uploadDir = "../dist/files/employees/{$emp_id}/";
 $uploadedFiles = [];
 if (is_dir($uploadDir)) {
-    $files = scandir($uploadDir);
-    foreach ($files as $file) {
-        if ($file !== '.' && $file !== '..') {
-            $filePath = $uploadDir . $file;
-            $uploadedFiles[] = [
-                'name' => $file,
-                'size' => filesize($filePath),
-                'modified' => filemtime($filePath),
-                'type' => mime_content_type($filePath)
-            ];
+    foreach (scandir($uploadDir) as $f) {
+        if ($f !== '.' && $f !== '..') {
+            $fp = $uploadDir.$f;
+            $uploadedFiles[] = ['name'=>$f,'size'=>filesize($fp),'modified'=>filemtime($fp),'type'=>mime_content_type($fp)];
         }
     }
 }
 
-// Format file size
-function formatSizeUnits($bytes) {
-    if ($bytes >= 1073741824) {
-        $bytes = number_format($bytes / 1073741824, 2) . ' GB';
-    } elseif ($bytes >= 1048576) {
-        $bytes = number_format($bytes / 1048576, 2) . ' MB';
-    } elseif ($bytes >= 1024) {
-        $bytes = number_format($bytes / 1024, 2) . ' KB';
-    } elseif ($bytes > 1) {
-        $bytes = $bytes . ' bytes';
-    } elseif ($bytes == 1) {
-        $bytes = $bytes . ' byte';
-    } else {
-        $bytes = '0 bytes';
-    }
-    return $bytes;
+function formatSizeUnits($b) {
+    if ($b >= 1073741824) return number_format($b/1073741824,2).' GB';
+    if ($b >= 1048576)    return number_format($b/1048576,2).' MB';
+    if ($b >= 1024)       return number_format($b/1024,2).' KB';
+    if ($b > 1)           return $b.' bytes';
+    return $b == 1 ? '1 byte' : '0 bytes';
 }
 
-$query = "SELECT ss.section_id, s.section_name 
-          FROM section_secretaries ss
-          JOIN section s ON ss.section_id = s.section_id
-          WHERE ss.emp_id = ?";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $emp_id);
-$stmt->execute();
-$secretary_result = $stmt->get_result();
-$sections_as_secretary = [];
-while ($row = $secretary_result->fetch_assoc()) {
-    $sections_as_secretary[] = $row;
-}
-// Replace the existing $is_manager_office_staff check with this:
+// ── Focal person / Secretary ──────────────────────────────────────────────────
+$stmt = $db->prepare("SELECT ss.section_id, s.section_name FROM section_secretaries ss
+                      JOIN section s ON ss.section_id = s.section_id WHERE ss.emp_id = ?");
+$stmt->bind_param("i", $emp_id); $stmt->execute();
+$r = $stmt->get_result(); $sections_as_secretary = [];
+while ($row = $r->fetch_assoc()) { $sections_as_secretary[] = $row; }
+$r->free(); $stmt->close();
+
+// ── Manager office staff ─────────────────────────────────────────────────────
 $is_manager_office_staff = false;
-$query = "SELECT COUNT(*) as is_manager_staff FROM managers_office_staff WHERE emp_id = ?";
-$stmt = $db->prepare($query);
-$stmt->bind_param("i", $emp_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$row = $result->fetch_assoc();
-if ($row['is_manager_staff'] > 0) {
-    $is_manager_office_staff = true;
-}
+$stmt = $db->prepare("SELECT COUNT(*) as c FROM managers_office_staff WHERE emp_id = ?");
+$stmt->bind_param("i", $emp_id); $stmt->execute();
+$row = $stmt->get_result()->fetch_assoc();
+if ($row['c'] > 0) $is_manager_office_staff = true;
+$stmt->close();
 
+$has_leadership = $employee['is_office_manager'] || !empty($sections_as_head) || !empty($units_as_head) || !empty($sections_as_secretary);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AdminLTE 3 | Employee Profile</title>
+  <title>HR System | Employee Profile</title>
   <?php include '../includes/header.php'; ?>
   <style>
-    /* Modern Profile Styles */
-    .profile-container {
-      max-width: 1200px;
-      margin: 0 auto;
+
+    :root {
+      --clr-accent:#4f46e5; --clr-accent-dark:#4338ca; --clr-accent-light:#eef2ff;
+      --clr-gradient:linear-gradient(135deg,#4f46e5 0%,#7c73e6 100%);
+      --clr-header:linear-gradient(135deg,#4f46e5 0%,#7c73e6 100%);
+      --clr-sidebar:#3730a3;
+      --clr-button:linear-gradient(135deg,#4f46e5 0%,#7c73e6 100%);
+      --text-on-accent:#fff;
+      --radius-lg:14px; --radius-md:10px; --radius-sm:6px;
+      --font-body:'DM Sans',sans-serif; --font-display:'Syne',sans-serif;
+      --pf-bg-page:#f4f6fb; --pf-bg-card:#fff; --pf-bg-tile:#f8fafc; --pf-bg-upload:#fafafa;
+      --pf-border:#e8edf4; --pf-text-primary:#1e293b; --pf-text-body:#374151; --pf-text-muted:#64748b;
+      --pf-leadership-bg:#f8fafc; --pf-table-border:#e2e8f0;
+      --pf-scrollbar-track:#f1f5f9; --pf-scrollbar-thumb:#cbd5e1;
+      --pf-shadow-card:0 2px 12px rgba(0,0,0,.07); --pf-shadow-modal:0 20px 60px rgba(0,0,0,.18);
     }
-    
-    /* Admin Theme Colors */
-    .profile-header {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      color: white;
-      padding: 30px 0;
-      border-radius: 10px 10px 0 0;
-      margin-bottom: 20px;
-    }
-    
-    .profile-avatar-xl {
-      width: 150px;
-      height: 150px;
-      border-radius: 50%;
-      border: 5px solid rgba(255,255,255,0.4);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-      object-fit: cover;
-      object-position: center;
+    body.dark-mode {
+      --pf-bg-page:var(--body-bg); --pf-bg-card:var(--card-bg); --pf-bg-tile:var(--table-stripe);
+      --pf-bg-upload:var(--table-stripe); --pf-border:var(--card-border);
+      --pf-text-primary:var(--text-primary); --pf-text-body:var(--text-primary); --pf-text-muted:var(--text-muted);
+      --pf-leadership-bg:var(--table-stripe); --pf-table-border:var(--table-border);
+      --pf-scrollbar-track:var(--card-bg); --pf-scrollbar-thumb:#4a5068;
+      --pf-shadow-card:0 2px 16px rgba(0,0,0,.35); --pf-shadow-modal:0 20px 60px rgba(0,0,0,.55);
     }
 
-    @media (max-width: 768px) {
-      .profile-avatar-xl {
-        width: 180px;
-        height: 180px;
-      }
+    body,.content-wrapper { font-family:var(--font-body)!important; background:var(--pf-bg-page)!important; }
+    .content-header h1 { font-family:var(--font-display); color:var(--clr-accent); font-weight:700; letter-spacing:-.5px; }
+    .breadcrumb { background:transparent; }
+    .breadcrumb-item.active { color:var(--clr-accent); }
+    .breadcrumb-item a { color:var(--pf-text-muted); text-decoration:none; }
+    .breadcrumb-item a:hover { color:var(--clr-accent); }
+
+    /* ── Hero ── */
+    .profile-hero {
+      background:var(--clr-header); border-radius:var(--radius-lg);
+      padding:32px 40px; display:flex; align-items:center; gap:28px;
+      margin-bottom:24px; position:relative; overflow:hidden;
+    }
+    .profile-hero::before {
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .profile-hero-avatar {
+      width:110px; height:110px; border-radius:50%;
+      border:4px solid rgba(255,255,255,.45);
+      box-shadow:0 4px 20px rgba(0,0,0,.25);
+      object-fit:cover; flex-shrink:0; position:relative; z-index:1;
+    }
+    .profile-hero-initials {
+      width:110px; height:110px; border-radius:50%;
+      background:rgba(255,255,255,.2); border:4px solid rgba(255,255,255,.45);
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-display); font-size:2.2rem; font-weight:700; color:#fff;
+      flex-shrink:0; position:relative; z-index:1;
+    }
+    .profile-hero-info { position:relative; z-index:1; flex:1; }
+    .profile-hero-info h2 {
+      font-family:var(--font-display); font-size:1.7rem; font-weight:700;
+      color:#fff; margin:0 0 4px; letter-spacing:-.3px;
+    }
+    .hero-sub { color:rgba(255,255,255,.82); font-size:.95rem; font-weight:500; margin:0 0 2px; }
+    .hero-id  { color:rgba(255,255,255,.6);  font-size:.82rem; margin:0; letter-spacing:.5px; }
+    .hero-badges { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; position:relative; z-index:1; }
+    .hero-status-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:4px 12px; border-radius:20px;
+      font-size:.75rem; font-weight:700; letter-spacing:.3px;
+      border:1.5px solid rgba(255,255,255,.3); backdrop-filter:blur(4px);
+    }
+    .hero-edit-btn {
+      margin-left:auto; flex-shrink:0;
+      background:rgba(255,255,255,.18); border:1.5px solid rgba(255,255,255,.4);
+      color:#fff!important; border-radius:var(--radius-sm);
+      padding:9px 20px; font-size:.85rem; font-weight:600;
+      transition:all .22s; position:relative; z-index:1;
+      text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+    }
+    .hero-edit-btn:hover { background:rgba(255,255,255,.3); transform:translateY(-1px); }
+    @media(max-width:640px) {
+      .profile-hero { flex-direction:column; text-align:center; padding:24px 20px; gap:16px; }
+      .profile-hero-avatar,.profile-hero-initials { width:90px; height:90px; font-size:1.8rem; }
+      .profile-hero-info h2 { font-size:1.35rem; }
+      .hero-edit-btn { margin:0 auto; }
+      .hero-badges { justify-content:center; }
     }
 
-    @media (min-width: 1200px) {
-      .profile-avatar {
-        width: 250px;
-        height: 250px;
-      }
+    /* ── Tab bar ── */
+    .pf-tabs-bar {
+      background:var(--clr-sidebar); border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+      display:flex; overflow:hidden;
     }
+    .pf-tabs-bar .nav-link {
+      flex:1; text-align:center; padding:14px 10px;
+      color:rgba(255,255,255,.6)!important; font-size:.85rem; font-weight:500;
+      border-radius:0!important; border-bottom:3px solid transparent; transition:all .22s;
+    }
+    .pf-tabs-bar .nav-link i { display:block; font-size:1.05rem; margin-bottom:3px; }
+    .pf-tabs-bar .nav-link.active {
+      color:#fff!important; background:rgba(255,255,255,.13)!important;
+      border-bottom-color:rgba(255,255,255,.7); font-weight:600;
+    }
+    .pf-tabs-bar .nav-link:hover:not(.active) { background:rgba(255,255,255,.08)!important; color:rgba(255,255,255,.9)!important; }
 
-    .profile-info-card {
-      border-radius: 10px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      border: none;
-      margin-bottom: 10px;
-      overflow: hidden;
+    /* ── Tab content ── */
+    .pf-tab-content {
+      background:var(--pf-bg-card);
+      border-radius:0 0 var(--radius-lg) var(--radius-lg);
+      box-shadow:var(--pf-shadow-card);
+      padding:28px 32px; min-height:420px;
     }
-    
-    .profile-info-card .card-header {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      border-bottom: 1px solid #e3e6f0;
-      font-weight: 600;
-      padding: 15px 20px;
-      color: white;
+    body.dark-mode .pf-tab-content { background:var(--card-bg)!important; }
+    .pf-tab-content .card { border:none!important; box-shadow:none!important; background:transparent!important; }
+
+    /* ── Section title ── */
+    .pf-section-title {
+      font-family:var(--font-display); font-size:.95rem; font-weight:700;
+      color:var(--pf-text-primary); margin-bottom:16px; padding-bottom:10px;
+      border-bottom:2px solid var(--pf-border);
+      display:flex; align-items:center; gap:8px;
     }
-    
-    .profile-tabs .nav-link {
-      border-radius: 8px 8px 0 0;
-      padding: 12px 20px;
-      font-weight: 500;
-      color: #6c757d;
-      transition: all 0.3s;
+    .pf-section-title::before {
+      content:''; width:4px; height:17px; background:var(--clr-gradient); border-radius:2px; flex-shrink:0;
     }
-    
-    .profile-tabs .nav-link.active {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      color: white;
-      border-bottom: 3px solid rgba(255,255,255,0.5);
+    .pf-section-title.mt-2 { margin-top:28px; }
+    body.dark-mode .pf-section-title { color:var(--text-primary)!important; border-color:var(--card-border)!important; }
+
+    /* ── Info tile grid ── */
+    .pf-info-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:4px; }
+    .pf-info-grid.cols-2 { grid-template-columns:repeat(2,1fr); }
+    .pf-info-grid.cols-4 { grid-template-columns:repeat(4,1fr); }
+    @media(max-width:900px) { .pf-info-grid,.pf-info-grid.cols-4 { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:520px) { .pf-info-grid,.pf-info-grid.cols-2,.pf-info-grid.cols-4 { grid-template-columns:1fr; } }
+    .pf-info-tile {
+      background:var(--pf-bg-tile); border-radius:var(--radius-md);
+      padding:13px 15px; border-left:3px solid var(--clr-accent);
     }
-    
-    .profile-tabs .nav-link:hover:not(.active) {
-      background: rgba(67, 97, 238, 0.1);
-      color: #4361ee;
+    .tile-label {
+      font-size:.67rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.6px; color:var(--clr-accent); margin-bottom:4px;
     }
-    
-    .tab-content {
-      background: #fff;
-      border-radius: 0 0 10px 10px;
-      padding: 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    }
-    
-    .info-table {
-      width: 100%;
-    }
-    
-    .info-table th {
-      width: 30%;
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      font-weight: 600;
-      padding: 12px 15px;
-      color: white;
-    }
-    
-    .info-table td {
-      padding: 12px 15px;
-    }
-    
-    .file-icon {
-      font-size: 1.5rem;
-      margin-right: 10px;
-    }
-    
-    .pdf-icon { color: #d63031; }
-    .word-icon { color: #2b579a; }
-    .excel-icon { color: #217346; }
-    .ppt-icon { color: #d24726; }
-    .image-icon { color: #6c5ce7; }
-    
-    .file-item {
-      display: flex;
-      align-items: center;
-      padding: 12px;
-      border-bottom: 1px solid #eee;
-      transition: background-color 0.2s;
-    }
-    
-    .file-item:hover {
-      background-color: #f8f9fa;
-    }
-    
-    .file-info {
-      flex-grow: 1;
-    }
-    
-    .file-actions {
-      margin-left: 10px;
-    }
-    
-    .manager-link {
-      color: #495057;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-    
-    .manager-link:hover {
-      color: #4361ee;
-      text-decoration: underline;
-    }
-    
-    .badge-you {
-      font-size: 0.7em;
-      vertical-align: middle;
-    }
-    
-    .leadership-section {
-      margin-top: 15px;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-    }
-    
-    .leadership-item {
-      margin-bottom: 10px;
-      padding: 12px;
-      background-color: white;
-      border-radius: 8px;
-      border-left: 4px solid #4361ee;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    
-    .leadership-title {
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #495057;
-    }
-    
-    .focal-person-item {
-      border-left-color: #6f42c1;
-    }
-    
+    .tile-value { font-size:.88rem; font-weight:500; color:var(--pf-text-primary); word-break:break-word; }
+    .tile-value a { color:var(--clr-accent); text-decoration:none; }
+    .tile-value a:hover { text-decoration:underline; }
+    body.dark-mode .pf-info-tile { background:var(--table-stripe)!important; }
+    body.dark-mode .tile-value { color:var(--text-primary)!important; }
+
+    /* ── Status badge (inline in tiles) ── */
     .status-badge {
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-weight: 500;
-    }
-    
-    /* Modern button styles */
-    .btn-modern {
-      border-radius: 6px;
-      font-weight: 500;
-      padding: 8px 16px;
-      transition: all 0.3s;
-    }
-    
-    .btn-modern-primary {
-      background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
-      border: none;
-      color: white;
-    }
-    
-    .btn-modern-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
-      background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
-    }
-    
-    /* Card headers */
-    .card-primary .card-header {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      color: white;
-    }
-    
-    .card-info .card-header {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      color: white;
-    }
-    
-    /* Content header theming */
-    .content-header h1 {
-      color: #4361ee;
-    }
-    
-    /* Button theming */
-    .btn-primary {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      border-color: #4361ee;
-    }
-    
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      border-color: #4361ee;
-      transform: translateY(-1px);
-    }
-    
-    .btn-info {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      border-color: #4361ee;
-    }
-    
-    .btn-info:hover {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      border-color: #4361ee;
-    }
-    
-    /* Badge theming */
-    .badge-warning {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      color: white;
-    }
-    
-    /* Icon theming */
-    .text-primary {
-      color: #4361ee !important;
-    }
-    
-    /* Modal header theming */
-    .modal-header {
-      background: linear-gradient(135deg, #4361ee, #3f37c9);
-      color: white;
-    }
-    
-    /* Sidebar Navigation Styles */
-    .sidebar-nav-container {
-    margin-bottom: 20px;
+      display:inline-block; padding:4px 12px; border-radius:20px;
+      font-weight:700; font-size:.78rem; letter-spacing:.3px;
     }
 
-    .sidebar-nav-pills {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    /* ── Leadership grid ── */
+    .leadership-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+    .leadership-item {
+      background:var(--pf-leadership-bg); border-radius:var(--radius-md);
+      padding:14px 16px; border-left:3px solid var(--clr-accent);
     }
+    .leadership-item.focal { border-left-color:#7c3aed; }
+    .l-title { font-weight:700; font-size:.87rem; color:var(--pf-text-primary); margin-bottom:3px; }
+    .l-sub   { font-size:.77rem; color:var(--pf-text-muted); margin-bottom:8px; line-height:1.4; }
+    body.dark-mode .leadership-item { background:var(--table-stripe)!important; }
+    body.dark-mode .l-title { color:var(--text-primary)!important; }
+    body.dark-mode .l-sub   { color:var(--text-muted)!important; }
 
-    .sidebar-nav-pills .nav-link {
-    border-radius: 6px;
-    padding: 12px 15px;
-    font-weight: 500;
-    color: #495057;
-    margin-bottom: 5px;
-    transition: all 0.3s;
-    border: 1px solid transparent;
-    background-color: #ffffff; /* Add white background for inactive pills */
+    /* ── Inline file upload (drop area) ── */
+    .file-drop-area {
+      border: 2px dashed var(--pf-border); border-radius: var(--radius-lg);
+      background: var(--pf-bg-tile); cursor: pointer; transition: all .22s;
+      margin-bottom: 0; position: relative;
     }
+    .file-drop-area:hover, .file-drop-area.drag-over { border-color: var(--clr-accent); background: var(--clr-accent-light); }
+    /* .file-drop-input removed — input is now display:none outside the drop area */
+    .file-drop-inner { padding: 28px 20px; text-align: center; }
+    .file-drop-icon { font-size: 2rem; color: var(--pf-text-muted); margin-bottom: 10px; display: block; }
+    .file-drop-title { font-size: .9rem; font-weight: 600; color: var(--pf-text-body); margin: 0 0 4px; }
+    .file-drop-browse { color: var(--clr-accent); text-decoration: underline; }
+    .file-drop-hint { font-size: .78rem; color: var(--pf-text-muted); margin: 0; }
+    body.dark-mode .file-drop-area { background: var(--table-stripe)!important; border-color: var(--card-border)!important; }
+    body.dark-mode .file-drop-area:hover, body.dark-mode .file-drop-area.drag-over { border-color: var(--clr-accent)!important; background: rgba(255,255,255,.06)!important; }
+    body.dark-mode .file-drop-title { color: var(--text-primary)!important; }
 
-    .sidebar-nav-pills .nav-link.active {
-    background: linear-gradient(135deg, #4361ee, #3f37c9);
-    color: white;
-    border-color: #4361ee;
-    box-shadow: 0 2px 5px rgba(67, 97, 238, 0.3);
-    }
+    .file-preview-list { list-style: none; padding: 16px 20px 0; margin: 0; }
+    .file-preview-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--pf-border); font-size: .84rem; }
+    .file-preview-item:last-child { border-bottom: none; }
+    .fpi-name { flex: 1; color: var(--pf-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fpi-size { color: var(--pf-text-muted); font-size: .75rem; white-space: nowrap; }
+    body.dark-mode .file-preview-item { border-color: var(--card-border)!important; }
+    body.dark-mode .fpi-name { color: var(--text-primary)!important; }
+    body.dark-mode .fpi-size { color: var(--text-muted)!important; }
 
-    .sidebar-nav-pills .nav-link:not(.active) {
-    background: rgba(67, 98, 238, 0.36);
-    color: #4361ee;
-    border-color: rgba(67, 97, 238, 0.2);
-    }
+    .file-drop-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 10px 14px; margin-top: 10px; }
+    body.dark-mode .file-drop-actions { border-color: var(--card-border)!important; }
+    .btn-file-clear { background: transparent; border: 1.5px solid var(--pf-border); color: var(--pf-text-muted); border-radius: var(--radius-sm); padding: 7px 16px; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+    .btn-file-clear:hover { border-color: #ef4444; color: #ef4444; }
+    .btn-file-upload { background: var(--clr-button); color: #fff; border: none; border-radius: var(--radius-sm); padding: 7px 20px; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+    .btn-file-upload:hover { opacity: .88; transform: translateY(-1px); }
 
-    .sidebar-nav-pills .nav-link i {
-    margin-right: 8px;
-    width: 20px;
-    text-align: center;
-    }
-    
-    .sidebar-tab-content {
-      background: #fff;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-      min-height: 300px;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .profile-header {
-        padding: 20px 0;
-      }
-      
-      .profile-avatar {
-        width: 100px;
-        height: 100px;
-      }
-      
-      .info-table th, .info-table td {
-        display: block;
-        width: 100%;
-      }
-      
-      .info-table th {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-        margin-top: 10px;
-        color: white;
-      }
-      
-      .sidebar-nav-pills .nav-link {
-        padding: 10px 12px;
-        font-size: 0.9rem;
-      }
-    }
+    .files-empty { text-align: center; padding: 48px 20px; color: var(--pf-text-muted); }
+    .files-empty i { font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: .4; }
+    .files-empty p { font-size: .9rem; margin: 0; }
 
-    /* Fix for table overlapping footer */
-    .tab-content {
-        min-height: auto;
-        overflow: visible;
-    }
+    .files-list-header { display: flex; align-items: center; margin-bottom: 10px; }
+    .files-count { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--clr-accent); }
 
-    .table-responsive {
-        border: 1px solid #dee2e6;
-        border-radius: 0.25rem;
-    }
+    .files-list { border: 1px solid var(--pf-border); border-radius: var(--radius-md); overflow: hidden; }
+    body.dark-mode .files-list { border-color: var(--card-border)!important; }
 
-    #filesTable {
-        margin-bottom: 0 !important;
-    }
+    .file-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--pf-border); background: var(--pf-bg-card); transition: background .15s; }
+    .file-row:last-child { border-bottom: none; }
+    .file-row:hover { background: var(--pf-bg-tile); }
+    body.dark-mode .file-row { background: var(--card-bg)!important; border-color: var(--card-border)!important; }
+    body.dark-mode .file-row:hover { background: var(--table-stripe)!important; }
 
-    .main-tabs{
-      background-color: #4362eeb6 !important;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    
-    .main-tabs .nav-link {
-      color: rgba(255,255,255,0.8) !important;
-      border-radius: 0;
-      padding: 12px 20px;
-      transition: all 0.3s;
-    }
-    
-    .main-tabs .nav-link.active {
-      background: #4361ee !important;
-      color: white !important;
-      border-bottom: 3px solid rgba(255,255,255,0.5);
-    }
-    
-    .main-tabs .nav-link:hover:not(.active) {
-      background: rgba(255,255,255,0.1) !important;
-      color: white !important;
-    }
+    .file-row-icon { font-size: 1.4rem; flex-shrink: 0; width: 28px; text-align: center; }
+    .file-row-info { flex: 1; min-width: 0; }
+    .file-row-name { display: block; font-size: .88rem; font-weight: 600; color: var(--pf-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-row-meta { font-size: .74rem; color: var(--pf-text-muted); }
+    body.dark-mode .file-row-name { color: var(--text-primary)!important; }
+    body.dark-mode .file-row-meta { color: var(--text-muted)!important; }
+
+    .file-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .file-action-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; font-size: .82rem; border: none; cursor: pointer; transition: all .15s; text-decoration: none; }
+    .file-action-btn.download { background: var(--clr-accent-light); color: var(--clr-accent); }
+    .file-action-btn.download:hover { background: var(--clr-accent); color: #fff; }
+    .file-action-btn.preview  { background: #ecfdf5; color: #16a34a; }
+    .file-action-btn.preview:hover  { background: #16a34a; color: #fff; }
+    .file-action-btn.delete   { background: #fff1f2; color: #ef4444; }
+    .file-action-btn.delete:hover   { background: #ef4444; color: #fff; }
+    body.dark-mode .file-action-btn.download { background: rgba(255,255,255,.07)!important; color: var(--clr-accent)!important; }
+    body.dark-mode .file-action-btn.preview  { background: rgba(22,163,74,.12)!important; color: #4ade80!important; }
+    body.dark-mode .file-action-btn.delete   { background: rgba(239,68,68,.12)!important; color: #f87171!important; }
+    .pdf-icon{color:#ef4444} .word-icon{color:#2563eb} .excel-icon{color:#16a34a} .ppt-icon{color:#ea580c} .image-icon{color:#7c3aed}
+
+    /* ── File toolbar / select-all / bulk delete ── */
+    .files-toolbar { display:flex; align-items:center; gap:12px; padding:10px 14px; margin-bottom:2px; background:var(--pf-bg-tile); border-radius:var(--radius-md); border:1px solid var(--pf-border); }
+    body.dark-mode .files-toolbar { background:var(--table-stripe)!important; border-color:var(--card-border)!important; }
+    .files-select-all-label { display:flex; align-items:center; gap:7px; font-size:.82rem; font-weight:600; color:var(--pf-text-body); cursor:pointer; margin:0; }
+    body.dark-mode .files-select-all-label { color:var(--text-primary)!important; }
+    .files-count { font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--clr-accent); margin-left:auto; }
+    .btn-delete-selected { background:#fff1f2; color:#ef4444; border:1.5px solid #fecdd3; border-radius:var(--radius-sm); padding:5px 14px; font-size:.82rem; font-weight:700; cursor:pointer; transition:all .18s; display:flex; align-items:center; gap:5px; }
+    .btn-delete-selected:not(:disabled):hover { background:#ef4444; color:#fff; border-color:#ef4444; }
+    .btn-delete-selected:disabled { opacity:.45; cursor:not-allowed; }
+    body.dark-mode .btn-delete-selected { background:rgba(239,68,68,.12)!important; border-color:rgba(239,68,68,.3)!important; color:#f87171!important; }
+    body.dark-mode .btn-delete-selected:not(:disabled):hover { background:#ef4444!important; color:#fff!important; }
+    .file-check-input { width:16px; height:16px; cursor:pointer; accent-color:var(--clr-accent); }
+    .file-row-check { flex-shrink:0; display:flex; align-items:center; padding-right:4px; cursor:pointer; }
+    .file-row.selected { background:var(--clr-accent-light)!important; }
+    body.dark-mode .file-row.selected { background:rgba(255,255,255,.06)!important; }
+    /* PDF iframe preview */
+    #filePreviewContent iframe { border:none; width:100%; height:500px; display:block; }
+
+    /* ── Buttons ── */
+    .btn-accent { background:var(--clr-button); color:var(--text-on-accent)!important; border:none; border-radius:var(--radius-sm); padding:8px 18px; font-size:.87rem; font-weight:600; transition:all .22s; cursor:pointer; }
+    .btn-accent:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,.22); opacity:.92; }
+    .btn-accent-outline { background:transparent; color:var(--clr-accent)!important; border:1.5px solid var(--clr-accent); border-radius:var(--radius-sm); padding:7px 16px; font-size:.87rem; font-weight:600; transition:all .22s; }
+    .btn-accent-outline:hover { background:var(--clr-accent-light); }
+    .btn-primary,.btn-modern-primary { background:var(--clr-button)!important; border-color:var(--clr-accent)!important; color:#fff!important; border-radius:var(--radius-sm)!important; font-weight:600!important; font-size:.87rem!important; }
+    .btn-primary:hover { transform:translateY(-1px); opacity:.9; }
+    .btn-info { background:var(--clr-accent)!important; border-color:var(--clr-accent-dark)!important; color:#fff!important; border-radius:var(--radius-sm)!important; font-weight:600!important; }
+
+    /* ── Modal ── */
+    .modal-header { background:var(--clr-header)!important; color:#fff!important; border-radius:var(--radius-md) var(--radius-md) 0 0; }
+    .modal-header .close { color:#fff!important; opacity:.8; }
+    .modal-content { border-radius:var(--radius-lg)!important; border:none!important; box-shadow:var(--pf-shadow-modal)!important; overflow:hidden; }
+
+    /* ── Misc ── */
+    .table-responsive { border:1px solid var(--pf-table-border); border-radius:var(--radius-sm); }
+    #filesTable { margin-bottom:0!important; }
+    .badge-primary { background:var(--clr-accent)!important; }
+    .text-primary  { color:var(--clr-accent)!important; }
+
+    /* ── Footer fix ── */
+    .wrapper { display:flex; flex-direction:column; min-height:100vh; }
+    .content-wrapper { flex:1 0 auto; }
+    .main-footer { flex-shrink:0; position:relative!important; bottom:auto!important; margin-left:250px!important; width:calc(100% - 250px)!important; }
+    body.sidebar-collapse .main-footer { margin-left:0!important; width:100%!important; }
+    @media(max-width:768px) { .main-footer { margin-left:0!important; width:100%!important; } }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:var(--pf-scrollbar-track)}
+    ::-webkit-scrollbar-thumb{background:var(--pf-scrollbar-thumb);border-radius:3px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--clr-accent)}
   </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
-<?php include '../includes/mainheader.php'; ?>
-  <!-- Main Sidebar Container -->
+  <?php include '../includes/mainheader.php'; ?>
   <?php include '../includes/sidebar.php'; ?>
-  <!-- Content Wrapper. Contains page content -->
+
   <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
     <div class="content-header">
       <div class="container-fluid">
         <div class="row mb-2">
-          <div class="col-sm-6">
-            <h1>Employee Profile</h1>
-          </div>
+          <div class="col-sm-6"><h1>Employee Profile</h1></div>
           <div class="col-sm-6">
             <ol class="breadcrumb float-sm-right">
               <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
               <li class="breadcrumb-item"><a href="emp.list.php">Employees</a></li>
-              <li class="breadcrumb-item active">Employee Profile</li>
+              <li class="breadcrumb-item active">Profile</li>
             </ol>
           </div>
         </div>
-      </div><!-- /.container-fluid -->
+      </div>
     </div>
 
-    <!-- Main content -->
     <section class="content">
-      <div class="container-fluid profile-container">
-        <div class="row">
-          <div class="col-md-12">
-            
-        <div class="profile-header text-center mb-4">
-          <div class="row justify-content-center">
-            <div class="col-md-10">
-              <div class="d-flex align-items-center justify-content-center flex-column flex-md-row">
-                <div class="mr-md-4 mb-3 mb-md-0">
-                  <?php 
-                  $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture']);
-                  if (!empty($employee['picture']) && file_exists($imagePath)): ?>
-                    <img class="profile-avatar-xl"
-                        src="<?= $imagePath ?>"
-                        alt="<?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?>">
-                  <?php else: ?>
-                    <img class="profile-avatar-xl"
-                        src="../dist/img/nialogo.png"
-                        alt="Default user image">
-                  <?php endif; ?>
-                </div>
-                <div class="text-center text-md-left text-white">
-                  <h2 class="mb-2 display-5 font-weight-bold"><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></h2>
-                  <p class="mb-1 h4"><?= htmlspecialchars($employee['position_name']) ?></p>
-                  <p class="mb-0 h5"><?= htmlspecialchars($employee['id_number']) ?></p>  
-                </div>
-              </div>
+      <div class="container-fluid" style="max-width:1100px;">
+
+        <!-- ── Hero Banner ── -->
+        <div class="profile-hero">
+          <?php
+          $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture'] ?? '');
+          $initials  = strtoupper(substr($employee['first_name'],0,1).substr($employee['last_name'],0,1));
+          if (!empty($employee['picture']) && file_exists($imagePath)): ?>
+            <img class="profile-hero-avatar" src="<?= $imagePath ?>"
+                 alt="<?= htmlspecialchars($employee['first_name'].' '.$employee['last_name']) ?>">
+          <?php else: ?>
+            <div class="profile-hero-initials"><?= $initials ?></div>
+          <?php endif; ?>
+
+          <div class="profile-hero-info">
+            <h2><?= htmlspecialchars($employee['first_name'].' '.$employee['last_name']) ?></h2>
+            <p class="hero-sub"><?= htmlspecialchars($employee['position_name'] ?? '—') ?></p>
+            <p class="hero-id"><?= htmlspecialchars($employee['id_number'] ?? '') ?></p>
+
+            <!-- Status badges surfaced in the hero -->
+            <div class="hero-badges">
+              <?php if (!empty($employee['employment_color'])): ?>
+                <span class="hero-status-badge"
+                      style="background-color:<?= htmlspecialchars($employee['employment_color']) ?>;
+                             color:<?= (hexdec(substr($employee['employment_color'],1))>0xffffff/2)?'#000':'#fff' ?>">
+                  <i class="fas fa-circle" style="font-size:.55rem;"></i>
+                  <?= htmlspecialchars($employee['employment_status']) ?>
+                </span>
+              <?php endif; ?>
+              <?php if (!empty($employee['appointment_color'])): ?>
+                <span class="hero-status-badge"
+                      style="background-color:<?= htmlspecialchars($employee['appointment_color']) ?>;
+                             color:<?= (hexdec(substr($employee['appointment_color'],1))>0xffffff/2)?'#000':'#fff' ?>">
+                  <i class="fas fa-file-signature" style="font-size:.7rem;"></i>
+                  <?= htmlspecialchars($employee['appointment_status']) ?>
+                </span>
+              <?php endif; ?>
+              <?php if ($is_manager_office_staff): ?>
+                <span class="hero-status-badge" style="background:rgba(255,255,255,.2);color:#fff;">
+                  <i class="fas fa-star" style="font-size:.7rem;"></i> Manager's Office Staff
+                </span>
+              <?php endif; ?>
             </div>
           </div>
+
+          <a href="emp.edit.php?emp_id=<?= $emp_id ?>" class="hero-edit-btn">
+            <i class="fas fa-edit"></i> Edit Profile
+          </a>
+        </div><!-- /.profile-hero -->
+
+        <!-- ── Tab bar ── -->
+        <div class="pf-tabs-bar">
+          <ul class="nav w-100" id="mainTabs">
+            <li class="nav-item flex-fill">
+              <a class="nav-link active" href="#about" data-toggle="tab">
+                <i class="fas fa-user"></i> About Me
+              </a>
+            </li>
+            <li class="nav-item flex-fill">
+              <a class="nav-link" href="#file" data-toggle="tab">
+                <i class="fas fa-folder"></i> Files
+                <?php if (!empty($uploadedFiles)): ?>
+                  <span style="font-size:.7rem;background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;margin-left:4px;">
+                    <?= count($uploadedFiles) ?>
+                  </span>
+                <?php endif; ?>
+              </a>
+            </li>
+          </ul>
         </div>
-        
-        <div class="row">
-          <div class="col-md-4">
-            <!-- Sidebar Navigation Pills -->
-            <div class="sidebar-nav-container">
-              <div class="sidebar-nav-pills">
-                <ul class="nav nav-pills flex-column" id="sidebarTabs" role="tablist">
-                  <li class="nav-item" role="presentation">
-                    <a class="nav-link active" id="profile-summary-tab" data-toggle="pill" href="#profile-summary" role="tab" aria-controls="profile-summary" aria-selected="true">
-                      <i class="fas fa-user-circle mr-2"></i> Profile Summary
-                    </a>
-                  </li>
-                  <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="employment-status-tab" data-toggle="pill" href="#employment-status" role="tab" aria-controls="employment-status" aria-selected="false">
-                      <i class="fas fa-briefcase mr-2"></i> Employment Status
-                    </a>
-                  </li>
-                  <?php if ($employee['is_office_manager'] || !empty($sections_as_head) || !empty($units_as_head) || !empty($sections_as_secretary)): ?>
-                  <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="leadership-roles-tab" data-toggle="pill" href="#leadership-roles" role="tab" aria-controls="leadership-roles" aria-selected="false">
-                      <i class="fas fa-user-shield mr-2"></i> Leadership Roles
-                    </a>
-                  </li>
-                  <?php endif; ?>
-                </ul>
+
+        <!-- ── Tab content ── -->
+        <div class="pf-tab-content">
+          <div class="tab-content" style="background:transparent;padding:0;box-shadow:none;border-radius:0;min-height:unset;">
+
+            <!-- ════════════════════ ABOUT ME ════════════════════ -->
+            <div class="active tab-pane" id="about">
+
+              <!-- 1. Personal Information -->
+              <div class="pf-section-title">Personal Information</div>
+              <div class="pf-info-grid">
+                <div class="pf-info-tile">
+                  <div class="tile-label">Full Name</div>
+                  <div class="tile-value"><?= htmlspecialchars(trim($employee['first_name'].' '.($employee['middle_name']??'').' '.$employee['last_name'].' '.($employee['ext_name']??''))) ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Gender</div>
+                  <div class="tile-value"><?= htmlspecialchars($employee['gender'] ?? '—') ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Birthday</div>
+                  <div class="tile-value"><?= htmlspecialchars($employee['bday'] ?? '—') ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Email</div>
+                  <div class="tile-value" style="word-break:break-all;"><?= htmlspecialchars($employee['email']) ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Phone</div>
+                  <div class="tile-value"><?= htmlspecialchars($employee['phone_number']) ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Address</div>
+                  <div class="tile-value"><?= htmlspecialchars($employee['address'] ?? '—') ?></div>
+                </div>
               </div>
-              
-              <!-- Sidebar Tab Content -->
-              <div class="tab-content sidebar-tab-content mt-3" id="sidebarTabContent">
-                <!-- Profile Summary Tab -->
-                <div class="tab-pane fade show active" id="profile-summary" role="tabpanel" aria-labelledby="profile-summary-tab">
-                  <div class="mb-3">
-                    <strong><i class="fas fa-envelope mr-2 text-primary"></i> Email</strong>
-                    <p class="text-muted mb-2"><?= htmlspecialchars($employee['email']) ?></p>
-                  </div>
-                  
-                  <div class="mb-3">
-                    <strong><i class="fas fa-phone mr-2 text-primary"></i> Phone</strong>
-                    <p class="text-muted mb-2"><?= htmlspecialchars($employee['phone_number']) ?></p>
-                  </div>
-                  
-                  <div class="mb-3">
-                    <strong><i class="fas fa-briefcase mr-2 text-primary"></i> Position</strong>
-                    <p class="text-muted mb-2"><?= htmlspecialchars($employee['position_name']) ?></p>
-                  </div>
-                  
-                  <div class="mb-3">
-                    <strong><i class="fas fa-building mr-2 text-primary"></i> Office</strong>
-                    <p class="text-muted mb-0"><?= htmlspecialchars($employee['office_name']) ?></p>
-                    <?php if (!empty($current_assignment['section_name'])): ?>
-                      <small class="text-muted d-block">Section: <?= htmlspecialchars($current_assignment['section_name']) ?></small>
-                      <?php if (!empty($current_assignment['unit_name'])): ?>
-                        <small class="text-muted d-block">Unit: <?= htmlspecialchars($current_assignment['unit_name']) ?></small>
-                      <?php endif; ?>
-                    <?php endif; ?>
-                  </div>
-                  
-                  <?php if ($is_manager_office_staff): ?>
-                    <div class="text-center mt-3">
-                      <span class="badge badge-warning p-2">
-                        <i class="fas fa-star mr-1"></i> Manager's Office Staff
-                      </span>
-                    </div>
-                  <?php endif; ?>
-                  
-                  <hr>
-                  
-                  <div class="text-center">
-                    <a href="emp.edit.php?emp_id=<?= $emp_id ?>" class="btn btn-modern btn-modern-primary">
-                      <i class="fas fa-edit mr-1"></i> Edit Profile
+
+              <!-- 2. Assignment -->
+              <div class="pf-section-title mt-2">Assignment</div>
+              <div class="pf-info-grid cols-4">
+                <div class="pf-info-tile">
+                  <div class="tile-label">Position</div>
+                  <div class="tile-value"><?= htmlspecialchars($employee['position_name'] ?? '—') ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Office</div>
+                  <div class="tile-value"><?= htmlspecialchars($employee['office_name'] ?? '—') ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Section</div>
+                  <div class="tile-value"><?= htmlspecialchars($current_assignment['section_name'] ?? '—') ?></div>
+                </div>
+                <div class="pf-info-tile">
+                  <div class="tile-label">Unit Section</div>
+                  <div class="tile-value"><?= htmlspecialchars($current_assignment['unit_name'] ?? '—') ?></div>
+                </div>
+              </div>
+
+              <?php if (!empty($employee['office_manager_first_name'])): ?>
+              <!-- 3. Office Manager -->
+              <div class="pf-section-title mt-2">Office Manager</div>
+              <div class="pf-info-grid cols-2">
+                <div class="pf-info-tile">
+                  <div class="tile-label">Manager</div>
+                  <div class="tile-value">
+                    <a href="emp.profile.php?emp_id=<?= $employee['office_manager_id'] ?>">
+                      <?= htmlspecialchars($employee['office_manager_first_name'].' '.$employee['office_manager_last_name']) ?>
                     </a>
                   </div>
                 </div>
-                
-                <!-- Employment Status Tab -->
-                <div class="tab-pane fade" id="employment-status" role="tabpanel" aria-labelledby="employment-status-tab">
-                  <div class="mb-3">
-                    <strong><i class="fas fa-user-tag mr-2 text-primary"></i> Employment Status</strong>
-                    <p class="mt-1">
-                      <span class="status-badge" style="background-color: <?= htmlspecialchars($employee['employment_color']) ?>; 
-                        color: <?= (hexdec(substr($employee['employment_color'], 1)) > 0xffffff/2) ? '#000000' : '#ffffff' ?>">
-                        <?= htmlspecialchars($employee['employment_status']) ?>
-                      </span>
-                    </p>
-                  </div>
-                  
-                  <div class="mb-3">
-                    <strong><i class="fas fa-file-signature mr-2 text-primary"></i> Appointment Status</strong>
-                    <p class="mt-1">
-                      <span class="status-badge" style="background-color: <?= htmlspecialchars($employee['appointment_color']) ?>; 
-                        color: <?= (hexdec(substr($employee['appointment_color'], 1)) > 0xffffff/2) ? '#000000' : '#ffffff' ?>">
-                        <?= htmlspecialchars($employee['appointment_status']) ?>
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                
-                <!-- Leadership Roles Tab -->
-                <?php if ($employee['is_office_manager'] || !empty($sections_as_head) || !empty($units_as_head) || !empty($sections_as_secretary)): ?>
-                <div class="tab-pane fade" id="leadership-roles" role="tabpanel" aria-labelledby="leadership-roles-tab">
-                  <?php if ($employee['is_office_manager']): ?>
-                    <div class="leadership-item mb-3">
-                      <div class="leadership-title">
-                        <i class="fas fa-building mr-2"></i> Division Manager
-                      </div>
-                      <div class="text-muted">
-                        Manages <?= htmlspecialchars($employee['office_name']) ?>
-                      </div>
-                    </div>
-                  <?php endif; ?>
-                  
-                  <?php if (!empty($sections_as_head)): ?>
-                    <div class="leadership-title mt-3">
-                      <i class="fas fa-users mr-2"></i> Section Head Of:
-                    </div>
-                    <?php foreach ($sections_as_head as $section): ?>
-                      <div class="leadership-item mb-2">
-                        <div>
-                          <strong><?= htmlspecialchars($section['section_name']) ?></strong>
-                          <small class="text-muted">(<?= htmlspecialchars($section['section_code']) ?>)</small>
-                        </div>
-                        <div class="text-muted">
-                          Office: <?= htmlspecialchars($section['office_name']) ?>
-                        </div>
-                        <div class="mt-2">
-                          <a href="sections.php?edit=<?= $section['section_id'] ?>" class="btn btn-xs btn-info">
-                            <i class="fas fa-edit"></i> Manage Section
-                          </a>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                  
-                  <?php if (!empty($sections_as_secretary)): ?>
-                    <div class="leadership-title mt-3">
-                      <i class="fas fa-user-secret mr-2"></i> Focal Person Of:
-                    </div>
-                    <?php foreach ($sections_as_secretary as $section): ?>
-                      <div class="leadership-item mb-2">
-                        <div>
-                          <strong><?= htmlspecialchars($section['section_name']) ?></strong>
-                        </div>
-                        <div class="mt-2">
-                          <a href="sections.php?edit=<?= $section['section_id'] ?>" class="btn btn-xs btn-info">
-                            <i class="fas fa-edit"></i> Manage Section
-                          </a>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                  
-                  <?php if (!empty($units_as_head)): ?>
-                    <div class="leadership-title mt-3">
-                      <i class="fas fa-users mr-2"></i> Unit Head Of:
-                    </div>
-                    <?php foreach ($units_as_head as $unit): ?>
-                      <div class="leadership-item mb-2">
-                        <div>
-                          <strong><?= htmlspecialchars($unit['unit_name']) ?></strong>
-                          <small class="text-muted">(<?= htmlspecialchars($unit['unit_code']) ?>)</small>
-                        </div>
-                        <div class="text-muted">
-                          Parent Section: <?= htmlspecialchars($unit['section_name']) ?>
-                        </div>
-                        <div class="mt-2">
-                          <a href="sections.php?edit_unit=<?= $unit['unit_id'] ?>" class="btn btn-xs btn-info">
-                            <i class="fas fa-edit"></i> Manage Unit
-                          </a>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
+              </div>
+              <?php endif; ?>
+
+              <?php if ($has_leadership): ?>
+              <!-- 4. Leadership Roles -->
+              <div class="pf-section-title mt-2">Leadership Roles</div>
+              <div class="leadership-grid">
+
+                <?php if ($employee['is_office_manager']): ?>
+                <div class="leadership-item">
+                  <div class="l-title"><i class="fas fa-building mr-1" style="color:var(--clr-accent)"></i> Division Manager</div>
+                  <div class="l-sub">Manages: <?= htmlspecialchars($employee['office_name']) ?></div>
                 </div>
                 <?php endif; ?>
-              </div>
-            </div>
-          </div>
-          
-          <div class="col-md-8">
-            <!-- Main Content Tabs -->
-            <div class="card">
-              <div class="sidebar-nav-pills">
-                <div class="main-tabs">
-                    <ul class="nav nav-pills" id="mainTabs">
-                    <li class="nav-item"><a class="nav-link active" href="#about" data-toggle="tab">About Me</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#file" data-toggle="tab">My Files</a></li>
-                    </ul>
-                </div>
-              </div>
-              
-              <div class="card-body">
-                <div class="tab-content">
-                  <div class="active tab-pane" id="about">
-                    <h4 class="mb-4">Personal Information</h4>
-                    <div class="row">
-                      <div class="col-md-6">
-                        <table class="table table-bordered info-table">
-                          <tr>
-                            <th>Full Name</th>
-                            <td><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['middle_name'] . ' ' . $employee['last_name'] . ' ' . $employee['ext_name']) ?></td>
-                          </tr>
-                          <tr>
-                            <th>Gender</th>
-                            <td><?= htmlspecialchars($employee['gender']) ?></td>
-                          </tr>
-                          <tr>
-                            <th>Birthday</th>
-                            <td><?= htmlspecialchars($employee['bday']) ?></td>
-                          </tr>
-                        </table>
-                      </div>
-                      <div class="col-md-6">
-                        <table class="table table-bordered info-table">
-                          <tr>
-                            <th>Email</th>
-                            <td><?= htmlspecialchars($employee['email']) ?></td>
-                          </tr>
-                          <tr>
-                            <th>Phone</th>
-                            <td><?= htmlspecialchars($employee['phone_number']) ?></td>
-                          </tr>
-                          <tr>
-                            <th>Address</th>
-                            <td><?= htmlspecialchars($employee['address']) ?></td>
-                          </tr>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="tab-pane" id="file">
-                    <!-- File Upload Form -->
-                    <div class="card card-primary">
-                      <div class="card-header">
-                        <h3 class="card-title">Upload New File</h3>
-                      </div>
-                      <form method="post" enctype="multipart/form-data">
-                        <div class="card-body">
-                          <div class="form-group">
-                            <label for="employee_file">Select File</label>
-                            <div class="input-group">
-                              <div class="custom-file">
-                                <input type="file" class="custom-file-input" id="employee_file" name="employee_file" required>
-                                <label class="custom-file-label" for="employee_file">Choose file</label>
-                              </div>
-                              <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary">Upload</button>
-                              </div>
-                            </div>
-                            <small class="text-muted">Max file size: 200MB. Allowed types: PDF, DOC, XLS, PPT, JPG, PNG</small>
-                          </div>
-                        </div>
-                      </form>
-                    </div>
-                    
-                    <!-- File List -->
-                    <div class="card mt-4">
-                      <div class="card-header">
-                        <h3 class="card-title">Uploaded Files</h3>
-                      </div>
-                      <div class="card-body">
-                        <?php if (empty($uploadedFiles)): ?>
-                          <div class="text-center text-muted py-5">
-                            <i class="fas fa-folder-open fa-3x mb-3"></i>
-                            <p>No files uploaded yet.</p>
-                          </div>
-                        <?php else: ?>
-                          <div class="table-responsive">
-                            <table id="filesTable" class="table table-hover">
-                              <thead>
-                                <tr>
-                                  <th>File</th>
-                                  <th>Type</th>
-                                  <th>Size</th>
-                                  <th>Modified</th>
-                                  <th>Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <?php foreach ($uploadedFiles as $file): ?>
-                                  <?php 
-                                  $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                                  $iconClass = 'fa-file';
-                                  $fileType = 'File';
-                                  
-                                  if (in_array($fileExt, ['pdf'])) {
-                                    $iconClass = 'fa-file-pdf pdf-icon';
-                                    $fileType = 'PDF';
-                                  } elseif (in_array($fileExt, ['doc', 'docx'])) {
-                                    $iconClass = 'fa-file-word word-icon';
-                                    $fileType = 'Word';
-                                  } elseif (in_array($fileExt, ['xls', 'xlsx'])) {
-                                    $iconClass = 'fa-file-excel excel-icon';
-                                    $fileType = 'Excel';
-                                  } elseif (in_array($fileExt, ['ppt', 'pptx'])) {
-                                    $iconClass = 'fa-file-powerpoint ppt-icon';
-                                    $fileType = 'PowerPoint';
-                                  } elseif (in_array($fileExt, ['jpg', 'jpeg', 'png', 'gif'])) {
-                                    $iconClass = 'fa-file-image image-icon';
-                                    $fileType = 'Image';
-                                  }
-                                  ?>
-                                  <tr>
-                                    <td>
-                                      <i class="fas <?= $iconClass ?> mr-2"></i>
-                                      <span class="file-name" style="max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        <?= htmlspecialchars($file['name']) ?>
-                                      </span>
-                                    </td>
-                                    <td><?= $fileType ?></td>
-                                    <td><?= formatSizeUnits($file['size']) ?></td>
-                                    <td><?= date('M d, Y H:i', $file['modified']) ?></td>
-                                    <td>
-                                      <div class="btn-group btn-group-sm">
-                                        <a href="../dist/files/employees/<?= $emp_id ?>/<?= urlencode($file['name']) ?>" 
-                                           class="btn btn-info" target="_blank" download>
-                                          <i class="fas fa-download"></i>
-                                        </a>
-                                        <a href="emp.profile.php?emp_id=<?= $emp_id ?>&delete_file=<?= urlencode($file['name']) ?>" 
-                                           class="btn btn-danger" 
-                                           onclick="return confirm('Are you sure you want to delete this file?')">
-                                          <i class="fas fa-trash"></i>
-                                        </a>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                <?php endforeach; ?>
-                              </tbody>
-                            </table>
-                          </div>
-                        <?php endif; ?>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-    <?php include '../includes/mainfooter.php'; ?>
 
-  <?php include '../includes/footer.php'; ?>
+                <?php foreach ($sections_as_head as $s): ?>
+                <div class="leadership-item">
+                  <div class="l-title"><i class="fas fa-users mr-1" style="color:var(--clr-accent)"></i> Section Head</div>
+                  <div class="l-sub">
+                    <?= htmlspecialchars($s['section_name']) ?>
+                    <?php if (!empty($s['section_code'])): ?><span style="opacity:.6">(<?= htmlspecialchars($s['section_code']) ?>)</span><?php endif; ?>
+                    <br><?= htmlspecialchars($s['office_name']) ?>
+                  </div>
+                  <a href="sections.php?edit=<?= $s['section_id'] ?>" class="btn btn-accent" style="font-size:.73rem;padding:4px 10px;">
+                    <i class="fas fa-edit"></i> Manage
+                  </a>
+                </div>
+                <?php endforeach; ?>
+
+                <?php foreach ($sections_as_secretary as $s): ?>
+                <div class="leadership-item focal">
+                  <div class="l-title"><i class="fas fa-user-secret mr-1" style="color:#7c3aed"></i> Focal Person</div>
+                  <div class="l-sub"><?= htmlspecialchars($s['section_name']) ?></div>
+                  <a href="sections.php?edit=<?= $s['section_id'] ?>" class="btn btn-accent" style="font-size:.73rem;padding:4px 10px;">
+                    <i class="fas fa-edit"></i> Manage
+                  </a>
+                </div>
+                <?php endforeach; ?>
+
+                <?php foreach ($units_as_head as $u): ?>
+                <div class="leadership-item">
+                  <div class="l-title"><i class="fas fa-layer-group mr-1" style="color:var(--clr-accent)"></i> Unit Head</div>
+                  <div class="l-sub">
+                    <?= htmlspecialchars($u['unit_name']) ?>
+                    <?php if (!empty($u['unit_code'])): ?><span style="opacity:.6">(<?= htmlspecialchars($u['unit_code']) ?>)</span><?php endif; ?>
+                    <br>Parent: <?= htmlspecialchars($u['section_name']) ?>
+                  </div>
+                  <a href="sections.php?edit_unit=<?= $u['unit_id'] ?>" class="btn btn-accent" style="font-size:.73rem;padding:4px 10px;">
+                    <i class="fas fa-edit"></i> Manage
+                  </a>
+                </div>
+                <?php endforeach; ?>
+
+              </div><!-- /.leadership-grid -->
+              <?php endif; ?>
+
+            </div><!-- /#about -->
+
+            <!-- ════════════════════ FILES ════════════════════ -->
+            <div class="tab-pane" id="file">
+              <div class="pf-section-title">Employee Files</div>
+
+              <!-- ── Inline Upload Form ── -->
+              <form method="post" enctype="multipart/form-data" id="uploadForm"
+                    action="emp.profile.php?emp_id=<?= $emp_id ?>">
+
+                <!-- File input OUTSIDE drop area — hidden, no overlay -->
+                <input type="file" id="employee_files" name="employee_files[]" multiple
+                       style="display:none; position:static;">
+
+                <!-- Drop zone — click opens picker via JS -->
+                <div class="file-drop-area" id="fileDropArea">
+                  <div class="file-drop-inner" id="fileDropInner">
+                    <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
+                    <p class="file-drop-title">Drag &amp; drop files here, or <span class="file-drop-browse">browse</span></p>
+                    <p class="file-drop-hint">PDF, DOC, XLS, PPT, JPG, PNG &mdash; Max 200MB each</p>
+                  </div>
+                  <div id="selectedFilesPreview" style="display:none;">
+                    <ul id="filePreviewList" class="file-preview-list"></ul>
+                  </div>
+                </div>
+
+                <!-- Action buttons OUTSIDE the drop area — no overlay can intercept them -->
+                <div class="file-drop-actions" id="uploadActions" style="display:none;">
+                  <button type="button" class="btn-file-clear" id="clearFilesBtn">
+                    <i class="fas fa-times mr-1"></i> Clear
+                  </button>
+                  <button type="submit" class="btn-file-upload" id="uploadSubmitBtn">
+                    <i class="fas fa-upload mr-1"></i> Upload
+                  </button>
+                </div>
+
+              </form>
+
+              <!-- ── File List ── -->
+              <?php if (empty($uploadedFiles)): ?>
+                <div class="files-empty">
+                  <i class="fas fa-folder-open"></i>
+                  <p>No files uploaded yet.</p>
+                </div>
+              <?php else: ?>
+
+                <form method="post" id="bulkDeleteForm"
+                      action="emp.profile.php?emp_id=<?= $emp_id ?>">
+                  <input type="hidden" name="delete_all_files" value="1">
+
+                  <div class="files-toolbar">
+                    <label class="files-select-all-label">
+                      <input type="checkbox" id="selectAllFiles" class="file-check-input">
+                      <span>Select all</span>
+                    </label>
+                    <span class="files-count"><i class="fas fa-file mr-1"></i><?= count($uploadedFiles) ?> file<?= count($uploadedFiles) !== 1 ? 's' : '' ?></span>
+                    <button type="button" class="btn-delete-selected" id="deleteSelectedBtn" disabled>
+                      <i class="fas fa-trash mr-1"></i> Delete Selected
+                    </button>
+                  </div>
+
+                  <div class="files-list" id="filesList">
+                    <?php foreach ($uploadedFiles as $file):
+                      $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                      $ic = 'fa-file'; $ft = 'File'; $ic_color = '#6b7280';
+                      if ($ext==='pdf')                            { $ic='fa-file-pdf';        $ft='PDF';        $ic_color='#ef4444'; }
+                      elseif (in_array($ext,['doc','docx']))       { $ic='fa-file-word';       $ft='Word';       $ic_color='#2563eb'; }
+                      elseif (in_array($ext,['xls','xlsx']))       { $ic='fa-file-excel';      $ft='Excel';      $ic_color='#16a34a'; }
+                      elseif (in_array($ext,['ppt','pptx']))       { $ic='fa-file-powerpoint'; $ft='PowerPoint'; $ic_color='#ea580c'; }
+                      elseif (in_array($ext,['jpg','jpeg','png','gif'])) { $ic='fa-file-image'; $ft='Image';     $ic_color='#7c3aed'; }
+                    ?>
+                    <div class="file-row">
+                      <label class="file-row-check">
+                        <input type="checkbox" name="selected_files[]"
+                               value="<?= htmlspecialchars($file['name']) ?>"
+                               class="file-check-input file-checkbox">
+                      </label>
+                      <div class="file-row-icon" style="color:<?= $ic_color ?>">
+                        <i class="fas <?= $ic ?>"></i>
+                      </div>
+                      <div class="file-row-info">
+                        <span class="file-row-name" title="<?= htmlspecialchars($file['name']) ?>">
+                          <?= htmlspecialchars($file['name']) ?>
+                        </span>
+                        <span class="file-row-meta"><?= $ft ?> &middot; <?= formatSizeUnits($file['size']) ?> &middot; <?= date('M d, Y', $file['modified']) ?></span>
+                      </div>
+                      <div class="file-row-actions">
+                        <a href="../dist/files/employees/<?= $emp_id ?>/<?= urlencode($file['name']) ?>"
+                           class="file-action-btn download"
+                           download="<?= htmlspecialchars($file['name']) ?>" title="Download">
+                          <i class="fas fa-download"></i>
+                        </a>
+                        <button class="file-action-btn preview view-file-btn" title="Preview"
+                                data-filepath="../dist/files/employees/<?= $emp_id ?>/<?= urlencode($file['name']) ?>"
+                                data-filetype="<?= $ft ?>"
+                                data-filename="<?= htmlspecialchars($file['name']) ?>">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <a href="emp.profile.php?emp_id=<?= $emp_id ?>&delete_file=<?= urlencode($file['name']) ?>"
+                           class="file-action-btn delete delete-file-btn"
+                           data-filename="<?= htmlspecialchars($file['name']) ?>" title="Delete">
+                          <i class="fas fa-trash"></i>
+                        </a>
+                      </div>
+                    </div>
+                    <?php endforeach; ?>
+                  </div>
+
+                </form>
+
+                <!-- Delete-selected password confirmation modal -->
+                <div class="modal fade" id="deleteSelectedModal" tabindex="-1" role="dialog" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-trash mr-2"></i>Confirm Deletion</h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                      </div>
+                      <div class="modal-body">
+                        <p id="deleteSelectedSummary" class="mb-3" style="font-size:.9rem;color:var(--pf-text-body);"></p>
+                        <div class="form-group mb-0">
+                          <label for="delete_all_password" style="font-size:.82rem;font-weight:600;">Enter your password to confirm</label>
+                          <div class="input-group">
+                            <input type="password" class="form-control" id="delete_all_password"
+                                   placeholder="Your current password"
+                                   autocomplete="current-password">
+                            <div class="input-group-append">
+                              <span class="input-group-text" onclick="togglePassword('delete_all_password')" style="cursor:pointer;">
+                                <i class="fas fa-eye"></i>
+                              </span>
+                            </div>
+                          </div>
+                          <div id="deletePasswordError" class="mt-1" style="font-size:.8rem;color:#ef4444;display:none;"></div>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmDeleteSelectedBtn">
+                          <i class="fas fa-trash mr-1"></i> Delete Files
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              <?php endif; ?>
+
+            </div><!-- /#file -->
+
+          </div><!-- /.tab-content -->
+        </div><!-- /.pf-tab-content -->
+
+      </div><!-- /.container-fluid -->
+    </section>
+  </div><!-- /.content-wrapper -->
+
+  <?php include '../includes/mainfooter.php'; ?>
+</div><!-- ./wrapper -->
+
+<?php include '../includes/footer.php'; ?>
+
+<!-- ── File Preview Modal ── -->
+<div class="modal fade" id="filePreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">File Preview</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body" id="filePreviewContent"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <a id="downloadPreviewBtn" href="#" class="btn btn-primary" download><i class="fas fa-download"></i> Download</a>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- Toast -->
+<?php if (isset($_SESSION['toast'])): ?>
 <script>
-$(document).ready(function() {
-    // Initialize DataTables for files table
-    if ($('#filesTable').length) {
-        $('#filesTable').DataTable({
-            "paging": true,
-            "lengthChange": true,
-            "searching": true,
-            "ordering": true,
-            "info": true,
-            "autoWidth": false,
-            "responsive": true,
-            "pageLength": 10,
-            "language": {
-                "search": "Search files:",
-                "lengthMenu": "Show _MENU_ files per page",
-                "info": "Showing _START_ to _END_ of _TOTAL_ files",
-                "infoEmpty": "No files available",
-                "infoFiltered": "(filtered from _MAX_ total files)"
+document.addEventListener('DOMContentLoaded', function () {
+    const t = <?php echo json_encode($_SESSION['toast']); ?>;
+    Swal.fire({ toast:true, position:'top-end', icon:t.type, title:t.message,
+                showConfirmButton:false, timer:3000, timerProgressBar:true,
+                didOpen:(el)=>{ el.addEventListener('mouseenter',Swal.stopTimer); el.addEventListener('mouseleave',Swal.resumeTimer); }});
+});
+</script>
+<?php unset($_SESSION['toast']); endif; ?>
+
+<script src="../plugins/bs-custom-file-input/bs-custom-file-input.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ── Drag-and-drop upload area ── */
+    const dropArea    = document.getElementById('fileDropArea');
+    const fileInput   = document.getElementById('employee_files');
+    const inner       = document.getElementById('fileDropInner');
+    const selPreview  = document.getElementById('selectedFilesPreview');
+    const previewList = document.getElementById('filePreviewList');
+    const clearBtn    = document.getElementById('clearFilesBtn');
+    const uploadActions = document.getElementById('uploadActions');
+
+    function fmtSize(b) {
+        return b>=1048576?(b/1048576).toFixed(1)+' MB':b>=1024?(b/1024).toFixed(1)+' KB':b+' B';
+    }
+    function renderPicked(files) {
+        if (!previewList) return;
+        previewList.innerHTML = '';
+        for (let f of files) {
+            previewList.innerHTML += `<li class="file-preview-item">
+              <i class="fas fa-file mr-2" style="color:var(--clr-accent)"></i>
+              <span class="fpi-name">${f.name}</span>
+              <span class="fpi-size">${fmtSize(f.size)}</span></li>`;
+        }
+        if (inner)         inner.style.display         = 'none';
+        if (selPreview)    selPreview.style.display     = 'block';
+        if (uploadActions) uploadActions.style.display  = 'flex';
+    }
+    function resetUpload() {
+        if (fileInput)     fileInput.value              = '';
+        if (inner)         inner.style.display          = 'block';
+        if (selPreview)    selPreview.style.display      = 'none';
+        if (previewList)   previewList.innerHTML         = '';
+        if (uploadActions) uploadActions.style.display   = 'none';
+    }
+    if (fileInput) {
+        fileInput.addEventListener('change', function () {
+            if (this.files.length) renderPicked(this.files);
+            else resetUpload();
+        });
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () { resetUpload(); });
+    }
+    // Drop area click → open file picker directly (no overlay to guard against)
+    if (dropArea && fileInput) {
+        dropArea.addEventListener('click', function () {
+            fileInput.click();
+        });
+        ['dragenter','dragover'].forEach(ev => dropArea.addEventListener(ev, function(e){
+            e.preventDefault(); e.stopPropagation(); dropArea.classList.add('drag-over');
+        }));
+        ['dragleave','drop'].forEach(ev => dropArea.addEventListener(ev, function(e){
+            e.preventDefault(); e.stopPropagation(); dropArea.classList.remove('drag-over');
+        }));
+        dropArea.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            if (dt && dt.files.length) { fileInput.files = dt.files; renderPicked(dt.files); }
+        });
+    }
+
+    /* ── Checkbox / select-all / delete-selected ── */
+    const selectAllCb   = document.getElementById('selectAllFiles');
+    const deleteSelBtn  = document.getElementById('deleteSelectedBtn');
+    const confirmDelBtn = document.getElementById('confirmDeleteSelectedBtn');
+    const delPwInput    = document.getElementById('delete_all_password');
+    const delPwErr      = document.getElementById('deletePasswordError');
+    const bulkForm      = document.getElementById('bulkDeleteForm');
+
+    function updateDeleteBtn() {
+        if (!deleteSelBtn) return;
+        const checked = document.querySelectorAll('.file-checkbox:checked').length;
+        deleteSelBtn.disabled = checked === 0;
+        document.querySelectorAll('.file-checkbox').forEach(function(cb) {
+            cb.closest('.file-row').classList.toggle('selected', cb.checked);
+        });
+        if (selectAllCb) {
+            const total = document.querySelectorAll('.file-checkbox').length;
+            selectAllCb.indeterminate = checked > 0 && checked < total;
+            selectAllCb.checked = checked === total && total > 0;
+        }
+    }
+    if (selectAllCb) {
+        selectAllCb.addEventListener('change', function() {
+            document.querySelectorAll('.file-checkbox').forEach(cb => { cb.checked = this.checked; });
+            updateDeleteBtn();
+        });
+    }
+    document.querySelectorAll('.file-checkbox').forEach(cb => cb.addEventListener('change', updateDeleteBtn));
+
+    if (deleteSelBtn) {
+        deleteSelBtn.addEventListener('click', function() {
+            const count = document.querySelectorAll('.file-checkbox:checked').length;
+            if (!count) return;
+            const summary = document.getElementById('deleteSelectedSummary');
+            if (summary) summary.textContent = `You are about to permanently delete ${count} file${count!==1?'s':''}. This cannot be undone.`;
+            if (delPwInput) delPwInput.value = '';
+            if (delPwErr) { delPwErr.style.display = 'none'; delPwErr.textContent = ''; }
+            // Show Bootstrap modal — works with Bootstrap 4 (jQuery) or Bootstrap 5
+            const modalEl = document.getElementById('deleteSelectedModal');
+            if (modalEl) {
+                if (typeof $ !== 'undefined') $(modalEl).modal('show');
+                else if (window.bootstrap) new window.bootstrap.Modal(modalEl).show();
             }
         });
     }
-    
-    // File input label update
-    $('.custom-file-input').on('change', function() {
-        var fileName = $(this).val().split('\\').pop();
-        $(this).next('.custom-file-label').html(fileName);
-    });
-    
-    // Toast notification
-    <?php if (isset($_SESSION['toast'])): ?>
-        $(document).Toasts('create', {
-            class: 'bg-<?= $_SESSION['toast']['type'] ?>',
-            title: '<?= ucfirst($_SESSION['toast']['type']) ?>',
-            body: '<?= $_SESSION['toast']['message'] ?>',
-            autohide: true,
-            delay: 3000
+    if (confirmDelBtn && bulkForm) {
+        confirmDelBtn.addEventListener('click', function() {
+            const pw = delPwInput ? delPwInput.value.trim() : '';
+            if (!pw) {
+                if (delPwErr) { delPwErr.textContent = 'Password is required.'; delPwErr.style.display = 'block'; }
+                return;
+            }
+            let hiddenPw = bulkForm.querySelector('input[name="delete_all_password"]');
+            if (!hiddenPw) {
+                hiddenPw = document.createElement('input');
+                hiddenPw.type = 'hidden';
+                hiddenPw.name = 'delete_all_password';
+                bulkForm.appendChild(hiddenPw);
+            }
+            hiddenPw.value = pw;
+            bulkForm.submit();
         });
-        <?php unset($_SESSION['toast']); ?>
-    <?php endif; ?>
-});
+    }
+
+    /* ── Single-file delete confirmation (vanilla, no jQuery) ── */
+    document.querySelectorAll('.delete-file-btn').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url  = this.getAttribute('href');
+            const name = this.dataset.filename;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Delete File?',
+                    text: `"${name}" will be permanently deleted.`,
+                    icon: 'warning', showCancelButton: true,
+                    confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then(r => { if (r.isConfirmed) window.location.href = url; });
+            } else {
+                if (confirm(`Delete "${name}"? This cannot be undone.`)) window.location.href = url;
+            }
+        });
+    });
+
+    /* ── File preview — iframe for PDF, inline for images ── */
+    document.querySelectorAll('.view-file-btn').forEach(function(el) {
+        el.addEventListener('click', function() {
+            const fp  = this.dataset.filepath;
+            const ft  = (this.dataset.filetype || '').toLowerCase();
+            const con = document.getElementById('filePreviewContent');
+            const dlBtn = document.getElementById('downloadPreviewBtn');
+            if (!con) return;
+            if (dlBtn) { dlBtn.href = fp; dlBtn.setAttribute('download', fp.split('/').pop()); }
+            con.innerHTML = '';
+            if (ft === 'pdf') {
+                con.innerHTML = `<iframe src="${fp}" width="100%" height="520"
+                    style="border:none;display:block;" title="PDF Preview">
+                    <p>Cannot display PDF. <a href="${fp}" download>Download instead</a>.</p>
+                  </iframe>`;
+            } else if (['jpg','jpeg','png','gif','image'].includes(ft)) {
+                con.innerHTML = `<img src="${fp}" class="img-fluid"
+                    style="display:block;max-height:520px;margin:0 auto;" alt="Preview">`;
+            } else {
+                con.innerHTML = `<div class="text-center p-5">
+                  <i class="fas fa-file fa-5x mb-3 text-muted"></i>
+                  <p class="lead">This file type cannot be previewed.</p>
+                  <p>Please download the file to view it.</p></div>`;
+            }
+            const modalEl = document.getElementById('filePreviewModal');
+            if (modalEl) {
+                if (typeof $ !== 'undefined') $(modalEl).modal('show');
+                else if (window.bootstrap) new window.bootstrap.Modal(modalEl).show();
+            }
+        });
+    });
+
+});/* end DOMContentLoaded */
+
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const icon = input.parentNode.querySelector('.password-toggle i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+    } else {
+        input.type = 'password';
+        if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+    }
+}
 </script>
 </body>
-</html>
+</html> 

@@ -1,554 +1,317 @@
+/* ============================================================
+   MAINHEADER.CSS — Single source of truth for layout
+   All sidebar/header/footer positioning lives here ONLY.
+   mainheader.php inline <style> handles CSS variables & theming.
+   ============================================================ */
+
 :root {
-        --primary-color: #4361ee;
-        --secondary-color: #3f37c9;
-        --accent-color: #4895ef;
-        --light-color: #f8f9fa;
-        --dark-color: #212529;
-        --success-color: #4cc9f0;
-        --warning-color: #f72585;
-        --gray-color: #6c757d;
-        --light-gray: #e9ecef;
-        --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Profile Picture Styles */
-    .profile-avatar-img {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .profile-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--accent-color), var(--success-color));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        margin-right: 0.5rem;
-        overflow: hidden;
-        position: relative;
-    }
-
-    .profile-avatar span {
-        font-size: 0.8rem;
-        z-index: 2;
-    }
-
-    /* Fix z-index layering - CRITICAL FIX */
-    /* Main header should be below modals */
-    .main-header {
-        z-index: 1000 !important;
-        position: relative;
-    }
-
-    /* Sidebar below modals */
-    .main-sidebar {
-        z-index: 999 !important;
-    }
-
-    /* Dropdowns above header but below modals */
-    .navbar-nav .dropdown-menu {
-        z-index: 1020 !important;
-    }
-
-    /* Modal backdrop - between header and modal */
-    .modal-backdrop {
-        z-index: 1040 !important;
-    }
-
-    /* Modal dialog - highest priority */
-    .modal {
-        z-index: 1050 !important;
-    }
-
-    .modal-dialog {
-        z-index: 1051 !important;
-    }
-
-    /* Ensure proper sidebar functionality */
-    .sidebar-collapse .main-sidebar {
-        margin-left: -250px;
-    }
-
-    .main-sidebar {
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f5f7fb;
-    }
-
-    /* Modern Navbar */
-    .main-header {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
-        box-shadow: var(--shadow);
-        padding: 0.5rem 1rem;
-        transition: var(--transition);
-        border: none;
-    }
-    
-    .main-header.theme-admin {
-        background: linear-gradient(135deg, #4361ee, #3f37c9) !important;
-    }
-
-    .main-header.theme-service {
-        background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
-    }
-
-    .main-header.theme-inventory {
-        background: linear-gradient(135deg, #28a745, #20c997) !important;
-    }
-
-    .main-header.theme-file {
-        background: linear-gradient(135deg, #800020, #5a0a1d) !important;
-    }
-
-
-
-    /* Apps dropdown theming */
-    .apps-dropdown .app-item[data-theme="admin"] .app-icon {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
-    }
-
-    .apps-dropdown .app-item[data-theme="service"] .app-icon {
-        background: linear-gradient(135deg, #ffc107, #fd7e14);
-    }
-
-    .apps-dropdown .app-item[data-theme="inventory"] .app-icon {
-        background: linear-gradient(135deg, #28a745, #20c997);
-    }
-
-    .apps-dropdown .app-item[data-theme="file"] .app-icon {
-        background: linear-gradient(135deg, #800020, #5a0a1d);
-    }
-
-    .navbar-brand {
-        color: white;
-        font-weight: 700;
-        font-size: 1.5rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .navbar-brand i {
-        margin-right: 0.5rem;
-        font-size: 1.8rem;
-    }
-
-    .nav-link {
-        color: rgba(255, 255, 255, 0.85) !important;
-        font-weight: 500;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.5rem;
-        transition: var(--transition);
-        position: relative;
-    }
-
-    .nav-link:hover, .nav-link:focus {
-        color: white !important;
-        background-color: rgba(255, 255, 255, 0.1);
-        transform: translateY(-2px);
-    }
-
-    .nav-link.active {
-        color: white !important;
-        background-color: rgba(255, 255, 255, 0.15);
-    }
-
-    /* Apps Dropdown */
-    .apps-dropdown .dropdown-toggle {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 0.5rem;
-        padding: 0.5rem 1rem;
-    }
-
-    .apps-dropdown .dropdown-menu {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        padding: 0.5rem;
-        width: 380px;
-        margin-top: 0.5rem;
-    }
-
-    .apps-dropdown .dropdown-header {
-        font-weight: 600;
-        color: var(--dark-color);
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--light-gray);
-    }
-
-    .app-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 1rem 0.5rem;
-        border-radius: 0.5rem;
-        transition: var(--transition);
-        text-decoration: none;
-        color: var(--dark-color);
-    }
-
-    .app-item:hover {
-        background-color: var(--light-gray);
-        transform: translateY(-3px);
-        box-shadow: var(--shadow);
-    }
-
-    .app-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-        color: white;
-    }
-
-    .app-name {
-        font-weight: 500;
-        font-size: 0.85rem;
-        text-align: center;
-    }
-
-    /* Notification Styles */
-    .notification-dropdown .dropdown-toggle {
-        position: relative;
-    }
-
-    .notification-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: linear-gradient(135deg, var(--warning-color), #b5179e);
-        color: white;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 600;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
-
-    .notification-dropdown .dropdown-menu {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        width: 380px;
-        padding: 0;
-        overflow: hidden;
-    }
-
-    .notification-header {
-        padding: 1rem;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .notification-count {
-        background-color: rgba(255, 255, 255, 0.2);
-        border-radius: 1rem;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.8rem;
-    }
-
-    .notification-list {
-        max-height: 350px;
-        overflow-y: auto;
-        padding: 0.5rem;
-    }
-
-    .notification-item {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
-        transition: var(--transition);
-        border-left: 3px solid transparent;
-        cursor: pointer;
-    }
-
-    .notification-item.unread {
-        background-color: rgba(67, 97, 238, 0.05);
-        border-left-color: var(--primary-color);
-        font-weight: 500;
-    }
-
-    .notification-item:hover {
-        background-color: var(--light-gray);
-        transform: translateX(5px);
-    }
-
-    .notification-content {
-        display: flex;
-        align-items: flex-start;
-    }
-
-    .notification-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background-color: var(--light-gray);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 0.75rem;
-        flex-shrink: 0;
-        color: var(--primary-color);
-    }
-
-    .notification-text {
-        flex: 1;
-        font-size: 0.9rem;
-        line-height: 1.4;
-        word-wrap: break-word;
-        white-space: normal;
-    }
-
-    .notification-time {
-        font-size: 0.75rem;
-        color: var(--gray-color);
-        margin-top: 0.25rem;
-    }
-
-    .notification-actions {
-        padding: 0.75rem;
-        border-top: 1px solid var(--light-gray);
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .btn-notification {
-        border-radius: 0.5rem;
-        font-size: 0.85rem;
-        padding: 0.4rem 0.75rem;
-        font-weight: 500;
-    }
-
-    /* Profile Dropdown */
-    .profile-dropdown .dropdown-toggle {
-        display: flex;
-        align-items: center;
-        padding: 0.25rem 0.5rem;
-        border-radius: 2rem;
-        background-color: rgba(255, 255, 255, 0.1);
-        transition: var(--transition);
-    }
-
-    .profile-dropdown .dropdown-toggle:hover {
-        background-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .profile-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--accent-color), var(--success-color));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        margin-right: 0.5rem;
-    }
-
-    .profile-name {
-        color: white;
-        font-weight: 500;
-        margin-right: 0.5rem;
-    }
-
-    .profile-dropdown .dropdown-menu {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        padding: 0.5rem;
-        min-width: 200px;
-    }
-
-    .profile-dropdown .dropdown-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        border-radius: 0.5rem;
-        color: var(--dark-color);
-        transition: var(--transition);
-    }
-
-    .profile-dropdown .dropdown-item i {
-        margin-right: 0.75rem;
-        width: 20px;
-        text-align: center;
-        color: var(--gray-color);
-    }
-
-    .profile-dropdown .dropdown-item:hover {
-        background-color: var(--light-gray);
-    }
-
-    /* Modal Styles */
-    .modal-content {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-hover);
-        position: relative;
-        z-index: 1052 !important;
-    }
-
-    .modal-header {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
-        border-radius: 0.75rem 0.75rem 0 0;
-        padding: 1rem 1.5rem;
-    }
-
-    .modal-title {
-        font-weight: 600;
-    }
-
-    .modal-footer {
-        border-top: 1px solid var(--light-gray);
-        padding: 1rem 1.5rem;
-    }
-
-    /* Ensure links in notifications are clickable */
-    .notification-text a {
-        color: #007bff !important;
-        text-decoration: underline !important;
-        display: inline !important;
-        font-weight: 500;
-        pointer-events: auto !important;
-        z-index: 1000;
-        position: relative;
-    }
-
-    .notification-text a:hover {
-        color: #0056b3 !important;
-        text-decoration: none !important;
-        cursor: pointer !important;
-    }
-
-    /* Sidebar Toggle Animation */
-    .sidebar-collapse .main-sidebar {
-        margin-left: -250px;
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    .sidebar-collapse .content-wrapper,
-    .sidebar-collapse .main-footer {
-        margin-left: 0;
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    .main-sidebar {
-        margin-left: 0;
-        transition: margin-left 0.3s ease-in-out;
-    }
-
-    /* Responsive Adjustments */
-    @media (max-width: 768px) {
-        .apps-dropdown .dropdown-menu {
-            width: 300px;
-        }
-        
-        .notification-dropdown .dropdown-menu {
-            width: 320px;
-        }
-        
-        .navbar-nav {
-            flex-direction: row;
-        }
-        
-        .sidebar-collapse .main-sidebar {
-            margin-left: -250px;
-        }
-    }
-
-    .notification-link {
-        display: block;
-        text-decoration: none !important;
-        color: inherit !important;
-    }
-
-    .notification-link:hover {
-        text-decoration: none !important;
-        color: inherit !important;
-    }
-
-    .table-active {
-        background-color: #e3f2fd !important;
-        border-left: 4px solid #2196F3 !important;
-    }
-
-    
-    /* Ensure proper z-index layering with sticky elements */
-.main-header {
-    z-index: 1030 !important;
-    position: sticky !important;
-    top: 0 !important;
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --accent-color: #4895ef;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --success-color: #4cc9f0;
+    --warning-color: #f72585;
+    --gray-color: #6c757d;
+    --light-gray: #e9ecef;
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --sidebar-width: 250px;
 }
 
-.main-footer {
-    z-index: 1020 !important;
-    position: sticky !important;
-    bottom: 0 !important;
+/* ============================================================
+   BASE BODY
+   ============================================================ */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fb;
 }
 
-/* Ensure content wrapper has proper spacing */
-.content-wrapper {
-    min-height: calc(100vh - 112px); /* Adjust based on header/footer height (56px each) */
-    padding-bottom: 0;
-    margin-bottom: 0;
+/* ============================================================
+   SIDEBAR — fixed left, slides off-screen on collapse
+   ============================================================ */
+
+/* Neutralise AdminLTE's own sidebar-collapse transform/width rules */
+body.sidebar-collapse .main-sidebar,
+body.sidebar-collapse .main-sidebar:hover {
+    width: var(--sidebar-width) !important;
+    transform: none !important;
 }
 
-/* Fix for modals to appear above sticky elements */
-.modal {
-    z-index: 1050 !important;
-}
-
-.modal-backdrop {
-    z-index: 1040 !important;
-}
-
-/* Ensure dropdowns appear above sticky header */
-.dropdown-menu {
-    z-index: 1031 !important;
-}
-
-/* Fix for sidebar when header is sticky */
 .main-sidebar {
-    z-index: 1025 !important;
     position: fixed !important;
-    top: 56px; /* Height of your header */
-    height: calc(100vh - 56px); /* Subtract header height */
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: var(--sidebar-width) !important;
+    z-index: 1035 !important;
     overflow-y: auto;
+    overflow-x: hidden;
+    transition: margin-left 0.3s ease-in-out, background-color 0.3s ease !important;
 }
 
-/* Adjust for collapsed sidebar */
-.sidebar-collapse .main-sidebar {
-    margin-left: -250px;
+/* Desktop: visible by default */
+body:not(.sidebar-collapse) .main-sidebar {
+    margin-left: 0 !important;
 }
 
-/* Ensure content doesn't get hidden behind sticky footer */
+/* Desktop: hidden when collapsed */
+body.sidebar-collapse .main-sidebar {
+    margin-left: calc(-1 * var(--sidebar-width)) !important;
+}
+
+/* Mobile: hidden by default, shown on sidebar-open */
+@media (max-width: 991px) {
+    .main-sidebar {
+        z-index: 1045 !important;
+        margin-left: calc(-1 * var(--sidebar-width)) !important;
+    }
+    body.sidebar-open .main-sidebar {
+        margin-left: 0 !important;
+    }
+}
+
+/* ============================================================
+   LAYOUT OFFSET — single variable JS controls everything
+   --sidebar-offset: 250px (sidebar visible) | 0px (collapsed)
+   ============================================================ */
+:root { --sidebar-offset: var(--sidebar-width); }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.main-header {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    z-index: 1030 !important;
+    width: calc(100% - var(--sidebar-offset)) !important;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+    border: none !important;
+    padding: 0.5rem 1rem;
+}
+
+/* ============================================================
+   CONTENT WRAPPER
+   ============================================================ */
 .content-wrapper {
-    margin-bottom: 0;
+    margin-left: var(--sidebar-offset) !important;
+    margin-top: 57px !important;
+    min-height: calc(100vh - 57px - 45px) !important;
+    transition: margin-left 0.3s ease-in-out !important;
     padding-bottom: 20px;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.main-footer {
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    z-index: 1020 !important;
+    width: calc(100% - var(--sidebar-offset)) !important;
+    transition: left 0.3s ease-in-out, width 0.3s ease-in-out !important;
+}
+
+@media (max-width: 991px) {
+    :root { --sidebar-offset: 0px; }
+}
+
+/* ============================================================
+   MOBILE BACKDROP (tap outside to close sidebar)
+   ============================================================ */
+.sidebar-backdrop {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.45);
+    z-index: 1044; /* just below sidebar (1045) */
+}
+
+/* ============================================================
+   Z-INDEX STACK  (one definition each — no duplicates)
+     sidebar   1035 / 1045 mobile
+     header    1030
+     dropdown  1031
+     footer    1020
+     backdrop  1040
+     modal     1050+
+   ============================================================ */
+.dropdown-menu  { z-index: 1031 !important; }
+.modal-backdrop { z-index: 1040 !important; }
+.modal          { z-index: 1050 !important; }
+.modal-dialog   { z-index: 1051 !important; }
+.modal-content  { z-index: 1052 !important; position: relative; }
+
+/* ============================================================
+   PROFILE AVATAR
+   ============================================================ */
+.profile-avatar-img {
+    width: 32px; height: 32px; border-radius: 50%;
+    object-fit: cover; border: 2px solid rgba(255,255,255,0.3);
+}
+.profile-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 600; margin-right: 0.5rem;
+    overflow: hidden; position: relative;
+}
+.profile-avatar span { font-size: 0.8rem; z-index: 2; }
+.profile-name { color: white; font-weight: 500; margin-right: 0.5rem; }
+
+/* ============================================================
+   HEADER THEMES
+   ============================================================ */
+
+.nav-link {
+    color: rgba(255,255,255,0.85) !important;
+    font-weight: 500; padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem; transition: var(--transition); position: relative;
+}
+.nav-link:hover, .nav-link:focus {
+    color: white !important; background-color: rgba(255,255,255,0.1);
+}
+.nav-link.active { color: white !important; background-color: rgba(255,255,255,0.15); }
+
+/* ============================================================
+   APPS DROPDOWN
+   ============================================================ */
+.apps-dropdown .dropdown-toggle {
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 0.5rem; padding: 0.5rem 1rem;
+}
+.apps-dropdown .dropdown-menu {
+    border: none; border-radius: 0.75rem;
+    box-shadow: var(--shadow-hover); padding: 0.5rem;
+    width: 380px; margin-top: 0.5rem;
+}
+.apps-dropdown .dropdown-header {
+    font-weight: 600; color: var(--dark-color);
+    padding: 0.75rem 1rem; border-bottom: 1px solid var(--light-gray);
+}
+.app-item {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 1rem 0.5rem; border-radius: 0.5rem;
+    transition: var(--transition); text-decoration: none; color: var(--dark-color);
+}
+.app-item:hover { background-color: var(--light-gray); transform: translateY(-3px); box-shadow: var(--shadow); }
+.app-icon {
+    font-size: 2rem; margin-bottom: 0.5rem;
+    width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white;
+}
+.app-name { font-weight: 500; font-size: 0.85rem; text-align: center; }
+
+.apps-dropdown .app-item[data-theme="admin"]     .app-icon { background: linear-gradient(135deg, #4361ee, #3f37c9); }
+.apps-dropdown .app-item[data-theme="service"]   .app-icon { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+.apps-dropdown .app-item[data-theme="inventory"] .app-icon { background: linear-gradient(135deg, #28a745, #20c997); }
+.apps-dropdown .app-item[data-theme="file"]      .app-icon { background: linear-gradient(135deg, #800020, #5a0a1d); }
+
+/* ============================================================
+   NOTIFICATIONS
+   ============================================================ */
+.notification-dropdown .dropdown-toggle { position: relative; }
+.notification-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: linear-gradient(135deg, var(--warning-color), #b5179e);
+    color: white; border-radius: 50%; width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.notification-dropdown .dropdown-menu {
+    border: none; border-radius: 0.75rem;
+    box-shadow: var(--shadow-hover); width: 380px; padding: 0; overflow: hidden;
+}
+.notification-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.notification-count {
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 1rem; padding: 0.25rem 0.75rem; font-size: 0.8rem;
+}
+.notification-list { max-height: 350px; overflow-y: auto; padding: 0.5rem; }
+.notification-item {
+    padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.5rem;
+    transition: var(--transition); border-left: 3px solid transparent; cursor: pointer;
+}
+.notification-item.unread {
+    background-color: rgba(67,97,238,0.05);
+    border-left-color: var(--primary-color); font-weight: 500;
+}
+.notification-item:hover { background-color: var(--light-gray); transform: translateX(5px); }
+.notification-content { display: flex; align-items: flex-start; }
+.notification-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background-color: var(--light-gray);
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 0.75rem; flex-shrink: 0; color: var(--primary-color);
+}
+.notification-text { flex: 1; font-size: 0.9rem; line-height: 1.4; word-wrap: break-word; white-space: normal; }
+.notification-time { font-size: 0.75rem; color: var(--gray-color); margin-top: 0.25rem; }
+.notification-actions {
+    padding: 0.75rem; border-top: 1px solid var(--light-gray);
+    display: flex; justify-content: space-between;
+}
+.btn-notification { border-radius: 0.5rem; font-size: 0.85rem; padding: 0.4rem 0.75rem; font-weight: 500; }
+.notification-link { display: block; text-decoration: none !important; color: inherit !important; }
+.notification-link:hover { text-decoration: none !important; color: inherit !important; }
+.notification-text a {
+    color: #007bff !important; text-decoration: underline !important;
+    display: inline !important; font-weight: 500;
+    pointer-events: auto !important; z-index: 1000; position: relative;
+}
+.notification-text a:hover { color: #0056b3 !important; text-decoration: none !important; }
+
+/* ============================================================
+   PROFILE DROPDOWN
+   ============================================================ */
+.profile-dropdown .dropdown-toggle {
+    display: flex; align-items: center;
+    padding: 0.25rem 0.5rem; border-radius: 2rem;
+    background-color: rgba(255,255,255,0.1); transition: var(--transition);
+}
+.profile-dropdown .dropdown-toggle:hover { background-color: rgba(255,255,255,0.2); }
+.profile-dropdown .dropdown-menu {
+    border: none; border-radius: 0.75rem;
+    box-shadow: var(--shadow-hover); padding: 0.5rem; min-width: 200px;
+}
+.profile-dropdown .dropdown-item {
+    display: flex; align-items: center;
+    padding: 0.75rem 1rem; border-radius: 0.5rem;
+    color: var(--dark-color); transition: var(--transition);
+}
+.profile-dropdown .dropdown-item i { margin-right: 0.75rem; width: 20px; text-align: center; color: var(--gray-color); }
+.profile-dropdown .dropdown-item:hover { background-color: var(--light-gray); }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-content { border: none; border-radius: 0.75rem; box-shadow: var(--shadow-hover); }
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white; border-radius: 0.75rem 0.75rem 0 0; padding: 1rem 1.5rem;
+}
+.modal-title { font-weight: 600; }
+.modal-footer { border-top: 1px solid var(--light-gray); padding: 1rem 1.5rem; }
+
+/* ============================================================
+   MISC
+   ============================================================ */
+.table-active {
+    background-color: #e3f2fd !important;
+    border-left: 4px solid #2196F3 !important;
+}
+
+@media (max-width: 768px) {
+    .apps-dropdown .dropdown-menu { width: 300px; }
+    .notification-dropdown .dropdown-menu { width: 320px; }
+    .navbar-nav { flex-direction: row; }
 }

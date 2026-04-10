@@ -34,41 +34,12 @@
 <!-- <script src="../plugins/jquery-ui/jquery-ui.min.js"></script> -->
 
 <script>
-// Fix dropdowns and sidebar functionality
+// Footer scripts — sidebar toggle is handled exclusively in mainheader.php
 $(document).ready(function() {
-    // Fix sidebar toggle
-    $('[data-widget="pushmenu"]').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Use AdminLTE sidebar toggle
-        if (typeof $ !== 'undefined' && $.fn.pushMenu) {
-            $('body').pushMenu('toggle');
-        } else {
-            // Fallback manual toggle
-            $('body').toggleClass('sidebar-collapse');
-            $('body').toggleClass('sidebar-open');
-        }
-        
-        // Update localStorage
-        const isCollapsed = $('body').hasClass('sidebar-collapse');
-        localStorage.setItem('sidebar-collapsed', isCollapsed);
-    });
-
-    // Load saved sidebar state
-    if (localStorage.getItem('sidebar-collapsed') === 'true') {
-        $('body').addClass('sidebar-collapse');
-    }
-
-    // Fix dropdown clicks - prevent closing when clicking inside
-    $('.dropdown-menu').on('click', function(e) {
-        e.stopPropagation();
-    });
-
     // Initialize all dropdowns properly
     $('.dropdown-toggle').dropdown();
 
-    // Rest of your existing notification code...
+
     // Handle notification clicks
     $(document).on('click', '#notificationList .dropdown-item', function(e) {
         e.preventDefault();
