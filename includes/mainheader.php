@@ -125,106 +125,24 @@ if ($employee_id) {
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
-        <!-- Notifications Dropdown -->
+        <!-- Notifications Dropdown - Temporarily disabled -->
         <li class="nav-item dropdown notification-dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false" id="notificationDropdown">
                 <i class="far fa-bell"></i>
-                <?php
-                // Get unread notification count for current user
-                if (isset($_SESSION['emp_id'])) {
-                    require_once 'leave_functions.php';
-                    $leaveFunctions = new LeaveFunctions();
-
-                    // Check if user is admin and should see all notifications
-                    $user_role = $_SESSION['role'] ?? '';
-                    if ($user_role === 'admin') {
-                        // Admins see notifications for all leave requests
-                        $unread_count = $leaveFunctions->getAdminNotificationCount();
-                    } else {
-                        // Regular users see only their notifications
-                        $unread_count = $leaveFunctions->getUnreadNotificationCount($_SESSION['emp_id']);
-                    }
-
-                    if ($unread_count > 0) {
-                        echo '<span class="notification-badge" id="notificationCount">' . $unread_count . '</span>';
-                    }
-                }
-
-                if (isset($_SESSION['emp_id'])) {
-                    $user_role = $_SESSION['role'] ?? '';
-                    if ($user_role === 'admin') {
-                        $notifications = $leaveFunctions->getAdminNotifications();
-                    } else {
-                        $notifications = $leaveFunctions->getUserNotifications($_SESSION['emp_id']);
-                    }
-                }
-                ?>
             </a>
             <div class="dropdown-menu">
                 <div class="notification-header">
                     <span>Notifications</span>
-                    <span class="notification-count" id="notificationHeader">
-                        <?php
-                        if (isset($unread_count)) {
-                            echo $unread_count > 0 ? $unread_count . ' New' : 'No Notifications';
-                        } else {
-                            echo 'No Notifications';
-                        }
-                        ?>
-                    </span>
+                    <span class="notification-count" id="notificationHeader">Coming Soon</span>
                 </div>
                 <div class="notification-list" id="notificationList">
-                    <?php
-                    if (isset($_SESSION['emp_id'])) {
-                        $user_role = $_SESSION['role'] ?? '';
-
-                        // Get notifications based on user role
-                        if ($user_role === 'admin') {
-                            $notifications = $leaveFunctions->getAdminNotifications();
-                        } else {
-                            $notifications = $leaveFunctions->getUserNotifications($_SESSION['emp_id']);
-                        }
-
-                        if (count($notifications) > 0) {
-                            foreach ($notifications as $notification) {
-                                $time_ago = time_elapsed_string($notification['created_at']);
-                                $read_class = $notification['is_read'] ? '' : 'unread';
-                                $link = $notification['link'] ?? '#';
-
-                                // Make sure the link is properly set for all roles
-                                if (empty($link) && strpos($notification['message'], 'leave request') !== false) {
-                                    // Extract leave ID from message for fallback
-                                    preg_match('/#(\d+)/', $notification['message'], $matches);
-                                    if (isset($matches[1])) {
-                                        $link = "leave_approval.php?leave_id=" . $matches[1];
-                                    }
-                                }
-
-                                echo '<a href="' . $link . '" class="notification-link" style="text-decoration: none; color: inherit;">';
-                                echo '<div class="notification-item ' . $read_class . '" data-notification-id="' . $notification['id'] . '">';
-                                echo '    <div class="notification-content">';
-                                echo '        <div class="notification-icon">';
-                                echo '            <i class="fas fa-key"></i>';
-                                echo '        </div>';
-                                echo '        <div>';
-                                echo '            <div class="notification-text">' . htmlspecialchars_decode($notification['message']) . '</div>';
-                                echo '            <div class="notification-time">' . $time_ago . '</div>';
-                                echo '        </div>';
-                                echo '    </div>';
-                                echo '</div>';
-                                echo '</a>';
-                            }
-                        } else {
-                            echo '<div class="text-center py-4 text-muted">No notifications</div>';
-                        }
-                    }
-                    ?>
+                    <div class="text-center py-4 text-muted">Notification system is being updated</div>
                 </div>
                 <div class="notification-actions">
-                    <button class="btn btn-sm btn-outline-primary btn-notification mark-all-read-btn">
+                    <button class="btn btn-sm btn-outline-primary btn-notification mark-all-read-btn" disabled>
                         <i class="fas fa-check-double me-1"></i> Mark All Read
                     </button>
-                    <button class="btn btn-sm btn-outline-danger btn-notification delete-all-btn">
+                    <button class="btn btn-sm btn-outline-danger btn-notification delete-all-btn" disabled>
                         <i class="fas fa-trash me-1"></i> Delete All
                     </button>
                 </div>
@@ -280,7 +198,7 @@ if ($employee_id) {
     </ul>
 </nav>
 
-<!-- All Notifications Modal -->
+<!-- All Notifications Modal - Temporarily disabled -->
 <div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -291,67 +209,13 @@ if ($employee_id) {
                 </button>
             </div>
             <div class="modal-body">
-                <?php
-                // ORIGINAL PHP CODE for all notifications modal
-                if (isset($_SESSION['emp_id'])) {
-                    // FIX: corrected table name to `notifications` and column to `emp_id`
-                    $query = "SELECT * FROM notifications 
-                            WHERE emp_id = ? 
-                            ORDER BY created_at DESC";
-                    $stmt = $db->prepare($query);
-                    $stmt->bind_param("i", $_SESSION['emp_id']);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $all_notifications = $result->fetch_all(MYSQLI_ASSOC);
-                ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Message</th>
-                                    <th width="120">Status</th>
-                                    <th width="150">Date</th>
-                                    <th width="100">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (count($all_notifications) > 0): ?>
-                                    <?php foreach ($all_notifications as $notification): ?>
-                                        <tr class="notification-item <?= $notification['is_read'] ? '' : 'unread' ?>">
-                                            <td><?= htmlspecialchars_decode($notification['message']) ?></td>
-                                            <td>
-                                                <span class="badge badge-<?= $notification['is_read'] ? 'success' : 'warning' ?>">
-                                                    <?= $notification['is_read'] ? 'Read' : 'Unread' ?>
-                                                </span>
-                                            </td>
-                                            <td><?= time_elapsed_string($notification['created_at']) ?></td>
-                                            <td>
-                                                <button class="btn btn-sm btn-info view-notification" data-id="<?= $notification['notification_id'] ?>">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-danger delete-notification" data-id="<?= $notification['notification_id'] ?>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">No notifications found</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php } ?>
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <p>Notification system is currently being updated.</p>
+                    <p class="small">Please check back later.</p>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-primary" id="modalMarkAllRead">
-                    <i class="fas fa-check-double me-1"></i> Mark All as Read
-                </button>
-                <button type="button" class="btn btn-outline-danger" id="modalDeleteAll">
-                    <i class="fas fa-trash me-1"></i> Delete All
-                </button>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -793,316 +657,6 @@ $(document).ready(function() {
             }
         });
 
-
-        // Mark all notifications as read (dropdown)
-        $('.mark-all-read-btn').click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            $.ajax({
-                url: baseUrl + 'mark_all_notifications_read.php',
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Update UI with modern classes
-                        $('.notification-item').removeClass('unread');
-                        $('#notificationCount').remove();
-                        $('#notificationHeader').text('No Notifications');
-                        $('.notification-item').removeClass('unread');
-                        $('.badge-warning').removeClass('badge-warning').addClass('badge-success').text('Read');
-
-                        // Show success message
-                        toastr.success('All notifications marked as read');
-                    } else {
-                        toastr.error('Error marking notifications as read');
-                    }
-                },
-                error: function() {
-                    toastr.error('Error marking notifications as read');
-                }
-            });
-        });
-
-        // Delete all notifications (dropdown)
-        $('.delete-all-btn').click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (confirm('Are you sure you want to delete all notifications?')) {
-                $.ajax({
-                    url: baseUrl + 'delete_all_notifications.php',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Update UI
-                            $('#notificationList').html('<div class="text-center py-4 text-muted">No notifications</div>');
-                            $('#notificationCount').remove();
-                            $('#notificationHeader').text('No Notifications');
-                            $('#allNotificationsModal tbody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
-
-                            // Show success message
-                            toastr.success('All notifications deleted');
-                        } else {
-                            toastr.error('Error deleting notifications');
-                        }
-                    },
-                    error: function() {
-                        toastr.error('Error deleting notifications');
-                    }
-                });
-            }
-        });
-
-        // Mark all notifications as read (modal)
-        $('#modalMarkAllRead').click(function() {
-            $.ajax({
-                url: baseUrl + 'mark_all_notifications_read.php',
-                type: 'POST',
-                data: {
-                    emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Update UI
-                        $('.notification-item').removeClass('unread');
-                        $('.badge-warning').removeClass('badge-warning').addClass('badge-success').text('Read');
-                        $('.notification-item').removeClass('unread');
-                        $('#notificationCount').remove();
-                        $('#notificationHeader').text('No Notifications');
-
-                        // Show success message
-                        toastr.success('All notifications marked as read');
-                    } else {
-                        toastr.error('Error marking notifications as read');
-                    }
-                },
-                error: function() {
-                    toastr.error('Error marking notifications as read');
-                }
-            });
-        });
-
-        // Delete all notifications (modal)
-        $('#modalDeleteAll').click(function() {
-            if (confirm('Are you sure you want to delete all notifications?')) {
-                $.ajax({
-                    url: baseUrl + 'delete_all_notifications.php',
-                    type: 'POST',
-                    data: {
-                        emp_id: <?= $_SESSION['emp_id'] ?? 0 ?>
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Update UI
-                            $('#notificationList').html('<div class="text-center py-4 text-muted">No notifications</div>');
-                            $('#notificationCount').remove();
-                            $('#notificationHeader').text('No Notifications');
-                            $('#allNotificationsModal tbody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
-
-                            // Show success message
-                            toastr.success('All notifications deleted');
-                        } else {
-                            toastr.error('Error deleting notifications');
-                        }
-                    },
-                    error: function() {
-                        toastr.error('Error deleting notifications');
-                    }
-                });
-            }
-        });
-
-        // Delete single notification
-        $(document).on('click', '.delete-notification', function() {
-            const notificationId = $(this).data('id');
-            const $row = $(this).closest('tr');
-
-            if (confirm('Are you sure you want to delete this notification?')) {
-                $.ajax({
-                    url: baseUrl + 'delete_notification.php',
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        id: notificationId
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            // Remove the row from the table
-                            $row.remove();
-
-                            // Check if table is empty
-                            if ($('#allNotificationsModal tbody tr').length === 0) {
-                                $('#allNotificationsModal tbody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
-                            }
-
-                            // Update dropdown count
-                            updateNotificationCount();
-
-                            toastr.success('Notification deleted');
-                        } else {
-                            toastr.error('Error deleting notification');
-                        }
-                    },
-                    error: function() {
-                        toastr.error('Error deleting notification');
-                    }
-                });
-            }
-        });
-
-        // View notification (mark as read)
-        $(document).on('click', '.view-notification', function() {
-            const notificationId = $(this).data('id');
-            const $row = $(this).closest('tr');
-
-            $.ajax({
-                url: baseUrl + 'mark_notification_read.php',
-                type: 'POST',
-                data: {
-                    id: notificationId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Update UI
-                        $row.removeClass('unread');
-                        $row.find('.badge').removeClass('badge-warning').addClass('badge-success').text('Read');
-
-                        // Update dropdown if this notification is there
-                        $('div[data-notification-id="' + notificationId + '"]').removeClass('unread');
-
-                        // Update count
-                        updateNotificationCount();
-
-                        toastr.success('Notification marked as read');
-                    } else {
-                        toastr.error('Error marking notification as read');
-                    }
-                },
-                error: function() {
-                    toastr.error('Error marking notification as read');
-                }
-            });
-        });
-
-        // Function to update notification count - ORIGINAL FUNCTION
-        function updateNotificationCount() {
-            $.ajax({
-                url: baseUrl + 'get_notification_count.php',
-                type: 'GET',
-                success: function(response) {
-                    if (response.count > 0) {
-                        if ($('#notificationCount').length) {
-                            $('#notificationCount').text(response.count);
-                        } else {
-                            $('#notificationDropdown').append('<span class="notification-badge" id="notificationCount">' + response.count + '</span>');
-                        }
-                        $('#notificationHeader').text(response.count + ' New');
-                    } else {
-                        $('#notificationCount').remove();
-                        $('#notificationHeader').text('No Notifications');
-                    }
-                }
-            });
-        }
-
-        // Refresh modal content when opened - ORIGINAL FUNCTION
-        $('#allNotificationsModal').on('show.bs.modal', function() {
-            $.ajax({
-                url: baseUrl + 'get_all_notifications.php',
-                type: 'GET',
-                success: function(response) {
-                    $('#allNotificationsModal tbody').html(response);
-                }
-            });
-        });
-
-        // ORIGINAL NOTIFICATION CLICK HANDLERS
-
-        // Handle clicks on links within notifications - FIXED
-        $(document).on('click', '.notification-text a', function(e) {
-            console.log('Link clicked:', $(this).attr('href'));
-            e.stopPropagation();
-
-            // Allow default link behavior (navigation)
-            const href = $(this).attr('href');
-
-            if (href && href !== '#') {
-                console.log('Allowing navigation to:', href);
-                return true;
-            }
-        });
-
-
-
-        // Handle notification clicks - mark as read and allow navigation
-        $(document).on('click', '.notification-item', function(e) {
-            // Prevent default if clicking on a link inside the notification
-            if ($(e.target).is('a') || $(e.target).closest('a').length) {
-                return;
-            }
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            const notificationId = $(this).data('notification-id');
-            const $notificationLink = $(this).closest('.notification-link');
-            const href = $notificationLink.attr('href');
-
-            console.log('Notification clicked:', notificationId, 'Link:', href);
-
-            if (notificationId && href && href !== '#') {
-                // Mark as read via AJAX
-                $.ajax({
-                    url: baseUrl + 'mark_notification_read.php',
-                    type: 'POST',
-                    data: {
-                        id: notificationId
-                    },
-                    success: function(response) {
-                        console.log('Mark as read response:', response);
-                        if (response.success) {
-                            $(this).removeClass('unread');
-                            updateNotificationCount();
-
-                            // Navigate to the link after marking as read
-                            console.log('Navigating to:', href);
-                            window.location.href = href;
-                        } else {
-                            // Still navigate even if marking as read fails
-                            console.log('Mark as read failed, still navigating to:', href);
-                            window.location.href = href;
-                        }
-                    }.bind(this),
-                    error: function(xhr, status, error) {
-                        console.error('AJAX error:', error);
-                        // Still navigate even if AJAX fails
-                        console.log('AJAX failed, navigating to:', href);
-                        window.location.href = href;
-                    }
-                });
-            } else if (href && href !== '#') {
-                // If no notification ID but there's a valid href, just navigate
-                console.log('No notification ID, navigating to:', href);
-                window.location.href = href;
-            }
-        });
-
-        // Make sure links within notifications work properly
-        $(document).on('click', '.notification-text a', function(e) {
-            console.log('Link in notification clicked');
-            e.stopPropagation();
-            // Allow default link behavior
-            return true;
-        });
-
         // Initialize toastr
         toastr.options = {
             "closeButton": true,
@@ -1126,8 +680,6 @@ $(document).ready(function() {
             }
         });
         // Force close other dropdowns when one opens
-
-
     });
 </script>
 <script>
