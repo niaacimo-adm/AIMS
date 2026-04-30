@@ -1,0 +1,73 @@
+[30-Apr-2026 10:09:44 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:275
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(275): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 275
+[30-Apr-2026 10:10:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:275
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(275): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 275
+[30-Apr-2026 10:21:03 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:153
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(153): mysqli_stmt->bind_param('ssisissisiiisss', 'incoming', 'ADM-04302026-00...', 9, 'asdsad', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-04-30 10:2...', '2026-04-30 16:2...', 'received', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 153
+[30-Apr-2026 10:22:12 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:153
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(153): mysqli_stmt->bind_param('ssisissisiiisss', 'incoming', 'ADM-04302026-00...', 4, 'asda', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-04-30 10:2...', '2026-04-30 16:2...', 'pending', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 153
+[30-Apr-2026 10:29:04 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:156
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(156): mysqli_stmt->bind_param('ssisisi i i s i...', 'incoming', 'ADM-04302026-00...', 4, 'asd', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-04-30 10:2...', '2026-04-30 16:2...', 'received', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 156
+[30-Apr-2026 10:29:15 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:156
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(156): mysqli_stmt->bind_param('ssisisi i i s i...', 'incoming', 'ADM-04302026-00...', 4, 'asd', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-04-30 10:2...', '2026-04-30 16:2...', 'received', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 156
+[30-Apr-2026 10:45:04 Europe/Berlin] Forward POST: Array
+(
+    [action] => forward
+    [id] => 16
+    [fwd_to_emp_id] => 56
+    [fwd_to_name] => Jessica COMPLETO
+    [fwd_to_section_id] => 3
+    [fwd_to_unit_id] => 52
+    [fwd_date] => 2026-04-30T10:44
+    [fwd_remarks] => 
+)
+
+[30-Apr-2026 10:45:04 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:294
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(294): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 294
+[30-Apr-2026 10:45:51 Europe/Berlin] Forward POST: Array
+(
+    [action] => forward
+    [id] => 16
+    [fwd_to_emp_id] => 42
+    [fwd_to_name] => Luisito DEDASE
+    [fwd_to_section_id] => 1
+    [fwd_to_unit_id] => 53
+    [fwd_date] => 2026-04-30T10:45
+    [fwd_remarks] => 
+)
+
+[30-Apr-2026 10:45:51 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:294
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(294): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 294
+[30-Apr-2026 10:50:40 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:255
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(255): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 255
+[30-Apr-2026 10:51:13 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #7 cannot be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php:149
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 149

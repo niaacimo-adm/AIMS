@@ -844,7 +844,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </form>
                     
                     <div class="footer-text">
-                        <p class="mb-0">ACIMO Intelligent Management Solution (AIMS)</p>
+                        <p class="mb-0">ACIMO Integrated Management Solution (AIMS)</p>
                     </div>
                 </div>
 
@@ -885,7 +885,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </form>
                     
                     <div class="footer-text">
-                        <p class="mb-0">ACIMO Intelligent Management Solution (AIMS)</p>
+                        <p class="mb-0">ACIMO Integrated Management Solution (AIMS)</p>
                     </div>
                 </div>
             </div>
