@@ -129,15 +129,17 @@ class ChatFunctions {
         }
         return false;
     }
-
-    // Get messages for a room
+        // Get messages for a room
     public function getMessages($room_id, $last_message_id = 0) {
-        $query = "SELECT cm.*, e.first_name, e.last_name, e.picture 
-                  FROM chat_messages cm
-                  JOIN employee e ON cm.sender_id = e.emp_id
-                  WHERE cm.room_id = ? AND cm.message_id > ?
-                  ORDER BY cm.created_at ASC";
-        
+        $query = "SELECT cm.message_id, cm.room_id, cm.sender_id, cm.message, cm.message_type,
+                        cm.file_path, cm.file_type, cm.file_size,
+                        cm.is_read, cm.is_deleted, cm.created_at,
+                        e.first_name, e.last_name, e.picture 
+                FROM chat_messages cm
+                JOIN employee e ON cm.sender_id = e.emp_id
+                WHERE cm.room_id = ? AND cm.message_id > ?
+                ORDER BY cm.created_at ASC";
+                
         $stmt = $this->conn->prepare($query);
         $stmt->bind_param("ii", $room_id, $last_message_id);
         $stmt->execute();
@@ -236,6 +238,30 @@ class ChatFunctions {
             'user_unread_counts' => $user_unread_counts
         ];
     }
+    // Delete a message (soft-delete — sets is_deleted flag)
+    public function deleteMessage($message_id, $sender_id) {
+        // Only the sender can delete their own message
+        $query = "UPDATE chat_messages SET is_deleted = 1 WHERE message_id = ? AND sender_id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("ii", $message_id, $sender_id);
+        $stmt->execute();
+        return $stmt->affected_rows > 0;
+    }
+    public function sendFileMessage($room_id, $sender_id, $originalName, $messageType, $filePath, $fileType, $fileSize) {
+        $query = "INSERT INTO chat_messages (room_id, sender_id, message, message_type, file_path, file_type, file_size) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("iissssi", $room_id, $sender_id, $originalName, $messageType, $filePath, $fileType, $fileSize);
+        
+        if ($stmt->execute()) {
+            return $this->conn->insert_id;
+        } else {
+            // Log error for debugging (optional)
+            error_log('Database insert failed: ' . $stmt->error);
+            return false;
+        }
+    }
+
     // Alternative simpler method to get unread counts
     public function getUnreadCountsSimple($user_id) {
         $query = "SELECT 
@@ -268,6 +294,84 @@ class ChatFunctions {
             'total_unread' => $total_unread,
             'user_unread_counts' => $user_unread_counts
         ];
+    }
+    public function toggleReaction($message_id, $emp_id, $emoji) {
+        // Check if reaction already exists
+        $check = "SELECT reaction_id FROM chat_message_reactions 
+                WHERE message_id = ? AND emp_id = ? AND emoji = ?";
+        $stmt = $this->conn->prepare($check);
+        $stmt->bind_param("iis", $message_id, $emp_id, $emoji);
+        $stmt->execute();
+        $exists = $stmt->get_result()->num_rows > 0;
+
+        if ($exists) {
+            // Remove reaction
+            $del = "DELETE FROM chat_message_reactions 
+                    WHERE message_id = ? AND emp_id = ? AND emoji = ?";
+            $stmt = $this->conn->prepare($del);
+            $stmt->bind_param("iis", $message_id, $emp_id, $emoji);
+            $stmt->execute();
+
+            // Decrement reactions_count (never go below 0)
+            $this->conn->query(
+                "UPDATE chat_messages 
+                SET reactions_count = GREATEST(reactions_count - 1, 0) 
+                WHERE message_id = $message_id"
+            );
+            $action = 'removed';
+        } else {
+            // Add reaction
+            $ins = "INSERT INTO chat_message_reactions (message_id, emp_id, emoji) 
+                    VALUES (?, ?, ?)";
+            $stmt = $this->conn->prepare($ins);
+            $stmt->bind_param("iis", $message_id, $emp_id, $emoji);
+            $stmt->execute();
+
+            // Increment reactions_count
+            $this->conn->query(
+                "UPDATE chat_messages 
+                SET reactions_count = reactions_count + 1 
+                WHERE message_id = $message_id"
+            );
+            $action = 'added';
+        }
+
+        return ['action' => $action];
+    }
+
+    /**
+     * Get all reactions for messages in a room,
+     * grouped by message_id → emoji → { count, users[] }
+     */
+    public function getReactions($room_id) {
+        $query = "SELECT r.message_id, r.emoji, r.emp_id,
+                        e.first_name, e.last_name
+                FROM chat_message_reactions r
+                JOIN chat_messages cm ON r.message_id = cm.message_id
+                JOIN employee e ON r.emp_id = e.emp_id
+                WHERE cm.room_id = ?
+                ORDER BY r.created_at ASC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("i", $room_id);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Group: message_id → emoji → { count, users }
+        $grouped = [];
+        foreach ($rows as $row) {
+            $mid   = $row['message_id'];
+            $emoji = $row['emoji'];
+            $name  = $row['first_name'] . ' ' . $row['last_name'];
+
+            if (!isset($grouped[$mid][$emoji])) {
+                $grouped[$mid][$emoji] = ['count' => 0, 'users' => [], 'users_ids' => []];
+            }
+            $grouped[$mid][$emoji]['count']++;
+            $grouped[$mid][$emoji]['users'][]     = $name;
+            $grouped[$mid][$emoji]['users_ids'][] = (int)$row['emp_id']; // ← add this
+        }
+        return $grouped;
     }
 }
 ?>

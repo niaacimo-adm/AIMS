@@ -36,6 +36,104 @@
 <script>
 // Footer scripts — sidebar toggle is handled exclusively in mainheader.php
 $(document).ready(function() {
+    const ALLOWED_EMOJIS = ['👍','❤️','😂','😮','😢','👏'];
+        let lastReactionSnapshot = {}; // track previous state for pulse detection
+
+        // Inject picker HTML into every message bubble (call after rendering messages)
+        function attachReactionPickers() {
+            $('.message-bubble').each(function() {
+                if ($(this).find('.reaction-picker').length) return;
+                const pickerHtml = `<div class="reaction-picker">
+                    ${ALLOWED_EMOJIS.map(e => `<span data-emoji="${e}">${e}</span>`).join('')}
+                </div>`;
+                $(this).prepend(pickerHtml);
+            });
+        }
+
+        // Handle emoji click in picker
+        $(document).on('click', '.reaction-picker span', function(e) {
+            e.stopPropagation();
+            const emoji     = $(this).data('emoji');
+            const messageEl = $(this).closest('.message');
+            const messageId = messageEl.data('message-id');
+
+            $.post('chat_ajax.php', {
+                action:     'toggle_reaction',
+                message_id: messageId,
+                emoji:      emoji
+            }, function(res) {
+                if (res.success) fetchAndRenderReactions(currentRoomId);
+            }, 'json');
+        });
+
+        // Fetch reactions and render chips
+        function fetchAndRenderReactions(room_id) {
+            $.post('chat_ajax.php', {
+                action:  'get_reactions',
+                room_id: room_id
+            }, function(res) {
+                if (!res.success) return;
+
+                const reactions    = res.reactions;
+                const currentEmpId = parseInt($('body').data('emp-id')); // set this on <body>
+
+                // Detect new reactions on MY sent messages → trigger pulse
+                $('.message.sent').each(function() {
+                    const mid = $(this).data('message-id');
+                    const prevCount = lastReactionSnapshot[mid] || 0;
+                    const newCount  = reactions[mid]
+                        ? Object.values(reactions[mid]).reduce((s, r) => s + r.count, 0)
+                        : 0;
+                    if (newCount > prevCount) {
+                        $(this).find('.message-bubble').addClass('pulse');
+                        setTimeout(() => $(this).find('.message-bubble').removeClass('pulse'), 700);
+                    }
+                    lastReactionSnapshot[mid] = newCount;
+                });
+
+                // Render chips per message
+                $('.message').each(function() {
+                    const mid = $(this).data('message-id');
+                    $(this).find('.reactions-bar').remove();
+
+                    if (!reactions[mid]) return;
+
+                    let html = '<div class="reactions-bar">';
+                    $.each(reactions[mid], function(emoji, data) {
+                        const iMine   = data.users_ids && data.users_ids.includes(currentEmpId);
+                        const tooltip = data.users.join(', ');
+                        html += `<span class="reaction-chip ${iMine ? 'reacted' : ''}" 
+                                    data-message-id="${mid}" 
+                                    data-emoji="${emoji}"
+                                    title="${tooltip}">
+                                    ${emoji} ${data.count}
+                                </span>`;
+                    });
+                    html += '</div>';
+                    $(this).find('.message-bubble').append(html);
+                });
+
+            }, 'json');
+        }
+
+        // Clicking a chip also toggles (same as picker)
+        $(document).on('click', '.reaction-chip', function(e) {
+            e.stopPropagation();
+            const messageId = $(this).data('message-id');
+            const emoji     = $(this).data('emoji');
+            $.post('chat_ajax.php', {
+                action:     'toggle_reaction',
+                message_id: messageId,
+                emoji:      emoji
+            }, function(res) {
+                if (res.success) fetchAndRenderReactions(currentRoomId);
+            }, 'json');
+        });
+
+        // Hook into your existing polling loop — add this alongside getMessages polling:
+        // setInterval(() => fetchAndRenderReactions(currentRoomId), 3000);
+        // And call attachReactionPickers() after every renderMessages() call.
+
     // Initialize all dropdowns properly
     $('.dropdown-toggle').dropdown();
 

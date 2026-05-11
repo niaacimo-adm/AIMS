@@ -15,190 +15,366 @@ checkPermission('view_calendar');
   <title>AdminLTE 3 | Calendar</title>
   <?php include '../includes/header.php'; ?>
   <link rel="stylesheet" href="../plugins/fullcalendar/main.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* ── Design Tokens ─────────────────────────────────────────── */
     :root {
-        --primary-color: #4361ee;
-        --secondary-color: #3f37c9;
-        --accent-color: #4895ef;
-        --success-color: #4cc9f0;
+        --primary:        #2563eb;
+        --primary-dark:   #1d4ed8;
+        --primary-light:  #eff6ff;
+        --accent:         #06b6d4;
+        --success:        #10b981;
+        --warning:        #f59e0b;
+        --danger:         #ef4444;
+        --birthday:       #8b5cf6;
+        --meeting:        #1d4ed8;
+        --holiday:        #f59e0b;
+        --event:          #2563eb;
+
+        --bg:             #f0f4f8;
+        --surface:        #ffffff;
+        --surface-2:      #f8fafc;
+        --border:         #e2e8f0;
+        --border-subtle:  #f1f5f9;
+        --text-primary:   #0f172a;
+        --text-secondary: #475569;
+        --text-muted:     #94a3b8;
+
+        --radius-sm:  6px;
+        --radius:     12px;
+        --radius-lg:  18px;
+        --shadow-sm:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+        --shadow:     0 4px 16px rgba(0,0,0,.08);
+        --shadow-lg:  0 12px 40px rgba(0,0,0,.12);
+
+        --font-ui:    'DM Sans', sans-serif;
+        --font-head:  'Syne', sans-serif;
     }
 
-    #birthday-list .list-group-item {
-        border-left: 3px solid var(--accent-color);
-        margin-bottom: 5px;
+    /* ── Base overrides ─────────────────────────────────────────── */
+    body, .content-wrapper { background: var(--bg) !important; font-family: var(--font-ui) !important; }
+
+    /* ── Page header ────────────────────────────────────────────── */
+    .content-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.03em;
     }
 
-    .badge.bg-pink {
-        background-color: var(--accent-color);
-        color: white;
+    /* ── Cards ──────────────────────────────────────────────────── */
+    .card {
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-lg) !important;
+        box-shadow: var(--shadow-sm) !important;
+        overflow: hidden;
+        background: var(--surface) !important;
+        transition: box-shadow .2s ease;
+    }
+    .card:hover { box-shadow: var(--shadow) !important; }
+
+    .card-primary { border-color: var(--border) !important; }
+
+    .card-header {
+        background: var(--surface) !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        padding: 1rem 1.25rem !important;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .card-header h3,
+    .card-header h4,
+    .card-header .card-title {
+        font-family: var(--font-head);
+        font-size: .95rem !important;
+        font-weight: 700 !important;
+        color: var(--text-primary) !important;
+        letter-spacing: -.01em;
+        margin: 0 !important;
+    }
+    /* Coloured left accent bar on card headers */
+    .card-header::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        border-radius: 4px;
+        background: linear-gradient(160deg, var(--primary), var(--accent));
+        flex-shrink: 0;
     }
 
-    #birthday-list small.text-muted {
-        font-size: 0.8em;
+    /* ── Sidebar form ───────────────────────────────────────────── */
+    .form-group label {
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin-bottom: .3rem;
     }
-    
-    .birthday-event {
-        background-color: var(--accent-color) !important;
-        border-color: var(--accent-color) !important;
+    .form-control {
+        border: 1.5px solid var(--border) !important;
+        border-radius: var(--radius-sm) !important;
+        font-family: var(--font-ui) !important;
+        font-size: .875rem !important;
+        color: var(--text-primary) !important;
+        padding: .5rem .75rem !important;
+        background: var(--surface-2) !important;
+        transition: border-color .15s, box-shadow .15s;
     }
-    
-    .holiday-event {
-        background-color: #ffa500 !important;
-        border-color: #ffa500 !important;
+    .form-control:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(37,99,235,.12) !important;
+        background: var(--surface) !important;
     }
-    
-    .meeting-event {
-        background-color: var(--secondary-color) !important;
-        border-color: var(--secondary-color) !important;
+    textarea.form-control { resize: vertical; min-height: 80px; }
+
+    /* ── Buttons ────────────────────────────────────────────────── */
+    .btn {
+        font-family: var(--font-ui) !important;
+        font-weight: 600 !important;
+        font-size: .85rem !important;
+        border-radius: var(--radius-sm) !important;
+        transition: all .18s ease !important;
+        letter-spacing: .01em;
     }
-    
-    .event-event {
-        background-color: var(--primary-color) !important;
-        border-color: var(--primary-color) !important;
+    .btn-primary, .btn-primary.btn-block {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+        border: none !important;
+        color: #fff !important;
+        box-shadow: 0 2px 8px rgba(37,99,235,.3) !important;
     }
-    
-    .fc-event-title {
-        white-space: normal !important;
+    .btn-primary:hover {
+        background: linear-gradient(135deg, var(--primary-dark), #1e3a8a) !important;
+        box-shadow: 0 4px 16px rgba(37,99,235,.4) !important;
+        transform: translateY(-1px);
     }
-    
-    .calendar-loading {
-        position: relative;
-        min-height: 300px;
+    .btn-danger {
+        background: linear-gradient(135deg, var(--danger), #dc2626) !important;
+        border: none !important;
+        box-shadow: 0 2px 8px rgba(239,68,68,.3) !important;
+    }
+    .btn-secondary {
+        background: var(--surface-2) !important;
+        border: 1.5px solid var(--border) !important;
+        color: var(--text-secondary) !important;
+    }
+    .btn-secondary:hover {
+        background: var(--border-subtle) !important;
+        color: var(--text-primary) !important;
     }
 
-    .calendar-loading:after {
+    /* ── FullCalendar toolbar ───────────────────────────────────── */
+    .fc .fc-toolbar { padding: 1rem 1.25rem .5rem; }
+    .fc .fc-toolbar-title {
+        font-family: var(--font-head) !important;
+        font-size: 1.15rem !important;
+        font-weight: 800 !important;
+        color: var(--text-primary) !important;
+        letter-spacing: -.02em;
+    }
+    .fc .fc-button {
+        border-radius: var(--radius-sm) !important;
+        font-family: var(--font-ui) !important;
+        font-size: .8rem !important;
+        font-weight: 600 !important;
+        padding: .35rem .75rem !important;
+        transition: all .15s !important;
+    }
+    .fc .fc-button-primary {
+        background: var(--surface-2) !important;
+        border: 1.5px solid var(--border) !important;
+        color: var(--text-secondary) !important;
+        box-shadow: none !important;
+    }
+    .fc .fc-button-primary:hover,
+    .fc .fc-button-primary:not(:disabled):active,
+    .fc .fc-button-primary:not(:disabled).fc-button-active {
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
+        color: #fff !important;
+        box-shadow: 0 2px 8px rgba(37,99,235,.3) !important;
+    }
+    .fc .fc-today-button {
+        background: linear-gradient(135deg, var(--accent), #0891b2) !important;
+        border-color: transparent !important;
+        color: #fff !important;
+        box-shadow: 0 2px 8px rgba(6,182,212,.3) !important;
+    }
+    .fc .fc-today-button:hover {
+        background: linear-gradient(135deg, #0891b2, #0e7490) !important;
+    }
+
+    /* ── Calendar grid ──────────────────────────────────────────── */
+    .fc-day-today { background: var(--primary-light) !important; }
+    .fc-day-today .fc-daygrid-day-number {
+        background: var(--primary);
+        color: #fff !important;
+        border-radius: 50%;
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: .82rem;
+    }
+    .fc-col-header-cell {
+        background: var(--surface-2) !important;
+        font-family: var(--font-ui) !important;
+        font-size: .78rem !important;
+        font-weight: 700 !important;
+        color: var(--text-muted) !important;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        border-color: var(--border) !important;
+    }
+    .fc-daygrid-day-number {
+        font-size: .82rem;
+        font-weight: 500;
+        color: var(--text-secondary) !important;
+        padding: 6px 8px !important;
+    }
+    .fc td, .fc th { border-color: var(--border-subtle) !important; }
+
+    /* ── Event pills ────────────────────────────────────────────── */
+    .fc-event {
+        border-radius: 5px !important;
+        border: none !important;
+        font-size: .76rem !important;
+        font-weight: 600 !important;
+        padding: 2px 6px !important;
+    }
+    .fc-event-title { white-space: normal !important; }
+    .birthday-event  { background: var(--birthday)  !important; }
+    .holiday-event   { background: var(--holiday)   !important; }
+    .meeting-event   { background: var(--meeting)   !important; }
+    .event-event     { background: var(--event)     !important; }
+
+    /* ── Tables ─────────────────────────────────────────────────── */
+    .table { font-size: .86rem; color: var(--text-primary); }
+    .table thead th {
+        background: var(--surface-2) !important;
+        border-bottom: 2px solid var(--border) !important;
+        font-weight: 700;
+        font-size: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        color: var(--text-muted) !important;
+        padding: .75rem 1rem;
+        white-space: nowrap;
+    }
+    .table tbody td { padding: .7rem 1rem; border-color: var(--border-subtle) !important; vertical-align: middle; }
+    .table-hover tbody tr { transition: background .15s; }
+    .table-hover tbody tr:hover td { background: var(--primary-light) !important; }
+    #events-table tr.table-info td { background: rgba(37,99,235,.06) !important; }
+    #birthdays-table tr:hover td   { background: var(--primary-light) !important; }
+
+    /* ── Badges ─────────────────────────────────────────────────── */
+    .badge {
+        border-radius: 20px !important;
+        font-size: .72rem !important;
+        font-weight: 700 !important;
+        padding: .28em .7em !important;
+        letter-spacing: .03em;
+    }
+    .badge-primary { background: var(--primary) !important; color: #fff; }
+    span.badge[style*="background-color:#4361ee"] { background: var(--event)   !important; }
+    span.badge[style*="background-color:#3f37c9"] { background: var(--meeting) !important; }
+    span.badge[style*="background-color:#ffa500"] { background: var(--holiday) !important; }
+    span.badge[style*="background-color:#4895ef"] { background: var(--birthday)!important; }
+
+    /* ── Loading spinner ────────────────────────────────────────── */
+    .calendar-loading { position: relative; min-height: 300px; }
+    .calendar-loading::after {
         content: "";
         position: absolute;
-        top: 50%;
-        left: 50%;
+        top: 50%; left: 50%;
         transform: translate(-50%, -50%);
-        width: 40px;
-        height: 40px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid var(--primary-color);
+        width: 36px; height: 36px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
         border-radius: 50%;
         animation: spin 1s linear infinite;
         z-index: 1000;
     }
-
     @keyframes spin {
-        0% { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
+        to { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
-    /* Error Message Styles */
+    /* ── Error box ──────────────────────────────────────────────── */
     #calendar-error {
-        margin: 15px;
-        padding: 15px;
-        border-left: 4px solid #dc3545;
-        background-color: #f8d7da;
-        color: #721c24;
-        border-radius: 4px;
+        margin: 1rem;
+        padding: 1rem 1.25rem;
+        border-left: 4px solid var(--danger);
+        background: #fef2f2;
+        color: #7f1d1d;
+        border-radius: var(--radius-sm);
+        font-size: .875rem;
+    }
+    #calendar-error .close { color: #7f1d1d; opacity: .7; }
+    #calendar-error .btn   { margin-left: .5rem; }
+
+    /* ── Modals ─────────────────────────────────────────────────── */
+    .modal-content {
+        border: none !important;
+        border-radius: var(--radius-lg) !important;
+        box-shadow: var(--shadow-lg) !important;
+        overflow: hidden;
+    }
+    .modal-header {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+        border: none !important;
+        padding: 1.1rem 1.5rem !important;
+    }
+    .modal-title {
+        font-family: var(--font-head) !important;
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+        color: #fff !important;
+        letter-spacing: -.01em;
+    }
+    .modal-header .close { color: rgba(255,255,255,.8) !important; text-shadow: none !important; font-size: 1.4rem; }
+    .modal-header .close:hover { color: #fff !important; }
+    .modal-body  { padding: 1.5rem !important; background: var(--surface); }
+    .modal-footer {
+        padding: 1rem 1.5rem !important;
+        border-top: 1px solid var(--border-subtle) !important;
+        background: var(--surface-2);
+        gap: .5rem;
+        display: flex;
     }
 
-    #calendar-error .close {
-        color: #721c24;
-        opacity: 0.8;
+    /* ── DataTables tweaks ──────────────────────────────────────── */
+    div.dataTables_wrapper div.dataTables_length select,
+    div.dataTables_wrapper div.dataTables_filter input {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: .3rem .6rem;
+        font-size: .82rem;
+        font-family: var(--font-ui);
+        color: var(--text-primary);
+        background: var(--surface-2);
+    }
+    div.dataTables_wrapper div.dataTables_info,
+    div.dataTables_wrapper div.dataTables_length label,
+    div.dataTables_wrapper div.dataTables_filter label {
+        font-size: .8rem;
+        color: var(--text-muted);
+        font-family: var(--font-ui);
+    }
+    .paginate_button { border-radius: var(--radius-sm) !important; font-size: .8rem !important; }
+    .paginate_button.current {
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
+        color: #fff !important;
     }
 
-    #calendar-error .btn {
-        margin-left: 10px;
-    }
-    
-    /* Toastr notification styling */
-    .toast {
-        font-size: 14px;
-        padding: 15px;
-    }
-    
-    /* DataTables styling */
-    #events-table {
-        width: 100% !important;
-    }
-
-    #events-table th {
-        white-space: nowrap;
-    }
-
-    #events-table .badge {
-        font-size: 0.85em;
-        padding: 0.35em 0.65em;
-    }
-
-    #events-table tr.table-info td {
-        background-color: rgba(67, 97, 238, 0.1) !important;
-    }
-
-    #birthdays-table .badge {
-        font-size: 0.85em;
-        padding: 0.35em 0.65em;
-    }
-
-    #birthdays-table tr td {
-        vertical-align: middle;
-    }
-
-    #birthdays-table tr:hover td {
-        background-color: rgba(67, 97, 238, 0.1) !important;
-    }
-
-    /* Admin Theme Specific Styles */
-    .card-primary {
-        border-color: var(--primary-color);
-    }
-
-    .card-primary .card-header {
-        background-color: var(--primary-color);
-        color: white;
-    }
-
-    .btn-primary {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-
-    .btn-primary:hover {
-        background-color: var(--secondary-color);
-        border-color: var(--secondary-color);
-    }
-
-    .fc .fc-button-primary {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-
-    .fc .fc-button-primary:hover {
-        background-color: var(--secondary-color);
-        border-color: var(--secondary-color);
-    }
-
-    .fc .fc-button-primary:disabled {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-        opacity: 0.6;
-    }
-
-    .fc .fc-today-button {
-        background-color: var(--accent-color);
-        border-color: var(--accent-color);
-    }
-
-    .fc .fc-today-button:hover {
-        background-color: var(--success-color);
-        border-color: var(--success-color);
-    }
-
-    .fc-day-today {
-        background-color: rgba(67, 97, 238, 0.1) !important;
-    }
-
-    .badge-primary {
-        background-color: var(--primary-color);
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: rgba(67, 97, 238, 0.05);
-    }
+    /* ── Misc ───────────────────────────────────────────────────── */
+    .sticky-top { top: 1rem; }
+    .toast { font-size: .875rem; padding: 1rem; }
+    #events-table { width: 100% !important; }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -321,7 +497,7 @@ checkPermission('view_calendar');
   <div class="modal fade" id="event-modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header" style="background: linear-gradient(135deg, #4361ee, #3f37c9); color: white;">
+        <div class="modal-header">
           <h5 class="modal-title" id="modal-title">Event Details</h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
@@ -366,7 +542,7 @@ checkPermission('view_calendar');
   <div class="modal fade" id="day-click-modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header" style="background: linear-gradient(135deg, #4361ee, #3f37c9); color: white;">
+        <div class="modal-header">
           <h5 class="modal-title">Add Event for <span id="modal-date-title"></span></h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>

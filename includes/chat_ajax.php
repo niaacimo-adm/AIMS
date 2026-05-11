@@ -84,8 +84,105 @@ try {
             $chat->updateOnlineStatus($current_user_id, 0);
             echo json_encode(['success' => true]);
             break;
-                default:
-                    echo json_encode(['success' => false, 'error' => 'Invalid action']);
+            
+        case 'toggle_reaction':
+            $message_id = intval($_POST['message_id'] ?? 0);
+            $emoji      = trim($_POST['emoji'] ?? '');
+
+            $allowed_emojis = ['👍','❤️','😂','😮','😢','👏'];
+            if (!$message_id || !in_array($emoji, $allowed_emojis)) {
+                echo json_encode(['success' => false, 'error' => 'Invalid input']);
+                break;
+            }
+
+            $result = $chat->toggleReaction($message_id, $current_user_id, $emoji);
+            echo json_encode(['success' => true, 'result' => $result]);
+            break;
+
+        case 'get_reactions':
+            $room_id = intval($_POST['room_id'] ?? 0);
+            if (!$room_id) {
+                echo json_encode(['success' => false, 'error' => 'Invalid room_id']);
+                break;
+            }
+            $reactions = $chat->getReactions($room_id);
+            echo json_encode(['success' => true, 'reactions' => $reactions]);
+            break;
+
+        case 'delete_message':
+            $message_id = intval($_POST['message_id'] ?? 0);
+            if ($message_id) {
+                $deleted = $chat->deleteMessage($message_id, $current_user_id);
+                echo json_encode(['success' => $deleted, 'error' => $deleted ? null : 'Not allowed or message not found']);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Invalid message_id']);
+            }
+            break;
+        
+        case 'send_file':
+        // Check if a file was uploaded
+        if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']);
+            break;
+        }
+
+        $room_id = $_POST['room_id'];
+        $file = $_FILES['file'];
+        
+        // Validate max size (50MB)
+        $maxSize = 50 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            echo json_encode(['success' => false, 'error' => 'File exceeds 50MB limit']);
+            break;
+        }
+
+    // Validate file type (optional)
+    $allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                    'application/pdf', 'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-powerpoint',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'text/plain', 'application/zip', 'application/x-rar-compressed',
+                    'video/mp4', 'audio/mpeg'];
+    if (!in_array($file['type'], $allowedMime)) {
+        echo json_encode(['success' => false, 'error' => 'File type not allowed']);
+        break;
+    }
+
+    // Ensure upload directory exists
+    $uploadDir = '../uploads/chat/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    // Generate unique filename
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $baseName = pathinfo($file['name'], PATHINFO_FILENAME);
+    $newName = time() . '_' . preg_replace('/[^a-zA-Z0-9_\-]/', '', $baseName) . '.' . $extension;
+    $targetPath = $uploadDir . $newName;
+
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        // Use the ChatFunctions method to insert file metadata
+        $message_id = $chat->sendFileMessage(
+            $room_id,
+            $current_user_id,
+            $file['name'],        // original filename as message text
+            strpos($file['type'], 'image/') === 0 ? 'image' : 'file',
+            $newName,
+            $file['type'],
+            $file['size']
+        );
+        if ($message_id) {
+            echo json_encode(['success' => true, 'message_id' => $message_id]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to save file metadata to database']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file']);
+    }
+    break;
             }
             
 } catch (Exception $e) {

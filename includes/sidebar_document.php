@@ -8,9 +8,46 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$employee_name = '';
 $employee_picture = '../dist/img/user2-160x160.jpg';
-$employee_id = $_SESSION['emp_id'] ?? null;
+$employee_id      = $_SESSION['emp_id'] ?? null;
+
+// ── Pre-fetch notification counts (pending docs forwarded to this user's section/unit)
+$notif = ['incoming' => 0, 'outgoing' => 0, 'internal' => 0, 'total' => 0];
+
+if ($employee_id) {
+    $database2 = new Database();
+    $db2       = $database2->getConnection();
+
+    // Get the logged-in employee's section + unit
+    $us = $db2->prepare("SELECT section_id, unit_section_id FROM employee WHERE emp_id = ? LIMIT 1");
+    $us->bind_param("i", $employee_id);
+    $us->execute();
+    $urow    = $us->get_result()->fetch_assoc();
+    $sec_id  = (int)($urow['section_id']      ?? 0);
+    $unit_id = (int)($urow['unit_section_id'] ?? 0);
+
+    if ($sec_id) {
+        // Count pending docs forwarded to the user's section (or their specific unit)
+        $nq = $db2->prepare("
+            SELECT kind, COUNT(*) AS cnt
+            FROM document_records
+            WHERE status = 'pending'
+              AND forwarded_to_section_id = ?
+              AND (forwarded_to_unit_id = ? OR forwarded_to_unit_id IS NULL OR ? = 0)
+            GROUP BY kind
+        ");
+        $nq->bind_param("iii", $sec_id, $unit_id, $unit_id);
+        $nq->execute();
+        $nrows = $nq->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($nrows as $nr) {
+            $k = $nr['kind'];
+            if (isset($notif[$k])) {
+                $notif[$k]        = (int)$nr['cnt'];
+                $notif['total']  += (int)$nr['cnt'];
+            }
+        }
+    }
+}
 ?>
 
 <aside class="main-sidebar sidebar-dark-olive elevation-4">
@@ -29,7 +66,7 @@ $employee_id = $_SESSION['emp_id'] ?? null;
             <div class="info">
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <a href="profile.php" class="d-block text-white">
-                        <?= $employee_name ?: htmlspecialchars($_SESSION['username'] ?? 'User') ?>
+                        <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
                     </a>
                     <?php if (isset($_SESSION['role_name'])): ?>
                     <span class="badge badge-primary mt-1"><?= htmlspecialchars($_SESSION['role_name']) ?></span>
@@ -48,7 +85,11 @@ $employee_id = $_SESSION['emp_id'] ?? null;
                 <li class="nav-item">
                     <a href="document_dashboard.php" class="nav-link <?= $current_page === 'document_dashboard.php' ? 'active bg-olive' : 'text-white' ?>">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
-                        <p>Dashboard</p>
+                        <p>Dashboard
+                            <?php if ($notif['total'] > 0): ?>
+                            <span class="badge badge-warning right" title="<?= $notif['total'] ?> pending document(s) forwarded to your section"><?= $notif['total'] ?></span>
+                            <?php endif; ?>
+                        </p>
                     </a>
                 </li>
 
@@ -64,34 +105,55 @@ $employee_id = $_SESSION['emp_id'] ?? null;
 
                 <!-- Incoming -->
                 <li class="nav-item">
-                    <a href="document_list.php?kind=incoming" class="nav-link <?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'incoming') ? 'active' : 'text-white' ?>"
+                    <a href="document_list.php?kind=incoming"
+                       class="nav-link <?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'incoming') ? 'active' : 'text-white' ?>"
                        style="<?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'incoming') ? 'background:#0d6efd!important;' : '' ?>">
                         <i class="nav-icon fas fa-inbox"></i>
-                        <p>Incoming Documents</p>
+                        <p>Incoming Documents
+                            <?php if ($notif['incoming'] > 0): ?>
+                            <span class="badge badge-danger right sidebar-notif-badge" title="<?= $notif['incoming'] ?> pending incoming document(s) for your section">
+                                <?= $notif['incoming'] ?>
+                            </span>
+                            <?php endif; ?>
+                        </p>
                     </a>
                 </li>
 
                 <!-- Outgoing -->
                 <li class="nav-item">
-                    <a href="document_list.php?kind=outgoing" class="nav-link <?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'outgoing') ? 'active' : 'text-white' ?>"
+                    <a href="document_list.php?kind=outgoing"
+                       class="nav-link <?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'outgoing') ? 'active' : 'text-white' ?>"
                        style="<?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'outgoing') ? 'background:#198754!important;' : '' ?>">
                         <i class="nav-icon fas fa-paper-plane"></i>
-                        <p>Outgoing Documents</p>
+                        <p>Outgoing Documents
+                            <?php if ($notif['outgoing'] > 0): ?>
+                            <span class="badge badge-danger right sidebar-notif-badge" title="<?= $notif['outgoing'] ?> pending outgoing document(s) for your section">
+                                <?= $notif['outgoing'] ?>
+                            </span>
+                            <?php endif; ?>
+                        </p>
                     </a>
                 </li>
 
                 <!-- Internal -->
                 <li class="nav-item">
-                    <a href="document_list.php?kind=internal" class="nav-link <?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'internal') ? 'active' : 'text-white' ?>"
+                    <a href="document_list.php?kind=internal"
+                       class="nav-link <?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'internal') ? 'active' : 'text-white' ?>"
                        style="<?= ($current_page === 'document_list.php' && ($_GET['kind'] ?? '') === 'internal') ? 'background:#6f42c1!important;' : '' ?>">
                         <i class="nav-icon fas fa-exchange-alt"></i>
-                        <p>Internal Documents</p>
+                        <p>Internal Documents
+                            <?php if ($notif['internal'] > 0): ?>
+                            <span class="badge badge-danger right sidebar-notif-badge" title="<?= $notif['internal'] ?> pending internal document(s) for your section">
+                                <?= $notif['internal'] ?>
+                            </span>
+                            <?php endif; ?>
+                        </p>
                     </a>
                 </li>
 
                 <li class="nav-header text-uppercase text-muted" style="font-size:.68rem;letter-spacing:.1em;">Settings</li>
 
-                <!-- Document Types Management (admin) -->
+                <!-- Document Types Management -->
                 <li class="nav-item">
                     <a href="document_types.php" class="nav-link <?= $current_page === 'document_types.php' ? 'active bg-olive' : 'text-white' ?>">
                         <i class="nav-icon fas fa-tags"></i>
@@ -113,6 +175,17 @@ $employee_id = $_SESSION['emp_id'] ?? null;
 </aside>
 
 <style>
+/* ── Notification badge pulse animation ────────────────────── */
+.sidebar-notif-badge {
+    animation: badgePulse 2s infinite;
+}
+@keyframes badgePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(220,53,69,.6); }
+    70%  { box-shadow: 0 0 0 6px rgba(220,53,69,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); }
+}
+
+/* ── Dark mode overrides ────────────────────────────────────── */
 body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
@@ -159,5 +232,38 @@ $(document).ready(function() {
     if (localStorage.getItem('darkMode') === '1') {
         $('body').addClass('dark-mode');
     }
+
+    function refreshSidebarNotifs() {
+        $.get('document_actions.php', { action: 'get_notifications' }, function(r) {
+            if (!r.success) return;
+            var counts = r.counts;
+            // Update the badges inside the sidebar menu items
+            updateBadge($('.nav-link[href="document_list.php?kind=incoming"] .badge'), counts.incoming);
+            updateBadge($('.nav-link[href="document_list.php?kind=outgoing"] .badge'), counts.outgoing);
+            updateBadge($('.nav-link[href="document_list.php?kind=internal"] .badge'), counts.internal);
+            updateBadge($('.nav-link[href="document_dashboard.php"] .badge'), counts.total);
+        }, 'json').fail(function(){});
+    }
+
+    function updateBadge($badge, count) {
+        if (count > 0) {
+            if ($badge.length === 0) {
+                // Badge doesn't exist – create it
+                $badge = $('<span class="badge badge-danger right sidebar-notif-badge"></span>');
+                $badge.css('animation', 'badgePulse 2s infinite');
+                $('.nav-link[href="document_list.php?kind=incoming"] p, .nav-link[href="document_list.php?kind=outgoing"] p, .nav-link[href="document_list.php?kind=internal"] p, .nav-link[href="document_dashboard.php"] p').each(function() {
+                    if ($(this).parent().attr('href') === $badge.parent().attr('href')) {
+                        $(this).append($badge);
+                    }
+                });
+            }
+            $badge.text(count).show();
+        } else {
+            $badge.hide();
+        }
+    }
+
+    // Poll every 60 seconds
+    setInterval(refreshSidebarNotifs, 60000);
 });
 </script>

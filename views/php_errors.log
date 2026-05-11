@@ -71,3 +71,1582 @@ Stack trace:
 Stack trace:
 #0 {main}
   thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 149
+[04-May-2026 07:58:29 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #7 cannot be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php:149
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 149
+[04-May-2026 08:05:00 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:266
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(266): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 266
+[04-May-2026 08:10:09 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:276
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(276): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 276
+[04-May-2026 08:30:05 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:309
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(309): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 309
+[04-May-2026 08:30:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:309
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(309): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 309
+[04-May-2026 08:35:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:309
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(309): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 309
+[04-May-2026 08:40:19 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:309
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(309): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 309
+[04-May-2026 08:46:07 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:48:31 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:49:31 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:50:31 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:52:35 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:53:35 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:54:35 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:55:35 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:56:35 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:58:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 08:59:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:00:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:00:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:00:45 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:389
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(389): mysqli->prepare('\r\n             ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 389
+[04-May-2026 09:00:47 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:389
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(389): mysqli->prepare('\r\n             ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 389
+[04-May-2026 09:01:20 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:389
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(389): mysqli->prepare('\r\n             ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 389
+[04-May-2026 09:02:56 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'e.role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:389
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(389): mysqli->prepare('\r\n             ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 389
+[04-May-2026 09:03:17 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:03:51 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:04:17 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:04:51 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:05:17 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:05:51 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:06:17 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:06:51 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:07:17 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:07:51 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:08:20 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:09:21 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:09:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:10:22 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:10:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:11:23 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:11:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:12:24 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:12:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:13:25 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:13:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:14:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:14:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:16:27 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:16:36 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:17:27 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:17:36 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:18:27 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:18:36 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:19:27 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:19:36 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:20:27 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:21:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:21:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:22:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:22:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:23:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:23:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:24:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:24:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:25:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:25:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:178
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(178): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 178
+[04-May-2026 09:26:28 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:26:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:26:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:451
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(451): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 451
+[04-May-2026 09:27:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:27:53 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:28:14 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:29:10 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:29:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:30:10 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:31:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:32:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:33:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:34:53 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:35:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:37:25 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:37:53 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:39:25 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:40:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:41:27 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:42:28 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:43:29 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:44:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:45:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:46:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:47:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:48:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:49:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:50:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:51:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:52:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:53:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:54:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:55:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:56:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:57:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:58:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 09:59:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:00:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:01:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:02:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:03:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:04:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:05:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:06:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:06:53 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:07:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:09:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:10:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:11:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:12:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:13:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:14:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:15:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:16:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:17:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:18:30 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[04-May-2026 10:19:23 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 02:00:55 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:451
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(451): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 451
+[05-May-2026 03:04:06 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:507
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(507): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 507
+[05-May-2026 03:10:05 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:11:04 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:12:05 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:13:05 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:14:05 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:15:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:15:39 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:451
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(451): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 451
+[05-May-2026 03:16:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:17:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:18:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:19:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:20:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:21:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:22:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:23:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:24:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:26:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:27:14 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:28:15 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:29:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:30:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:30:59 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:31:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:33:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:33:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:34:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:35:46 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:36:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:38:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:38:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:39:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:40:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:41:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:43:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:44:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 03:45:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:16:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:17:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:18:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:19:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:20:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:21:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:22:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:23:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:24:10 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:451
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(451): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 451
+[05-May-2026 05:25:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:26:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:27:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:28:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:29:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:30:58 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:31:59 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:33:00 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:34:01 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:35:02 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:36:03 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:37:04 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:38:05 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:39:06 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:40:07 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:41:08 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:42:09 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:43:10 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:44:11 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:45:12 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:46:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:47:14 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:48:15 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:49:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:50:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:51:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:52:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:53:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:54:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:55:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:56:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:57:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:58:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 05:59:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:00:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:01:01 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:02:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:03:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:04:14 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:05:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:06:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:07:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:08:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:09:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:10:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:11:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:12:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:13:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:14:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:15:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:16:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:17:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:18:13 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:19:14 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:20:15 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:21:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:22:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:23:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:24:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:25:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:26:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:27:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:28:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:29:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:30:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:31:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:32:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:33:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:34:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:35:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:36:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:37:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:38:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:39:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:40:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:41:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:42:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:43:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:44:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:45:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:46:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:47:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:48:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:49:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:50:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:51:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:52:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:53:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:54:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:55:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:56:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:57:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:58:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 06:59:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:00:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:01:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:02:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:03:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:04:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:05:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:06:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:07:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:08:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:09:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:10:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:11:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:12:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:13:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:14:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:15:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:16:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:17:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:18:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:19:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:20:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:21:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:22:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:23:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:24:16 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:24:41 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:451
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(451): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 451
+[05-May-2026 07:25:04 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:451
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(451): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 451
+[05-May-2026 07:25:58 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'role_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:181
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(181): mysqli->prepare('\r\n            S...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 181
+[05-May-2026 07:26:10 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:507
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(507): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 507
+[05-May-2026 07:29:39 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:507
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(507): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 507
+[05-May-2026 07:30:02 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:507
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(507): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 507
+[05-May-2026 08:46:47 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:278
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(278): mysqli_stmt->bind_param('ssisiisiiisssss', 'incoming', 'ADM-05052026-00...', 4, 'asdas', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-05-05 08:4...', '2026-05-05 14:4...', 'pending', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 278
+[05-May-2026 08:52:44 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:278
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(278): mysqli_stmt->bind_param('ssisiisiiisssss', 'incoming', 'ADM-05052026-00...', 4, 'asdas', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-05-05 08:5...', '2026-05-05 14:4...', 'pending', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 278
+[05-May-2026 08:54:28 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:283
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(283): mysqli_stmt->bind_param('ssisisiiissiiss...', 'incoming', 'ADM-05052026-00...', 4, 'asdas', 32, NULL, NULL, NULL, NULL, '', NULL, NULL, '2026-05-05 08:5...', '2026-05-05 14:5...', 'pending', '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 283
+[05-May-2026 08:59:39 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:521
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(521): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 521
+[05-May-2026 09:00:56 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:521
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(521): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 521
+[05-May-2026 09:02:42 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:523
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(523): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 523
+[05-May-2026 09:22:02 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:523
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(523): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 523
+[05-May-2026 09:22:06 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:523
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(523): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 523
+[05-May-2026 09:31:04 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:42
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(42): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(584): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 42
+[05-May-2026 09:31:26 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:42
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(42): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(584): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 42
+[05-May-2026 09:32:10 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:42
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(42): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(584): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 42
+[05-May-2026 09:32:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:42
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(42): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(584): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 42
+[05-May-2026 09:42:58 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:521
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(521): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 521
+[05-May-2026 09:45:47 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[05-May-2026 09:46:11 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 1)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[05-May-2026 11:23:12 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 1)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[05-May-2026 11:23:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[05-May-2026 11:23:55 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[05-May-2026 11:23:55 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45

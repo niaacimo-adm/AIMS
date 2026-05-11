@@ -25,6 +25,19 @@
     max-width: 100%;
     height: auto;
 }
+</style>
+  <link rel="stylesheet" href="../plugins/select2/css/select2.min.css">
+  <link rel="stylesheet" href="../plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+   <link rel="stylesheet" href="../plugins/fullcalendar/main.css">
+  <!-- Theme style -->
+   <style>
+.custom-file-input:lang(en)~.custom-file-label::after {
+    content: "Browse";
+}
+#preview {
+    max-width: 100%;
+    height: auto;
+}
 /* Chat Widget Styles */
 .chat-widget {
     position: fixed;
@@ -529,7 +542,76 @@
     font-size: 12px;
     padding: 5px 15px;
 }
+/* Reaction picker that appears on hover */
+.message-bubble { position: relative; }
 
+.reaction-picker {
+    display: none;
+    position: absolute;
+    top: -42px;
+    left: 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    padding: 5px 10px;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 20;
+    white-space: nowrap;
+}
+
+.message.sent .reaction-picker { left: auto; right: 0; }
+
+.message-bubble:hover .reaction-picker { display: flex; }
+
+.reaction-picker span {
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.15s;
+    line-height: 1;
+}
+.reaction-picker span:hover { transform: scale(1.4); }
+
+/* Reaction chips below the bubble */
+.reactions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.reaction-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #f0f2ff;
+    border: 1px solid #d0d5f5;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+}
+.reaction-chip:hover { background: #dde1ff; }
+.reaction-chip.reacted {
+    background: #4361ee;
+    color: white;
+    border-color: #4361ee;
+}
+
+/* Pulse animation when YOUR message gets a new reaction */
+@keyframes reactionPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(67,97,238,0.5); }
+    70%  { box-shadow: 0 0 0 10px rgba(67,97,238,0); }
+    100% { box-shadow: 0 0 0 0 rgba(67,97,238,0); }
+}
+.message-bubble.pulse { animation: reactionPulse 0.6s ease-out; }
+
+/* Dark mode */
+body.dark-mode .reaction-picker { background: var(--card-bg); border-color: var(--card-border); }
+body.dark-mode .reaction-chip { background: var(--table-stripe); border-color: var(--card-border); color: var(--text-primary); }
+body.dark-mode .reaction-chip.reacted { background: #4361ee; color: #fff; border-color: #4361ee; }
 
 /* =========================================================
    HEADER.PHP CHAT WIDGET — Dark Mode Overrides

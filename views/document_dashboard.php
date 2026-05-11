@@ -9,7 +9,7 @@ $db = $database->getConnection();
 // Fetch counts for stats cards
 $counts = ['total' => 0, 'incoming' => 0, 'outgoing' => 0, 'internal' => 0, 'pending' => 0, 'completed' => 0];
 
-$stats_query = "SELECT 
+$stats_query = "SELECT
     COUNT(*) as total,
     SUM(kind = 'incoming') as incoming,
     SUM(kind = 'outgoing') as outgoing,
@@ -22,13 +22,19 @@ if ($result && $row = $result->fetch_assoc()) {
     $counts = $row;
 }
 
-// Recent documents
-$recent_query = "SELECT dr.*, dt.type_name, ds1.section_name as from_section, ds2.section_name as to_section
+// FIX: was joining 'document_sections ds1/ds2' which doesn't exist.
+// Correct table is 'section' with PK 'section_id'
+$recent_query = "
+    SELECT dr.*, dt.type_name,
+           s1.section_name AS from_section,
+           s2.section_name AS to_section
     FROM document_records dr
-    LEFT JOIN document_types dt ON dr.document_type_id = dt.id
-    LEFT JOIN document_sections ds1 ON dr.from_section_id = ds1.id
-    LEFT JOIN document_sections ds2 ON dr.forwarded_to_section_id = ds2.id
-    ORDER BY dr.created_at DESC LIMIT 10";
+    LEFT JOIN document_types dt ON dr.document_type_id         = dt.id
+    LEFT JOIN section        s1 ON dr.from_section_id          = s1.section_id
+    LEFT JOIN section        s2 ON dr.forwarded_to_section_id  = s2.section_id
+    ORDER BY dr.created_at DESC
+    LIMIT 10
+";
 $recent_docs = $db->query($recent_query);
 ?>
 <!DOCTYPE html>
@@ -60,28 +66,17 @@ $recent_docs = $db->query($recent_query);
             font-size: 22px; color: #fff;
         }
         .stat-number { font-size: 2rem; font-weight: 700; line-height: 1; }
-        .stat-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #6c757d; }
-        .kind-badge {
-            padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
-        }
+        .stat-label  { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #6c757d; }
+        .kind-badge  { padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
         .kind-incoming  { background: #dbeafe; color: #1d4ed8; }
         .kind-outgoing  { background: #dcfce7; color: #166534; }
         .kind-internal  { background: #ede9fe; color: #5b21b6; }
-        .status-badge {
-            padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600;
-        }
+        .status-badge { padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; }
         .status-pending   { background: #ffedd5; color: #c2410c; }
         .status-received  { background: #dbeafe; color: #1d4ed8; }
         .status-returned  { background: #fce7f3; color: #9d174d; }
         .status-completed { background: #d1fae5; color: #065f46; }
         .status-archived  { background: #f3f4f6; color: #374151; }
-        .filter-tabs .nav-link {
-            border-radius: 8px; padding: 6px 18px; font-size: .84rem; font-weight: 500;
-            color: #495057; border: 1px solid #dee2e6; margin-right: 6px;
-        }
-        .filter-tabs .nav-link.active {
-            background: var(--doc-primary); border-color: var(--doc-primary); color: #fff;
-        }
         .action-btn { width: 30px; height: 30px; padding: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
         .page-section-title {
             font-size: 1.05rem; font-weight: 700; color: var(--doc-primary);
@@ -90,10 +85,9 @@ $recent_docs = $db->query($recent_query);
         body.dark-mode .kind-incoming { background: #1e3a5f; color: #93c5fd; }
         body.dark-mode .kind-outgoing { background: #14532d; color: #86efac; }
         body.dark-mode .kind-internal { background: #2e1065; color: #c4b5fd; }
-        body.dark-mode .status-pending { background: #431407; color: #fdba74; }
-        body.dark-mode .status-received { background: #1e3a5f; color: #93c5fd; }
+        body.dark-mode .status-pending   { background: #431407; color: #fdba74; }
+        body.dark-mode .status-received  { background: #1e3a5f; color: #93c5fd; }
         body.dark-mode .status-completed { background: #064e3b; color: #6ee7b7; }
-        body.dark-mode .filter-tabs .nav-link { border-color: var(--card-border); color: var(--text-primary); }
         body.dark-mode .page-section-title { color: #7aabdf; border-color: #7aabdf; }
     </style>
 </head>
@@ -134,7 +128,7 @@ $recent_docs = $db->query($recent_query);
                                     <i class="fas fa-folder-open"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-number"><?= $counts['total'] ?? 0 ?></div>
+                                    <div class="stat-number"><?= (int)($counts['total'] ?? 0) ?></div>
                                     <div class="stat-label">Total</div>
                                 </div>
                             </div>
@@ -147,7 +141,7 @@ $recent_docs = $db->query($recent_query);
                                     <i class="fas fa-inbox"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-number"><?= $counts['incoming'] ?? 0 ?></div>
+                                    <div class="stat-number"><?= (int)($counts['incoming'] ?? 0) ?></div>
                                     <div class="stat-label">Incoming</div>
                                 </div>
                             </div>
@@ -160,7 +154,7 @@ $recent_docs = $db->query($recent_query);
                                     <i class="fas fa-paper-plane"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-number"><?= $counts['outgoing'] ?? 0 ?></div>
+                                    <div class="stat-number"><?= (int)($counts['outgoing'] ?? 0) ?></div>
                                     <div class="stat-label">Outgoing</div>
                                 </div>
                             </div>
@@ -173,7 +167,7 @@ $recent_docs = $db->query($recent_query);
                                     <i class="fas fa-exchange-alt"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-number"><?= $counts['internal'] ?? 0 ?></div>
+                                    <div class="stat-number"><?= (int)($counts['internal'] ?? 0) ?></div>
                                     <div class="stat-label">Internal</div>
                                 </div>
                             </div>
@@ -186,7 +180,7 @@ $recent_docs = $db->query($recent_query);
                                     <i class="fas fa-clock"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-number"><?= $counts['pending'] ?? 0 ?></div>
+                                    <div class="stat-number"><?= (int)($counts['pending'] ?? 0) ?></div>
                                     <div class="stat-label">Pending</div>
                                 </div>
                             </div>
@@ -199,7 +193,7 @@ $recent_docs = $db->query($recent_query);
                                     <i class="fas fa-check-circle"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-number"><?= $counts['completed'] ?? 0 ?></div>
+                                    <div class="stat-number"><?= (int)($counts['completed'] ?? 0) ?></div>
                                     <div class="stat-label">Completed</div>
                                 </div>
                             </div>
@@ -214,7 +208,7 @@ $recent_docs = $db->query($recent_query);
                     </div>
                     <div class="col-md-4 mb-3">
                         <a href="document_list.php?kind=incoming" class="text-decoration-none">
-                            <div class="card stat-card border-left-primary" style="border-left: 4px solid var(--doc-incoming) !important;">
+                            <div class="card stat-card" style="border-left: 4px solid var(--doc-incoming) !important;">
                                 <div class="card-body py-3">
                                     <div class="d-flex align-items-center">
                                         <div class="stat-icon mr-3" style="background:var(--doc-incoming); width:44px;height:44px;font-size:18px;">
@@ -276,9 +270,9 @@ $recent_docs = $db->query($recent_query);
                             <a href="document_list.php" class="btn btn-sm btn-outline-primary mr-2">
                                 <i class="fas fa-list mr-1"></i> View All
                             </a>
-                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addDocumentModal">
+                            <a href="document_list.php" class="btn btn-sm btn-primary">
                                 <i class="fas fa-plus mr-1"></i> Add Document
-                            </button>
+                            </a>
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -318,13 +312,17 @@ $recent_docs = $db->query($recent_query);
                                         </td>
                                         <td>
                                             <div><?= htmlspecialchars($doc['forwarded_by_name'] ?? '—') ?></div>
-                                            <?php if ($doc['from_section']): ?>
+                                            <?php if (!empty($doc['from_section'])): ?>
                                             <small class="text-muted"><?= htmlspecialchars($doc['from_section']) ?></small>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <div><?= htmlspecialchars($doc['forwarded_to']) ?></div>
-                                            <small class="text-muted"><?= date('M d, Y h:i A', strtotime($doc['date_forwarded'])) ?></small>
+                                            <div><?= htmlspecialchars($doc['forwarded_to'] ?? '—') ?></div>
+                                            <?php
+                                            // FIX: guard strtotime against '0000-00-00 00:00:00'
+                                            $fwd_ts = strtotime($doc['date_forwarded']);
+                                            echo '<small class="text-muted">' . ($fwd_ts ? date('M d, Y h:i A', $fwd_ts) : '—') . '</small>';
+                                            ?>
                                         </td>
                                         <td>
                                             <span class="status-badge status-<?= $doc['status'] ?>">
@@ -335,7 +333,7 @@ $recent_docs = $db->query($recent_query);
                                             <a href="document_view.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-info action-btn" title="View">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="document_edit.php?id=<?= $doc['id'] ?>" class="btn btn-sm btn-warning action-btn ml-1" title="Edit">
+                                            <a href="document_list.php?edit=<?= $doc['id'] ?>" class="btn btn-sm btn-warning action-btn ml-1" title="Edit">
                                                 <i class="fas fa-pencil-alt"></i>
                                             </a>
                                             <button class="btn btn-sm btn-danger action-btn ml-1" onclick="deleteDocument(<?= $doc['id'] ?>)" title="Delete">
@@ -358,9 +356,6 @@ $recent_docs = $db->query($recent_query);
 
     <?php include '../includes/mainfooter.php'; ?>
 </div>
-
-<!-- Add Document Modal -->
-<?php include 'document_modal_add.php'; ?>
 
 <script>
 $(document).ready(function() {
@@ -385,14 +380,17 @@ function deleteDocument(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('document_actions.php', { action: 'delete', id: id }, function(res) {
-                const r = JSON.parse(res);
+            // FIX: use 'json' dataType so jQuery auto-parses the response
+            $.post('document_actions.php', { action: 'delete', id: id }, function(r) {
                 if (r.success) {
                     toastr.success('Document deleted.');
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     toastr.error(r.message || 'Delete failed.');
                 }
+            }, 'json').fail(function(xhr) {
+                toastr.error('Server error. Check console.');
+                console.error(xhr.responseText);
             });
         }
     });
