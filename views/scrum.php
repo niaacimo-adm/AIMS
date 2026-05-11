@@ -20,461 +20,680 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   <title>Scrumboard | NIA-ACIMO AIMS</title>
   
   <?php include '../includes/header.php'; ?>
-  
-  <!-- Custom Styles for Scrumboard -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Modern Scrumboard UI -->
   <style>
-    :root {
-      --scrum-primary: #8B5CF6;
-      --scrum-secondary: #7C3AED;
-      --scrum-accent: #A78BFA;
-      --scrum-background: #F8FAFC;
-      --scrum-card: #FFFFFF;
-      --scrum-text: #1E293B;
-      --scrum-border: #E2E8F0;
-    }
-
-    body {
-      background-color: var(--scrum-background) !important;
-    }
-
-    .theme-scrumboard .main-header {
-      background: linear-gradient(135deg, var(--scrum-primary), var(--scrum-secondary)) !important;
-    }
-
-    .theme-scrumboard #mainFooter {
-      background: linear-gradient(135deg, var(--scrum-primary), var(--scrum-secondary)) !important;
-    }
-
-    /* Main Content Structure */
-    .content-wrapper {
-      background-color: var(--scrum-background) !important;
-    }
-
-    .scrumboard-container {
-      display: flex;
-      min-height: calc(100vh - 150px);
-      background-color: var(--scrum-background);
-    }
-
-    .scrum-sidebar {
-      width: 280px;
-      background: white;
-      border-right: 1px solid var(--scrum-border);
-      display: flex;
-      flex-direction: column;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    }
-
-    .scrum-main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      min-width: 0;
-      padding: 0;
-    }
-
-    .scrum-header {
-      padding: 1rem 1.5rem;
-      background: white;
-      border-bottom: 1px solid var(--scrum-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
-      margin-bottom: 0;
-    }
-
-    .scrum-content {
-      flex: 1;
-      padding: 1.5rem;
-      overflow: auto;
-      background-color: var(--scrum-background);
-    }
-
-    /* Column Styles */
-    .columns-container {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      padding: 0.5rem;
-      height: 100%;
-      min-height: 500px;
-    }
-
-    .column {
-      min-width: 300px;
-      background: #F1F5F9;
-      border-radius: 8px;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .column-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .column-title {
-      font-weight: 600;
-      color: var(--scrum-text);
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .task-count {
-      background: var(--scrum-primary);
-      color: white;
-      border-radius: 12px;
-      padding: 0.25rem 0.5rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .tasks-container {
-      flex: 1;
-      overflow-y: auto;
-      min-height: 100px;
-      background: rgba(255,255,255,0.5);
-      border-radius: 6px;
-      padding: 0.5rem;
-    }
-
-    .task-card {
-      background: white;
-      border-radius: 8px;
-      padding: 0.75rem;
-      margin-bottom: 0.75rem;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      border: 1px solid var(--scrum-border);
-      cursor: grab;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-
-    .task-card:hover {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
-    }
-
-    .task-card:active {
-      cursor: grabbing;
-    }
-
-    .task-card.dragging {
-      opacity: 0.6;
-      transform: rotate(5deg);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .task-title {
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
-      line-height: 1.4;
-    }
-
-    .task-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      color: #64748B;
-    }
-
-    .task-labels {
-      display: flex;
-      gap: 0.25rem;
-      margin-bottom: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .task-label {
-      padding: 0.125rem 0.5rem;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 500;
-    }
-
-    .label-revise { background: #FEF3C7; color: #D97706; }
-    .label-urgent { background: #FECACA; color: #DC2626; }
-    .label-design { background: #DBEAFE; color: #1D4ED8; }
-    .label-development { background: #D1FAE5; color: #047857; }
-    .label-review { background: #E0E7FF; color: #3730A3; }
-
-    .task-priority {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      font-size: 0.6rem;
-      padding: 0.2rem 0.4rem;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-
-    .priority-urgent { background: #DC2626; color: white; }
-    .priority-high { background: #EA580C; color: white; }
-    .priority-medium { background: #CA8A04; color: white; }
-    .priority-low { background: #16A34A; color: white; }
-
-    /* Projects Monitoring */
-    .project-card {
-      border: 1px solid #e3e6f0;
-      border-radius: 0.35rem;
-      margin-bottom: 1rem;
-    }
-
-    .project-card-header {
-      background: #f8f9fc;
-      padding: 0.75rem 1.25rem;
-      border-bottom: 1px solid #e3e6f0;
-    }
-
-    .project-color-badge {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 8px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .columns-container {
-        flex-direction: column;
-        overflow-y: auto;
-      }
-
-      .column {
-        min-width: auto;
-      }
-
-      .scrum-header {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: flex-start;
-      }
-    }
-    .board-color-badge {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-
-    .column-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .column-footer {
-        border-top: 1px solid var(--scrum-border);
-        padding-top: 0.75rem;
-    }
-
-    .empty-column {
-        text-align: center;
-        padding: 2rem;
-        color: #64748B;
-    }
-
-    .empty-column i {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        opacity: 0.5;
-    }
-
-    .empty-column p {
-        margin: 0;
-        font-size: 0.9rem;
-    }
-    /* Fix for aria-hidden accessibility warning */
-
-    body.modal-open {
-        overflow: hidden;
-        padding-right: 0 !important;
-    }
-    /* View Task Modal Styles */
-    #viewTaskModal .modal-header {
-      background: #f8f9fa;
-      border-bottom: 1px solid #e9ecef;
-      padding: 1rem 1.5rem;
-    }
-
-    #viewTaskModal .modal-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    #viewTaskKey {
-      font-size: 0.9rem;
-      color: #6c757d;
-    }
-
-
-    .task-description {
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .detail-item label {
-      font-weight: 500;
-      display: block;
-    }
-
-    .activity-timeline {
-      position: relative;
-    }
-
-    .activity-item {
-      padding: 0.75rem 0;
-      border-bottom: 1px solid #f1f3f4;
-      position: relative;
-    }
-
-    .activity-item:last-child {
-      border-bottom: none;
-    }
-
-    .activity-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #007bff;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 0.8rem;
-    }
-
-    .activity-content {
-      flex: 1;
-    }
-
-    .activity-meta {
-      font-size: 0.8rem;
-      color: #6c757d;
-    }
-
-    .comment-input {
-      border-bottom: 1px solid #f1f3f4;
-      padding-bottom: 1rem;
-    }
-
-    /* Status badges */
-    .status-badge {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        background: #6b7280;
-        color: white;
-    }
-
-    /* Priority styles */
-    .priority-badge {
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-
-    .priority-urgent { background: #dc2626; color: white; }
-    .priority-high { background: #ea580c; color: white; }
-    .priority-medium { background: #ca8a04; color: white; }
-    .priority-low { background: #16a34a; color: white; }
-    /* View Task Modal Fixes */
-    #viewTaskModal .modal-dialog {
-      max-width: 50%;
-      margin: 1.75rem auto;
-    }
-
-    #viewTaskModal .modal-content {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
-    }
-
-    #viewTaskModal .modal-header {
-      border-radius: 12px 12px 0 0;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #dee2e6;
-    }
-
-    #viewTaskModal .modal-body {
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    #viewTaskModal .border-right {
-      border-right: 1px solid #e9ecef;
-    }
-
-    /* Responsive fixes */
-    @media (max-width: 992px) {
-      #viewTaskModal .border-right {
-        border-right: none;
-        border-bottom: 1px solid #e9ecef;
-      }
-      
-      #viewTaskModal .modal-dialog {
-        max-width: 98%;
-        margin: 0.5rem auto;
-      }
-    }
-
-    /* Better scrollbar for modal */
-    #viewTaskModal .modal-body::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    #viewTaskModal .modal-body::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 3px;
-    }
-
-    #viewTaskModal .modal-body::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 3px;
-    }
-
-    #viewTaskModal .modal-body::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
-    }
-
-    /* Card improvements */
-    #viewTaskModal .card {
-      border: 1px solid #e3e6f0;
-      border-radius: 8px;
-    }
-
-    #viewTaskModal .card-header {
-      background: #f8f9fc;
-      border-bottom: 1px solid #e3e6f0;
-      padding: 0.75rem 1.25rem;
-    }
-
-    #viewTaskModal .card-body {
-      padding: 1.25rem;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ══════════════════════════════════════════════════
+   SCRUM BOARD — LIGHT MODE (default)
+   ══════════════════════════════════════════════════ */
+:root {
+  /* palette */
+  --s-bg:       #f0f2f5;
+  --s-surface:  #ffffff;
+  --s-surface2: #f6f8fa;
+  --s-surface3: #eaedf1;
+  --s-border:   #d0d7de;
+
+  /* accent */
+  --s-teal:     #0969da;
+  --s-teal-dim: rgba(9,105,218,.08);
+  --s-teal-glow: 0 0 20px rgba(9,105,218,.15);
+  --s-violet:   #8250df;
+
+  /* text */
+  --s-text:     #1f2328;
+  --s-muted:    #57606a;
+
+  /* status */
+  --s-danger:   #cf222e;
+  --s-warning:  #9a6700;
+  --s-green:    #1a7f37;
+  --s-blue:     #0969da;
+
+  /* misc */
+  --s-radius: 10px;
+  --s-shadow: 0 1px 3px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06);
+  --s-font: 'Plus Jakarta Sans', sans-serif;
+  --s-mono: 'JetBrains Mono', monospace;
+
+  /* column specific */
+  --s-col-bg:      #ebecf0;
+  --s-col-header:  #ffffff;
+  --s-col-border:  #d0d7de;
+  --s-card-bg:     #ffffff;
+  --s-card-hover:  #f6f8fa;
+}
+
+/* ══════════════════════════════════════════════════
+   SCRUM BOARD — DARK MODE overrides
+   ══════════════════════════════════════════════════ */
+body.dark-mode {
+  --s-bg:       #0d1117;
+  --s-surface:  #161b22;
+  --s-surface2: #21262d;
+  --s-surface3: #30363d;
+  --s-border:   #30363d;
+  --s-teal:     #2dd4bf;
+  --s-teal-dim: rgba(45,212,191,.12);
+  --s-teal-glow: 0 0 20px rgba(45,212,191,.2);
+  --s-violet:   #a78bfa;
+  --s-text:     #e6edf3;
+  --s-muted:    #7d8590;
+  --s-danger:   #f85149;
+  --s-warning:  #d29922;
+  --s-green:    #3fb950;
+  --s-blue:     #58a6ff;
+  --s-shadow:   0 8px 32px rgba(0,0,0,.4);
+  --s-col-bg:      #161b22;
+  --s-col-header:  #21262d;
+  --s-col-border:  #30363d;
+  --s-card-bg:     #21262d;
+  --s-card-hover:  #2d333b;
+}
+
+/* ══════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════ */
+body { font-family: var(--s-font) !important; background: var(--s-bg) !important; color: var(--s-text) !important; }
+.content-wrapper { background: var(--s-bg) !important; }
+
+/* ══════════════════════════════════════════════════
+   SCRUM HEADER BAR
+   ══════════════════════════════════════════════════ */
+.scrum-header {
+  background: var(--s-surface) !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  padding: 12px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+.scrum-content {
+  background: var(--s-bg) !important;
+  padding: 16px 20px !important;
+  /* Full viewport height minus header bars → kanban fills vertically */
+  height: calc(100vh - 116px);
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* ── Project title / status ── */
+#currentProjectTitle {
+  font-family: var(--s-font) !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: var(--s-text) !important;
+  letter-spacing: -.3px;
+}
+#currentProjectStatus {
+  background: var(--s-teal-dim) !important;
+  color: var(--s-teal) !important;
+  border: 1px solid color-mix(in srgb, var(--s-teal) 30%, transparent) !important;
+  border-radius: 20px !important;
+  font-size: .7rem !important;
+  font-weight: 600 !important;
+  padding: 3px 10px !important;
+}
+
+/* ── Header buttons ── */
+.scrum-header .btn-outline-primary {
+  background: transparent !important;
+  color: var(--s-text) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 8px !important;
+  font-size: .8rem !important;
+  font-weight: 500 !important;
+  font-family: var(--s-font) !important;
+  transition: all .2s !important;
+}
+.scrum-header .btn-outline-primary:hover {
+  border-color: var(--s-teal) !important;
+  color: var(--s-teal) !important;
+  background: var(--s-teal-dim) !important;
+}
+.scrum-header .btn-outline-secondary {
+  background: transparent !important;
+  color: var(--s-muted) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 8px !important;
+  font-size: .8rem !important;
+  font-family: var(--s-font) !important;
+  transition: all .2s !important;
+}
+.scrum-header .btn-outline-secondary:hover {
+  color: var(--s-text) !important;
+  background: var(--s-surface2) !important;
+}
+.scrum-header .btn-primary {
+  background: var(--s-teal) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: .8rem !important;
+  font-family: var(--s-font) !important;
+  transition: all .2s !important;
+}
+body:not(.dark-mode) .scrum-header .btn-primary { color: #fff !important; }
+.scrum-header .btn-primary:hover { filter: brightness(1.1) !important; transform: translateY(-1px); }
+.scrum-header .btn-success {
+  background: var(--s-surface2) !important;
+  color: var(--s-green) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: .8rem !important;
+  font-family: var(--s-font) !important;
+}
+.scrum-header .btn-info {
+  background: var(--s-surface2) !important;
+  color: var(--s-blue) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: .8rem !important;
+  font-family: var(--s-font) !important;
+}
+.scrum-header .form-control {
+  background: var(--s-surface2) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 8px !important;
+  font-family: var(--s-font) !important;
+  font-size: .85rem !important;
+}
+.scrum-header .form-control::placeholder { color: var(--s-muted) !important; }
+.scrum-header .input-group-append .btn {
+  background: var(--s-surface3) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-muted) !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+/* ══════════════════════════════════════════════════
+   JIRA-STYLE VERTICAL KANBAN BOARD
+   ══════════════════════════════════════════════════ */
+
+/* The outer wrapper that holds all columns side-by-side */
+.columns-container {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  height: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding-bottom: 8px !important;
+}
+/* Scrollbar for horizontal board scroll */
+.columns-container::-webkit-scrollbar { height: 6px; }
+.columns-container::-webkit-scrollbar-track { background: var(--s-bg); border-radius: 3px; }
+.columns-container::-webkit-scrollbar-thumb { background: var(--s-surface3); border-radius: 3px; }
+.columns-container::-webkit-scrollbar-thumb:hover { background: var(--s-muted); }
+
+/* Each kanban column — fixed width, full height, scrolls cards vertically */
+.column {
+  background: var(--s-col-bg) !important;
+  border: 1px solid var(--s-col-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--s-shadow) !important;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Column header — fixed, never scrolls */
+.column-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 14px 10px !important;
+  background: var(--s-col-header) !important;
+  border-radius: 12px 12px 0 0 !important;
+  border-bottom: 1px solid var(--s-col-border) !important;
+  flex-shrink: 0 !important;
+}
+.column-title {
+  font-family: var(--s-font) !important;
+  font-size: .78rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .6px !important;
+  color: var(--s-muted) !important;
+}
+.column-actions { display: flex; align-items: center; gap: 6px; }
+.task-count {
+  background: var(--s-surface3) !important;
+  color: var(--s-muted) !important;
+  border-radius: 10px !important;
+  padding: 1px 8px !important;
+  font-size: .68rem !important;
+  font-family: var(--s-mono) !important;
+  font-weight: 600 !important;
+}
+
+/* Task list area — scrolls vertically, fills remaining column height */
+.tasks-container {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 10px 10px 6px !important;
+  background: var(--s-col-bg) !important;
+  min-height: 60px !important;
+}
+.tasks-container::-webkit-scrollbar { width: 4px; }
+.tasks-container::-webkit-scrollbar-track { background: transparent; }
+.tasks-container::-webkit-scrollbar-thumb { background: var(--s-surface3); border-radius: 2px; }
+
+/* Add Task footer inside column */
+.column-footer {
+  flex-shrink: 0 !important;
+  padding: 8px 10px 10px !important;
+  background: var(--s-col-bg) !important;
+  border-top: 1px solid var(--s-col-border) !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+/* ══════════════════════════════════════════════════
+   TASK CARDS
+   ══════════════════════════════════════════════════ */
+.task-card {
+  background: var(--s-card-bg) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  margin-bottom: 8px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.07) !important;
+  transition: box-shadow .15s, transform .15s, border-color .15s !important;
+  cursor: pointer !important;
+}
+.task-card:last-child { margin-bottom: 0 !important; }
+.task-card:hover {
+  border-color: var(--s-teal) !important;
+  box-shadow: 0 3px 12px rgba(0,0,0,.12) !important;
+  transform: translateY(-1px) !important;
+}
+.task-card.dragging { opacity: .45 !important; border-style: dashed !important; }
+
+/* drag-over highlight on column */
+.tasks-container.drag-over {
+  background: var(--s-teal-dim) !important;
+  border-radius: 8px;
+}
+
+.task-title {
+  font-family: var(--s-font) !important;
+  font-size: .84rem !important;
+  font-weight: 600 !important;
+  color: var(--s-text) !important;
+  margin-bottom: 8px !important;
+  line-height: 1.4 !important;
+}
+.task-meta { color: var(--s-muted) !important; font-size: .72rem !important; }
+.task-label {
+  font-size: .65rem !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  padding: 2px 7px !important;
+  letter-spacing: .3px;
+}
+
+/* ── Priority badges ── */
+.task-priority { border-radius: 4px !important; font-size: .6rem !important; font-weight: 700 !important; letter-spacing: .5px; display: inline-block; margin-bottom: 6px; }
+.priority-urgent { background: rgba(207,34,46,.12) !important; color: var(--s-danger) !important; border: 1px solid rgba(207,34,46,.3) !important; padding: 2px 6px; border-radius: 4px; }
+.priority-high   { background: rgba(154,103,0,.12) !important; color: var(--s-warning) !important; border: 1px solid rgba(154,103,0,.3) !important; padding: 2px 6px; border-radius: 4px; }
+.priority-medium { background: rgba(9,105,218,.10) !important; color: var(--s-blue) !important; border: 1px solid rgba(9,105,218,.25) !important; padding: 2px 6px; border-radius: 4px; }
+.priority-low    { background: rgba(26,127,55,.10) !important; color: var(--s-green) !important; border: 1px solid rgba(26,127,55,.25) !important; padding: 2px 6px; border-radius: 4px; }
+body.dark-mode .priority-urgent { background: rgba(248,81,73,.15) !important; border-color: rgba(248,81,73,.3) !important; }
+body.dark-mode .priority-high   { background: rgba(210,153,34,.15) !important; color: #e3a520 !important; border-color: rgba(210,153,34,.3) !important; }
+body.dark-mode .priority-medium { background: rgba(88,166,255,.12) !important; border-color: rgba(88,166,255,.25) !important; }
+body.dark-mode .priority-low    { background: rgba(63,185,80,.12) !important; border-color: rgba(63,185,80,.25) !important; }
+
+/* ── Labels ── */
+.label-revise    { background: rgba(154,103,0,.12) !important; color: var(--s-warning) !important; }
+.label-urgent    { background: rgba(207,34,46,.12) !important; color: var(--s-danger) !important; }
+.label-design    { background: rgba(130,80,223,.12) !important; color: var(--s-violet) !important; }
+.label-development { background: rgba(26,127,55,.12) !important; color: var(--s-green) !important; }
+.label-review    { background: rgba(9,105,218,.10) !important; color: var(--s-blue) !important; }
+
+/* ── Empty column state ── */
+.empty-column { color: var(--s-muted) !important; text-align: center; padding: 24px 12px; }
+.empty-column i { opacity: .3 !important; font-size: 1.5rem; display: block; margin-bottom: 6px; }
+
+/* ══════════════════════════════════════════════════
+   CARDS (monitoring / my tasks)
+   ══════════════════════════════════════════════════ */
+.card {
+  background: var(--s-surface) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--s-shadow) !important;
+}
+.card-header {
+  background: var(--s-surface) !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  padding: 14px 20px !important;
+}
+.card-title {
+  font-family: var(--s-font) !important;
+  font-weight: 700 !important;
+  font-size: .9rem !important;
+  color: var(--s-text) !important;
+  letter-spacing: -.2px;
+}
+.card-body { background: var(--s-surface) !important; padding: 18px !important; }
+
+/* ══════════════════════════════════════════════════
+   TABLES
+   ══════════════════════════════════════════════════ */
+.table { color: var(--s-text) !important; }
+.table thead th {
+  background: var(--s-surface2) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  color: var(--s-muted) !important;
+  font-family: var(--s-font) !important;
+  font-size: .68rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .7px !important;
+  padding: 10px 14px !important;
+}
+.table tbody tr { transition: background .12s; }
+.table tbody tr:hover { background: var(--s-surface2) !important; }
+.table tbody td {
+  border-top: 1px solid var(--s-border) !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 12px 14px !important;
+  vertical-align: middle !important;
+  font-size: .85rem !important;
+  color: var(--s-text) !important;
+}
+.table-bordered { border: none !important; }
+.table-danger td, tr.table-danger { background: rgba(207,34,46,.07) !important; }
+
+/* ── Table action buttons ── */
+.btn-sm.btn-info    { background: rgba(9,105,218,.10) !important; color: var(--s-blue) !important; border: 1px solid rgba(9,105,218,.25) !important; border-radius: 7px !important; }
+.btn-sm.btn-primary { background: rgba(9,105,218,.10) !important; color: var(--s-teal) !important; border: 1px solid rgba(9,105,218,.20) !important; border-radius: 7px !important; }
+.btn-sm.btn-success { background: rgba(26,127,55,.10) !important; color: var(--s-green) !important; border: 1px solid rgba(26,127,55,.25) !important; border-radius: 7px !important; }
+.btn-sm.btn-warning { background: rgba(154,103,0,.10) !important; color: var(--s-warning) !important; border: 1px solid rgba(154,103,0,.25) !important; border-radius: 7px !important; }
+.btn-sm.btn-danger  { background: rgba(207,34,46,.10) !important; color: var(--s-danger) !important; border: 1px solid rgba(207,34,46,.25) !important; border-radius: 7px !important; }
+.btn-sm:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+body.dark-mode .btn-sm.btn-info    { background: rgba(88,166,255,.12) !important; color: #58a6ff !important; border-color: rgba(88,166,255,.25) !important; }
+body.dark-mode .btn-sm.btn-primary { background: rgba(45,212,191,.12) !important; color: #2dd4bf !important; border-color: rgba(45,212,191,.25) !important; }
+body.dark-mode .btn-sm.btn-success { background: rgba(63,185,80,.12) !important; color: #3fb950 !important; border-color: rgba(63,185,80,.25) !important; }
+body.dark-mode .btn-sm.btn-warning { background: rgba(210,153,34,.12) !important; color: #e3a520 !important; border-color: rgba(210,153,34,.25) !important; }
+body.dark-mode .btn-sm.btn-danger  { background: rgba(248,81,73,.12) !important; color: #f85149 !important; border-color: rgba(248,81,73,.25) !important; }
+
+/* Status badges */
+.badge-secondary { background: var(--s-surface3) !important; color: var(--s-muted) !important; border-radius: 5px !important; }
+.badge-warning   { background: rgba(154,103,0,.15) !important; color: var(--s-warning) !important; border-radius: 5px !important; }
+.badge-info      { background: rgba(9,105,218,.12) !important; color: var(--s-blue) !important; border-radius: 5px !important; }
+.badge-primary   { background: rgba(130,80,223,.12) !important; color: var(--s-violet) !important; border-radius: 5px !important; }
+.badge-success   { background: rgba(26,127,55,.12) !important; color: var(--s-green) !important; border-radius: 5px !important; }
+.badge-danger    { background: rgba(207,34,46,.12) !important; color: var(--s-danger) !important; border-radius: 5px !important; }
+
+body.dark-mode .badge-warning { background: rgba(210,153,34,.18) !important; color: #e3a520 !important; }
+body.dark-mode .badge-info    { background: rgba(88,166,255,.15) !important; color: #58a6ff !important; }
+body.dark-mode .badge-primary { background: rgba(167,139,250,.15) !important; color: #a78bfa !important; }
+body.dark-mode .badge-success { background: rgba(63,185,80,.15) !important; color: #3fb950 !important; }
+body.dark-mode .badge-danger  { background: rgba(248,81,73,.15) !important; color: #f85149 !important; }
+
+/* Progress bar */
+.progress { background: var(--s-surface3) !important; border-radius: 6px !important; }
+.progress-bar.bg-success { background: var(--s-teal) !important; border-radius: 6px !important; }
+
+/* ══════════════════════════════════════════════════
+   MODALS
+   ══════════════════════════════════════════════════ */
+.modal-content {
+  background: var(--s-surface) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.18) !important;
+  color: var(--s-text) !important;
+  font-family: var(--s-font) !important;
+}
+body.dark-mode .modal-content { box-shadow: 0 24px 80px rgba(0,0,0,.6) !important; }
+.modal-header {
+  background: var(--s-surface2) !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  border-radius: 14px 14px 0 0 !important;
+  padding: 16px 20px !important;
+}
+.modal-title {
+  font-family: var(--s-font) !important;
+  font-weight: 700 !important;
+  font-size: .95rem !important;
+  color: var(--s-text) !important;
+}
+.modal-header .close { color: var(--s-muted) !important; text-shadow: none !important; opacity: 1 !important; }
+.modal-body { padding: 20px !important; background: var(--s-surface) !important; }
+.modal-footer { border-top: 1px solid var(--s-border) !important; padding: 14px 20px !important; background: var(--s-surface2) !important; border-radius: 0 0 14px 14px !important; }
+
+/* View task modal */
+#viewTaskModal .modal-header.bg-primary {
+  background: linear-gradient(135deg, var(--s-teal), color-mix(in srgb, var(--s-teal) 80%, var(--s-violet))) !important;
+  border-bottom: 1px solid rgba(255,255,255,.2) !important;
+}
+body.dark-mode #viewTaskModal .modal-header.bg-primary {
+  background: linear-gradient(135deg, #1e2a3a, #1a2332) !important;
+  border-bottom: 1px solid var(--s-teal) !important;
+}
+#viewTaskKey { font-family: var(--s-mono) !important; font-size: .8rem !important; color: rgba(255,255,255,.8) !important; }
+#viewTaskTitle { color: #fff !important; font-family: var(--s-font) !important; }
+body.dark-mode #viewTaskKey { color: var(--s-teal) !important; }
+body.dark-mode #viewTaskTitle { color: var(--s-text) !important; }
+#viewTaskModal .modal-dialog { max-width: 50%; }
+#viewTaskModal .modal-body { max-height: 80vh; overflow-y: auto; }
+#viewTaskModal .border-right { border-right: 1px solid var(--s-border) !important; }
+#viewTaskModal .card { background: var(--s-surface2) !important; border-color: var(--s-border) !important; }
+#viewTaskModal .card-header.bg-light { background: var(--s-surface3) !important; color: var(--s-text) !important; border-color: var(--s-border) !important; }
+#viewTaskModal .card-body { background: var(--s-surface2) !important; }
+
+/* Status/priority badges in modal */
+.status-badge { background: var(--s-surface3) !important; color: var(--s-muted) !important; border-radius: 5px !important; padding: 2px 8px; font-size: .75rem; }
+.priority-badge.priority-urgent { background: rgba(207,34,46,.12) !important; color: var(--s-danger) !important; padding: 2px 8px; border-radius: 5px; font-size: .75rem; }
+.priority-badge.priority-high   { background: rgba(154,103,0,.12) !important; color: var(--s-warning) !important; padding: 2px 8px; border-radius: 5px; font-size: .75rem; }
+.priority-badge.priority-medium { background: rgba(9,105,218,.10) !important; color: var(--s-blue) !important; padding: 2px 8px; border-radius: 5px; font-size: .75rem; }
+.priority-badge.priority-low    { background: rgba(26,127,55,.10) !important; color: var(--s-green) !important; padding: 2px 8px; border-radius: 5px; font-size: .75rem; }
+body.dark-mode .priority-badge.priority-urgent { background: rgba(248,81,73,.15) !important; color: #f85149 !important; }
+body.dark-mode .priority-badge.priority-high   { background: rgba(210,153,34,.15) !important; color: #e3a520 !important; }
+body.dark-mode .priority-badge.priority-medium { background: rgba(88,166,255,.12) !important; color: #58a6ff !important; }
+body.dark-mode .priority-badge.priority-low    { background: rgba(63,185,80,.12) !important; color: #3fb950 !important; }
+
+/* Detail labels in modal */
+.detail-item label, .text-muted.small.mb-1 { color: var(--s-muted) !important; font-size: .7rem !important; text-transform: uppercase; letter-spacing: .5px; }
+
+/* Activity */
+.activity-item { border-bottom: 1px solid var(--s-border) !important; }
+.activity-avatar { background: var(--s-surface3) !important; color: var(--s-teal) !important; border: 1px solid var(--s-border) !important; font-family: var(--s-mono) !important; }
+.activity-meta { color: var(--s-muted) !important; }
+.comment-input { border-bottom: 1px solid var(--s-border) !important; }
+
+/* Modal form controls */
+.modal .form-control, .modal .form-control:focus {
+  background: var(--s-surface2) !important;
+  border: 1.5px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 8px !important;
+  font-family: var(--s-font) !important;
+  font-size: .875rem !important;
+}
+.modal .form-control::placeholder { color: var(--s-muted) !important; }
+.modal .form-control:focus { border-color: var(--s-teal) !important; box-shadow: 0 0 0 3px var(--s-teal-dim) !important; }
+.modal label { color: var(--s-muted) !important; font-size: .72rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: .5px !important; margin-bottom: 5px !important; }
+
+/* Checkbox labels */
+.custom-control-label { color: var(--s-text) !important; font-size: .85rem !important; text-transform: none !important; letter-spacing: 0 !important; }
+
+/* Modal buttons */
+.modal .btn-secondary { background: var(--s-surface3) !important; color: var(--s-muted) !important; border: 1px solid var(--s-border) !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 600 !important; }
+.modal .btn-primary   { background: var(--s-teal) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 700 !important; }
+.modal .btn-primary:hover { filter: brightness(1.1) !important; }
+.modal .btn-danger    { background: rgba(207,34,46,.12) !important; color: var(--s-danger) !important; border: 1px solid rgba(207,34,46,.3) !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 600 !important; }
+body.dark-mode .modal .btn-primary { color: #0d1117 !important; }
+body.dark-mode .modal .btn-danger  { background: rgba(248,81,73,.15) !important; color: #f85149 !important; border-color: rgba(248,81,73,.3) !important; }
+
+/* Modal edit/close buttons inside coloured header */
+.modal-header .btn-light { background: rgba(255,255,255,.15) !important; color: #fff !important; border: 1px solid rgba(255,255,255,.2) !important; border-radius: 7px !important; font-size: .78rem !important; }
+.modal-header .btn-light:hover { background: rgba(255,255,255,.25) !important; }
+
+/* ══════════════════════════════════════════════════
+   DROPDOWNS
+   ══════════════════════════════════════════════════ */
+.dropdown-menu {
+  background: var(--s-surface2) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--s-shadow) !important;
+  padding: 6px !important;
+}
+.dropdown-item { color: var(--s-text) !important; border-radius: 7px !important; font-family: var(--s-font) !important; font-size: .85rem !important; padding: 8px 12px !important; }
+.dropdown-item:hover { background: var(--s-surface3) !important; color: var(--s-teal) !important; }
+
+/* Board / project color dot */
+.board-color-badge, .project-color-badge {
+  width: 10px; height: 10px;
+  border-radius: 3px !important;
+  display: inline-block; flex-shrink: 0;
+  margin-right: 7px;
+}
+
+/* Card tool buttons */
+.btn-tool { color: var(--s-muted) !important; }
+.btn-tool:hover { color: var(--s-text) !important; }
+
+/* ══════════════════════════════════════════════════
+   CONTENT HEADER
+   ══════════════════════════════════════════════════ */
+.content-header h1 {
+  font-family: var(--s-font) !important;
+  font-weight: 800 !important;
+  font-size: 1.5rem !important;
+  color: var(--s-text) !important;
+  letter-spacing: -.5px;
+}
+.content-header .btn-success {
+  background: var(--s-teal) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 9px !important;
+  font-weight: 700 !important;
+  font-family: var(--s-font) !important;
+}
+body.dark-mode .content-header .btn-success { color: #0d1117 !important; }
+.content-header .btn-success:hover { filter: brightness(1.1) !important; }
+
+.content-header .input-group .form-control, .card-tools .form-control {
+  background: var(--s-surface2) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 8px 0 0 8px !important;
+  font-family: var(--s-font) !important;
+}
+.content-header .input-group .btn, .card-tools .input-group .btn {
+  background: var(--s-surface3) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-muted) !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+.content-header .form-control {
+  background: var(--s-surface2) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 8px !important;
+  font-family: var(--s-font) !important;
+  font-size: .85rem !important;
+}
+
+/* Task title in table */
+.task-title { font-weight: 600 !important; color: var(--s-text) !important; }
+
+/* ══════════════════════════════════════════════════
+   SCROLLBARS
+   ══════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--s-surface); }
+::-webkit-scrollbar-thumb { background: var(--s-surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--s-muted); }
+
+/* No boards message */
+#noBoardsMessage p { color: var(--s-muted) !important; }
+#noBoardsMessage .btn-primary { background: var(--s-teal) !important; color: #fff !important; border: none !important; border-radius: 9px !important; font-weight: 700 !important; }
+body.dark-mode #noBoardsMessage .btn-primary { color: #0d1117 !important; }
+
+/* Refresh button */
+#refreshTasks.btn-tool { background: transparent !important; }
+
+/* Select options */
+select option { background: var(--s-surface2) !important; color: var(--s-text) !important; }
+
+/* Color input */
+input[type="color"] { background: var(--s-surface2) !important; border: 1px solid var(--s-border) !important; border-radius: 8px !important; height: 38px !important; padding: 3px !important; cursor: pointer; }
+
+/* Comment textarea */
+#commentText { background: var(--s-surface3) !important; border: 1px solid var(--s-border) !important; color: var(--s-text) !important; border-radius: 8px !important; font-family: var(--s-font) !important; }
+#commentText::placeholder { color: var(--s-muted) !important; }
+#addCommentBtn { background: var(--s-teal) !important; color: #fff !important; border: none !important; border-radius: 7px !important; font-weight: 700 !important; font-family: var(--s-font) !important; }
+body.dark-mode #addCommentBtn { color: #0d1117 !important; }
+
+/* No description / no labels */
+#noDescription, #noLabels { color: var(--s-muted) !important; }
+.task-description { color: var(--s-text) !important; line-height: 1.7; }
+
+/* Column "Add Task" button */
+.add-task-to-board {
+  background: transparent !important;
+  border: 1px dashed var(--s-border) !important;
+  color: var(--s-muted) !important;
+  border-radius: 8px !important;
+  font-size: .78rem !important;
+  font-family: var(--s-font) !important;
+  font-weight: 600 !important;
+  transition: all .2s !important;
+  width: 100% !important;
+}
+.add-task-to-board:hover {
+  border-color: var(--s-teal) !important;
+  color: var(--s-teal) !important;
+  background: var(--s-teal-dim) !important;
+}
+
+/* Column gear / settings button */
+.board-settings {
+  background: transparent !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-muted) !important;
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  font-size: .72rem !important;
+}
+.board-settings:hover { border-color: var(--s-teal) !important; color: var(--s-teal) !important; background: var(--s-teal-dim) !important; }
+
   </style>
 </head>
 <body class="hold-transition sidebar-mini theme-scrum">
 <div class="wrapper">
 <?php include '../includes/mainheader.php'; ?>
 <?php include '../includes/sidebar_scrum.php'; ?>
-  <div class="content-wrapper">
+  <div class="content-wrapper" style="display:flex; flex-direction:column; overflow:hidden;">
     <!-- Content Wrapper. Contains page content -->
-    <div class="scrum-main-content">
+    <div class="scrum-main-content" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
       <!-- Scrum Header -->
       <div class="scrum-header">
         <div class="d-flex align-items-center">
@@ -488,8 +707,8 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
               <!-- Projects will be loaded here -->
             </div>
           </div>
-          <button class="btn btn-outline-secondary ml-2" id="addNewBoardBtn">
-              <i class="fas fa-plus mr-2"></i>Add New Board 
+          <button class="btn btn-outline-secondary ml-2" id="addNewBoardBtn" style="border-radius:8px;font-size:.8rem;font-weight:500;">
+              <i class="fas fa-plus mr-2"></i>Add New Board
             </button>
         </div>
         <div class="d-flex align-items-center">
@@ -602,13 +821,13 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
       </div>
 
     <!-- Scrum Content -->
-    <div class="scrum-content" id="scrumBoardContent">
+    <div class="scrum-content" id="scrumBoardContent" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
         <div class="columns-container" id="dynamicColumnsContainer">
             <!-- Boards will be loaded dynamically here -->
             <div class="col-12 text-center py-5" id="noBoardsMessage" style="display: none;">
                 <i class="fas fa-columns fa-3x text-muted mb-3"></i>
                 <p class="text-muted">No boards found. Create your first board to get started.</p>
-                <button class="btn btn-primary" onclick="scrumboard.showAddBoardModal()">
+                <button class="btn btn-primary" onclick="scrumboard.showAddBoardModal()" style="border-radius:9px;font-weight:700;">
                     <i class="fas fa-plus mr-1"></i> Create First Board
                 </button>
             </div>
@@ -625,7 +844,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="addTaskModalLabel">Add New Task</h5>
+        <h5 class="modal-title" id="addTaskModalLabel"><i class="fas fa-plus-circle mr-2" style="color:var(--s-teal)"></i>Add New Task</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -715,7 +934,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editTaskModalLabel">Edit Task</h5>
+        <h5 class="modal-title" id="editTaskModalLabel"><i class="fas fa-pen mr-2" style="color:var(--s-teal)"></i>Edit Task</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -814,7 +1033,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="newProjectModalLabel">Create New Project</h5>
+        <h5 class="modal-title" id="newProjectModalLabel"><i class="fas fa-folder-plus mr-2" style="color:var(--s-teal)"></i>Create New Project</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -865,7 +1084,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="addBoardModalLabel">Add New Board</h5>
+        <h5 class="modal-title" id="addBoardModalLabel"><i class="fas fa-columns mr-2" style="color:var(--s-teal)"></i>Add New Board</h5>
         <button type="button" class="close" data-dismiss="modal">
           <span>&times;</span>
         </button>
@@ -910,7 +1129,7 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
           <span id="viewTaskTitle" class="text-white"></span>
         </h5>
         <div class="modal-actions">
-          <button type="button" class="btn btn-light btn-sm mr-2" id="editTaskBtn">
+          <button type="button" class="btn btn-light btn-sm mr-2" id="editTaskBtn" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--s-text);border-radius:7px;font-size:.78rem;">
             <i class="fas fa-edit mr-1"></i> Edit
           </button>
           <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">
@@ -1458,10 +1677,16 @@ class Scrumboard {
         $(document).on('dragover', '.tasks-container', function(e) {
             e.preventDefault();
             e.originalEvent.dataTransfer.dropEffect = 'move';
+            $(this).addClass('drag-over');
+        });
+
+        $(document).on('dragleave', '.tasks-container', function() {
+            $(this).removeClass('drag-over');
         });
         
         $(document).on('drop', '.tasks-container', async (e) => {
             e.preventDefault();
+            $(e.currentTarget).removeClass('drag-over');
             const taskId = e.originalEvent.dataTransfer.getData('text/plain');
             const newBoardId = $(e.currentTarget).data('board-id');
             

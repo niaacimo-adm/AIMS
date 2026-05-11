@@ -481,109 +481,227 @@ while ($row = $result->fetch_assoc()) {
   <title>AdminLTE 3 | Section Management</title>
   <?php include '../includes/header.php'; ?>
 <style>
-    .unit-section-item {
-        padding-left: 30px;
-        border-left: 3px solid #6c757d;
-        margin-bottom: 15px;
-        position: relative;
-    }
-    .unit-actions {
-        position: absolute;
-        right: 0;
-        top: 0;
-    }
-    .section-head {
-        font-weight: bold;
-        color: #007bff;
-    }
-    .employee-count-btn {
-        cursor: pointer;
-        color: #007bff;
-        background: none;
-        border: none;
-        padding: 0;
-        font-size: 0.8rem;
-    }
-    .employee-count-btn:hover {
-        text-decoration: underline;
-        color: #0056b3;
-    }
-    .employee-list-item {
-        padding: 8px 0;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        align-items: center;
-    }
-    .employee-list-item:last-child {
-        border-bottom: none;
-    }
-    .employee-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 10px;
-    }
-    .employee-info {
-        flex-grow: 1;
-    }
-    .default-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: #f0f0f0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 10px;
-        color: #999;
-    }
-    .section-head-info {
-        display: flex;
-        align-items: center;
-        margin-top: 5px;
-    }
-    .section-head-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 8px;
-    }
-    .default-head-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background-color: #f0f0f0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 8px;
-        color: #999;
-        font-size: 0.8rem;
-    }
-    .section-secretaries {
-    font-size: 0.8rem;
-    color: #6c757d;
-    margin-top: 3px;
-}
-.section-secretaries i {
-    margin-right: 3px;
-}
-.select2-container--default .select2-selection--multiple {
-    min-height: 38px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-}
-.select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: #007bff;
-    border-color: #006fe6;
-    color: white;
-}
-.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-    color: rgba(255,255,255,0.7);
-}
+    /* ── Modern Section Management UI ── */
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap');
 
+    :root {
+      --sm-primary: #0f172a;
+      --sm-accent: #6366f1;
+      --sm-accent2: #22d3ee;
+      --sm-green: #10b981;
+      --sm-surface: #ffffff;
+      --sm-surface2: #f8fafc;
+      --sm-border: #e2e8f0;
+      --sm-text: #0f172a;
+      --sm-muted: #94a3b8;
+      --sm-danger: #ef4444;
+      --sm-warning: #f59e0b;
+      --sm-shadow: 0 4px 24px rgba(99,102,241,.08);
+      --sm-radius: 14px;
+    }
+
+    body { background: var(--sm-surface2) !important; }
+
+    /* Page header */
+    .content-header h1 {
+      font-family:  sans-serif !important;
+      font-weight: 800; font-size: 1.7rem;
+      color: var(--sm-primary); letter-spacing: -0.5px;
+    }
+
+    /* Cards */
+    .card {
+      border: 1px solid var(--sm-border) !important;
+      border-radius: var(--sm-radius) !important;
+      box-shadow: var(--sm-shadow) !important;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--sm-surface) !important;
+      border-bottom: 1px solid var(--sm-border) !important;
+      padding: 16px 20px !important;
+    }
+    .card-primary > .card-header { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; border: none !important; }
+    .card-success > .card-header { background: linear-gradient(135deg,#10b981,#059669) !important; border: none !important; }
+    .card-primary > .card-header .card-title,
+    .card-success > .card-header .card-title { color: #fff !important; }
+
+    .card-title {
+      font-family:  sans-serif !important;
+      font-weight: 700 !important; font-size: .95rem !important;
+      color: var(--sm-primary) !important; letter-spacing: -.3px; margin: 0 !important;
+    }
+    .card-body  { padding: 20px !important; }
+    .card-footer { background: var(--sm-surface2) !important; border-top: 1px solid var(--sm-border) !important; padding: 14px 20px !important; }
+
+    /* Form controls */
+    .form-group label {
+      font-size: 0.72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px;
+      color: var(--sm-muted); margin-bottom: 5px;
+    }
+    .form-control {
+      border: 1.5px solid var(--sm-border) !important;
+      border-radius: 10px !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 0.875rem !important;
+      padding: 9px 13px !important;
+      color: var(--sm-primary) !important;
+      transition: border-color .2s;
+    }
+    .form-control:focus { border-color: var(--sm-accent) !important; box-shadow: 0 0 0 3px rgba(99,102,241,.12) !important; }
+
+    /* Submit buttons */
+    .btn-primary {
+      background: linear-gradient(135deg,#6366f1,#4f46e5) !important;
+      color: #fff !important; border: none !important;
+      border-radius: 10px !important; font-weight: 600 !important;
+      padding: 8px 20px !important; font-family: 'DM Sans',sans-serif !important;
+      box-shadow: 0 2px 10px rgba(99,102,241,.25) !important;
+      transition: all .2s;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(99,102,241,.35) !important; }
+    .btn-success {
+      background: linear-gradient(135deg,#10b981,#059669) !important;
+      color: #fff !important; border: none !important;
+      border-radius: 10px !important; font-weight: 600 !important;
+      padding: 8px 20px !important; font-family: 'DM Sans',sans-serif !important;
+      box-shadow: 0 2px 10px rgba(16,185,129,.25) !important;
+      transition: all .2s;
+    }
+    .btn-success:hover { transform: translateY(-1px); }
+
+    /* Manager's Office button */
+    a.btn-success.btn-sm {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px !important; border-radius: 8px !important;
+      font-size: .8rem !important;
+    }
+
+    /* Table */
+    #sectable { border-collapse: separate !important; border-spacing: 0 !important; }
+    #sectable thead th {
+      font-family: 'DM Sans', sans-serif !important;
+      font-weight: 600 !important; font-size: 0.7rem !important;
+      text-transform: uppercase; letter-spacing: .7px;
+      color: var(--sm-muted) !important;
+      background: var(--sm-surface2) !important;
+      border: none !important; padding: 11px 16px !important;
+    }
+    #sectable tbody tr { transition: background .15s; }
+    #sectable tbody tr:hover { background: var(--sm-surface2); }
+    #sectable tbody td {
+      border-top: 1px solid var(--sm-border) !important;
+      border-left: none !important; border-right: none !important; border-bottom: none !important;
+      padding: 14px 16px !important; vertical-align: top !important;
+      font-size: .875rem; color: var(--sm-text);
+    }
+
+    /* Section name cell */
+    .sec-name { font-family: 'Syne',sans-serif; font-weight: 700; font-size: .95rem; color: var(--sm-primary); }
+    .sec-office-tag {
+      display: inline-block; background: #ede9fe; color: #7c3aed;
+      border-radius: 6px; font-size: .7rem; font-weight: 600;
+      padding: 2px 9px; margin-top: 4px;
+    }
+    .sec-badge {
+      display: inline-block; background: var(--sm-surface2); color: var(--sm-accent);
+      border: 1px solid #c7d2fe; border-radius: 20px;
+      font-size: .7rem; font-weight: 600; padding: 2px 10px;
+    }
+
+    /* Section head */
+    .section-head { font-weight: 600; color: var(--sm-accent); font-size: .83rem; }
+    .section-head a { color: var(--sm-accent); text-decoration: none; }
+    .section-head a:hover { text-decoration: underline; }
+
+    /* Avatars */
+    .section-head-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid var(--sm-border); }
+    .default-head-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg,#ede9fe,#c7d2fe);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sm-accent); font-size: .85rem; border: 2px solid var(--sm-border);
+    }
+    .employee-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--sm-border); }
+    .default-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg,#ede9fe,#c7d2fe);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sm-accent); font-size: .75rem; border: 2px solid var(--sm-border);
+    }
+
+    /* Secretaries */
+    .section-secretaries { font-size: .78rem; color: var(--sm-muted); margin-top: 6px; }
+    .section-secretaries i { margin-right: 3px; color: var(--sm-accent); }
+    .sec-head-info { display: flex; align-items: flex-start; margin-top: 8px; gap: 8px; }
+
+    /* Unit items */
+    .unit-section-item {
+      padding: 10px 14px; border-left: 3px solid var(--sm-accent2);
+      margin-bottom: 10px; position: relative;
+      background: linear-gradient(to right,#ecfeff22,transparent);
+      border-radius: 0 8px 8px 0;
+    }
+    .unit-name { font-weight: 600; font-size: .85rem; color: var(--sm-primary); }
+    .unit-badge {
+      display: inline-block; background: #cffafe; color: #0891b2;
+      border-radius: 20px; font-size: .65rem; font-weight: 600; padding: 1px 8px; margin-left: 5px;
+    }
+    .unit-actions { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
+
+    /* Action buttons in table */
+    .btn-xs, .btn-sm { border-radius: 8px !important; padding: 4px 8px !important; font-size: .75rem !important; border: none !important; transition: all .15s; }
+    .btn-info    { background: #e0f2fe !important; color: #0284c7 !important; }
+    .btn-danger  { background: #fee2e2 !important; color: var(--sm-danger) !important; }
+    .btn-warning { background: #fef3c7 !important; color: #b45309 !important; }
+    .btn-info:hover, .btn-danger:hover, .btn-warning:hover { filter: brightness(.9); }
+
+    /* Employee count button */
+    .employee-count-btn {
+      cursor: pointer; color: var(--sm-accent);
+      background: #ede9fe; border: none; border-radius: 6px;
+      font-size: .75rem; font-weight: 600; padding: 2px 9px;
+      transition: background .15s;
+    }
+    .employee-count-btn:hover { background: #c7d2fe; }
+    .employee-info { flex-grow: 1; }
+
+    /* Table action buttons in unit employees modal */
+    .btn-primary.btn-sm { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; color: #fff !important; }
+
+    /* Modals */
+    .modal-content { border: none !important; border-radius: 16px !important; box-shadow: 0 20px 60px rgba(0,0,0,.15) !important; font-family: 'DM Sans', sans-serif; }
+    .modal-header { background: var(--sm-primary) !important; color: #fff !important; border-radius: 16px 16px 0 0 !important; padding: 18px 24px !important; border: none !important; }
+    .modal-title { font-family: 'Syne',sans-serif !important; font-weight: 700 !important; font-size: .95rem !important; color: #fff !important; }
+    .modal-header .close { color: rgba(255,255,255,.8) !important; text-shadow: none !important; }
+    .modal-body { padding: 24px !important; }
+    .modal-footer { border-top: 1px solid var(--sm-border) !important; padding: 14px 24px !important; }
+
+    .modal .form-group label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--sm-muted); }
+    .modal .form-control { border: 1.5px solid var(--sm-border) !important; border-radius: 10px !important; }
+    .modal .form-control:focus { border-color: var(--sm-accent) !important; box-shadow: 0 0 0 3px rgba(99,102,241,.12) !important; }
+
+    .btn-modal-cancel { background: var(--sm-surface2) !important; color: var(--sm-muted) !important; border: none !important; border-radius: 10px !important; padding: 8px 18px !important; font-weight: 600 !important; }
+    .btn-modal-save   { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; color: #fff !important; border: none !important; border-radius: 10px !important; padding: 8px 18px !important; font-weight: 600 !important; box-shadow: 0 2px 10px rgba(99,102,241,.25) !important; }
+    .btn-modal-cancel:hover { background: var(--sm-border) !important; }
+    .btn-modal-save:hover   { filter: brightness(.9); }
+    .btn-secondary { background: var(--sm-surface2) !important; color: var(--sm-muted) !important; border: none !important; border-radius: 10px !important; }
+
+    /* Select2 */
+    .select2-container--default .select2-selection--multiple { min-height: 38px; border: 1.5px solid var(--sm-border) !important; border-radius: 10px !important; }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice { background: var(--sm-accent) !important; border-color: #4f46e5 !important; color: #fff; border-radius: 6px; }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: rgba(255,255,255,.8); }
+
+    /* DataTables */
+    .dataTables_wrapper .dataTables_filter input { border: 1.5px solid var(--sm-border) !important; border-radius: 8px !important; padding: 5px 12px !important; }
+    .dataTables_wrapper .dataTables_length select { border: 1.5px solid var(--sm-border) !important; border-radius: 8px !important; }
+    .paginate_button.current, .paginate_button.current:hover { background: var(--sm-accent) !important; color: #fff !important; border: none !important; border-radius: 7px !important; }
+    .paginate_button:hover { background: var(--sm-surface2) !important; border-radius: 7px !important; border: none !important; }
+
+    /* Text utils */
+    .text-primary { color: var(--sm-accent) !important; }
+    .text-muted   { color: var(--sm-muted)  !important; }
   </style>
 
 </head>
@@ -600,7 +718,7 @@ while ($row = $result->fetch_assoc()) {
       <div class="container-fluid">
         <div class="row mb-2">
           <div class="col-sm-6">
-            <h1>Section Management</h1>
+            <h1><i class="fas fa-layer-group mr-2" style="color:var(--sm-accent)"></i>Section Management</h1>
           </div>
         </div>
       </div><!-- /.container-fluid -->
@@ -713,9 +831,9 @@ while ($row = $result->fetch_assoc()) {
                     <?php foreach ($sections as $section): ?>
                     <tr>
                       <td>
-                        <strong><?= htmlspecialchars($section['section_name']) ?></strong>
+                        <div class="sec-name"><?= htmlspecialchars($section['section_name']) ?></div>
                         <?php if (!empty($section['office_name'])): ?>
-                            <div class="text-muted small">Office: <?= htmlspecialchars($section['office_name']) ?></div>
+                            <span class="sec-office-tag"><i class="fas fa-building mr-1"></i><?= htmlspecialchars($section['office_name']) ?></span>
                         <?php endif; ?>
                         
                         <?php 
@@ -727,12 +845,18 @@ while ($row = $result->fetch_assoc()) {
                         $emp_count = $emp_count_result->fetch_assoc()['emp_count'];
                         ?>
                         
-                        <span class="badge bg-info float-right">
-                            <?= $section['unit_count'] ?> units, <?= $emp_count ?> employees
-                        </span>
+                        <div class="mt-2">
+                          <span class="sec-badge">
+                            <i class="fas fa-sitemap mr-1"></i><?= $section['unit_count'] ?> unit<?= $section['unit_count'] != 1 ? 's' : '' ?>
+                          </span>
+                          &nbsp;
+                          <span class="sec-badge">
+                            <i class="fas fa-users mr-1"></i><?= $emp_count ?> employee<?= $emp_count != 1 ? 's' : '' ?>
+                          </span>
+                        </div>
 
                           <?php if ($section['head_emp_id']): ?>
-                              <div class="section-head-info d-flex align-items-start mt-2">
+                              <div class="sec-head-info mt-2">
                                   <?php 
                                   // Fetch section head details including picture
                                   $stmt = $db->prepare("SELECT picture, first_name, last_name FROM employee WHERE emp_id = ?");
@@ -812,12 +936,11 @@ while ($row = $result->fetch_assoc()) {
                             <?php else: ?>
                               <?php foreach ($section_units as $unit): ?>
                                 <div class="unit-section-item">
-                                  <strong><?= htmlspecialchars($unit['unit_name']) ?></strong>
-                                  <!-- <div class="section-head"> -->
+                                  <span class="unit-name"><?= htmlspecialchars($unit['unit_name']) ?></span>
+                                  <span class="unit-badge"><?= htmlspecialchars($unit['unit_code'] ?? '') ?></span>
                                     <?php if ($unit['head_name']): ?>
-                                      <small class="text-muted">(Head: <?= htmlspecialchars($unit['head_name']) ?>)</small>
+                                      <div style="font-size:.75rem;color:var(--sm-muted);margin-top:2px;"><i class="fas fa-user-tie mr-1" style="color:var(--sm-accent)"></i>Head: <?= htmlspecialchars($unit['head_name']) ?></div>
                                     <?php endif; ?>
-                                  <!-- </div> -->
                                   
                                   <!-- Fetch employees for this unit with their pictures -->
                                   <?php
@@ -945,7 +1068,7 @@ while ($row = $result->fetch_assoc()) {
                                       <div class="modal-dialog">
                                         <div class="modal-content">
                                           <div class="modal-header">
-                                            <h4 class="modal-title">Edit Unit Section</h4>
+                                            <h4 class="modal-title"><i class="fas fa-pen mr-2"></i>Edit Unit Section</h4>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                               <span aria-hidden="true">&times;</span>
                                             </button>
@@ -1010,8 +1133,8 @@ while ($row = $result->fetch_assoc()) {
                                                   </div>
                                               </div>
                                               <div class="modal-footer">
-                                                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                                                  <button type="submit" name="update_unit_section" class="btn btn-primary">Save changes</button>
+                                                  <button type="button" class="btn btn-modal-cancel" data-dismiss="modal">Cancel</button>
+                                                  <button type="submit" name="update_unit_section" class="btn btn-modal-save">Save Changes</button>
                                               </div>
                                           </form>
                                         </div>
@@ -1040,7 +1163,7 @@ while ($row = $result->fetch_assoc()) {
                           <div class="modal-dialog">
                             <div class="modal-content">
                               <div class="modal-header">
-                                <h4 class="modal-title">Edit Section</h4>
+                                <h4 class="modal-title"><i class="fas fa-pen mr-2"></i>Edit Section</h4>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                   <span aria-hidden="true">&times;</span>
                                 </button>
@@ -1107,8 +1230,8 @@ while ($row = $result->fetch_assoc()) {
                                   </div>
                                 </div>
                                 <div class="modal-footer">
-                                  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                                  <button type="submit" name="update_section" class="btn btn-primary">Save changes</button>
+                                  <button type="button" class="btn btn-modal-cancel" data-dismiss="modal">Cancel</button>
+                                  <button type="submit" name="update_section" class="btn btn-modal-save">Save Changes</button>
                                 </div>
                               </form>
                             </div>

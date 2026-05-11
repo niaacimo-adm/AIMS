@@ -1041,7 +1041,7 @@ function formatFileSize($bytes) {
     
     $k = 1024;
     $sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    $i = floor(log($bytes) / log($k));
+    $i = (int) floor(log($bytes) / log($k));
     
     return round($bytes / pow($k, $i), 2) . ' ' . $sizes[$i];
 }
