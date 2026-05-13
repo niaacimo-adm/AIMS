@@ -2408,7 +2408,7 @@ class Scrumboard {
                 $('#noLabels').show();
             }
         } else {
-            $('#noLabels').show();
+            $('#noLabels').show();k
         }
 
         // Project and Board

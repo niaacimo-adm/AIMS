@@ -1,0 +1,67 @@
+[13-May-2026 02:29:03 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 1)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[13-May-2026 03:25:50 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 1)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[13-May-2026 03:27:36 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:45
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(45): mysqli->prepare('SELECT id FROM ...')
+#1 C:\xampp\htdocs\AIMS\views\document_actions.php(524): resolveDocumentSectionForeignKeyId(Object(mysqli), 3)
+#2 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 45
+[13-May-2026 03:48:15 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:527
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(527): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 527
+[13-May-2026 03:51:40 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:533
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(533): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 533
+[13-May-2026 04:04:29 Europe/Berlin] [FWD STEP 1] doc_id=36 fwd_by=32 sec= unit= off=1 forward_to=imo date_raw=2026-05-13T02:04
+[13-May-2026 04:04:29 Europe/Berlin] [FWD STEP 2] fwd_date=2026-05-13 02:04:00
+[13-May-2026 04:04:29 Europe/Berlin] [FWD STEP 6] About to INSERT document_forwards. doc=36 by=32 to_emp=23 sec= unit= off=1 date=2026-05-13 02:04:00
+[13-May-2026 04:04:29 Europe/Berlin] [FWD STEP 7] INSERT OK. About to UPDATE document_records. emp=23 sec= unit= off=1 label=NIA-Albay Office date=2026-05-13 02:04:00 id=36
+[13-May-2026 04:04:29 Europe/Berlin] [FWD STEP 8] UPDATE result=OK error=
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 1] doc_id=36 fwd_by=32 sec=3 unit=49 off= forward_to=section date_raw=2026-05-13T02:04
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 2] fwd_date=2026-05-13 02:04:00
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 3] Section path. fwd_to_sec=3
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 4] headrow={"head_emp_id":54,"full_name":"Lech Fidel PANTE"}
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 5] fwd_label=Engineering Section – CONSTRUCTION UNIT fwd_to_emp=54
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 6] About to INSERT document_forwards. doc=36 by=32 to_emp=54 sec=3 unit=49 off= date=2026-05-13 02:04:00
+[13-May-2026 04:04:37 Europe/Berlin] [FWD STEP 7] INSERT OK. About to UPDATE document_records. emp=54 sec=3 unit=49 off= label=Engineering Section – CONSTRUCTION UNIT date=2026-05-13 02:04:00 id=36
+[13-May-2026 04:04:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:541
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(541): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 541
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 1] doc_id=36 fwd_by=32 sec=2 unit= off= forward_to=section date_raw=2026-05-13T02:05
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 2] fwd_date=2026-05-13 02:05:00
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 3] Section path. fwd_to_sec=2
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 4] headrow={"head_emp_id":52,"full_name":"Vilma MANLANGIT"}
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 5] fwd_label=Finance Section fwd_to_emp=52
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 6] About to INSERT document_forwards. doc=36 by=32 to_emp=52 sec=2 unit= off= date=2026-05-13 02:05:00
+[13-May-2026 04:05:28 Europe/Berlin] [FWD STEP 7] INSERT OK. About to UPDATE document_records. emp=52 sec=2 unit= off= label=Finance Section date=2026-05-13 02:05:00 id=36
+[13-May-2026 04:05:28 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:541
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(541): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 541
+[13-May-2026 04:15:34 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`sahur`.`document_records`, CONSTRAINT `fk_to_section` FOREIGN KEY (`forwarded_to_section_id`) REFERENCES `document_sections` (`id`)) in C:\xampp\htdocs\AIMS\views\document_actions.php:534
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(534): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 534
+[13-May-2026 04:18:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'section_id' in 'where clause' in C:\xampp\htdocs\AIMS\views\document_actions.php:505
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(505): mysqli->prepare('SELECT id FROM ...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 505

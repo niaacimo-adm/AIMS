@@ -488,7 +488,7 @@ $uploads_url = '../dist/img/employees/';
             <div class="container-fluid">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div>
-                        <h1><i class="fas fa-tachometer-alt mr-2" style="color:var(--brand)"></i>Organization Dashboard</h1>
+                        <h1></i>Organization Dashboard</h1>
                         <div class="sub">Welcome back, <strong><?= htmlspecialchars($user['user']) ?></strong> &mdash; <?= htmlspecialchars($role_name) ?></div>
                     </div>
                     <ol class="breadcrumb mb-0">
@@ -502,76 +502,6 @@ $uploads_url = '../dist/img/employees/';
         <div class="content" style="padding:20px 0 0;">
             <div class="container-fluid">
 
-                <!-- ══════════════════════════════════════════════
-                     STAT CARDS
-                ══════════════════════════════════════════════ -->
-                <div class="stat-grid">
-
-                    <div class="stat-card c-brand">
-                        <div class="stat-header">
-                            <div class="stat-icon si-brand"><i class="fas fa-users"></i></div>
-                            <span class="stat-pill pill-up"><i class="fas fa-circle mr-1" style="font-size:.45rem"></i>Active</span>
-                        </div>
-                        <div>
-                            <div class="stat-value"><?= number_format($active_employees) ?></div>
-                            <div class="stat-label">Active Employees</div>
-                        </div>
-                        <div>
-                            <div class="stat-bar-bg">
-                                <div class="stat-bar-fill" style="width:<?= $total_employees ? round($active_employees/$total_employees*100) : 0 ?>%;background:var(--brand)"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stat-card c-blue">
-                        <div class="stat-header">
-                            <div class="stat-icon si-blue"><i class="fas fa-building"></i></div>
-                            <span class="stat-pill pill-info">Sections</span>
-                        </div>
-                        <div>
-                            <div class="stat-value"><?= count($sections) ?></div>
-                            <div class="stat-label">Departments / Sections</div>
-                        </div>
-                        <div>
-                            <div class="stat-bar-bg">
-                                <div class="stat-bar-fill" style="width:100%;background:var(--blue)"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stat-card c-green">
-                        <div class="stat-header">
-                            <div class="stat-icon si-green"><i class="fas fa-code-branch"></i></div>
-                            <span class="stat-pill pill-up">Units</span>
-                        </div>
-                        <div>
-                            <div class="stat-value"><?= count($unit_sections) ?></div>
-                            <div class="stat-label">Unit Sections</div>
-                        </div>
-                        <div>
-                            <div class="stat-bar-bg">
-                                <div class="stat-bar-fill" style="width:100%;background:var(--green)"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stat-card c-amber">
-                        <div class="stat-header">
-                            <div class="stat-icon si-amber"><i class="fas fa-user-tie"></i></div>
-                            <span class="stat-pill pill-warn">Staff</span>
-                        </div>
-                        <div>
-                            <div class="stat-value"><?= count($manager_staff) ?></div>
-                            <div class="stat-label">Manager's Office Staff</div>
-                        </div>
-                        <div>
-                            <div class="stat-bar-bg">
-                                <div class="stat-bar-fill" style="width:100%;background:var(--amber)"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
 
                 <!-- ══════════════════════════════════════════════
                      MANAGER HERO

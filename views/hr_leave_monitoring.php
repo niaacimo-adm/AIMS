@@ -295,6 +295,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
               ORDER BY e.last_name, e.first_name";
         $res = $db->query($q);
         echo json_encode(['success'=>true,'employees'=>$res->fetch_all(MYSQLI_ASSOC)]);
+
+    } elseif ($action === 'get_emp_approved_dates') {
+        /* Returns every weekday date that falls inside an approved leave for the given employee */
+        $target_emp = intval($_POST['emp_id'] ?? 0);
+        if (!$target_emp) {
+            echo json_encode(['success'=>false,'dates'=>[]]);
+            exit;
+        }
+        $stmt = $db->prepare("
+            SELECT date_from, date_to
+            FROM leave_request
+            WHERE emp_id = ? AND status = 'Approved'
+            ORDER BY date_from ASC
+        ");
+        $stmt->bind_param("i", $target_emp);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        $dates = [];
+        foreach ($rows as $row) {
+            $cur = new DateTime($row['date_from']);
+            $end = new DateTime($row['date_to']);
+            while ($cur <= $end) {
+                $dow = (int)$cur->format('N'); // 1=Mon…7=Sun
+                if ($dow < 6) $dates[] = $cur->format('Y-m-d');
+                $cur->modify('+1 day');
+            }
+        }
+        echo json_encode(['success'=>true, 'dates'=> array_values(array_unique($dates))]);
     }
     exit;
 }
@@ -688,6 +718,24 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         .mcd.mcd-dis   { color:var(--h-border); cursor:default; pointer-events:none; }
         .mcd.mcd-emp   { cursor:default; pointer-events:none; }
         .mcd.mcd-wknd  { color:var(--h-danger); opacity:.4; cursor:not-allowed; pointer-events:none; }
+        /* approved leave: red-tinted, unclickable */
+        .mcd.mcd-leave {
+            background:#fff0f0; color:#c92a2a;
+            cursor:not-allowed; pointer-events:none;
+            font-weight:600; position:relative;
+        }
+        .mcd.mcd-leave::after {
+            content:''; position:absolute; bottom:3px; left:50%;
+            transform:translateX(-50%);
+            width:4px; height:4px; border-radius:50%; background:#c92a2a;
+        }
+        /* legend row inside the modal */
+        .al-cal-legend {
+            display:flex; flex-wrap:wrap; gap:8px 16px;
+            padding:5px 8px 8px; font-size:.72rem; color:var(--h-muted);
+        }
+        .al-cal-legend span { display:flex; align-items:center; gap:4px; }
+        .al-cal-legend-dot  { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
         /* tags */
         .al-tags { min-height:36px; padding:5px 8px 8px; display:flex; flex-wrap:wrap; gap:5px; border-top:1px solid var(--h-border); }
         .al-tag {
@@ -1020,6 +1068,11 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                                         </div>
                                         <div class="mini-cal-grid" id="alCalGrid"></div>
                                         <div class="al-tags" id="alTags"></div>
+                                        <!-- legend -->
+                                        <div class="al-cal-legend">
+                                            <span><span class="al-cal-legend-dot" style="background:var(--cal-sel)"></span>Selected</span>
+                                            <span><span class="al-cal-legend-dot" style="background:#c92a2a"></span>Approved Leave</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1052,7 +1105,8 @@ var alCal = (function(){
     var MONTHS=['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
     var WDAYS=['Su','Mo','Tu','We','Th','Fr','Sa'];
-    var sel   = {};
+    var sel      = {};   // selected dates
+    var approved = {};   // employee's already-approved leave dates
     var yr, mo;
     var today = new Date(); today.setHours(0,0,0,0);
 
@@ -1074,15 +1128,18 @@ var alCal = (function(){
         for(var d=1;d<=dim;d++){
             var key=toKey(yr,mo,d);
             var past=isPast(yr,mo,d), wknd=isWknd(yr,mo,d);
+            var leave=!!approved[key];   // ← approved leave flag
             var s=!!sel[key];
             var isNow=(yr===today.getFullYear()&&mo===today.getMonth()&&d===today.getDate());
             var cls='mcd';
-            if(past) cls+=' mcd-dis';
-            else if(wknd) cls+=' mcd-wknd';
-            else if(s) cls+=' mcd-sel';
+            if(past)       cls+=' mcd-dis';
+            else if(wknd)  cls+=' mcd-wknd';
+            else if(leave) cls+=' mcd-leave';   // ← block & highlight
+            else if(s)     cls+=' mcd-sel';
             else if(isNow) cls+=' mcd-today';
-            var da=(!past&&!wknd)?'data-k="'+key+'"':'';
-            html+='<div class="'+cls+'" '+da+'>'+d+'</div>';
+            // only attach data-k when the day is actually clickable
+            var da=(!past&&!wknd&&!leave)?'data-k="'+key+'"':'';
+            html+='<div class="'+cls+'" '+da+' title="'+(leave?'Approved leave':'')+'">'+d+'</div>';
         }
         grid.innerHTML=html;
         var cells=grid.querySelectorAll('.mcd[data-k]');
@@ -1136,7 +1193,19 @@ var alCal = (function(){
     }
 
     function reset(){
-        sel={}; yr=today.getFullYear(); mo=today.getMonth();
+        sel={}; approved={}; yr=today.getFullYear(); mo=today.getMonth();
+        renderGrid(); renderTags();
+    }
+
+    /* Called whenever the HR changes the selected employee */
+    function setApproved(datesArray){
+        approved={};
+        for(var i=0;i<datesArray.length;i++) approved[datesArray[i]]=true;
+        // Drop any selected date that now falls on an approved-leave day
+        var selKeys=Object.keys(sel);
+        for(var j=0;j<selKeys.length;j++){
+            if(approved[selKeys[j]]) delete sel[selKeys[j]];
+        }
         renderGrid(); renderTags();
     }
 
@@ -1152,9 +1221,10 @@ var alCal = (function(){
     }
 
     return {
-        init:  init,
-        reset: reset,
-        getKeys: getKeys
+        init:        init,
+        reset:       reset,
+        getKeys:     getKeys,
+        setApproved: setApproved
     };
 })();
 
@@ -1362,6 +1432,23 @@ $(document).ready(function(){
                 }
             },'json');
         }
+    });
+
+    /* ── When HR picks an employee, load their approved leave dates ── */
+    $(document).on('change','#alEmpId',function(){
+        var empId=$(this).val();
+        // clear any previously selected calendar dates and approved highlights
+        alCal.reset();
+        if(!empId) return;
+
+        // show a subtle spinner on the calendar header while loading
+        $('#alCalLabel').html('<i class="fas fa-spinner fa-spin" style="font-size:.75rem;color:var(--h-muted)"></i>');
+
+        $.post('hr_leave_monitoring.php',{ajax:1,action:'get_emp_approved_dates',emp_id:empId},function(res){
+            if(res.success){
+                alCal.setApproved(res.dates);
+            }
+        },'json');
     });
 
     $('#btnSubmitApplyLeave').on('click',function(){

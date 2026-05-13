@@ -18,16 +18,23 @@ if ($employee_id) {
     $database2 = new Database();
     $db2       = $database2->getConnection();
 
-    // Get the logged-in employee's section + unit
-    $us = $db2->prepare("SELECT section_id, unit_section_id FROM employee WHERE emp_id = ? LIMIT 1");
+    // Get the logged-in employee's section, unit, office, and manager flags
+    $us = $db2->prepare("
+        SELECT section_id, unit_section_id, office_id,
+               is_manager, is_manager_office_staff
+        FROM employee WHERE emp_id = ? LIMIT 1
+    ");
     $us->bind_param("i", $employee_id);
     $us->execute();
-    $urow    = $us->get_result()->fetch_assoc();
-    $sec_id  = (int)($urow['section_id']      ?? 0);
-    $unit_id = (int)($urow['unit_section_id'] ?? 0);
+    $urow      = $us->get_result()->fetch_assoc();
+    $sec_id    = (int)($urow['section_id']              ?? 0);
+    $unit_id   = (int)($urow['unit_section_id']         ?? 0);
+    $office_id = (int)($urow['office_id']               ?? 0);
+    $is_mgr    = (int)($urow['is_manager']              ?? 0);
+    $is_staff  = (int)($urow['is_manager_office_staff'] ?? 0);
 
+    // 1) Docs forwarded to this employee's section/unit
     if ($sec_id) {
-        // Count pending docs forwarded to the user's section (or their specific unit)
         $nq = $db2->prepare("
             SELECT kind, COUNT(*) AS cnt
             FROM document_records
@@ -42,8 +49,56 @@ if ($employee_id) {
         foreach ($nrows as $nr) {
             $k = $nr['kind'];
             if (isset($notif[$k])) {
-                $notif[$k]        = (int)$nr['cnt'];
+                $notif[$k]       += (int)$nr['cnt'];
                 $notif['total']  += (int)$nr['cnt'];
+            }
+        }
+    }
+
+    // 2) Docs forwarded to this employee's office
+    //    — only visible to managers, office staff, or the office's designated manager
+    if ($office_id && ($is_mgr || $is_staff)) {
+        $oq = $db2->prepare("
+            SELECT kind, COUNT(*) AS cnt
+            FROM document_records
+            WHERE status = 'pending'
+              AND forwarded_to_office_id = ?
+            GROUP BY kind
+        ");
+        $oq->bind_param("i", $office_id);
+        $oq->execute();
+        $orows = $oq->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($orows as $or_) {
+            $k = $or_['kind'];
+            if (isset($notif[$k])) {
+                $notif[$k]       += (int)$or_['cnt'];
+                $notif['total']  += (int)$or_['cnt'];
+            }
+        }
+    }
+
+    // 3) Fallback: check if this employee is listed as manager_emp_id in the office table
+    if ($office_id && !$is_mgr && !$is_staff) {
+        $cm = $db2->prepare("SELECT 1 FROM office WHERE office_id = ? AND manager_emp_id = ? LIMIT 1");
+        $cm->bind_param("ii", $office_id, $employee_id);
+        $cm->execute();
+        if ($cm->get_result()->num_rows > 0) {
+            $oq2 = $db2->prepare("
+                SELECT kind, COUNT(*) AS cnt
+                FROM document_records
+                WHERE status = 'pending'
+                  AND forwarded_to_office_id = ?
+                GROUP BY kind
+            ");
+            $oq2->bind_param("i", $office_id);
+            $oq2->execute();
+            $orows2 = $oq2->get_result()->fetch_all(MYSQLI_ASSOC);
+            foreach ($orows2 as $or2) {
+                $k = $or2['kind'];
+                if (isset($notif[$k])) {
+                    $notif[$k]       += (int)$or2['cnt'];
+                    $notif['total']  += (int)$or2['cnt'];
+                }
             }
         }
     }
@@ -233,37 +288,36 @@ $(document).ready(function() {
         $('body').addClass('dark-mode');
     }
 
-    function refreshSidebarNotifs() {
-        $.get('document_actions.php', { action: 'get_notifications' }, function(r) {
-            if (!r.success) return;
-            var counts = r.counts;
-            // Update the badges inside the sidebar menu items
-            updateBadge($('.nav-link[href="document_list.php?kind=incoming"] .badge'), counts.incoming);
-            updateBadge($('.nav-link[href="document_list.php?kind=outgoing"] .badge'), counts.outgoing);
-            updateBadge($('.nav-link[href="document_list.php?kind=internal"] .badge'), counts.internal);
-            updateBadge($('.nav-link[href="document_dashboard.php"] .badge'), counts.total);
-        }, 'json').fail(function(){});
-    }
+    function updateBadge(navHref, count, badgeClass) {
+        var $link = $('.nav-link[href="' + navHref + '"]');
+        var $p    = $link.find('p');
+        var $badge = $p.find('.badge');
 
-    function updateBadge($badge, count) {
         if (count > 0) {
             if ($badge.length === 0) {
-                // Badge doesn't exist – create it
-                $badge = $('<span class="badge badge-danger right sidebar-notif-badge"></span>');
-                $badge.css('animation', 'badgePulse 2s infinite');
-                $('.nav-link[href="document_list.php?kind=incoming"] p, .nav-link[href="document_list.php?kind=outgoing"] p, .nav-link[href="document_list.php?kind=internal"] p, .nav-link[href="document_dashboard.php"] p').each(function() {
-                    if ($(this).parent().attr('href') === $badge.parent().attr('href')) {
-                        $(this).append($badge);
-                    }
-                });
+                $badge = $('<span class="badge right sidebar-notif-badge"></span>');
+                $p.append($badge);
             }
+            $badge.removeClass('badge-warning badge-danger').addClass(badgeClass || 'badge-danger');
             $badge.text(count).show();
         } else {
             $badge.hide();
         }
     }
 
-    // Poll every 60 seconds
+    function refreshSidebarNotifs() {
+        $.get('document_actions.php', { action: 'get_notifications' }, function(r) {
+            if (!r.success) return;
+            var c = r.counts;
+            updateBadge('document_list.php?kind=incoming', c.incoming, 'badge-danger');
+            updateBadge('document_list.php?kind=outgoing', c.outgoing, 'badge-danger');
+            updateBadge('document_list.php?kind=internal', c.internal, 'badge-danger');
+            updateBadge('document_dashboard.php',          c.total,    'badge-warning');
+        }, 'json').fail(function(){});
+    }
+
+    // Refresh immediately on load, then every 60 seconds
+    refreshSidebarNotifs();
     setInterval(refreshSidebarNotifs, 60000);
 });
 </script>

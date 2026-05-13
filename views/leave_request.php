@@ -309,6 +309,32 @@ if ($emp_id) {
     $r3 = $stmt3->get_result();
     while ($row = $r3->fetch_assoc()) $my_requests[] = $row;
 }
+
+$approved_leave_dates = [];
+if ($emp_id) {
+    $alq = $db->prepare("
+        SELECT date_from, date_to
+        FROM leave_request
+        WHERE emp_id = ? AND status = 'Approved'
+        ORDER BY date_from ASC
+    ");
+    $alq->bind_param("i", $emp_id);
+    $alq->execute();
+    $alr = $alq->get_result();
+    while ($alrow = $alr->fetch_assoc()) {
+        $cur = new DateTime($alrow['date_from']);
+        $end = new DateTime($alrow['date_to']);
+        while ($cur <= $end) {
+            $dow = (int)$cur->format('N'); // 1=Mon…7=Sun
+            if ($dow < 6) {               // weekdays only
+                $approved_leave_dates[] = $cur->format('Y-m-d');
+            }
+            $cur->modify('+1 day');
+        }
+    }
+    $alq->close();
+    $approved_leave_dates = array_values(array_unique($approved_leave_dates));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -528,6 +554,23 @@ if ($emp_id) {
         .mdc-wknd { color: #ced4da; cursor: not-allowed; }
         .mdc-today { background: #e7f5ff; color: #1971c2; font-weight: 700; }
         .mdc-sel   { background: var(--lr-primary); color: #fff; font-weight: 700; }
+        /* approved leave dates – shown but not selectable */
+        .mdc-leave {
+            background: #fff0f0;
+            color: #c92a2a;
+            cursor: not-allowed;
+            font-weight: 600;
+            position: relative;
+        }
+        .mdc-leave::after {
+            content: '';
+            position: absolute;
+            bottom: 3px; left: 50%;
+            transform: translateX(-50%);
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: #c92a2a;
+        }
         .mdc-tags-hdr {
             padding: 8px 12px 2px;
             font-size: .72rem;
@@ -801,11 +844,16 @@ if ($emp_id) {
                                     </select>
                                 </div>
 
-                                <div class="form-group">
+                                    <div class="form-group">
                                     <label class="lr-label">
                                         Select Leave Date(s) <span style="color:var(--lr-danger)">*</span>
                                         <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--lr-muted);font-size:.7rem;margin-left:4px;">(click day to pick; click again to remove)</span>
                                     </label>
+                                    <!-- legend -->
+                                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;font-size:.72rem;color:var(--lr-muted);">
+                                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lr-primary);margin-right:3px;vertical-align:middle;"></span>Selected</span>
+                                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c92a2a;margin-right:3px;vertical-align:middle;"></span>Approved Leave</span>
+                                    </div>
                                     <div class="mdc-wrap">
                                         <div class="mdc-nav">
                                             <button type="button" class="mdc-nav-btn" id="mdcPrev"><i class="fas fa-chevron-left"></i></button>
@@ -1178,6 +1226,15 @@ if ($emp_id) {
     var WDAYS  = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
     var selectedDates = {};   // plain object used as Set: key -> true
+
+    // ── Approved leave dates injected directly from PHP (no AJAX needed) ──────
+    var approvedDates = (function(){
+        var map = {};
+        var list = <?= json_encode($approved_leave_dates) ?>;
+        for (var i = 0; i < list.length; i++) map[list[i]] = true;
+        return map;
+    })();
+
     var viewYear, viewMonth;
 
     var today = new Date();
@@ -1208,15 +1265,17 @@ if ($emp_id) {
             var key   = toKey(viewYear,viewMonth,d);
             var past  = isPast(viewYear,viewMonth,d);
             var wknd  = isWeekend(viewYear,viewMonth,d);
+            var leave = !!approvedDates[key];       // ← approved leave date
             var sel   = !!selectedDates[key];
             var isNow = (viewYear===today.getFullYear()&&viewMonth===today.getMonth()&&d===today.getDate());
             var cls   = 'mdc-day';
-            if(past)       cls+=' mdc-dis';
-            else if(wknd)  cls+=' mdc-wknd';
-            else if(sel)   cls+=' mdc-sel';
-            else if(isNow) cls+=' mdc-today';
-            var data = (!past&&!wknd)?'data-key="'+key+'"':'';
-            html+='<div class="'+cls+'" '+data+'>'+d+'</div>';
+            if(past)        cls+=' mdc-dis';
+            else if(wknd)   cls+=' mdc-wknd';
+            else if(leave)  cls+=' mdc-leave';      // ← highlight & block
+            else if(sel)    cls+=' mdc-sel';
+            else if(isNow)  cls+=' mdc-today';
+            var data = (!past&&!wknd&&!leave)?'data-key="'+key+'"':'';
+            html+='<div class="'+cls+'" '+data+' title="'+(leave?'Approved leave':'')+'">'+d+'</div>';
         }
         grid.innerHTML = html;
 

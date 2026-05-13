@@ -30,6 +30,7 @@ checkPermission('view_calendar');
         --meeting:        #1d4ed8;
         --holiday:        #f59e0b;
         --event:          #2563eb;
+        --leave:          #e03131;   /* approved leave */
 
         --bg:             #f0f4f8;
         --surface:        #ffffff;
@@ -251,6 +252,19 @@ checkPermission('view_calendar');
     .holiday-event   { background: var(--holiday)   !important; }
     .meeting-event   { background: var(--meeting)   !important; }
     .event-event     { background: var(--event)     !important; }
+    .leave-event     { background: var(--leave)     !important; opacity: .88; }
+
+    /* ── Legend ─────────────────────────────────────────────────── */
+    .cal-legend {
+        display: flex; flex-wrap: wrap; gap: 10px 18px;
+        padding: 10px 14px;
+        border-top: 1px solid var(--border-subtle);
+        font-size: .78rem; color: var(--text-secondary);
+    }
+    .cal-legend-item { display: flex; align-items: center; gap: 5px; }
+    .cal-legend-dot  {
+        width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
 
     /* ── Tables ─────────────────────────────────────────────────── */
     .table { font-size: .86rem; color: var(--text-primary); }
@@ -461,6 +475,14 @@ checkPermission('view_calendar');
             <div class="card card-primary">
               <div class="card-body p-0">
                 <div id="calendar"></div>
+                <!-- Legend -->
+                <div class="cal-legend">
+                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--event)"></span>General Event</span>
+                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--meeting)"></span>Meeting</span>
+                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--holiday)"></span>Holiday</span>
+                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--birthday)"></span>Birthday</span>
+                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave)"></span>Approved Leave</span>
+                </div>
               </div>
             </div>
             
@@ -621,6 +643,12 @@ checkPermission('view_calendar');
                   info.el.classList.add('holiday-event');
               } else if (info.event.extendedProps.type === 'meeting') {
                   info.el.classList.add('meeting-event');
+              } else if (info.event.extendedProps.type === 'leave') {
+                  info.el.classList.add('leave-event');
+                  // Show tooltip with employee name on hover
+                  info.el.title = info.event.extendedProps.emp_name
+                                + ' — ' + (info.event.extendedProps.leave_type || 'Leave')
+                                + ' (' + info.event.extendedProps.number_of_days + ' day/s)';
               } else {
                   info.el.classList.add('event-event');
               }
@@ -638,20 +666,27 @@ checkPermission('view_calendar');
                       url: 'get_birthdays.php',
                       type: 'GET',
                       dataType: 'json'
+                  }),
+                  $.ajax({
+                      url: 'get_approved_leaves.php',
+                      type: 'GET',
+                      dataType: 'json'
                   })
-              ).then(function(eventsResponse, birthdaysResponse) {
+              ).then(function(eventsResponse, birthdaysResponse, leavesResponse) {
                   $('#calendar').removeClass('calendar-loading');
                   
-                  // Check if both requests succeeded
+                  // Check if all requests succeeded
                   if (!eventsResponse[0].success || !birthdaysResponse[0].success) {
                       showCalendarError('Failed to load some events. Please try again.');
                       failureCallback('Failed to load events');
                       return;
                   }
                   
-                  var events = eventsResponse[0].data || [];
+                  var events    = eventsResponse[0].data   || [];
                   var birthdays = birthdaysResponse[0].data || [];
-                  successCallback(events.concat(birthdays));
+                  var leaves    = (leavesResponse[0] && leavesResponse[0].success)
+                                  ? leavesResponse[0].data : [];
+                  successCallback(events.concat(birthdays).concat(leaves));
                   
               }, function(jqXHR, textStatus, errorThrown) {
                   $('#calendar').removeClass('calendar-loading');
@@ -661,8 +696,24 @@ checkPermission('view_calendar');
           },
           
           eventClick: function(info) {
-              // Skip modal for birthday events
+              // Skip modal for birthday and leave events
               if (info.event.extendedProps.type === 'birthday') {
+                  return;
+              }
+              if (info.event.extendedProps.type === 'leave') {
+                  // Show a read-only Swal instead of the edit modal
+                  Swal.fire({
+                      title: info.event.extendedProps.emp_name || 'Approved Leave',
+                      html: '<div style="text-align:left;font-size:.88rem;line-height:1.8">'
+                          + '<p><strong>Leave Type:</strong> ' + (info.event.extendedProps.leave_type || 'N/A') + '</p>'
+                          + '<p><strong>Days:</strong> ' + (info.event.extendedProps.number_of_days || '—') + ' day(s)</p>'
+                          + '<p><strong>From:</strong> ' + moment(info.event.start).format('MMMM D, YYYY') + '</p>'
+                          + '<p><strong>To:</strong> ' + (info.event.end ? moment(info.event.end).subtract(1,'day').format('MMMM D, YYYY') : moment(info.event.start).format('MMMM D, YYYY')) + '</p>'
+                          + '</div>',
+                      icon: 'info',
+                      confirmButtonColor: '#e03131',
+                      confirmButtonText: 'Close'
+                  });
                   return;
               }
               

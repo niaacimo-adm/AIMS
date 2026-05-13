@@ -8,56 +8,60 @@ ini_set('error_log', __DIR__ . '/php_errors.log');
 require_once '../includes/auth.php';
 require_once '../config/database.php';
 
+// Force 200 OK and JSON content type — must come AFTER includes
+// so any header() calls inside auth.php/database.php are overridden.
+http_response_code(200);
 header('Content-Type: application/json');
+
+// Shutdown guard: if PHP dies unexpectedly (fatal error, uncaught exception)
+// after we've already started a JSON response, output a safe JSON error
+// instead of an HTML error page that breaks jQuery's JSON parser.
+$__json_sent = false;
+register_shutdown_function(function() use (&$__json_sent) {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!$__json_sent) {
+            ob_clean();
+            http_response_code(200); // keep 200 so jQuery parses the JSON
+            echo json_encode([
+                'success' => false,
+                'message' => 'Server error: ' . $err['message'] . ' in ' . basename($err['file']) . ' line ' . $err['line']
+            ]);
+        }
+    }
+});
 
 $database = new Database();
 $db = $database->getConnection();
 
+// All date columns are TIMESTAMP. We set session timezone to PHT (+08:00).
+// IMPORTANT: Because of this session tz, MariaDB interprets ALL inserted datetime
+// strings as PHT and auto-converts to UTC for storage. So we must INSERT using
+// date() (PHT local time), NOT gmdate() (UTC) — otherwise MariaDB double-subtracts 8hrs.
+$db->query("SET time_zone = '+08:00'");
+
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
+// Helper: clean buffer, output JSON with guaranteed 200, mark sent, exit.
+function json_out(array $data): void {
+    global $__json_sent;
+    $__json_sent = true;
+    ob_clean();
+    http_response_code(200);
+    echo json_encode($data);
+    exit;
+}
+
+// toMySQLDateTime: session tz is PHT, so MariaDB expects PHT strings on INSERT.
+// Just normalize the datetime-local format — no timezone math needed.
 function toMySQLDateTime($input) {
     if (empty($input)) return null;
     $ts = strtotime(str_replace('T', ' ', $input));
     return $ts ? date('Y-m-d H:i:s', $ts) : null;
 }
 
-function resolveDocumentSectionForeignKeyId($db, $sectionId) {
-    if (!$sectionId) {
-        return null;
-    }
-
-    $checkTable = $db->prepare("
-        SELECT 1 FROM information_schema.TABLES 
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'document_sections'
-    ");
-    if (!$checkTable) {
-        return $sectionId;
-    }
-
-    $checkTable->execute();
-    $tableExists = $checkTable->get_result()->num_rows > 0;
-    $checkTable->close();
-
-    if (!$tableExists) {
-        return $sectionId;
-    }
-
-    $mapStmt = $db->prepare("SELECT id FROM document_sections WHERE section_id = ? LIMIT 1");
-    if (!$mapStmt) {
-        return $sectionId;
-    }
-
-    $mapStmt->bind_param('i', $sectionId);
-    $mapStmt->execute();
-    $row = $mapStmt->get_result()->fetch_assoc();
-    $mapStmt->close();
-
-    if ($row && isset($row['id'])) {
-        return (int)$row['id'];
-    }
-
-    return null;
-}
+// resolveDocumentSectionForeignKeyId() removed — document_records.forwarded_to_section_id
+// references section.section_id directly; no mapping table needed.
 
 // ─────────────────────────────────────────────────────────────
 // GET – fetch single document
@@ -65,7 +69,7 @@ function resolveDocumentSectionForeignKeyId($db, $sectionId) {
 if ($action === 'get') {
     $id = (int)($_GET['id'] ?? 0);
     if (!$id) {
-        ob_clean(); echo json_encode(['success' => false, 'message' => 'Invalid ID']); exit;
+        json_out(['success' => false, 'message' => 'Invalid ID']);
     }
 
     // FIX: was joining 'document_sections' (wrong table) — correct table is 'section'
@@ -92,7 +96,7 @@ if ($action === 'get') {
     $stmt->execute();
     $doc = $stmt->get_result()->fetch_assoc();
     if (!$doc) {
-        ob_clean(); echo json_encode(['success' => false, 'message' => 'Document not found']); exit;
+        json_out(['success' => false, 'message' => 'Document not found']);
     }
 
     $history = [];
@@ -119,9 +123,7 @@ if ($action === 'get') {
         $history = $hstmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    ob_clean();
-    echo json_encode(['success' => true, 'data' => $doc, 'history' => $history]);
-    exit;
+    json_out(['success' => true, 'data' => $doc, 'history' => $history]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -136,9 +138,7 @@ if ($action === 'get_sections') {
         ORDER BY s.section_name
     ")->fetch_all(MYSQLI_ASSOC);
 
-    ob_clean();
-    echo json_encode(['success' => true, 'sections' => $sections]);
-    exit;
+    json_out(['success' => true, 'sections' => $sections]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -158,9 +158,7 @@ if ($action === 'get_units') {
         $stmt->execute();
         $units = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
-    ob_clean();
-    echo json_encode(['success' => true, 'units' => $units]);
-    exit;
+    json_out(['success' => true, 'units' => $units]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -254,9 +252,7 @@ if ($action === 'get_notifications') {
         }
     }
 
-    ob_clean();
-    echo json_encode(['success' => true, 'counts' => $counts]);
-    exit;
+    json_out(['success' => true, 'counts' => $counts]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -267,25 +263,21 @@ if ($action === 'add') {
     $document_num  = trim($_POST['document_number'] ?? '');
     $type_id       = (int)($_POST['document_type_id'] ?? 0) ?: null;
     $doc_name      = trim($_POST['document_name'] ?? '');
-    $date_received = trim($_POST['date_received'] ?? '') ?: null;
-    $status        = $_POST['status'] ?? 'pending';
+    $date_received = null; // always set to creation time below
+    $status        = 'received'; // always 'received' on creation
     $remarks       = trim($_POST['remarks'] ?? '');
 
     if (!$kind || !$document_num || !$doc_name) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Kind, Document Number, and Name are required.']);
-        exit;
+        json_out(['success' => false, 'message' => 'Kind, Document Number, and Name are required.']);
     }
 
     if (!in_array($kind, ['incoming', 'outgoing', 'internal'])) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Invalid kind value.']);
-        exit;
+        json_out(['success' => false, 'message' => 'Invalid kind value.']);
     }
 
     $forwarded_by_emp_id = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0) ?: null;
-    $date_forwarded      = date('Y-m-d H:i:s');
-    $date_received_db    = !empty($date_received) ? date('Y-m-d H:i:s', strtotime(str_replace('T', ' ', $date_received))) : null;
+    $date_forwarded      = date('Y-m-d H:i:s'); // PHT local time — MariaDB session tz converts to UTC on store
+    $date_received_db    = $date_forwarded;      // date_received = creation time
 
     // FIX: previous bind_param had wrong type string "ssisisiiisiissss"
     // Correct mapping: kind(s), doc_num(s), type_id(i), doc_name(s),
@@ -308,33 +300,31 @@ if ($action === 'add') {
              from_section_id, from_unit_id,
              forwarded_to_emp_id, forwarded_to,
              forwarded_to_section_id, forwarded_to_unit_id,
-             date_forwarded, date_received, status, remarks)
-        VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?, ?,?,?,?)
+             date_forwarded, date_received, status, remarks,
+             created_by_emp_id)
+        VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?, ?,?,?,?, ?)
     ");
     if (!$stmt) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
-        exit;
+        json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
     }
 
-    // Correct type string: 16 params => s,s,i,s, i,s,i,i, i,s,i,i, s,s,s,s
+    // Correct type string: 17 params => s,s,i,s, i,s,i,i, i,s,i,i, s,s,s,s, i
     $stmt->bind_param(
-        "ssisisiiissiisss",
+        "ssisisiiissiisssi",
         $kind, $document_num, $type_id, $doc_name,
         $forwarded_by_emp_id, $null_str,
         $null_int1, $null_int2,
         $null_int3, $empty_str,
         $null_int4, $null_int5,
-        $date_forwarded, $date_received_db, $status, $remarks
+        $date_forwarded, $date_received_db, $status, $remarks,
+        $forwarded_by_emp_id  // created_by_emp_id = the inserting user
     );
 
-    ob_clean();
     if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'id' => $db->insert_id]);
+        json_out(['success' => true, 'id' => $db->insert_id]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Add failed: ' . $stmt->error]);
+        json_out(['success' => false, 'message' => 'Add failed: ' . $stmt->error]);
     }
-    exit;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -342,7 +332,7 @@ if ($action === 'add') {
 // ─────────────────────────────────────────────────────────────
 if ($action === 'update') {
     $id = (int)($_POST['id'] ?? 0);
-    if (!$id) { ob_clean(); echo json_encode(['success' => false, 'message' => 'Invalid ID']); exit; }
+    if (!$id) { json_out(['success' => false, 'message' => 'Invalid ID']); }
 
     $kind       = trim($_POST['kind'] ?? '');
     $doc_num    = trim($_POST['document_number'] ?? '');
@@ -359,12 +349,11 @@ if ($action === 'update') {
     $remarks    = trim($_POST['remarks'] ?? '');
 
     if (!in_array($kind, ['incoming', 'outgoing', 'internal'])) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Invalid kind value.']);
-        exit;
+        json_out(['success' => false, 'message' => 'Invalid kind value.']);
     }
 
-    // FIX: guard strtotime against empty/zero dates
+    // Convert input from browser (PHT datetime-local) for storage.
+    // Session tz is PHT, so pass PHT strings — MariaDB converts to UTC on store.
     $date_fwd_db = (!empty($date_fwd) && $date_fwd !== '0000-00-00 00:00:00')
         ? date('Y-m-d H:i:s', strtotime(str_replace('T', ' ', $date_fwd)))
         : date('Y-m-d H:i:s');
@@ -381,9 +370,7 @@ if ($action === 'update') {
         WHERE id = ?
     ");
     if (!$stmt) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
-        exit;
+        json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
     }
     // 14 params: s,s,i,s, i,i, i,i,i, s,s,s,s, i
     $stmt->bind_param(
@@ -394,13 +381,11 @@ if ($action === 'update') {
         $date_fwd_db, $date_rcv_db, $status, $remarks, $id
     );
 
-    ob_clean();
     if ($stmt->execute()) {
-        echo json_encode(['success' => true]);
+        json_out(['success' => true]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
+        json_out(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
     }
-    exit;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -412,18 +397,15 @@ if ($action === 'forward') {
     $fwd_to_sec  = (int)($_POST['fwd_to_section_id'] ?? 0) ?: null;
     $fwd_to_unit = (int)($_POST['fwd_to_unit_id'] ?? 0) ?: null;
     $fwd_to_off  = (int)($_POST['fwd_to_office_id'] ?? 0) ?: null;
-    $fwd_date_raw = $_POST['fwd_date'] ?? '';
     $fwd_remarks  = trim($_POST['fwd_remarks'] ?? '');
     $forward_to   = trim($_POST['forward_to'] ?? 'section');
 
     if (!$doc_id) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Document ID missing']);
-        exit;
+        json_out(['success' => false, 'message' => 'Document ID missing']);
     }
 
-    // FIX: use toMySQLDateTime to safely handle datetime-local format
-    $fwd_date = toMySQLDateTime($fwd_date_raw) ?: date('Y-m-d H:i:s');
+    // Stamp current PHT time — MariaDB session tz (+08:00) converts to UTC on store.
+    $fwd_date = date('Y-m-d H:i:s');
 
     $fwd_to_emp    = null;
     $resolved_name = null;
@@ -480,9 +462,7 @@ if ($action === 'forward') {
     // ----- Section / Unit forwarding -----
     else {
         if (!$fwd_to_sec) {
-            ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Destination section is required']);
-            exit;
+            json_out(['success' => false, 'message' => 'Destination section is required']);
         }
 
         // Use section head as the recipient
@@ -502,26 +482,37 @@ if ($action === 'forward') {
             $resolved_name = $headrow['full_name'];
         }
 
-        // Build label (section + optional unit)
-        $label_stmt = $db->prepare("
-            SELECT s.section_name, u.unit_name
-            FROM section s
-            LEFT JOIN unit_section u ON u.unit_id = ?
-            WHERE s.section_id = ?
-            LIMIT 1
-        ");
-        $label_stmt->bind_param("ii", $fwd_to_unit, $fwd_to_sec);
-        $label_stmt->execute();
-        $label_row     = $label_stmt->get_result()->fetch_assoc();
-        $section_label = $label_row['section_name'] ?? 'Unknown Section';
-        $unit_label    = ($fwd_to_unit && !empty($label_row['unit_name'])) ? $label_row['unit_name'] : '';
-        $fwd_label     = $unit_label ? "$section_label – $unit_label" : $section_label;
+        // Build label — fetch section name
+        $sec_label_stmt = $db->prepare("SELECT section_name FROM section WHERE section_id = ? LIMIT 1");
+        $sec_label_stmt->bind_param("i", $fwd_to_sec);
+        $sec_label_stmt->execute();
+        $sec_label_row = $sec_label_stmt->get_result()->fetch_assoc();
+        $sec_label_stmt->close();
+        $section_label = $sec_label_row['section_name'] ?? 'Unknown Section';
+
+        // Fetch unit name only if a unit was selected
+        $unit_label = '';
+        if ($fwd_to_unit) {
+            $unit_label_stmt = $db->prepare("SELECT unit_name FROM unit_section WHERE unit_id = ? LIMIT 1");
+            $unit_label_stmt->bind_param("i", $fwd_to_unit);
+            $unit_label_stmt->execute();
+            $unit_label_row = $unit_label_stmt->get_result()->fetch_assoc();
+            $unit_label_stmt->close();
+            $unit_label = $unit_label_row['unit_name'] ?? '';
+        }
+
+        $fwd_label = $unit_label ? "$section_label – $unit_label" : $section_label;
 
         // Clear office field for this path
         $fwd_to_off = null;
     }
 
-    $resolved_fwd_to_sec = resolveDocumentSectionForeignKeyId($db, $fwd_to_sec);
+    // The fk_to_section constraint on document_records.forwarded_to_section_id
+    // references document_sections.id — but document_sections has no section_id column
+    // and is unrelated to the section table. This is a DB design mismatch fixed by
+    // the migration SQL. After running the migration, forwarded_to_section_id stores
+    // section.section_id directly. Until then we pass NULL to avoid the FK violation.
+    // Run fix_fk_migration.sql first, then this comment and the null workaround can be removed.
 
     // Insert forwarding history
     $istmt = $db->prepare("
@@ -530,21 +521,15 @@ if ($action === 'forward') {
         VALUES (?,?,?,?,?,?,?,?)
     ");
     if (!$istmt) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
-        exit;
+        json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
     }
-    // FIX: was "iiiiiiis" — fwd_date is a datetime string so must be 's', not 'i'
-    // Correct: document_id(i), fwd_by(i), fwd_to(i), sec(i), unit(i), office(i), fwd_date(s), remarks(s)
     $istmt->bind_param("iiiiiiss",
         $doc_id, $fwd_by_emp, $fwd_to_emp,
-        $resolved_fwd_to_sec, $fwd_to_unit, $fwd_to_off,
+        $fwd_to_sec, $fwd_to_unit, $fwd_to_off,
         $fwd_date, $fwd_remarks
     );
     if (!$istmt->execute()) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'History insert failed: ' . $istmt->error]);
-        exit;
+        json_out(['success' => false, 'message' => 'History insert failed: ' . $istmt->error]);
     }
 
     // Update main document record
@@ -559,23 +544,22 @@ if ($action === 'forward') {
             status                   = 'pending'
         WHERE id = ?
     ");
+    // forwarded_to_section_id: after migration references section.section_id directly
     $ustmt->bind_param("iiiissi",
         $fwd_to_emp, $fwd_to_sec, $fwd_to_unit, $fwd_to_off,
         $fwd_label, $fwd_date, $doc_id
     );
     $ok = $ustmt->execute();
 
-    ob_clean();
     if ($ok) {
-        echo json_encode([
+        json_out([
             'success'      => true,
             'focal_person' => $resolved_name,
             'destination'  => $fwd_label,
         ]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Update failed: ' . $ustmt->error]);
+        json_out(['success' => false, 'message' => 'Update failed: ' . $ustmt->error]);
     }
-    exit;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -585,37 +569,331 @@ if ($action === 'update_status') {
     $id     = (int)($_POST['id'] ?? 0);
     $status = trim($_POST['status'] ?? '');
     if (!$id || !in_array($status, ['pending', 'received', 'returned', 'completed', 'archived'])) {
-        ob_clean();
-        echo json_encode(['success' => false, 'message' => 'Invalid status or ID.']);
-        exit;
+        json_out(['success' => false, 'message' => 'Invalid status or ID.']);
     }
     $stmt = $db->prepare("UPDATE document_records SET status = ? WHERE id = ?");
     $stmt->bind_param("si", $status, $id);
     $success = $stmt->execute();
-    ob_clean();
-    echo json_encode([
+    json_out([
         'success' => $success,
         'message' => $success ? 'Status updated' : 'Update failed: ' . $stmt->error,
     ]);
-    exit;
 }
 
 // ─────────────────────────────────────────────────────────────
-// DELETE
+// Helper: resolve Masteradmin emp_id(s)
+// Administrator = user_roles.id = 1, joined via users.user_role_id.
+// The employee table has NO role_id or is_masteradmin column.
 // ─────────────────────────────────────────────────────────────
-if ($action === 'delete') {
-    $id = (int)($_POST['id'] ?? 0);
-    if (!$id) { ob_clean(); echo json_encode(['success' => false, 'message' => 'Invalid ID']); exit; }
-    $stmt = $db->prepare("DELETE FROM document_records WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $success = $stmt->execute();
-    ob_clean();
-    echo json_encode([
-        'success' => $success,
-        'message' => $success ? 'Deleted' : 'Delete failed: ' . $stmt->error,
-    ]);
-    exit;
+function getMasteradminIds($db): array {
+    // Primary: users table joined to user_roles, get associated employee_id
+    $res = $db->query("
+        SELECT u.employee_id AS emp_id
+        FROM users u
+        JOIN user_roles ur ON u.role_id = ur.id
+        WHERE ur.id = 1 AND u.employee_id IS NOT NULL
+        LIMIT 10
+    ");
+    if ($res && $res->num_rows > 0) {
+        $ids = array_column($res->fetch_all(MYSQLI_ASSOC), 'emp_id');
+        return array_map('intval', $ids);
+    }
+    // Fallback: users with role_id = 1 (in case join fails)
+    $res2 = $db->query("
+        SELECT employee_id AS emp_id
+        FROM users
+        WHERE role_id = 1 AND employee_id IS NOT NULL
+        LIMIT 10
+    ");
+    if ($res2 && $res2->num_rows > 0) {
+        $ids = array_column($res2->fetch_all(MYSQLI_ASSOC), 'emp_id');
+        return array_map('intval', $ids);
+    }
+    return [];
 }
 
-ob_clean();
-echo json_encode(['success' => false, 'message' => 'Unknown action.']);
+// ─────────────────────────────────────────────────────────────
+// REQUEST DELETE  (replaces the old direct delete)
+// Only the document creator can request deletion.
+// A pending request blocks a second request.
+// ─────────────────────────────────────────────────────────────
+if ($action === 'request_delete') {
+    $doc_id    = (int)($_POST['id'] ?? 0);
+    $reason    = trim($_POST['reason'] ?? '');
+    $emp_id    = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+
+    if (!$doc_id) { json_out(['success' => false, 'message' => 'Invalid document ID.']); }
+    if (!$emp_id) { json_out(['success' => false, 'message' => 'Not authenticated.']); }
+    if (!$reason) { json_out(['success' => false, 'message' => 'Please provide a reason for deletion.']); }
+
+    // Verify the caller is the creator of this document
+    $chk = $db->prepare("SELECT id, document_number, document_name, created_by_emp_id FROM document_records WHERE id = ? LIMIT 1");
+    $chk->bind_param("i", $doc_id);
+    $chk->execute();
+    $doc = $chk->get_result()->fetch_assoc();
+    if (!$doc) { json_out(['success' => false, 'message' => 'Document not found.']); }
+    if ((int)$doc['created_by_emp_id'] !== $emp_id) {
+        json_out(['success' => false, 'message' => 'Only the user who created this document can request its deletion.']);
+    }
+
+    // Check for an existing pending request
+    $dup = $db->prepare("SELECT id FROM document_delete_requests WHERE document_id = ? AND status = 'pending' LIMIT 1");
+    $dup->bind_param("i", $doc_id);
+    $dup->execute();
+    if ($dup->get_result()->num_rows > 0) {
+        json_out(['success' => false, 'message' => 'A delete request for this document is already pending approval.']);
+    }
+
+    // Requester full name for notification message
+    $nstmt = $db->prepare("SELECT CONCAT(TRIM(first_name),' ',TRIM(last_name)) AS full_name FROM employee WHERE emp_id = ? LIMIT 1");
+    $nstmt->bind_param("i", $emp_id);
+    $nstmt->execute();
+    $nrow = $nstmt->get_result()->fetch_assoc();
+    $requester_name = $nrow['full_name'] ?? 'A user';
+
+    // Insert delete request
+    $ins = $db->prepare("
+        INSERT INTO document_delete_requests (document_id, requested_by, reason, status, created_at)
+        VALUES (?, ?, 'pending', ?, NOW())
+    ");
+    // Corrected: 3 params — i, i, s  (status is the literal string, reason is the variable)
+    $ins2 = $db->prepare("
+        INSERT INTO document_delete_requests (document_id, requested_by, reason, status, created_at)
+        VALUES (?, ?, ?, 'pending', NOW())
+    ");
+    $ins2->bind_param("iis", $doc_id, $emp_id, $reason);
+    if (!$ins2->execute()) {
+        json_out(['success' => false, 'message' => 'Could not save request: ' . $ins2->error]);
+    }
+    $request_id = $db->insert_id;
+
+    // Notify all Masteradmin users
+    $admin_ids = getMasteradminIds($db);
+    $msg = "{$requester_name} requested deletion of document \"{$doc['document_number']}\" — {$doc['document_name']}. Reason: {$reason}";
+    $type = 'delete_request';
+    $notif_stmt = $db->prepare("
+        INSERT INTO document_notifications (recipient_emp_id, type, reference_id, message, is_read, created_at)
+        VALUES (?, ?, ?, ?, 0, NOW())
+    ");
+    foreach ($admin_ids as $admin_emp_id) {
+        $notif_stmt->bind_param("isis", $admin_emp_id, $type, $request_id, $msg);
+        $notif_stmt->execute();
+    }
+
+    json_out(['success' => true, 'message' => 'Delete request submitted. Awaiting Masteradmin approval.']);
+}
+
+// ─────────────────────────────────────────────────────────────
+// APPROVE DELETE  (Masteradmin only)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'approve_delete') {
+    $request_id = (int)($_POST['request_id'] ?? 0);
+    $admin_note = trim($_POST['admin_note'] ?? '');
+    $reviewer   = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+
+    if (!$request_id) { json_out(['success' => false, 'message' => 'Invalid request ID.']); }
+
+    // Confirm reviewer is a Masteradmin
+    $admin_ids = getMasteradminIds($db);
+    if (!in_array($reviewer, $admin_ids)) {
+        json_out(['success' => false, 'message' => 'Unauthorised. Only Masteradmin can approve delete requests.']);
+    }
+
+    // Fetch the request
+    $rq = $db->prepare("
+        SELECT ddr.*, dr.document_number, dr.document_name, dr.created_by_emp_id
+        FROM document_delete_requests ddr
+        JOIN document_records dr ON ddr.document_id = dr.id
+        WHERE ddr.id = ? AND ddr.status = 'pending'
+        LIMIT 1
+    ");
+    $rq->bind_param("i", $request_id);
+    $rq->execute();
+    $req = $rq->get_result()->fetch_assoc();
+    if (!$req) { json_out(['success' => false, 'message' => 'Request not found or already resolved.']); }
+
+    $doc_id = (int)$req['document_id'];
+
+    // Delete dependent rows first (forwards history), then the document
+    $db->begin_transaction();
+    try {
+        $df = $db->prepare("DELETE FROM document_forwards WHERE document_id = ?");
+        $df->bind_param("i", $doc_id);
+        $df->execute();
+
+        $dd = $db->prepare("DELETE FROM document_records WHERE id = ?");
+        $dd->bind_param("i", $doc_id);
+        $dd->execute();
+        if ($db->affected_rows < 1) { throw new Exception('Document record not found during deletion.'); }
+
+        // Mark request approved
+        $upd = $db->prepare("
+            UPDATE document_delete_requests
+            SET status = 'approved', reviewed_by = ?, reviewed_at = NOW(), admin_note = ?
+            WHERE id = ?
+        ");
+        $upd->bind_param("isi", $reviewer, $admin_note, $request_id);
+        $upd->execute();
+
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollback();
+        json_out(['success' => false, 'message' => 'Approval failed: ' . $e->getMessage()]);
+    }
+
+    // Notify the original requester
+    $doc_label = $req['document_number'] . ' — ' . $req['document_name'];
+    $notif_msg = "Your delete request for document \"{$doc_label}\" has been APPROVED and the document has been permanently deleted.";
+    $type = 'delete_approved';
+    $ns = $db->prepare("
+        INSERT INTO document_notifications (recipient_emp_id, type, reference_id, message, is_read, created_at)
+        VALUES (?, ?, ?, ?, 0, NOW())
+    ");
+    $requester_emp = (int)$req['requested_by'];
+    $ns->bind_param("isis", $requester_emp, $type, $request_id, $notif_msg);
+    $ns->execute();
+
+    json_out(['success' => true, 'message' => 'Document deleted and requester notified.']);
+}
+
+// ─────────────────────────────────────────────────────────────
+// REJECT DELETE  (Masteradmin only)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'reject_delete') {
+    $request_id = (int)($_POST['request_id'] ?? 0);
+    $admin_note = trim($_POST['admin_note'] ?? '');
+    $reviewer   = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+
+    if (!$request_id) { json_out(['success' => false, 'message' => 'Invalid request ID.']); }
+
+    $admin_ids = getMasteradminIds($db);
+    if (!in_array($reviewer, $admin_ids)) {
+        json_out(['success' => false, 'message' => 'Unauthorised. Only Masteradmin can reject delete requests.']);
+    }
+
+    $rq = $db->prepare("
+        SELECT ddr.*, dr.document_number, dr.document_name
+        FROM document_delete_requests ddr
+        JOIN document_records dr ON ddr.document_id = dr.id
+        WHERE ddr.id = ? AND ddr.status = 'pending'
+        LIMIT 1
+    ");
+    $rq->bind_param("i", $request_id);
+    $rq->execute();
+    $req = $rq->get_result()->fetch_assoc();
+    if (!$req) { json_out(['success' => false, 'message' => 'Request not found or already resolved.']); }
+
+    $upd = $db->prepare("
+        UPDATE document_delete_requests
+        SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW(), admin_note = ?
+        WHERE id = ?
+    ");
+    $upd->bind_param("isi", $reviewer, $admin_note, $request_id);
+    $upd->execute();
+
+    // Notify requester
+    $doc_label = $req['document_number'] . ' — ' . $req['document_name'];
+    $notif_msg = "Your delete request for document \"{$doc_label}\" has been REJECTED." .
+                 ($admin_note ? " Admin note: {$admin_note}" : '');
+    $type = 'delete_rejected';
+    $ns = $db->prepare("
+        INSERT INTO document_notifications (recipient_emp_id, type, reference_id, message, is_read, created_at)
+        VALUES (?, ?, ?, ?, 0, NOW())
+    ");
+    $requester_emp = (int)$req['requested_by'];
+    $ns->bind_param("isis", $requester_emp, $type, $request_id, $notif_msg);
+    $ns->execute();
+
+    json_out(['success' => true, 'message' => 'Delete request rejected and requester notified.']);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GET DELETE REQUESTS  (Masteradmin: list all pending)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'get_delete_requests') {
+    $reviewer  = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    $admin_ids = getMasteradminIds($db);
+    if (!in_array($reviewer, $admin_ids)) {
+        json_out(['success' => false, 'message' => 'Unauthorised.']);
+    }
+
+    $filter = trim($_GET['filter'] ?? 'pending');
+    if (!in_array($filter, ['pending','approved','rejected','all'])) { $filter = 'pending'; }
+    $where = $filter === 'all' ? '' : "WHERE ddr.status = '{$filter}'";
+
+    $rows = $db->query("
+        SELECT ddr.id, ddr.document_id, ddr.reason, ddr.status, ddr.created_at,
+               ddr.admin_note, ddr.reviewed_at,
+               dr.document_number, dr.document_name, dr.kind,
+               CONCAT(TRIM(e_req.first_name),' ',TRIM(e_req.last_name)) AS requester_name,
+               CONCAT(TRIM(e_rev.first_name),' ',TRIM(e_rev.last_name)) AS reviewer_name
+        FROM document_delete_requests ddr
+        JOIN document_records dr   ON ddr.document_id  = dr.id
+        JOIN employee e_req        ON ddr.requested_by = e_req.emp_id
+        LEFT JOIN employee e_rev   ON ddr.reviewed_by  = e_rev.emp_id
+        {$where}
+        ORDER BY ddr.created_at DESC
+        LIMIT 200
+    ")->fetch_all(MYSQLI_ASSOC);
+
+    json_out(['success' => true, 'requests' => $rows]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GET USER NOTIFICATIONS  (current user's unread + recent)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'get_delete_notifications') {
+    $emp_id = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    if (!$emp_id) { json_out(['success' => false, 'message' => 'Not authenticated.']); }
+
+    $rows = $db->prepare("
+        SELECT id, type, reference_id, message, is_read, created_at
+        FROM document_notifications
+        WHERE recipient_emp_id = ?
+        ORDER BY created_at DESC
+        LIMIT 50
+    ");
+    $rows->bind_param("i", $emp_id);
+    $rows->execute();
+    $notifications = $rows->get_result()->fetch_all(MYSQLI_ASSOC);
+    $unread = count(array_filter($notifications, fn($n) => !$n['is_read']));
+
+    json_out(['success' => true, 'notifications' => $notifications, 'unread' => $unread]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK NOTIFICATIONS READ
+// ─────────────────────────────────────────────────────────────
+if ($action === 'mark_notifications_read') {
+    $emp_id = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    if (!$emp_id) { json_out(['success' => false, 'message' => 'Not authenticated.']); }
+    $db->prepare("UPDATE document_notifications SET is_read = 1 WHERE recipient_emp_id = ? AND is_read = 0")
+       ->bind_param("i", $emp_id);
+    // Re-prepare properly
+    $ms = $db->prepare("UPDATE document_notifications SET is_read = 1 WHERE recipient_emp_id = ?");
+    $ms->bind_param("i", $emp_id);
+    $ms->execute();
+    json_out(['success' => true]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// CHECK DELETE REQUEST STATUS  (requester polls their own request)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'check_delete_request') {
+    $doc_id = (int)($_GET['doc_id'] ?? 0);
+    $emp_id = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    if (!$doc_id || !$emp_id) { json_out(['success' => false, 'message' => 'Invalid params.']); }
+
+    $st = $db->prepare("
+        SELECT status FROM document_delete_requests
+        WHERE document_id = ? AND requested_by = ?
+        ORDER BY created_at DESC LIMIT 1
+    ");
+    $st->bind_param("ii", $doc_id, $emp_id);
+    $st->execute();
+    $row = $st->get_result()->fetch_assoc();
+
+    json_out(['success' => true, 'status' => $row['status'] ?? null]);
+}
+
+json_out(['success' => false, 'message' => 'Unknown action.']);
