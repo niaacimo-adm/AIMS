@@ -48,7 +48,7 @@ if ($employee_id) {
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
       <span class="brand-text font-weight-light"><b>NIA-ACIMO</b> </span>
     </a>
-    <div class="sidebar" style="background-color: #2c3e50 !important;">
+    <div class="sidebar" style="background-color: var(--sidebar-bg) !important;">
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
@@ -72,37 +72,37 @@ if ($employee_id) {
 
          
           <li class="nav-item">
-            <a href="scrum_dashboard.php" class="nav-link <?= $current_page == 'scrum_dashboard.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="scrum_dashboard.php" class="nav-link <?= $current_page == 'scrum_dashboard.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>Dashboard</p>
             </a>
           </li>
           <li class="nav-item">
-            <a href="scrum_project.php" class="nav-link <?= $current_page == 'scrum_project.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="scrum_project.php" class="nav-link <?= $current_page == 'scrum_project.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-project-diagram"></i>
               <span>Projects Monitoring</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="scrum_team.php" class="nav-link <?= $current_page == 'scrum_team.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="scrum_team.php" class="nav-link <?= $current_page == 'scrum_team.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-project-diagram"></i>
               <span>Teams</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="my_scrum_project.php" class="nav-link <?= $current_page == 'my_scrum_project.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="my_scrum_project.php" class="nav-link <?= $current_page == 'my_scrum_project.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-project-diagram"></i>
               <span>My Projects</span>
             </a>
           </li>
           <li class="nav-item">
-            <a href="my_scrum_task.php" class="nav-link <?= $current_page == 'my_scrum_task.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="my_scrum_task.php" class="nav-link <?= $current_page == 'my_scrum_task.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-tasks"></i>
               <span>My Tasks</span>
             </a>
           </li>
           <li class="nav-item"> 
-            <a href="scrum_calendar.php" class="nav-link <?= $current_page == 'scrum_calendar.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="scrum_calendar.php" class="nav-link <?= $current_page == 'scrum_calendar.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-calendar-alt"></i>
               <span>Calendar</span>
             </a>

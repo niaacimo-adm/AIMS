@@ -392,68 +392,146 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
     <title>HR Leave Monitoring | NIA-ACIMO</title>
     <?php include '../includes/header.php'; ?>
     <style>
-        /* ══ TOKENS ══ */
+        /* ══ TOKENS — green forest theme (aligned with mainheader & login) ══ */
         :root {
-            --h-bg:       #f0f4ff;
+            --h-bg:       #eef7f2;
             --h-card:     #ffffff;
-            --h-card-alt: #f8faff;
-            --h-border:   #e2e8f0;
-            --h-text:     #1e293b;
-            --h-muted:    #64748b;
-            --h-primary:  #3b5bdb;
-            --h-accent:   #228be6;
-            --h-success:  #099268;
+            --h-card-alt: #f0faf5;
+            --h-border:   rgba(42,152,99,0.18);
+            --h-text:     #0f2d1e;
+            --h-muted:    #4a7a5e;
+            --h-primary:  #2a9863;
+            --h-accent:   #24e78f;
+            --h-success:  #2a9863;
             --h-warning:  #e67700;
             --h-danger:   #c92a2a;
-            --h-shadow:   0 4px 24px rgba(59,91,219,.10);
-            --h-shadow-sm:0 2px 8px rgba(59,91,219,.06);
-            --cal-sel:    #3b5bdb;
+            --h-shadow:   0 4px 24px rgba(42,152,99,.12);
+            --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
+            --cal-sel:    #2a9863;
             --cal-sel-t:  #ffffff;
-            --cal-hover:  #dbe4ff;
-            --cal-today:  #e8f0fe;
-            --cal-head:   #f8faff;
+            --cal-hover:  #d4f5e5;
+            --cal-today:  #e6f7ef;
+            --cal-head:   #f0faf5;
         }
         body.dark-mode {
-            --h-bg:       #0f1117;
-            --h-card:     #1a1d2e;
-            --h-card-alt: #151827;
-            --h-border:   #2a2d3e;
-            --h-text:     #e2e8f0;
-            --h-muted:    #8892a4;
-            --h-primary:  #4c6ef5;
-            --h-accent:   #339af0;
-            --h-success:  #20c997;
+            --h-bg:       #0b1f17;
+            --h-card:     #102f22;
+            --h-card-alt: #0e2619;
+            --h-border:   rgba(36,231,143,0.12);
+            --h-text:     #d4f5e5;
+            --h-muted:    #6aad8a;
+            --h-primary:  #24e78f;
+            --h-accent:   #2a9863;
+            --h-success:  #24e78f;
             --h-warning:  #ffd43b;
             --h-danger:   #ff6b6b;
             --h-shadow:   0 4px 24px rgba(0,0,0,.35);
             --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
-            --cal-sel:    #4c6ef5;
-            --cal-sel-t:  #ffffff;
-            --cal-hover:  #1e2a5e;
-            --cal-today:  #22253a;
-            --cal-head:   #151827;
+            --cal-sel:    #24e78f;
+            --cal-sel-t:  #091d14;
+            --cal-hover:  #122b1d;
+            --cal-today:  #163523;
+            --cal-head:   #0e2619;
         }
 
         /* ══ LAYOUT ══ */
         .hr-page { background:var(--h-bg); min-height:calc(100vh - 57px); padding-bottom:48px; }
 
-        /* Hero */
+        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
+
+        /* Mesh background — mirrors login body::before */
+        @keyframes hrMeshDrift {
+            0%   { transform:translate(0,0)   rotate(0deg); }
+            100% { transform:translate(3%,2%) rotate(2deg); }
+        }
+        @keyframes hrOrbFloat {
+            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+        }
+        @keyframes hrRingPulse {
+            0%,100% { opacity:.45; transform:scale(1);    }
+            50%      { opacity:.85; transform:scale(1.04); }
+        }
+
         .hr-hero {
-            background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 50%,#3b5bdb 100%);
-            padding:32px 28px 62px; position:relative; overflow:hidden;
+            background:#0b1f17;
+            padding:36px 28px 66px; position:relative; overflow:hidden;
         }
-        .hr-hero::before {
-            content:''; position:absolute; inset:0;
-            background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+
+        /* Animated mesh gradient overlay */
+        .hr-hero-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:hrMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0;
         }
+
+        /* Floating orbs */
+        .hr-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .hr-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:hrOrbFloat 18s ease-in-out infinite; }
+        .hr-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;   left:-60px;  animation-duration:21s; }
+        .hr-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px;right:-40px; animation-delay:-7s; animation-duration:17s; }
+        .hr-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;     right:20%;   animation-delay:-13s; animation-duration:24s; }
+        .hr-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;  left:15%;    animation-delay:-4s;  animation-duration:15s; }
+
+        /* Dot grid */
+        .hr-hero-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
+        }
+
+        /* Hex pattern overlay — same as login left panel */
+        .hr-hero-hex {
+            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+            background-size:56px 100px;
+        }
+
+        /* Pulsing rings */
+        .hr-hero-rings {
+            position:absolute; top:50%; right:6%;
+            transform:translateY(-50%);
+            width:260px; height:260px; pointer-events:none; z-index:0;
+        }
+        .hr-ring {
+            position:absolute; inset:0; border-radius:50%;
+            border:1px solid rgba(36,231,143,.10);
+            animation:hrRingPulse 4s ease-in-out infinite;
+        }
+        .hr-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
+        .hr-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
+
+        /* Arc glow (top-right corner accent) */
+        .hr-hero-arc {
+            position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+
+        /* Bottom wave transition into content */
         .hr-hero::after {
             content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
-            background:var(--h-bg); clip-path:ellipse(58% 100% at 50% 100%);
+            background:var(--h-bg); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
         }
+
         .hr-hero-inner { position:relative; z-index:2; }
-        .hr-hero h1 { color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px; letter-spacing:-.3px; }
+        .hr-hero h1 { color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px; letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45); }
         .hr-hero p  { color:rgba(255,255,255,.7); margin:0 0 14px; font-size:.9rem; }
         .hr-hero-actions { position:relative; z-index:2; display:flex; align-items:flex-start; gap:10px; }
+
+        /* Green divider line under title — from login .divider */
+        .hr-hero-divider {
+            width:48px; height:2px; border-radius:2px; margin:0 0 14px;
+            background:linear-gradient(90deg,transparent,#24e78f,transparent);
+        }
+
         .role-chip {
             display:inline-flex; align-items:center; gap:6px;
             border-radius:20px; padding:5px 14px;
@@ -461,21 +539,26 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         }
         .rc-admin    { background:rgba(239,68,68,.25);  border:1px solid rgba(239,68,68,.45);  color:#fca5a5; }
         .rc-manager  { background:rgba(59,130,246,.25); border:1px solid rgba(59,130,246,.45); color:#93c5fd; }
-        .rc-approver { background:rgba(16,185,129,.25); border:1px solid rgba(16,185,129,.45); color:#6ee7b7; }
+        .rc-approver { background:rgba(36,231,143,.2);  border:1px solid rgba(36,231,143,.4);  color:#b8f0d4; }
 
-        /* Apply leave hero button */
+        /* Apply leave hero button — mirrors login panel-badge */
         .btn-apply-leave-hero {
-            background:rgba(255,255,255,.15); backdrop-filter:blur(6px);
-            border:1px solid rgba(255,255,255,.3); color:#fff;
+            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
+            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
             border-radius:10px; padding:9px 18px;
             font-size:.85rem; font-weight:700; cursor:pointer;
             display:inline-flex; align-items:center; gap:7px;
-            transition:background .18s, transform .18s;
+            transition:background .2s, transform .18s, box-shadow .2s;
         }
-        .btn-apply-leave-hero:hover { background:rgba(255,255,255,.25); transform:translateY(-2px); }
+        .btn-apply-leave-hero:hover {
+            background:rgba(36,231,143,.22);
+            border-color:rgba(36,231,143,.55);
+            transform:translateY(-2px);
+            box-shadow:0 4px 16px rgba(36,231,143,.2);
+        }
 
         /* Content */
-        .hr-content { padding:0 20px; margin-top:-28px; position:relative; z-index:3; }
+        .hr-content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
 
         /* Stat cards */
         .stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:22px; }
@@ -493,7 +576,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
             display:flex; align-items:center; justify-content:center;
             font-size:18px; color:#fff; flex-shrink:0;
         }
-        .si-tot  { background:linear-gradient(135deg,#3b5bdb,#228be6); }
+        .si-tot  { background:linear-gradient(135deg,#2a9863,#24e78f); }
         .si-pend { background:linear-gradient(135deg,#e67700,#f59f00); }
         .si-appr { background:linear-gradient(135deg,#099268,#20c997); }
         .si-rejt { background:linear-gradient(135deg,#c92a2a,#e03131); }
@@ -516,7 +599,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         .h-card-head-left { display:flex; align-items:center; gap:12px; }
         .h-card-ico {
             width:36px; height:36px; border-radius:9px;
-            background:linear-gradient(135deg,#3b5bdb,#228be6);
+            background:linear-gradient(135deg,#2a9863,#24e78f);
             display:flex; align-items:center; justify-content:center;
             color:#fff; font-size:14px; flex-shrink:0;
         }
@@ -545,15 +628,15 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
             border-radius:8px; padding:8px 12px; font-size:.85rem; color:var(--h-text);
             transition:border-color .18s, box-shadow .18s; box-sizing:border-box;
         }
-        .h-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px rgba(59,91,219,.13); }
+        .h-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px rgba(42,152,99,.13); }
         .btn-filter {
-            background:linear-gradient(135deg,#3b5bdb,#228be6); color:#fff;
+            background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff;
             border:none; border-radius:8px; padding:9px 18px;
             font-size:.85rem; font-weight:700; cursor:pointer;
             display:inline-flex; align-items:center; gap:6px;
             transition:transform .15s, box-shadow .15s;
         }
-        .btn-filter:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(59,91,219,.35); }
+        .btn-filter:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(42,152,99,.35); }
         .btn-reset {
             background:var(--h-card); color:var(--h-muted);
             border:1.5px solid var(--h-border); border-radius:8px;
@@ -590,7 +673,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         .emp-cell { display:flex; align-items:center; gap:10px; }
         .emp-av {
             width:36px; height:36px; border-radius:50%;
-            background:linear-gradient(135deg,#3b5bdb,#228be6);
+            background:linear-gradient(135deg,#2a9863,#24e78f);
             display:flex; align-items:center; justify-content:center;
             color:#fff; font-weight:700; font-size:12px; flex-shrink:0; overflow:hidden;
         }
@@ -612,7 +695,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         .days-pill {
             display:inline-flex; align-items:center; justify-content:center;
             min-width:30px; height:26px; border-radius:20px;
-            background:linear-gradient(135deg,#3b5bdb,#228be6);
+            background:linear-gradient(135deg,#2a9863,#24e78f);
             color:#fff; font-weight:800; font-size:.74rem; padding:0 8px;
         }
         .action-btns { display:flex; gap:5px; align-items:center; }
@@ -621,13 +704,13 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
             cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
             font-size:12px; transition:all .15s;
         }
-        .ba-view   { background:#eff6ff; color:#3b82f6; }
-        .ba-view:hover   { background:#3b82f6; color:#fff; }
-        .ba-appr   { background:#d1fae5; color:#059669; }
-        .ba-appr:hover   { background:#059669; color:#fff; }
+        .ba-view   { background:#e6f7ef; color:#2a9863; }
+        .ba-view:hover   { background:#2a9863; color:#fff; }
+        .ba-appr   { background:#e6f7ef; color:#2a9863; }
+        .ba-appr:hover   { background:#2a9863; color:#fff; }
         .ba-rejt   { background:#fee2e2; color:#dc2626; }
         .ba-rejt:hover   { background:#dc2626; color:#fff; }
-        .ba-form   { background:linear-gradient(135deg,#3b5bdb,#228be6); color:#fff; text-decoration:none; }
+        .ba-form   { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; text-decoration:none; }
         .ba-form:hover   { opacity:.82; color:#fff; }
         .ba-del    { background:#fff0f0; color:#9b1c1c; border: 1.5px solid #fca5a5; }
         .ba-del:hover    { background:#9b1c1c; color:#fff; border-color:#9b1c1c; }
@@ -639,7 +722,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
 
         /* access indicator */
         .acc-ind { display:inline-flex; align-items:center; gap:5px; font-size:.72rem; font-weight:600; border-radius:6px; padding:3px 9px; }
-        .ai-full { background:#d1fae5; color:#065f46; }
+        .ai-full { background:#e6f7ef; color:#1c4d38; }
         .ai-view { background:#fff8e1; color:#92400e; }
         body.dark-mode .ai-full { background:#0d3d2c; color:#63e6be; }
         body.dark-mode .ai-view { background:#3d2e00; color:#ffd43b; }
@@ -647,7 +730,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         /* ══ MODALS ══ */
         .hm-modal .modal-content { border-radius:14px; border:none; overflow:hidden; background:var(--h-card); }
         .hm-modal .modal-header {
-            background:linear-gradient(135deg,#0f172a,#3b5bdb);
+            background:linear-gradient(135deg,#0f2d1e,#2a9863);
             color:#fff; border:none; padding:18px 24px;
         }
         .hm-modal .modal-header .close { color:#fff; opacity:.7; }
@@ -683,7 +766,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
             border-radius:8px; padding:9px 13px; font-size:.88rem; color:var(--h-text);
             transition:border-color .18s,box-shadow .18s; box-sizing:border-box;
         }
-        .al-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px rgba(59,91,219,.13); }
+        .al-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px rgba(42,152,99,.13); }
         .al-ctrl select { appearance:none; }
         .al-fg { margin-bottom:14px; }
 
@@ -740,15 +823,15 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         .al-tags { min-height:36px; padding:5px 8px 8px; display:flex; flex-wrap:wrap; gap:5px; border-top:1px solid var(--h-border); }
         .al-tag {
             display:inline-flex; align-items:center; gap:4px;
-            background:#dbe4ff; color:#2f4ac0;
+            background:#d4f5e5; color:#1c4d38;
             border-radius:20px; padding:2px 8px 2px 10px;
             font-size:.73rem; font-weight:700; animation:tagIn .15s ease;
         }
         @keyframes tagIn{ from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
-        body.dark-mode .al-tag { background:#1e2a5e; color:#91a7ff; }
+        body.dark-mode .al-tag { background:#122b1d; color:#24e78f; }
         .al-tag-rm {
             background:none; border:none; cursor:pointer;
-            color:#2f4ac0; opacity:.55; font-size:11px;
+            color:#2a9863; opacity:.55; font-size:11px;
             padding:0; line-height:1; display:flex; align-items:center;
             transition:opacity .15s;
         }
@@ -760,24 +843,31 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
             padding:4px 8px 8px; font-size:.78rem; color:var(--h-muted);
         }
         .al-pill {
-            background:linear-gradient(135deg,#3b5bdb,#228be6);
+            background:linear-gradient(135deg,#2a9863,#24e78f);
             color:#fff; border-radius:20px; padding:1px 9px;
             font-weight:700; font-size:.75rem;
         }
 
         /* Submit btn in modal */
         .btn-submit-al {
-            background:linear-gradient(135deg,#3b5bdb,#228be6);
+            background:linear-gradient(135deg,#2a9863,#24e78f);
             color:#fff; border:none; border-radius:9px;
             padding:11px 24px; font-size:.9rem; font-weight:700; cursor:pointer;
             display:inline-flex; align-items:center; gap:7px;
             transition:transform .15s,box-shadow .15s;
         }
-        .btn-submit-al:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(59,91,219,.4); }
+        .btn-submit-al:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(42,152,99,.4); }
 
         @media(max-width:768px){
             .hr-hero{ padding:24px 16px 50px; }
             .hr-content{ padding:0 12px; }
+        }
+
+        .mh-logo-watermark {
+            position:absolute; top:50%; right:3%;
+            transform:translateY(-50%);
+            width:180px; height:auto; pointer-events:none; z-index:0;
+            opacity:0.50;
         }
     </style>
 </head>
@@ -791,21 +881,29 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
 
         <!-- Hero -->
         <div class="hr-hero">
+            <!-- Login-style background layers -->
+            <div class="hr-hero-mesh"></div>
+            <div class="hr-hero-dots"></div>
+            <div class="hr-hero-hex"></div>
+            <div class="hr-hero-orbs">
+                <div class="hr-orb hr-orb-1"></div>
+                <div class="hr-orb hr-orb-2"></div>
+                <div class="hr-orb hr-orb-3"></div>
+                <div class="hr-orb hr-orb-4"></div>
+            </div>
+            <div class="hr-hero-rings">
+                <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+            </div>
+            <div class="hr-hero-arc"></div>
+
             <div class="d-flex align-items-start justify-content-between flex-wrap" style="gap:14px;position:relative;z-index:2;">
                 <div class="hr-hero-inner">
                     <h1><i class="fas fa-clipboard-list mr-2" style="opacity:.85"></i>HR Leave Monitoring</h1>
+                    <div class="hr-hero-divider"></div>
                     <p>Review, manage &amp; file employee leave requests &mdash; Job Order excluded</p>
-                    <?php
-                    if ($user_role_id===1)
-                        echo '<span class="role-chip rc-admin"><i class="fas fa-shield-alt"></i> Administrator — Full Access</span>';
-                    elseif ($user_role_id===2)
-                        echo '<span class="role-chip rc-manager"><i class="fas fa-eye"></i> Manager — View Only</span>';
-                    else
-                        echo '<span class="role-chip rc-approver"><i class="fas fa-check-circle"></i> '.htmlspecialchars($current_role_label).' — Can Approve</span>';
-                    ?>
                 </div>
                 <div class="hr-hero-actions">
-                    <span style="color:rgba(255,255,255,.65);font-size:.82rem;align-self:center;">
+                    <span style="color:rgba(212,245,229,.65);font-size:.82rem;align-self:center;">
                         <i class="fas fa-calendar mr-1"></i><?= date('F d, Y') ?>
                     </span>
                     <a href="leave_balance.php" class="btn-apply-leave-hero" style="text-decoration:none;">
@@ -920,7 +1018,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                             $init='';
                             foreach(explode(' ',$req['emp_name']) as $p) if($p) $init.=strtoupper(substr($p,0,1));
                             $init=substr($init,0,2);
-                            $apptColor=$req['appt_color']??'#64748b';
+                            $apptColor=$req['appt_color']??'#4a7a5e';
                             $s=strtolower($req['status']??'pending');
                             $bc=$s==='approved'?'hb-appr':($s==='rejected'||$s==='disapproved'?'hb-rejt':($s==='cancelled'?'hb-canc':'hb-pend'));
                         ?>
@@ -1003,7 +1101,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                     <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body" id="detailModalBody">
-                    <div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#3b5bdb;"></i></div>
+                    <div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#2a9863;"></i></div>
                 </div>
                 <div class="modal-footer" id="detailModalFooter" style="display:none;"></div>
             </div>
@@ -1021,7 +1119,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                 </div>
                 <div class="modal-body">
                     <div id="alEmpLoading" class="text-center py-3" style="display:none">
-                        <i class="fas fa-spinner fa-spin fa-2x" style="color:#3b5bdb;"></i>
+                        <i class="fas fa-spinner fa-spin fa-2x" style="color:#2a9863;"></i>
                         <p style="margin-top:10px;color:var(--h-muted);">Loading employees…</p>
                     </div>
                     <div id="alFormContent">
@@ -1258,7 +1356,7 @@ $(document).ready(function(){
     /* ── View Detail ── */
     $(document).on('click','.btn-view-detail',function(){
         var id=$(this).data('id');
-        $('#detailModalBody').html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#3b5bdb;"></i></div>');
+        $('#detailModalBody').html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#2a9863;"></i></div>');
         $('#detailModalFooter').hide().html('');
         $('#detailModal').modal('show');
 
@@ -1272,7 +1370,7 @@ $(document).ready(function(){
                 '<div class="detail-item"><label>ID Number</label><span>'+(d.id_number||'N/A')+'</span></div>'+
                 '<div class="detail-item"><label>Section</label><span>'+(d.section_name||'N/A')+'</span></div>'+
                 '<div class="detail-item"><label>Position</label><span>'+(d.position_name||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Appointment</label><span class="appt-badge" style="background:'+(d.color||'#64748b')+'">'+(d.appointment_status||'N/A')+'</span></div>'+
+                '<div class="detail-item"><label>Appointment</label><span class="appt-badge" style="background:'+(d.color||'#4a7a5e')+'">'+(d.appointment_status||'N/A')+'</span></div>'+
                 '<div class="detail-item"><label>Leave Type</label><span>'+(d.leave_type_name||'N/A')+'</span></div>'+
                 '<div class="detail-item"><label>Date From</label><span>'+(d.date_from||'')+'</span></div>'+
                 '<div class="detail-item"><label>Date To</label><span>'+(d.date_to||'')+'</span></div>'+
@@ -1320,10 +1418,10 @@ $(document).ready(function(){
         Swal.fire({
             title:'Approve Leave Request?',
             html:'<p style="margin-bottom:10px;font-size:.9rem">Employee: <strong>'+name+'</strong></p>'+
-                 '<label style="display:block;text-align:left;font-size:.72rem;font-weight:700;color:#64748b;margin-bottom:4px;text-transform:uppercase;">HR REMARKS (optional)</label>'+
+                 '<label style="display:block;text-align:left;font-size:.72rem;font-weight:700;color:#4a7a5e;margin-bottom:4px;text-transform:uppercase;">HR REMARKS (optional)</label>'+
                  '<textarea id="swal-remarks" class="swal2-textarea" placeholder="Add remarks…" style="font-size:.87rem;border-radius:8px;width:100%;"></textarea>',
             icon:'question',showCancelButton:true,
-            confirmButtonColor:'#099268',cancelButtonColor:'#64748b',
+            confirmButtonColor:'#2a9863',cancelButtonColor:'#4a7a5e',
             confirmButtonText:'<i class="fas fa-check"></i>&nbsp;Approve',cancelButtonText:'Cancel',
             preConfirm:()=>document.getElementById('swal-remarks').value||''
         }).then(function(r){
@@ -1334,11 +1432,11 @@ $(document).ready(function(){
                         icon:'success',
                         title:'Approved!',
                         text:'Leave request approved.',
-                        confirmButtonColor:'#099268',
+                        confirmButtonColor:'#2a9863',
                         confirmButtonText:'<i class="fas fa-file-download"></i>&nbsp;Generate Form',
                         showDenyButton:true,
                         denyButtonText:'Close',
-                        denyButtonColor:'#64748b'
+                        denyButtonColor:'#4a7a5e'
                     }).then(function(sr){
                         if(sr.isConfirmed) window.open('generate_leave_form.php?leave_request_id='+id+'&hr=1','_blank');
                         location.reload();
@@ -1356,16 +1454,16 @@ $(document).ready(function(){
         Swal.fire({
             title:'Reject Leave Request?',
             html:'<p style="margin-bottom:10px;font-size:.9rem">Employee: <strong>'+name+'</strong></p>'+
-                 '<label style="display:block;text-align:left;font-size:.72rem;font-weight:700;color:#64748b;margin-bottom:4px;text-transform:uppercase;">REASON FOR REJECTION <span style="color:#c92a2a">*</span></label>'+
+                 '<label style="display:block;text-align:left;font-size:.72rem;font-weight:700;color:#4a7a5e;margin-bottom:4px;text-transform:uppercase;">REASON FOR REJECTION <span style="color:#c92a2a">*</span></label>'+
                  '<textarea id="swal-remarks" class="swal2-textarea" placeholder="State the reason…" style="font-size:.87rem;border-radius:8px;width:100%;"></textarea>',
             icon:'warning',showCancelButton:true,
-            confirmButtonColor:'#c92a2a',cancelButtonColor:'#64748b',
+            confirmButtonColor:'#c92a2a',cancelButtonColor:'#4a7a5e',
             confirmButtonText:'<i class="fas fa-times"></i>&nbsp;Reject',cancelButtonText:'Cancel',
             preConfirm:()=>{ var v=document.getElementById('swal-remarks').value.trim(); if(!v){Swal.showValidationMessage('Please provide a reason.');return false;} return v; }
         }).then(function(r){
             if(!r.isConfirmed) return;
             $.post('hr_leave_monitoring.php',{ajax:1,action:'reject',leave_request_id:id,hr_remarks:r.value},function(res){
-                if(res.success){Swal.fire({icon:'success',title:'Rejected',text:'Leave request rejected.',confirmButtonColor:'#3b5bdb'}).then(()=>location.reload());}
+                if(res.success){Swal.fire({icon:'success',title:'Rejected',text:'Leave request rejected.',confirmButtonColor:'#2a9863'}).then(()=>location.reload());}
                 else Swal.fire({icon:'error',title:'Error',text:res.message||'Could not reject.',confirmButtonColor:'#c92a2a'});
             },'json');
         });
@@ -1381,7 +1479,7 @@ $(document).ready(function(){
             icon:'warning',
             showCancelButton:true,
             confirmButtonColor:'#9b1c1c',
-            cancelButtonColor:'#64748b',
+            cancelButtonColor:'#4a7a5e',
             confirmButtonText:'<i class="fas fa-trash-alt"></i>&nbsp;Yes, Delete It',
             cancelButtonText:'Keep It'
         }).then(function(r){
@@ -1393,7 +1491,7 @@ $(document).ready(function(){
                     } else {
                         $row.fadeOut(300,function(){ $(this).remove(); });
                     }
-                    Swal.fire({icon:'success',title:'Deleted',text:'Record permanently deleted.',confirmButtonColor:'#3b5bdb',timer:2000,showConfirmButton:false});
+                    Swal.fire({icon:'success',title:'Deleted',text:'Record permanently deleted.',confirmButtonColor:'#2a9863',timer:2000,showConfirmButton:false});
                 } else {
                     Swal.fire({icon:'error',title:'Error',text:res.message||'Could not delete.',confirmButtonColor:'#c92a2a'});
                 }
@@ -1457,10 +1555,10 @@ $(document).ready(function(){
         var reason    = $('#alReason').val().trim();
         var keys      = alCal.getKeys();
 
-        if(!empId){    Swal.fire({icon:'warning',title:'Select Employee',   text:'Please select an employee.',       confirmButtonColor:'#3b5bdb'}); return; }
-        if(!leaveType){Swal.fire({icon:'warning',title:'Select Leave Type', text:'Please choose a leave type.',      confirmButtonColor:'#3b5bdb'}); return; }
-        if(keys.length===0){ Swal.fire({icon:'warning',title:'No Dates',   text:'Please select at least one date.', confirmButtonColor:'#3b5bdb'}); return; }
-        if(!reason){   Swal.fire({icon:'warning',title:'Reason Required',  text:'Please provide a reason.',         confirmButtonColor:'#3b5bdb'}); return; }
+        if(!empId){    Swal.fire({icon:'warning',title:'Select Employee',   text:'Please select an employee.',       confirmButtonColor:'#2a9863'}); return; }
+        if(!leaveType){Swal.fire({icon:'warning',title:'Select Leave Type', text:'Please choose a leave type.',      confirmButtonColor:'#2a9863'}); return; }
+        if(keys.length===0){ Swal.fire({icon:'warning',title:'No Dates',   text:'Please select at least one date.', confirmButtonColor:'#2a9863'}); return; }
+        if(!reason){   Swal.fire({icon:'warning',title:'Reason Required',  text:'Please provide a reason.',         confirmButtonColor:'#2a9863'}); return; }
 
         // Show loading
         Swal.fire({
@@ -1492,7 +1590,7 @@ $(document).ready(function(){
             var dHtml   = sorted.map(function(k){
                 var dt=new Date(k+'T00:00:00');
                 var l=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-                return '<span style="display:inline-block;background:#dbe4ff;color:#2f4ac0;border-radius:12px;padding:2px 10px;margin:2px;font-size:.76rem;font-weight:700">'+l+'</span>';
+                return '<span style="display:inline-block;background:#d4f5e5;color:#1c4d38;border-radius:12px;padding:2px 10px;margin:2px;font-size:.76rem;font-weight:700">'+l+'</span>';
             }).join('');
 
             Swal.fire({
@@ -1504,7 +1602,7 @@ $(document).ready(function(){
                      '<p><strong>Available Balance:</strong> '+resp.available.toFixed(3)+' day(s)</p>'+
                      '<p style="margin-top:8px"><strong>Reason:</strong> '+reason+'</p></div>',
                 icon:'question',showCancelButton:true,
-                confirmButtonColor:'#3b5bdb',cancelButtonColor:'#64748b',
+                confirmButtonColor:'#2a9863',cancelButtonColor:'#4a7a5e',
                 confirmButtonText:'<i class="fas fa-paper-plane"></i> Submit',
                 cancelButtonText:'Review Again'
             }).then(function(r){
@@ -1522,7 +1620,7 @@ $(document).ready(function(){
                     $('#btnSubmitApplyLeave').prop('disabled',false).html('<i class="fas fa-paper-plane"></i> Submit Leave Request');
                     if(res.success){
                         $('#applyLeaveModal').modal('hide');
-                        Swal.fire({icon:'success',title:'Leave Applied!',text:'Leave request has been filed successfully.',confirmButtonColor:'#3b5bdb'}).then(()=>location.reload());
+                        Swal.fire({icon:'success',title:'Leave Applied!',text:'Leave request has been filed successfully.',confirmButtonColor:'#2a9863'}).then(()=>location.reload());
                     } else {
                         Swal.fire({icon:'error',title:'Error',text:res.message||'Could not submit.',confirmButtonColor:'#c92a2a'});
                     }

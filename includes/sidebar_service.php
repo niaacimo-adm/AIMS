@@ -50,7 +50,7 @@ if ($employee_id) {
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar" style="background-color: #2c3e50 !important;">
+    <div class="sidebar" style="background-color: var(--sidebar-bg) !important;">
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
@@ -72,32 +72,32 @@ if ($employee_id) {
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
           <li class="nav-item">
-            <a href="service.php" class="nav-link <?= $current_page == 'service.php' ? 'active bg-warning' : 'text-white' ?>">
+            <a href="service.php" class="nav-link <?= $current_page == 'service.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>Dashboard</p>
             </a>
           </li>
 
         <li class="nav-item">
-            <a href="service_calendar.php" class="nav-link <?= $current_page == 'service_calendar.php' ? 'active bg-warning' : 'text-white' ?>">
+            <a href="service_calendar.php" class="nav-link <?= $current_page == 'service_calendar.php' ? 'active' : 'text-white' ?>">
                 <i class="nav-icon fas fa-calendar-alt"></i>
                 <p>Service Calendar</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_vehicle.php" class="nav-link <?= $current_page == 'service_vehicle.php' ? 'active bg-warning' : 'text-white' ?>">
+            <a href="service_vehicle.php" class="nav-link <?= $current_page == 'service_vehicle.php' ? 'active' : 'text-white' ?>">
                 <i class="nav-icon fas fa-truck"></i>
                 <p>Service Information</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_driver.php" class="nav-link <?= $current_page == 'service_driver.php' ? 'active bg-warning' : 'text-white' ?>">
+            <a href="service_driver.php" class="nav-link <?= $current_page == 'service_driver.php' ? 'active' : 'text-white' ?>">
                 <i class="nav-icon fas fa-id-card"></i>
                 <p>Operator/Driver</p>
             </a>
         </li>
         <li class="nav-item">
-            <a href="service_request.php" class="nav-link <?= $current_page == 'service_request.php' ? 'active bg-warning' : 'text-white' ?>">
+            <a href="service_request.php" class="nav-link <?= $current_page == 'service_request.php' ? 'active' : 'text-white' ?>">
                 <i class="nav-icon fas fa-file-alt"></i>
                 <p>Transportation Request</p>
             </a>
@@ -132,7 +132,7 @@ body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--tabl
 body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
 body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
 body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
+body.dark-mode .form-control:focus { border-color: #24e78f !important; box-shadow: 0 0 0 0.2rem rgba(36,231,143,.20) !important; }
 body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
 body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
 body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
@@ -173,7 +173,7 @@ body.dark-mode .select2-results__option--highlighted { background: var(--sidebar
 body.dark-mode .sidebar { background-color: var(--sidebar-bg) !important; }
 body.dark-mode aside.main-sidebar { background-color: var(--sidebar-bg) !important; }
 .brand-link.bg-gradient-primary {
-    background:  #007bff !important;
+    background: #1a5c38 !important;
 }
 </style>
 <script>

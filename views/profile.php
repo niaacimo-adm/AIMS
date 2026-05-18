@@ -497,16 +497,20 @@ if ($row['is_manager_staff'] > 0) {
   <?php include '../includes/header.php'; ?>
   <style>
 
-    /* ── Theme Token Generation ── */
+    /* ── Login Green Theme Tokens ── */
     <?php
-    $theme_colors = [
-      'admin'     => ['primary'=>'linear-gradient(135deg,#1a56db,#1e3a8a)','solid'=>'#1a56db','solid_dark'=>'#1e3a8a','sidebar'=>'#1e3a8a','header'=>'linear-gradient(135deg,#1a56db 0%,#1e3a8a 100%)','button'=>'linear-gradient(135deg,#1a56db,#1e3a8a)','accent'=>'#1a56db','light'=>'#eff6ff','text_on'=>'#ffffff'],
-      'service'   => ['primary'=>'linear-gradient(135deg,#d97706,#92400e)','solid'=>'#d97706','solid_dark'=>'#92400e','sidebar'=>'#78350f','header'=>'linear-gradient(135deg,#f59e0b 0%,#b45309 100%)','button'=>'linear-gradient(135deg,#d97706,#92400e)','accent'=>'#d97706','light'=>'#fffbeb','text_on'=>'#ffffff'],
-      'inventory' => ['primary'=>'linear-gradient(135deg,#059669,#065f46)','solid'=>'#059669','solid_dark'=>'#065f46','sidebar'=>'#064e3b','header'=>'linear-gradient(135deg,#10b981 0%,#065f46 100%)','button'=>'linear-gradient(135deg,#059669,#065f46)','accent'=>'#059669','light'=>'#ecfdf5','text_on'=>'#ffffff'],
-      'file'      => ['primary'=>'linear-gradient(135deg,#9f1239,#4c0519)','solid'=>'#9f1239','solid_dark'=>'#4c0519','sidebar'=>'#4c0519','header'=>'linear-gradient(135deg,#be123c 0%,#4c0519 100%)','button'=>'linear-gradient(135deg,#9f1239,#4c0519)','accent'=>'#9f1239','light'=>'#fff1f2','text_on'=>'#ffffff'],
-      'ict'       => ['primary'=>'linear-gradient(135deg,#0891b2,#164e63)','solid'=>'#0891b2','solid_dark'=>'#164e63','sidebar'=>'#164e63','header'=>'linear-gradient(135deg,#06b6d4 0%,#155e75 100%)','button'=>'linear-gradient(135deg,#0891b2,#164e63)','accent'=>'#0891b2','light'=>'#ecfeff','text_on'=>'#ffffff'],
+    // Unified login green theme — all modules use the same palette
+    $theme = [
+      'primary'    => 'linear-gradient(158deg,#1c4d38 0%,#1a5c38 52%,#2a9863 100%)',
+      'solid'      => '#1a5c38',
+      'solid_dark' => '#2a9863',
+      'sidebar'    => '#1a5c38',
+      'header'     => 'linear-gradient(158deg,#1c4d38 0%,#1a5c38 52%,#2a9863 100%)',
+      'button'     => 'linear-gradient(135deg,#1a5c38,#2a9863)',
+      'accent'     => '#2a9863',
+      'light'      => '#f0faf5',
+      'text_on'    => '#ffffff',
     ];
-    $theme = $theme_colors[$current_module] ?? $theme_colors['admin'];
     ?>
 
     :root {

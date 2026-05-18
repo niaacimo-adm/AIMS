@@ -64,6 +64,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
   <?php include '../includes/header.php'; ?>
   <style>
+    .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
     .modern-card {
       border: none;
       border-radius: 12px;
@@ -291,6 +292,122 @@ body.dark-mode .section-title:after { background: #7aabdf !important; }
 body.dark-mode .form-label { color: var(--text-primary) !important; }
 body.dark-mode .default-image-active { background: var(--notification-unread-bg) !important; }
 
+
+        .pg-hero-breadcrumb {
+            background:transparent; padding:0; margin:0;
+            display:flex; flex-wrap:wrap; gap:2px;
+        }
+        .pg-hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color:rgba(212,245,229,.45); }
+        .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
+        .pg-hero-bc-link:hover { color:#24e78f; }
+        .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
+
+        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
+        @keyframes pgHeroMeshDrift {
+            0%   { transform:translate(0,0)   rotate(0deg); }
+            100% { transform:translate(3%,2%) rotate(2deg); }
+        }
+        @keyframes pgHeroOrbFloat {
+            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+        }
+        @keyframes pgHeroRingPulse {
+            0%,100% { opacity:.45; transform:scale(1);    }
+            50%      { opacity:.85; transform:scale(1.04); }
+        }
+        .pg-hero {
+            background:#0b1f17;
+            padding:36px 28px 66px; position:relative; overflow:hidden;
+        }
+        .pg-hero-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0;
+        }
+        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
+        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
+        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
+        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
+        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
+        .pg-hero-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
+        }
+        .pg-hero-hex {
+            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+            background-size:56px 100px;
+        }
+        .pg-hero-rings {
+            position:absolute; top:50%; right:6%;
+            transform:translateY(-50%);
+            width:240px; height:240px; pointer-events:none; z-index:0;
+        }
+        .pg-ring {
+            position:absolute; inset:0; border-radius:50%;
+            border:1px solid rgba(36,231,143,.10);
+            animation:pgHeroRingPulse 4s ease-in-out infinite;
+        }
+        .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
+        .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
+        .pg-hero-arc {
+            position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .pg-hero::after {
+            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
+            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
+        }
+        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
+        .pg-hero-inner { position:relative; z-index:2; }
+        .pg-hero-title {
+            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
+            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
+            display:flex; align-items:center; gap:10px;
+        }
+        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
+        .pg-hero-divider {
+            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
+            background:linear-gradient(90deg,transparent,#24e78f,transparent);
+        }
+        .pg-hero-actions {
+            position:relative; z-index:2;
+            display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
+        }
+        .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
+        .pg-hero-btn {
+            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
+            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
+            border-radius:10px; padding:8px 16px;
+            font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
+            display:inline-flex; align-items:center; gap:7px;
+            transition:background .2s, transform .18s, box-shadow .2s;
+        }
+        .pg-hero-btn:hover {
+            background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
+            transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
+            color:#d4f5e5; text-decoration:none;
+        }
+        .pg-hero-layout {
+            display:flex; align-items:flex-start; justify-content:space-between;
+            flex-wrap:wrap; gap:14px; position:relative; z-index:2;
+        }
+        .mh-logo-watermark {
+            position:absolute; top:50%; right:3%;
+            transform:translateY(-50%);
+            width:180px; height:auto; pointer-events:none; z-index:0;
+            opacity:0.50;
+        }
 </style>
 </head>
 
@@ -302,23 +419,30 @@ body.dark-mode .default-image-active { background: var(--notification-unread-bg)
     <!-- Content Wrapper. Contains page content -->
     <div class="content-wrapper">
       <!-- Content Header (Page header) -->
-      <section class="content-header">
-        <div class="container-fluid">
-          <div class="row mb-2">
-            <div class="col-sm-6">
-              <h1 style="color: #4f46e5; font-weight: 700;">Create Employee</h1>
-              <p class="text-muted">Add a new employee to the system</p>
+      
+        <!-- Page Hero -->
+        <div class="pg-hero">
+            <div class="pg-hero-mesh"></div>
+            <div class="pg-hero-dots"></div>
+            <div class="pg-hero-hex"></div>
+            <div class="pg-hero-orbs">
+                <div class="pg-orb pg-orb-1"></div>
+                <div class="pg-orb pg-orb-2"></div>
+                <div class="pg-orb pg-orb-3"></div>
+                <div class="pg-orb pg-orb-4"></div>
             </div>
-            <div class="col-sm-6">
-              <ol class="breadcrumb float-sm-right">
-                <li class="breadcrumb-item"><a href="#" style="color: #6b7280;">HR</a></li>
-                <li class="breadcrumb-item"><a href="#" style="color: #6b7280;">Employees</a></li>
-                <li class="breadcrumb-item active" style="color: #4f46e5; font-weight: 600;">Create</li>
-              </ol>
+            <div class="pg-hero-rings">
+                <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
             </div>
-          </div>
-        </div><!-- /.container-fluid -->
-      </section>
+            <div class="pg-hero-arc"></div>
+            <div class="pg-hero-layout">
+                <div class="pg-hero-inner">
+                    <div class="pg-hero-title"><i class="fas fa-user-plus"></i>Create Employee</div>
+                    <div class="pg-hero-divider"></div>
+                    <p class="pg-hero-sub">Add a new employee to the system</p>
+                </div>
+            </div>
+        </div>
 
       <!-- Main content -->
       <section class="content">

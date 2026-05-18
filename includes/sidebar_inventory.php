@@ -50,7 +50,7 @@ if ($employee_id) {
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar"  style="background-color: #2c3e50 !important;">
+    <div class="sidebar"  style="background-color: var(--sidebar-bg) !important;">
         <!-- Sidebar user panel (optional) -->
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
@@ -72,25 +72,25 @@ if ($employee_id) {
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
                 <li class="nav-item">
-                    <a href="inventory.php" class="nav-link <?= $current_page == 'inventory.php' ? 'active bg-success' : 'text-white' ?>">
+                    <a href="inventory.php" class="nav-link <?= $current_page == 'inventory.php' ? 'active' : 'text-white' ?>">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
                         <p>Dashboard</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="view_inventory.php" class="nav-link <?= $current_page == 'view_inventory.php' ? 'active bg-success' : 'text-white' ?>">
+                    <a href="view_inventory.php" class="nav-link <?= $current_page == 'view_inventory.php' ? 'active' : 'text-white' ?>">
                         <i class="nav-icon fas fa-boxes"></i>
                         <p>Inventory</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="request_supplies.php" class="nav-link <?= $current_page == 'request_supplies.php' ? 'active bg-success' : 'text-white' ?>">
+                    <a href="request_supplies.php" class="nav-link <?= $current_page == 'request_supplies.php' ? 'active' : 'text-white' ?>">
                         <i class="nav-icon fas fa-clipboard-check"></i>
                         <p>Request Supplies</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="my_supply_requests.php" class="nav-link <?= $current_page == 'my_supply_requests.php' ? 'active bg-success' : 'text-white' ?>">
+                    <a href="my_supply_requests.php" class="nav-link <?= $current_page == 'my_supply_requests.php' ? 'active' : 'text-white' ?>">
                         <i class="nav-icon fas fa-list-ol"></i>
                         <p>My Requests</p>
                     </a>
@@ -125,7 +125,7 @@ body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--tabl
 body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
 body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
 body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
+body.dark-mode .form-control:focus { border-color: #24e78f !important; box-shadow: 0 0 0 0.2rem rgba(36,231,143,.20) !important; }
 body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
 body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
 body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
@@ -167,7 +167,7 @@ body.dark-mode .sidebar { background-color: var(--sidebar-bg) !important; }
 body.dark-mode aside.main-sidebar { background-color: var(--sidebar-bg) !important; }
 
 .brand-link.bg-gradient-primary {
-    background:  #007bff !important;
+    background: #1a5c38 !important;
 }
 </style>
 <script>

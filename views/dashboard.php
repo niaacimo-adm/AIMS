@@ -96,30 +96,32 @@ $uploads_url = '../dist/img/employees/';
     <link rel="stylesheet" href="../css/dashboard.css">
     <style>
         /* ═══════════════════════════════════════════════════════
-           DESIGN TOKENS
+           DESIGN TOKENS — aligned with login.php green/forest theme
         ═══════════════════════════════════════════════════════ */
         :root {
-            --brand:       #2563eb;
-            --brand-dk:    #5a0a1d;
-            --brand-lt:    rgba(37, 104, 221, 0.09);
-            --blue:        #2563eb;
-            --green:       #16a34a;
+            /* Brand greens (from login.php) */
+            --brand:       #2a9863;
+            --brand-dk:    #1c4d38;
+            --brand-lt:    rgba(36, 231, 143, 0.10);
+            --green:       #2a9863;
+            --green-bright:#24e78f;
             --amber:       #d97706;
             --purple:      #7c3aed;
             --teal:        #0891b2;
 
-            --bg:          #f0f2f7;
+            /* Light mode surfaces */
+            --bg:          #eef7f2;
             --surface:     #ffffff;
-            --surface2:    #f8fafc;
-            --border:      #e4e7ef;
-            --text:        #111827;
-            --text2:       #4b5563;
-            --text3:       #9ca3af;
+            --surface2:    #f0faf5;
+            --border:      rgba(42,152,99,0.18);
+            --text:        #0f2d1e;
+            --text2:       #2d6a47;
+            --text3:       #6aad8a;
 
             --radius:      16px;
             --radius-sm:   10px;
-            --shadow:      0 1px 8px rgba(0,0,0,.07), 0 4px 20px rgba(0,0,0,.05);
-            --shadow-md:   0 4px 16px rgba(0,0,0,.1), 0 10px 40px rgba(0,0,0,.08);
+            --shadow:      0 1px 8px rgba(42,152,99,.08), 0 4px 20px rgba(42,152,99,.06);
+            --shadow-md:   0 4px 16px rgba(42,152,99,.12), 0 10px 40px rgba(42,152,99,.10);
             --trans:       all .22s cubic-bezier(.4,0,.2,1);
         }
 
@@ -211,10 +213,20 @@ $uploads_url = '../dist/img/employees/';
         .stat-bar-fill { height: 100%; border-radius: 99px; }
 
         /* ═══════════════════════════════════════════════════════
-           MANAGER HERO CARD
+           MANAGER HERO CARD — login mesh pattern
         ═══════════════════════════════════════════════════════ */
+        @keyframes mhMeshDrift {
+            0%   { transform:translate(0,0)   rotate(0deg); }
+            100% { transform:translate(3%,2%) rotate(2deg); }
+        }
+        @keyframes mhOrbFloat {
+            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+        }
+
         .manager-hero {
-            background: #007bff ;
+            background: #0b1f17;
             border-radius: var(--radius);
             padding: 28px 30px;
             color: white;
@@ -223,22 +235,46 @@ $uploads_url = '../dist/img/employees/';
             position: relative;
             overflow: hidden;
         }
-        .manager-hero::before {
-            content: '';
-            position: absolute; right: -40px; top: -40px;
-            width: 220px; height: 220px;
-            border-radius: 50%;
-            background: rgba(255,255,255,.05);
-            pointer-events: none;
+        .manager-hero::before { display:none; }
+        .manager-hero::after  { display:none; }
+        .mh-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.15) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.12) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:mhMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0; pointer-events:none;
         }
-        .manager-hero::after {
-            content: '';
-            position: absolute; right: 60px; bottom: -60px;
-            width: 160px; height: 160px;
-            border-radius: 50%;
-            background: rgba(255,255,255,.04);
-            pointer-events: none;
+        .mh-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
         }
+        .mh-hex {
+            position:absolute; inset:0; pointer-events:none; opacity:.04; z-index:0;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+            background-size:56px 100px;
+        }
+        .mh-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .mh-orb  { position:absolute; border-radius:50%; filter:blur(60px); animation:mhOrbFloat 18s ease-in-out infinite; }
+        .mh-orb-1 { width:260px; height:260px; background:rgba(36,231,143,.10); top:-70px;   left:-50px;  animation-duration:21s; }
+        .mh-orb-2 { width:200px; height:200px; background:rgba(42,152,99,.09);  bottom:-40px;right:-30px; animation-delay:-7s; animation-duration:17s; }
+        .mh-orb-3 { width:140px; height:140px; background:rgba(212,175,55,.05); top:40%;     right:18%;   animation-delay:-13s; animation-duration:24s; }
+        .mh-logo-watermark {
+            position:absolute; top:50%; right:3%;
+            transform:translateY(-50%);
+            width:150px; height:auto; pointer-events:none; z-index:0;
+            opacity:0.50;
+        }
+        .mh-arc {
+            position:absolute; top:-40px; right:-40px;
+            width:180px; height:180px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.16) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .mh-content { position:relative; z-index:2; }
         .mh-inner { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
         .mh-avatar {
             width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
@@ -508,6 +544,18 @@ $uploads_url = '../dist/img/employees/';
                 ══════════════════════════════════════════════ -->
                 <?php if ($manager): ?>
                 <div class="manager-hero mb-4">
+                    <!-- Login-style background layers -->
+                    <div class="mh-mesh"></div>
+                    <div class="mh-dots"></div>
+                    <div class="mh-hex"></div>
+                    <div class="mh-orbs">
+                        <div class="mh-orb mh-orb-1"></div>
+                        <div class="mh-orb mh-orb-2"></div>
+                        <div class="mh-orb mh-orb-3"></div>
+                    </div>
+                    <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+                    <div class="mh-arc"></div>
+                    <div class="mh-content">
                     <div class="mh-inner">
                         <div class="mh-avatar">
                             <?php if (!empty($manager['picture'])): ?>
@@ -536,23 +584,8 @@ $uploads_url = '../dist/img/employees/';
                         </div>
                     </div>
 
-                    <?php if (!empty($manager_staff)): ?>
-                    <div class="mh-staff-pills">
-                        <span style="font-size:.72rem;color:rgba(255,255,255,.5);align-self:center;margin-right:4px;white-space:nowrap;">Office Staff:</span>
-                        <?php foreach ($manager_staff as $staff): ?>
-                        <div class="mh-staff-pill">
-                            <div class="mh-sp-av">
-                                <?php if (!empty($staff['employee_picture'])): ?>
-                                    <img src="<?= $uploads_url . htmlspecialchars($staff['employee_picture']) ?>" alt="">
-                                <?php else: ?>
-                                    <?= strtoupper(substr($staff['employee_name'],0,1)) ?>
-                                <?php endif; ?>
-                            </div>
-                            <?= htmlspecialchars($staff['employee_name']) ?>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php endif; ?>
+                    
+                    </div><!-- /.mh-content -->
                 </div>
                 <?php endif; ?>
 

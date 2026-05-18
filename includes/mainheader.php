@@ -226,91 +226,97 @@ if ($employee_id) {
 <!-- Light/Dark Mode CSS -->
 <style>
 /* ===== CSS VARIABLES: LIGHT MODE (default) ===== */
+/* Color palette aligned with login.php green/forest theme */
 :root {
-    --header-bg: #ffffff;
-    --header-color: #343a40;
-    --header-border: rgba(0,0,0,0.1);
-    --footer-bg: #ffffff;
-    --footer-color: #343a40;
-    --footer-border: rgba(0,0,0,0.1);
-    --sidebar-bg: #343a40;
-    --sidebar-text: #c2c7d0;
-    --sidebar-active-bg: #007bff;
-    --sidebar-active-text: #ffffff;
-    --sidebar-hover-bg: rgba(255,255,255,0.08);
-    --sidebar-brand-bg: #007bff;
-    --dropdown-bg: #ffffff;
-    --dropdown-color: #212529;
-    --dropdown-border: rgba(0,0,0,0.15);
-    --body-bg: #f4f6f9;
-    --card-bg: #ffffff;
-    --card-border: rgba(0,0,0,0.1);
-    --input-bg: #ffffff;
-    --input-color: #495057;
-    --input-border: #ced4da;
-    --text-primary: #212529;
-    --text-muted: #6c757d;
-    --notification-header-bg: #343a40;
-    --notification-unread-bg: #e8f4fd;
-    --table-bg: #ffffff;
-    --table-stripe: #f8f9fa;
-    --table-border: #dee2e6;
-    --modal-bg: #ffffff;
-    --modal-header-bg: #343a40;
+    --green:              #24e78f;
+    --green-dark:         #2a9863;
+    --green-mid:          #1a5c38;
+
+    --header-bg:          #ffffff;
+    --header-color:       #0f2d1e;
+    --header-border:      rgba(42,152,99,0.15);
+    --footer-bg:          #ffffff;
+    --footer-color:       #0f2d1e;
+    --footer-border:      rgba(42,152,99,0.15);
+    --sidebar-bg:         #1c4d38;
+    --sidebar-text:       rgba(255,255,255,0.80);
+    --sidebar-active-bg:  #24e78f;
+    --sidebar-active-text:#0f2d1e;
+    --sidebar-hover-bg:   rgba(36,231,143,0.12);
+    --sidebar-brand-bg:   #1a5c38;
+    --dropdown-bg:        #ffffff;
+    --dropdown-color:     #0f2d1e;
+    --dropdown-border:    rgba(42,152,99,0.18);
+    --body-bg:            #eef7f2;
+    --card-bg:            #ffffff;
+    --card-border:        rgba(42,152,99,0.15);
+    --input-bg:           #ffffff;
+    --input-color:        #0f2d1e;
+    --input-border:       rgba(42,152,99,0.25);
+    --text-primary:       #0f2d1e;
+    --text-muted:         #4a7a5e;
+    --notification-header-bg:   #1c4d38;
+    --notification-unread-bg:   #e6f7ef;
+    --table-bg:           #ffffff;
+    --table-stripe:       #f0faf5;
+    --table-border:       rgba(42,152,99,0.18);
+    --modal-bg:           #ffffff;
+    --modal-header-bg:    #1c4d38;
     --modal-header-color: #ffffff;
-    --chat-bg: #ffffff;
-    --chat-header-bg: #343a40;
-    --chat-header-color: #ffffff;
-    --chat-msg-sent: #007bff;
-    --chat-msg-received-bg: #f1f3f5;
-    --chat-msg-received-color: #212529;
-    --badge-bg: #007bff;
+    --chat-bg:            #ffffff;
+    --chat-header-bg:     #1c4d38;
+    --chat-header-color:  #ffffff;
+    --chat-msg-sent:      #2a9863;
+    --chat-msg-received-bg:    #f0faf5;
+    --chat-msg-received-color: #0f2d1e;
+    --badge-bg:           #24e78f;
 }
 
 /* ===== CSS VARIABLES: DARK MODE ===== */
+/* Mirrors login.php's dark forest palette */
 body.dark-mode {
-    --header-bg: #1a1d23;
-    --header-color: #e0e0e0;
-    --header-border: rgba(255,255,255,0.08);
-    --footer-bg: #1a1d23;
-    --footer-color: #e0e0e0;
-    --footer-border: rgba(255,255,255,0.08);
-    --sidebar-bg: #111318;
-    --sidebar-text: #9da5b4;
-    --sidebar-active-bg: #375a7f;
-    --sidebar-active-text: #ffffff;
-    --sidebar-hover-bg: rgba(255,255,255,0.06);
-    --sidebar-brand-bg: #1a1d23;
-    --dropdown-bg: #252830;
-    --dropdown-color: #e0e0e0;
-    --dropdown-border: rgba(255,255,255,0.1);
-    --body-bg: #12151a;
-    --card-bg: #1e2128;
-    --card-border: rgba(255,255,255,0.08);
-    --input-bg: #252830;
-    --input-color: #e0e0e0;
-    --input-border: #3d4049;
-    --text-primary: #e0e0e0;
-    --text-muted: #7a8399;
-    --notification-header-bg: #1a1d23;
-    --notification-unread-bg: #1e2a38;
-    --table-bg: #1e2128;
-    --table-stripe: #252830;
-    --table-border: #3d4049;
-    --modal-bg: #1e2128;
-    --modal-header-bg: #1a1d23;
-    --modal-header-color: #e0e0e0;
-    --chat-bg: #1e2128;
-    --chat-header-bg: #1a1d23;
-    --chat-header-color: #e0e0e0;
-    --chat-msg-sent: #375a7f;
-    --chat-msg-received-bg: #252830;
-    --chat-msg-received-color: #e0e0e0;
-    --badge-bg: #375a7f;
+    --header-bg:          #0f2d1e;
+    --header-color:       #d4f5e5;
+    --header-border:      rgba(36,231,143,0.12);
+    --footer-bg:          #0f2d1e;
+    --footer-color:       #d4f5e5;
+    --footer-border:      rgba(36,231,143,0.12);
+    --sidebar-bg:         #091d14;
+    --sidebar-text:       rgba(212,245,229,0.75);
+    --sidebar-active-bg:  #24e78f;
+    --sidebar-active-text:#091d14;
+    --sidebar-hover-bg:   rgba(36,231,143,0.10);
+    --sidebar-brand-bg:   #0b1f17;
+    --dropdown-bg:        #102f22;
+    --dropdown-color:     #d4f5e5;
+    --dropdown-border:    rgba(36,231,143,0.12);
+    --body-bg:            #0b1f17;
+    --card-bg:            #102f22;
+    --card-border:        rgba(36,231,143,0.10);
+    --input-bg:           #0e2619;
+    --input-color:        #d4f5e5;
+    --input-border:       rgba(36,231,143,0.18);
+    --text-primary:       #d4f5e5;
+    --text-muted:         #6aad8a;
+    --notification-header-bg:   #091d14;
+    --notification-unread-bg:   #122b1d;
+    --table-bg:           #102f22;
+    --table-stripe:       #122b1d;
+    --table-border:       rgba(36,231,143,0.12);
+    --modal-bg:           #102f22;
+    --modal-header-bg:    #091d14;
+    --modal-header-color: #d4f5e5;
+    --chat-bg:            #102f22;
+    --chat-header-bg:     #091d14;
+    --chat-header-color:  #d4f5e5;
+    --chat-msg-sent:      #2a9863;
+    --chat-msg-received-bg:    #122b1d;
+    --chat-msg-received-color: #d4f5e5;
+    --badge-bg:           #2a9863;
 }
 
 /* Prevent flash of unstyled content */
-html.dark-mode-preload body { background: #12151a !important; }
+html.dark-mode-preload body { background: #0b1f17 !important; }
 
 /* ===== APPLY VARIABLES ===== */
 body {
@@ -500,7 +506,7 @@ body.dark-mode .table { background: var(--table-bg) !important; }
     color: var(--input-color) !important;
     border-color: var(--input-border) !important;
 }
-.form-control:focus { border-color: #375a7f !important; box-shadow: 0 0 0 0.2rem rgba(55,90,127,0.25) !important; }
+.form-control:focus { border-color: #24e78f !important; box-shadow: 0 0 0 0.2rem rgba(36,231,143,0.25) !important; }
 .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
 select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
 

@@ -435,18 +435,42 @@ $employees_result = $db->query($employees_query);
     
     <style>
         :root {
-            --primary: #4361ee;
-            --secondary: #6c757d;
-            --success: #28a745;
-            --danger: #dc3545;
-            --warning: #ffc107;
-            --info: #17a2b8;
-            --light: #f8f9fa;
-            --dark: #343a40;
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --primary: #1a5c38;
+            --primary-mid: #2a9863;
+            --primary-bright: #24e78f;
+            --secondary: #4a7c62;
+            --success: #24e78f;
+            --danger: #c92a2a;
+            --warning: #d4af37;
+            --info: #2a9863;
+            --light: #f0faf5;
+            --dark: #0f2d1e;
+            --card-shadow: 0 4px 24px rgba(26,92,56,.12);
+            --hover-shadow: 0 10px 28px rgba(26,92,56,.18);
         }
-        
+
+        /* dark mode */
+        body.dark-mode {
+            --primary: #24e78f;
+            --primary-mid: #2a9863;
+            --light: #0b1f17;
+            --dark: #e0f7ec;
+            background-color: #0b1f17 !important;
+        }
+        body.dark-mode .content-wrapper { background-color: #0b1f17 !important; }
+        body.dark-mode .modern-card, body.dark-mode .card { background: #102f22 !important; border-color: #1c4d38 !important; color: #e0f7ec !important; }
+        body.dark-mode .card-header { background: #0d2318 !important; color: #e0f7ec !important; border-color: #1c4d38 !important; }
+        body.dark-mode .table { color: #e0f7ec !important; }
+        body.dark-mode .table td, body.dark-mode .table th { border-color: #1c4d38 !important; color: #e0f7ec !important; }
+        body.dark-mode .form-control { background: #0d2318 !important; color: #e0f7ec !important; border-color: #1c4d38 !important; }
+        body.dark-mode .modal-content { background: #102f22 !important; }
+        body.dark-mode .modal-header { background: linear-gradient(135deg,#1c4d38,#0b1f17) !important; }
+        body.dark-mode .modal-body, body.dark-mode .modal-footer { background: #102f22 !important; color: #e0f7ec !important; border-color: #1c4d38 !important; }
+        body.dark-mode .filter-bar { background: #102f22 !important; border-color: #1c4d38 !important; }
+        body.dark-mode .locator-card { background: #102f22 !important; border-color: #1c4d38 !important; }
+        body.dark-mode .locator-header { background: #0d2318 !important; color: #e0f7ec !important; }
+
+        .content { padding:0 20px; margin-top:-50px; position:relative; z-index:3; }
         .modern-card {
             background: white;
             border-radius: 12px;
@@ -462,7 +486,7 @@ $employees_result = $db->query($employees_query);
         }
         
         .modern-header {
-            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            background: linear-gradient(135deg, var(--primary), #2a9863);
             color: white;
             border-radius: 12px 12px 0 0;
             padding: 20px 25px;
@@ -475,15 +499,15 @@ $employees_result = $db->query($employees_query);
             padding: 25px;
             margin-bottom: 25px;
             box-shadow: var(--card-shadow);
-            border: 1px solid #e9ecef;
+            border: 1px solid #d1f0e0;
         }
         
         .bulk-actions {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            background: linear-gradient(135deg, #f0faf5, #d1f0e0);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 25px;
-            border: 1px solid #dee2e6;
+            border: 1px solid #c8e6d4;
         }
         
         .status-badge {
@@ -505,7 +529,7 @@ $employees_result = $db->query($employees_query);
         }
         
         .modern-table thead th {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            background: linear-gradient(135deg, #f0faf5, #d1f0e0);
             border: none;
             padding: 15px 12px;
             font-weight: 600;
@@ -517,7 +541,7 @@ $employees_result = $db->query($employees_query);
         
         .modern-table tbody td {
             padding: 15px 12px;
-            border-bottom: 1px solid #e9ecef;
+            border-bottom: 1px solid #d1f0e0;
             vertical-align: middle;
             transition: background 0.2s ease;
         }
@@ -527,7 +551,7 @@ $employees_result = $db->query($employees_query);
         }
         
         .modern-table tbody tr:hover {
-            background: #f8f9fa;
+            background: #f0faf5;
             transform: scale(1.002);
         }
         
@@ -569,7 +593,7 @@ $employees_result = $db->query($employees_query);
         }
         
         .badge-counter {
-            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            background: linear-gradient(135deg, var(--primary), #2a9863);
             border-radius: 20px;
             padding: 8px 15px;
             font-size: 0.9em;
@@ -596,7 +620,7 @@ $employees_result = $db->query($employees_query);
             width: 20px;
             height: 20px;
             border-radius: 4px;
-            border: 2px solid #dee2e6;
+            border: 2px solid #c8e6d4;
             cursor: pointer;
             transition: all 0.3s ease;
         }
@@ -610,7 +634,7 @@ $employees_result = $db->query($employees_query);
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            background: linear-gradient(135deg, var(--primary), #2a9863);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -631,7 +655,7 @@ $employees_result = $db->query($employees_query);
             height: 45px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2px solid #e9ecef;
+            border: 2px solid #d1f0e0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -639,14 +663,14 @@ $employees_result = $db->query($employees_query);
             width: 45px;
             height: 45px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            background: linear-gradient(135deg, var(--primary), #2a9863);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: 600;
             font-size: 0.9em;
-            border: 2px solid #e9ecef;
+            border: 2px solid #d1f0e0;
         }
 
         .employee-with-picture {
@@ -679,11 +703,11 @@ $employees_result = $db->query($employees_query);
             padding: 25px;
             margin-bottom: 25px;
             box-shadow: var(--card-shadow);
-            border: 1px solid #e9ecef;
+            border: 1px solid #d1f0e0;
         }
 
         .collapse-toggle {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            background: linear-gradient(135deg, #f0faf5, #d1f0e0);
             border: none;
             border-radius: 8px;
             padding: 12px 20px;
@@ -695,7 +719,7 @@ $employees_result = $db->query($employees_query);
         }
 
         .collapse-toggle:hover {
-            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            background: linear-gradient(135deg, #d1f0e0, #c8e6d4);
         }
 
         .collapse-toggle i {
@@ -717,11 +741,11 @@ $employees_result = $db->query($employees_query);
         }
         
         .time-validation-message.valid {
-            color: #28a745;
+            color: #24e78f;
         }
         
         .time-validation-message.invalid {
-            color: #dc3545;
+            color: #c92a2a;
         }
 
         /* Delete All Button */
@@ -761,19 +785,19 @@ $employees_result = $db->query($employees_query);
         }
 
         .bulk-btn-minimal.approve {
-            background: linear-gradient(135deg, #28a745, #20c997);
+            background: linear-gradient(135deg, #24e78f, #2a9863);
         }
 
         .bulk-btn-minimal.reject {
-            background: linear-gradient(135deg, #dc3545, #e83e8c);
+            background: linear-gradient(135deg, #c92a2a, #e83e8c);
         }
 
         .bulk-btn-minimal.delete {
-            background: linear-gradient(135deg, #6c757d, #495057);
+            background: linear-gradient(135deg, #4a7c62, #495057);
         }
 
         .bulk-btn-minimal.delete-all {
-            background: linear-gradient(135deg, #dc3545, #c82333);
+            background: linear-gradient(135deg, #c92a2a, #c82333);
         }
 
         .bulk-actions-label {
@@ -809,7 +833,7 @@ $employees_result = $db->query($employees_query);
          /* Select2 styling */
         .select2-container .select2-selection--single {
             height: 46px !important;
-            border: 2px solid #e9ecef !important;
+            border: 2px solid #d1f0e0 !important;
             border-radius: 10px !important;
         }
 
@@ -823,7 +847,7 @@ $employees_result = $db->query($employees_query);
         }
 
         .select2-container--bootstrap4 .select2-dropdown {
-            border: 2px solid #e9ecef !important;
+            border: 2px solid #d1f0e0 !important;
             border-radius: 10px !important;
         }
 
@@ -893,6 +917,122 @@ body.dark-mode .badge-status { color: #fff !important; }
 body.dark-mode .btn-outline-primary { color: #7aabdf !important; border-color: #7aabdf !important; }
 body.dark-mode .btn-outline-primary:hover { background: #7aabdf !important; color: #000 !important; }
 
+
+        .pg-hero-breadcrumb {
+            background:transparent; padding:0; margin:0;
+            display:flex; flex-wrap:wrap; gap:2px;
+        }
+        .pg-hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color:rgba(212,245,229,.45); }
+        .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
+        .pg-hero-bc-link:hover { color:#24e78f; }
+        .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
+
+        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
+        @keyframes pgHeroMeshDrift {
+            0%   { transform:translate(0,0)   rotate(0deg); }
+            100% { transform:translate(3%,2%) rotate(2deg); }
+        }
+        @keyframes pgHeroOrbFloat {
+            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+        }
+        @keyframes pgHeroRingPulse {
+            0%,100% { opacity:.45; transform:scale(1);    }
+            50%      { opacity:.85; transform:scale(1.04); }
+        }
+        .pg-hero {
+            background:#0b1f17;
+            padding:36px 28px 66px; position:relative; overflow:hidden;
+        }
+        .pg-hero-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0;
+        }
+        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
+        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
+        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
+        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
+        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
+        .pg-hero-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
+        }
+        .pg-hero-hex {
+            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+            background-size:56px 100px;
+        }
+        .pg-hero-rings {
+            position:absolute; top:50%; right:6%;
+            transform:translateY(-50%);
+            width:240px; height:240px; pointer-events:none; z-index:0;
+        }
+        .pg-ring {
+            position:absolute; inset:0; border-radius:50%;
+            border:1px solid rgba(36,231,143,.10);
+            animation:pgHeroRingPulse 4s ease-in-out infinite;
+        }
+        .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
+        .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
+        .pg-hero-arc {
+            position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .pg-hero::after {
+            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
+            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
+        }
+        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
+        .pg-hero-inner { position:relative; z-index:2; }
+        .pg-hero-title {
+            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
+            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
+            display:flex; align-items:center; gap:10px;
+        }
+        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
+        .pg-hero-divider {
+            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
+            background:linear-gradient(90deg,transparent,#24e78f,transparent);
+        }
+        .pg-hero-actions {
+            position:relative; z-index:2;
+            display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
+        }
+        .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
+        .pg-hero-btn {
+            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
+            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
+            border-radius:10px; padding:8px 16px;
+            font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
+            display:inline-flex; align-items:center; gap:7px;
+            transition:background .2s, transform .18s, box-shadow .2s;
+        }
+        .pg-hero-btn:hover {
+            background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
+            transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
+            color:#d4f5e5; text-decoration:none;
+        }
+        .pg-hero-layout {
+            display:flex; align-items:flex-start; justify-content:space-between;
+            flex-wrap:wrap; gap:14px; position:relative; z-index:2;
+        }
+        .mh-logo-watermark {
+            position:absolute; top:50%; right:3%;
+            transform:translateY(-50%);
+            width:180px; height:auto; pointer-events:none; z-index:0;
+            opacity:0.50;
+        }
 </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -906,22 +1046,30 @@ body.dark-mode .btn-outline-primary:hover { background: #7aabdf !important; colo
     <!-- Content Wrapper. Contains page content -->
     <div class="content-wrapper">
         <!-- Content Header (Page header) -->
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="font-weight-bold">Personal Locator Slip Monitoring</h1>
-                        <p class="text-muted">Manage and monitor employee locator slip requests</p>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="dashboard.php" class="text-decoration-none">Dashboard</a></li>
-                            <li class="breadcrumb-item active text-primary">Slip Monitoring</li>
-                        </ol>
-                    </div>
+        
+        <!-- Page Hero -->
+        <div class="pg-hero">
+            <div class="pg-hero-mesh"></div>
+            <div class="pg-hero-dots"></div>
+            <div class="pg-hero-hex"></div>
+            <div class="pg-hero-orbs">
+                <div class="pg-orb pg-orb-1"></div>
+                <div class="pg-orb pg-orb-2"></div>
+                <div class="pg-orb pg-orb-3"></div>
+                <div class="pg-orb pg-orb-4"></div>
+            </div>
+            <div class="pg-hero-rings">
+                <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+            </div>
+            <div class="pg-hero-arc"></div>
+            <div class="pg-hero-layout">
+                <div class="pg-hero-inner">
+                    <div class="pg-hero-title"><i class="fas fa-map-marker-alt"></i>Personal Locator Slip Monitoring</div>
+                    <div class="pg-hero-divider"></div>
+                    <p class="pg-hero-sub">Manage and monitor employee locator slip requests</p>
                 </div>
             </div>
-        </section>
+        </div>
 
         <!-- Main content -->
         <section class="content">
@@ -1671,7 +1819,7 @@ $(document).ready(function() {
                 icon: 'warning',
                 title: 'Validation Error',
                 text: 'Please either set an expected return time or check "No Return Expected".',
-                confirmButtonColor: '#4361ee'
+                confirmButtonColor: '#1a5c38'
             });
             return false;
         }
@@ -1689,7 +1837,7 @@ $(document).ready(function() {
                     icon: 'error',
                     title: 'Time Limit Exceeded',
                     text: 'For personal matters, the maximum allowed time is 1 hour.',
-                    confirmButtonColor: '#4361ee'
+                    confirmButtonColor: '#1a5c38'
                 });
                 return false;
             }
@@ -1700,7 +1848,7 @@ $(document).ready(function() {
                     icon: 'error',
                     title: 'Time Limit Exceeded',
                     text: 'For official business, the return time must be within the same day.',
-                    confirmButtonColor: '#4361ee'
+                    confirmButtonColor: '#1a5c38'
                 });
                 return false;
             }
@@ -1719,7 +1867,7 @@ $(document).ready(function() {
                 icon: 'warning',
                 title: 'Validation Error',
                 text: 'Please either set an expected return time or check "No Return Expected".',
-                confirmButtonColor: '#4361ee'
+                confirmButtonColor: '#1a5c38'
             });
             return false;
         }
@@ -1737,7 +1885,7 @@ $(document).ready(function() {
                     icon: 'error',
                     title: 'Time Limit Exceeded',
                     text: 'For personal matters, the maximum allowed time is 1 hour.',
-                    confirmButtonColor: '#4361ee'
+                    confirmButtonColor: '#1a5c38'
                 });
                 return false;
             }
@@ -1748,7 +1896,7 @@ $(document).ready(function() {
                     icon: 'error',
                     title: 'Time Limit Exceeded',
                     text: 'For official business, the return time must be within the same day.',
-                    confirmButtonColor: '#4361ee'
+                    confirmButtonColor: '#1a5c38'
                 });
                 return false;
             }
@@ -1761,7 +1909,7 @@ $(document).ready(function() {
             title: 'Success!',
             text: '<?= addslashes($success_message) ?>',
             icon: 'success',
-            confirmButtonColor: '#4361ee',
+            confirmButtonColor: '#1a5c38',
             timer: 3000,
             showConfirmButton: false
         });
@@ -1773,7 +1921,7 @@ $(document).ready(function() {
             title: 'Error!',
             text: '<?= addslashes($error_message) ?>',
             icon: 'error',
-            confirmButtonColor: '#4361ee'
+            confirmButtonColor: '#1a5c38'
         });
     <?php endif; ?>
     // SweetAlert for individual delete actions - MORE SPECIFIC
@@ -1786,8 +1934,8 @@ $(document).ready(function() {
             text: "Are you sure you want to delete this personal locator slip? This action cannot be undone.",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#c92a2a',
+            cancelButtonColor: '#4a7c62',
             confirmButtonText: 'Yes, delete it!',
             cancelButtonText: 'Cancel'
         }).then((result) => {
@@ -1807,7 +1955,7 @@ $(document).ready(function() {
                 title: 'No Selection',
                 text: 'Please select at least one slip to approve.',
                 icon: 'warning',
-                confirmButtonColor: '#4361ee'
+                confirmButtonColor: '#1a5c38'
             });
             return;
         }
@@ -1817,8 +1965,8 @@ $(document).ready(function() {
             text: `Are you sure you want to approve ${selectedSlips.length} slip(s)?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#24e78f',
+            cancelButtonColor: '#4a7c62',
             confirmButtonText: `Yes, approve ${selectedSlips.length} slip(s)!`,
             cancelButtonText: 'Cancel'
         }).then((result) => {
@@ -1845,7 +1993,7 @@ $(document).ready(function() {
                 title: 'No Selection',
                 text: 'Please select at least one slip to reject.',
                 icon: 'warning',
-                confirmButtonColor: '#4361ee'
+                confirmButtonColor: '#1a5c38'
             });
             return;
         }
@@ -1855,8 +2003,8 @@ $(document).ready(function() {
             text: `Are you sure you want to reject ${selectedSlips.length} slip(s)?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#c92a2a',
+            cancelButtonColor: '#4a7c62',
             confirmButtonText: `Yes, reject ${selectedSlips.length} slip(s)!`,
             cancelButtonText: 'Cancel'
         }).then((result) => {
@@ -1883,7 +2031,7 @@ $(document).ready(function() {
                 title: 'No Selection',
                 text: 'Please select at least one slip to delete.',
                 icon: 'warning',
-                confirmButtonColor: '#4361ee'
+                confirmButtonColor: '#1a5c38'
             });
             return;
         }
@@ -1893,8 +2041,8 @@ $(document).ready(function() {
             text: `Are you sure you want to delete ${selectedSlips.length} slip(s)? This action cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#c92a2a',
+            cancelButtonColor: '#4a7c62',
             confirmButtonText: `Yes, delete ${selectedSlips.length} slip(s)!`,
             cancelButtonText: 'Cancel'
         }).then((result) => {
@@ -1922,7 +2070,7 @@ $(document).ready(function() {
                 title: 'No Slips Found',
                 text: 'There are no slips to delete with the current filters.',
                 icon: 'info',
-                confirmButtonColor: '#4361ee'
+                confirmButtonColor: '#1a5c38'
             });
             return;
         }
@@ -1940,8 +2088,8 @@ $(document).ready(function() {
             text: text,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#c92a2a',
+            cancelButtonColor: '#4a7c62',
             confirmButtonText: `Yes, delete all ${totalSlips} slip(s)!`,
             cancelButtonText: 'Cancel',
             reverseButtons: true
@@ -1971,8 +2119,8 @@ $(document).ready(function() {
             text: `Are you sure you want to ${actionText} this personal locator slip?`,
             icon: action === 'approve_slip' ? 'question' : 'warning',
             showCancelButton: true,
-            confirmButtonColor: action === 'approve_slip' ? '#28a745' : '#dc3545',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: action === 'approve_slip' ? '#24e78f' : '#c92a2a',
+            cancelButtonColor: '#4a7c62',
             confirmButtonText: `Yes, ${actionText} it!`,
             cancelButtonText: 'Cancel'
         }).then((result) => {

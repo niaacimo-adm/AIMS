@@ -69,26 +69,26 @@ if ($employee_id) {
 
 /* Keep existing styles */
 .sidebar-dark-primary {
-    background-color: #2c3e50 !important;
+    background-color: var(--sidebar-bg) !important;
 }
 
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
-    color: #c2c7d0 !important;
+    color: var(--sidebar-text) !important;
     border-radius: 0;
     margin: 0;
     padding: 0.75rem 1rem;
 }
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
-    background-color: #007bff !important;
-    color: white !important;
-    border-left: 4px solid #fff;
+    background-color: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-active-text) !important;
+    border-left: 4px solid rgba(255,255,255,0.5);
 }
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: var(--sidebar-hover-bg) !important;
     color: white !important;
 }
 .brand-link.bg-gradient-primary {
-    background:  #007bff 0%;
+    background: var(--sidebar-brand-bg) !important;
 }
 .nav-header {
     font-size: 0.8rem;
@@ -103,14 +103,14 @@ if ($employee_id) {
     width: 5px;
 }
 .sidebar::-webkit-scrollbar-track {
-    background: #2c3e50;
+    background: var(--sidebar-bg);
 }
 .sidebar::-webkit-scrollbar-thumb {
-    background: #888;
+    background: #4aad7a;
     border-radius: 5px;
 }
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: #24e78f;
 }
 </style>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
@@ -121,7 +121,7 @@ if ($employee_id) {
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar" style="background-color: #2c3e50 !important;">
+    <div class="sidebar" style="background-color: var(--sidebar-bg) !important;">
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
@@ -145,7 +145,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('view_dashboard')): ?>
           <li class="nav-item">
-            <a href="dashboard.php" class="nav-link <?= $current_page == 'dashboard.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="dashboard.php" class="nav-link <?= $current_page == 'dashboard.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>Dashboard</p>
             </a>
@@ -153,7 +153,7 @@ if ($employee_id) {
           <?php endif; ?>
           <?php if (hasPermission('process_attachment')): ?>
           <li class="nav-item">
-            <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-paperclip"></i>
               <p>Attachment Monitoring</p>
             </a>
@@ -161,20 +161,20 @@ if ($employee_id) {
           <?php endif; ?>
           <?php if (hasPermission('view_calendar')): ?>
           <li class="nav-item">
-            <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-calendar-alt"></i>
               <p>Calendar</p>
             </a>
           </li>
           <?php endif; ?>
           <li class="nav-item"> 
-            <a href="leave_request.php" class="nav-link <?= $current_page == 'leave_request.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="leave_request.php" class="nav-link <?= $current_page == 'leave_request.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-newspaper nav-icon"></i>
               <p>Leave Request</p>
             </a>
           </li>
           <li class="nav-item">
-              <a href="personal_locator_slip.php" class="nav-link <?= $current_page == 'personal_locator_slip.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="personal_locator_slip.php" class="nav-link <?= $current_page == 'personal_locator_slip.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-location-arrow nav-icon"></i>
                   <p>Personal Locator Slip</p>
               </a>
@@ -183,37 +183,37 @@ if ($employee_id) {
           <?php if (hasPermission('manage_employees')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">HR MANAGEMENT</li>
             <li class="nav-item">
-                <a href="../views/applicant.php" class="nav-link <?= $current_page == 'applicant.php' ? 'active bg-primary' : 'text-white' ?>">
+                <a href="../views/applicant.php" class="nav-link <?= $current_page == 'applicant.php' ? 'active' : 'text-white' ?>">
                     <i class="fas fa-clipboard-check nav-icon"></i>
                     <p>Applicant Databank</p>
                 </a>
             </li>
               <li class="nav-item">
-                <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active bg-primary' : 'text-white' ?>">
+                <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-user-plus nav-icon"></i>
                   <p>Create Employee</p>
                 </a>
               </li>
               <li class="nav-item">
-                  <a href="../views/hr_leave_monitoring.php" class="nav-link <?= $current_page == 'hr_leave_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <a href="../views/hr_leave_monitoring.php" class="nav-link <?= $current_page == 'hr_leave_monitoring.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-list nav-icon"></i>
                       <p>HR Leave Monitoring</p>
                   </a>
               </li>
               <li class="nav-item">
-                <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active bg-primary' : 'text-white' ?>">
+                <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-users nav-icon"></i>
                   <p>Employee List</p>
                 </a>
               </li>
               <li class="nav-item">
-                  <a href="../views/personal_locator_monitoring.php" class="nav-link <?= $current_page == 'personal_locator_monitoring.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <a href="../views/personal_locator_monitoring.php" class="nav-link <?= $current_page == 'personal_locator_monitoring.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-check nav-icon"></i>
                       <p>Slip Monitoring</p>
                   </a>
               </li>
               <li class="nav-item">
-                  <a href="../views/intern.php" class="nav-link <?= $current_page == 'intern.php' ? 'active bg-primary' : 'text-white' ?>">
+                  <a href="../views/intern.php" class="nav-link <?= $current_page == 'intern.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-check nav-icon"></i>
                       <p>Intern Databank</p>
                   </a>
@@ -224,49 +224,49 @@ if ($employee_id) {
           <li class="nav-header text-light border-bottom pb-2 mt-3">SETTINGS</li>
           
           <li class="nav-item">
-              <a href="../maintenance_page.php" class="nav-link <?= $current_page == 'maintenance_page.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="../maintenance_page.php" class="nav-link <?= $current_page == 'maintenance_page.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-tools nav-icon"></i>
                   <p>Module Maintenance</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-tv nav-icon"></i>
                   <p>Content Management</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="types_leaves.php" class="nav-link <?= $current_page == 'types_leaves.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="types_leaves.php" class="nav-link <?= $current_page == 'types_leaves.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-arrow-circle-right nav-icon"></i>
                   <p>Leave Types</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="appointment_status.php" class="nav-link <?= $current_page == 'appointment_status.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="appointment_status.php" class="nav-link <?= $current_page == 'appointment_status.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-briefcase nav-icon"></i>
                   <p>Appointment Settings</p>
               </a>
           </li>
           <li class="nav-item">
-            <a href="position.php" class="nav-link <?= $current_page == 'position.php' ? 'active bg-primary' : 'text-white' ?>">
+            <a href="position.php" class="nav-link <?= $current_page == 'position.php' ? 'active' : 'text-white' ?>">
                 <i class="fas fa-id-card-alt nav-icon"></i>
                 <p>Positions</p>
             </a>
           </li>
           <li class="nav-item">
-              <a href="sections.php" class="nav-link <?= $current_page == 'sections.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="sections.php" class="nav-link <?= $current_page == 'sections.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-sitemap nav-icon"></i>
                   <p>Sections</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="offices.php" class="nav-link <?= $current_page == 'offices.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="offices.php" class="nav-link <?= $current_page == 'offices.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-building nav-icon"></i>
                   <p>Offices</p>
               </a>
           </li>
           <li class="nav-item">
-              <a href="employment_status.php" class="nav-link <?= $current_page == 'employment_status.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="employment_status.php" class="nav-link <?= $current_page == 'employment_status.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-user-check nav-icon"></i>
                   <p>Employment Status</p>
               </a>
@@ -276,7 +276,7 @@ if ($employee_id) {
           <?php if (hasPermission('manage_users')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">USER MANAGEMENT</li>
           <li class="nav-item">
-              <a href="users.php" class="nav-link <?= $current_page == 'users.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="users.php" class="nav-link <?= $current_page == 'users.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-user-cog"></i>
                   <p>Users</p>
               </a>
@@ -285,7 +285,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_roles')): ?>
           <li class="nav-item">
-              <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-user-shield"></i>
                   <p>Roles</p>
               </a>
@@ -294,7 +294,7 @@ if ($employee_id) {
 
           <?php if (hasPermission('manage_permissions')): ?>
           <li class="nav-item">
-              <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active bg-primary' : 'text-white' ?>">
+              <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-key"></i>
                   <p>Permissions</p>
               </a>
@@ -306,26 +306,26 @@ if ($employee_id) {
 </aside>
 <style>
 .sidebar-dark-primary {
-    background-color: #2c3e50 !important;
+    background-color: var(--sidebar-bg) !important;
 }
 
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
-    color: #c2c7d0 !important;
+    color: var(--sidebar-text) !important;
     border-radius: 0;
     margin: 0;
     padding: 0.75rem 1rem;
 }
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
-    background-color: #007bff !important;
-    color: white !important;
-    border-left: 4px solid #fff;
+    background-color: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-active-text) !important;
+    border-left: 4px solid rgba(255,255,255,0.5);
 }
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: var(--sidebar-hover-bg) !important;
     color: white !important;
 }
 .brand-link.bg-gradient-primary {
-    background:  #007bff !important;
+    background: var(--sidebar-brand-bg) !important;
 }
 .nav-header {
     font-size: 0.8rem;

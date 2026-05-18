@@ -48,7 +48,7 @@ if ($employee_id) {
     </a>
 
     <!-- Sidebar -->
-    <div class="sidebar" style="background-color: #2c3e50 !important;">
+    <div class="sidebar" style="background-color: var(--sidebar-bg) !important;">
       <!-- Sidebar user panel (optional) -->
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
@@ -71,33 +71,33 @@ if ($employee_id) {
         <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
           
           <li class="nav-item">
-            <a href="queue_display.php" class="nav-link <?= $current_page == 'queue_display.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="queue_display.php" class="nav-link <?= $current_page == 'queue_display.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tv"></i>
               <p>Queue Display</p>
             </a>
           </li>
           
           <li class="nav-item">
-            <a href="section_queue.php" class="nav-link <?= $current_page == 'section_queue.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="section_queue.php" class="nav-link <?= $current_page == 'section_queue.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-building"></i>
               <p>Section/IMO Queue</p>
             </a>
           </li>
           <li class="nav-item">
-            <a href="queue.php" class="nav-link <?= $current_page == 'queue.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="queue.php" class="nav-link <?= $current_page == 'queue.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-user-plus"></i>
               <p>Visitor Registration</p>
             </a>
           </li>
           <li class="nav-item">
-            <a href="queue_reports.php" class="nav-link <?= $current_page == 'queue_reports.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="queue_reports.php" class="nav-link <?= $current_page == 'queue_reports.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-chart-bar"></i>
               <p>Queue Reports</p>
             </a>
           </li>
           
           <li class="nav-item">
-            <a href="visitor_history.php" class="nav-link <?= $current_page == 'visitor_history.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="visitor_history.php" class="nav-link <?= $current_page == 'visitor_history.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-history"></i>
               <p>Visitor History</p>
             </a>
@@ -107,21 +107,21 @@ if ($employee_id) {
           <li class="nav-header text-light border-bottom pb-2 mt-3">SETTINGS</li>
           
           <li class="nav-item">
-            <a href="queue_settings.php" class="nav-link <?= $current_page == 'queue_settings.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="queue_settings.php" class="nav-link <?= $current_page == 'queue_settings.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-cog"></i>
               <p>Queue Settings</p>
             </a>
           </li>
           
           <li class="nav-item">
-            <a href="queue_counters.php" class="nav-link <?= $current_page == 'queue_counters.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="queue_counters.php" class="nav-link <?= $current_page == 'queue_counters.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-desktop"></i>
               <p>Section/Unit Counters</p>
             </a>
           </li>
           
           <li class="nav-item">
-            <a href="purpose_categories.php" class="nav-link <?= $current_page == 'purpose_categories.php' ? 'active bg-queue' : 'text-white' ?>">
+            <a href="purpose_categories.php" class="nav-link <?= $current_page == 'purpose_categories.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tags"></i>
               <p>Purpose Categories</p>
             </a>
@@ -157,7 +157,7 @@ body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--tabl
 body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
 body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
 body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
+body.dark-mode .form-control:focus { border-color: #24e78f !important; box-shadow: 0 0 0 0.2rem rgba(36,231,143,.20) !important; }
 body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
 body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
 body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
@@ -199,7 +199,7 @@ body.dark-mode .sidebar { background-color: var(--sidebar-bg) !important; }
 body.dark-mode aside.main-sidebar { background-color: var(--sidebar-bg) !important; }
 
 .brand-link.bg-gradient-primary {
-    background:  #007bff !important;
+    background: #1a5c38 !important;
 }
 </style>
 <script>
