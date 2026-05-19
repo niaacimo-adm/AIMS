@@ -54,11 +54,11 @@ function json_out(array $data): void {
 
 // toMySQLDateTime: session tz is PHT, so MariaDB expects PHT strings on INSERT.
 // Just normalize the datetime-local format — no timezone math needed.
-function toMySQLDateTime($input) {
-    if (empty($input)) return null;
-    $ts = strtotime(str_replace('T', ' ', $input));
-    return $ts ? date('Y-m-d H:i:s', $ts) : null;
-}
+// function toMySQLDateTime($input) {
+//     if (empty($input)) return null;
+//     $ts = strtotime(str_replace('T', ' ', $input));
+//     return $ts ? date('Y-m-d H:i:s', $ts) : null;
+// }
 
 // resolveDocumentSectionForeignKeyId() removed — document_records.forwarded_to_section_id
 // references section.section_id directly; no mapping table needed.
@@ -404,8 +404,10 @@ if ($action === 'forward') {
         json_out(['success' => false, 'message' => 'Document ID missing']);
     }
 
-    // Stamp current PHT time — MariaDB session tz (+08:00) converts to UTC on store.
-    $fwd_date = date('Y-m-d H:i:s');
+    // Stamp current PHT time using SQL NOW() — the session tz is already set to +08:00,
+    // so NOW() returns PHT and MariaDB stores/reads it correctly. Using PHP date() here
+    // can cause an 8-hour mismatch if the PHP server clock is in a different timezone.
+    $fwd_date = 'NOW()';
 
     $fwd_to_emp    = null;
     $resolved_name = null;
@@ -515,18 +517,19 @@ if ($action === 'forward') {
     // Run fix_fk_migration.sql first, then this comment and the null workaround can be removed.
 
     // Insert forwarding history
+    // Use NOW() in SQL so MariaDB uses session tz (+08:00) -- fixes 8-hour offset.
     $istmt = $db->prepare("
         INSERT INTO document_forwards
             (document_id, fwd_by_emp_id, fwd_to_emp_id, fwd_to_section_id, fwd_to_unit_id, fwd_to_office_id, fwd_date, fwd_remarks)
-        VALUES (?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,NOW(),?)
     ");
     if (!$istmt) {
         json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
     }
-    $istmt->bind_param("iiiiiiss",
+    $istmt->bind_param("iiiiiis",
         $doc_id, $fwd_by_emp, $fwd_to_emp,
         $fwd_to_sec, $fwd_to_unit, $fwd_to_off,
-        $fwd_date, $fwd_remarks
+        $fwd_remarks
     );
     if (!$istmt->execute()) {
         json_out(['success' => false, 'message' => 'History insert failed: ' . $istmt->error]);
@@ -540,14 +543,15 @@ if ($action === 'forward') {
             forwarded_to_unit_id     = ?,
             forwarded_to_office_id   = ?,
             forwarded_to             = ?,
-            date_forwarded           = ?,
+            date_forwarded           = NOW(),
+            date_received            = NULL,
             status                   = 'pending'
         WHERE id = ?
     ");
     // forwarded_to_section_id: after migration references section.section_id directly
-    $ustmt->bind_param("iiiissi",
+    $ustmt->bind_param("iiiisi",
         $fwd_to_emp, $fwd_to_sec, $fwd_to_unit, $fwd_to_off,
-        $fwd_label, $fwd_date, $doc_id
+        $fwd_label, $doc_id
     );
     $ok = $ustmt->execute();
 
@@ -571,8 +575,23 @@ if ($action === 'update_status') {
     if (!$id || !in_array($status, ['pending', 'received', 'returned', 'completed', 'archived'])) {
         json_out(['success' => false, 'message' => 'Invalid status or ID.']);
     }
-    $stmt = $db->prepare("UPDATE document_records SET status = ? WHERE id = ?");
-    $stmt->bind_param("si", $status, $id);
+
+    // When status is set to 'received', stamp date_received with current PHT time.
+    // Use SQL NOW() so MariaDB applies the session timezone (+08:00) directly —
+    // avoids any 8-hour gap that can occur when PHP date() and MariaDB TIMESTAMP
+    // conversions disagree.
+    // When set back to 'pending', clear date_received so it reflects the next actual receipt.
+    if ($status === 'received') {
+        $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NOW() WHERE id = ?");
+        $stmt->bind_param("si", $status, $id);
+    } elseif ($status === 'pending') {
+        $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NULL WHERE id = ?");
+        $stmt->bind_param("si", $status, $id);
+    } else {
+        $stmt = $db->prepare("UPDATE document_records SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $id);
+    }
+
     $success = $stmt->execute();
     json_out([
         'success' => $success,
@@ -894,6 +913,652 @@ if ($action === 'check_delete_request') {
     $row = $st->get_result()->fetch_assoc();
 
     json_out(['success' => true, 'status' => $row['status'] ?? null]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// ARCHIVE DAILY  – move today's documents to document_archive
+// Called by the cron / midnight scheduler OR manually by admin
+// ─────────────────────────────────────────────────────────────
+if ($action === 'archive_daily') {
+    // Only masteradmins (or a server-side cron token) may trigger this
+    $caller = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    $is_cron_token = (($_POST['cron_token'] ?? '') === getenv('ARCHIVE_CRON_TOKEN') && getenv('ARCHIVE_CRON_TOKEN') !== '');
+
+    if (!$is_cron_token) {
+        // Check masteradmin via users table
+        $chk = $db->prepare("SELECT 1 FROM users u JOIN user_roles ur ON u.role_id=ur.id WHERE u.employee_id=? AND ur.id=1 LIMIT 1");
+        if (!$chk) { json_out(['success' => false, 'message' => 'DB error checking permission.']); }
+        $chk->bind_param("i", $caller);
+        $chk->execute();
+        if ($chk->get_result()->num_rows === 0) {
+            json_out(['success' => false, 'message' => 'Unauthorised. Only Masteradmin can trigger archiving.']);
+        }
+    }
+
+    // Ensure document_archive table exists
+    $db->query("
+        CREATE TABLE IF NOT EXISTS document_archive (
+            id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            original_id      INT UNSIGNED NOT NULL,
+            archive_date     DATE         NOT NULL COMMENT 'The calendar day being archived (PHT)',
+            kind             VARCHAR(20)  NOT NULL,
+            document_number  VARCHAR(100) NOT NULL,
+            document_name    VARCHAR(255) NOT NULL,
+            document_type    VARCHAR(100),
+            status           VARCHAR(50),
+            forwarded_by     VARCHAR(150),
+            from_section     VARCHAR(150),
+            to_section       VARCHAR(150),
+            date_forwarded   DATETIME,
+            remarks          TEXT,
+            snapshot_json    LONGTEXT     COMMENT 'Full JSON snapshot of document_records row + joins',
+            archived_by_emp  INT UNSIGNED,
+            archived_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_archive_date (archive_date),
+            INDEX idx_original_id  (original_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // Determine archive date — allow explicit POST param for manual runs,
+    // otherwise default to yesterday PHT (when cron fires just after midnight).
+    $force_date = trim($_POST['archive_date'] ?? '');
+    if ($force_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $force_date)) {
+        $arc_date = $force_date;
+    } else {
+        $arc_date = date('Y-m-d', strtotime('-1 day'));
+    }
+
+    // ── Capture ALL documents that belong to this date ──────────────────────
+    // A document "belongs" to a date if ANY of the following is true:
+    //   1. It was CREATED on that date (created_at)           ← catches new unforwarded docs
+    //   2. It was FORWARDED on that date (date_forwarded)     ← catches forwarded docs
+    //      but exclude the zero-date sentinel (0000-00-00)    ← MariaDB stores '0000-00-00 00:00:00'
+    //      when no forwarding has happened yet
+    // Using CONVERT_TZ so the comparison is always done in PHT (+08:00)
+    // regardless of what the server/MariaDB session tz is set to.
+    $sel = $db->prepare("
+        SELECT dr.*,
+               dt.type_name,
+               COALESCE(
+                   CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)),
+                   dr.forwarded_by_name
+               ) AS forwarded_by_name,
+               s1.section_name AS from_section_name,
+               s2.section_name AS to_section_name,
+               us1.unit_name   AS from_unit_name,
+               us2.unit_name   AS to_unit_name
+        FROM document_records dr
+        LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
+        LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id      = fbe.emp_id
+        LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
+        LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
+        LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
+        LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
+        WHERE (
+            -- created on this date (always populated, even for unforwarded docs)
+            DATE(dr.created_at) = ?
+            OR
+            -- forwarded on this date, but skip the zero-date sentinel
+            (
+                dr.date_forwarded IS NOT NULL
+                AND dr.date_forwarded != '0000-00-00 00:00:00'
+                AND DATE(dr.date_forwarded) = ?
+            )
+        )
+        AND dr.id NOT IN (
+            SELECT original_id FROM document_archive WHERE archive_date = ?
+        )
+    ");
+    $sel->bind_param("sss", $arc_date, $arc_date, $arc_date);
+    $sel->execute();
+    $rows = $sel->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    if (!$rows) {
+        json_out(['success' => true, 'message' => "No new documents to archive for {$arc_date}.", 'archived' => 0]);
+    }
+
+    $ins = $db->prepare("
+        INSERT INTO document_archive
+            (original_id, archive_date, kind, document_number, document_name,
+             document_type, status, forwarded_by, from_section, to_section,
+             date_forwarded, remarks, snapshot_json, archived_by_emp, archived_at)
+        VALUES (?,?,?,?,?, ?,?,?,?,?, ?,?,?,?, NOW())
+    ");
+
+    $archived_count = 0;
+    foreach ($rows as $doc) {
+        // Sanitise date_forwarded: treat zero-date sentinel as NULL
+        $date_fwd = (!empty($doc['date_forwarded']) && $doc['date_forwarded'] !== '0000-00-00 00:00:00')
+                    ? $doc['date_forwarded']
+                    : null;
+
+        // Resolve best display value for "forwarded by"
+        $fwd_by = !empty($doc['forwarded_by_name'])
+                  ? trim($doc['forwarded_by_name'])
+                  : (!empty($doc['forwarded_by_name_raw']) ? trim($doc['forwarded_by_name_raw']) : null);
+
+        $ins->bind_param(
+            "issss" . "sssss" . "sssi",
+            $doc['id'],
+            $arc_date,
+            $doc['kind'],
+            $doc['document_number'],
+            $doc['document_name'],
+            $doc['type_name'],
+            $doc['status'],
+            $fwd_by,
+            $doc['from_section_name'],
+            $doc['to_section_name'],
+            $date_fwd,
+            $doc['remarks'],
+            json_encode($doc),
+            $caller
+        );
+        if ($ins->execute()) { $archived_count++; }
+    }
+
+    json_out(['success' => true, 'message' => "Archived {$archived_count} document(s) for {$arc_date}.", 'archived' => $archived_count, 'date' => $arc_date]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GET ARCHIVE  – retrieve archived documents for a given date or range
+// ─────────────────────────────────────────────────────────────
+if ($action === 'get_archive') {
+    $arc_date   = trim($_GET['archive_date'] ?? date('Y-m-d', strtotime('-1 day')));
+    $kind_filter = trim($_GET['kind'] ?? '');
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $arc_date)) {
+        json_out(['success' => false, 'message' => 'Invalid date format.']);
+    }
+
+    // Ensure table exists (read-only guard)
+    $db->query("
+        CREATE TABLE IF NOT EXISTS document_archive (
+            id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            original_id      INT UNSIGNED NOT NULL,
+            archive_date     DATE         NOT NULL,
+            kind             VARCHAR(20)  NOT NULL,
+            document_number  VARCHAR(100) NOT NULL,
+            document_name    VARCHAR(255) NOT NULL,
+            document_type    VARCHAR(100),
+            status           VARCHAR(50),
+            forwarded_by     VARCHAR(150),
+            from_section     VARCHAR(150),
+            to_section       VARCHAR(150),
+            date_forwarded   DATETIME,
+            remarks          TEXT,
+            snapshot_json    LONGTEXT,
+            archived_by_emp  INT UNSIGNED,
+            archived_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_archive_date (archive_date),
+            INDEX idx_original_id  (original_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $where_parts = ["archive_date = ?"];
+    $bind_types  = "s";
+    $bind_vals   = [$arc_date];
+
+    if ($kind_filter && in_array($kind_filter, ['incoming','outgoing','internal'])) {
+        $where_parts[] = "kind = ?";
+        $bind_types   .= "s";
+        $bind_vals[]   = $kind_filter;
+    }
+
+    $where_sql = implode(' AND ', $where_parts);
+    $q = $db->prepare("
+        SELECT id, original_id, archive_date, kind, document_number, document_name,
+               document_type, status, forwarded_by, from_section, to_section,
+               date_forwarded, remarks, archived_at
+        FROM document_archive
+        WHERE {$where_sql}
+        ORDER BY date_forwarded ASC
+    ");
+    $q->bind_param($bind_types, ...$bind_vals);
+    $q->execute();
+    $docs = $q->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    json_out(['success' => true, 'documents' => $docs, 'date' => $arc_date, 'count' => count($docs)]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GET ARCHIVE DAYS  – list of distinct dates that have archives
+// ─────────────────────────────────────────────────────────────
+if ($action === 'get_archive_days') {
+    $db->query("
+        CREATE TABLE IF NOT EXISTS document_archive (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            original_id INT UNSIGNED NOT NULL, archive_date DATE NOT NULL,
+            kind VARCHAR(20), document_number VARCHAR(100), document_name VARCHAR(255),
+            document_type VARCHAR(100), status VARCHAR(50), forwarded_by VARCHAR(150),
+            from_section VARCHAR(150), to_section VARCHAR(150), date_forwarded DATETIME,
+            remarks TEXT, snapshot_json LONGTEXT, archived_by_emp INT UNSIGNED,
+            archived_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_archive_date (archive_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $days = $db->query("
+        SELECT archive_date, COUNT(*) AS total,
+               SUM(kind='incoming') AS incoming,
+               SUM(kind='outgoing') AS outgoing,
+               SUM(kind='internal') AS internal
+        FROM document_archive
+        GROUP BY archive_date
+        ORDER BY archive_date DESC
+        LIMIT 90
+    ");
+    $result = $days ? $days->fetch_all(MYSQLI_ASSOC) : [];
+    json_out(['success' => true, 'days' => $result]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// CHECK MIDNIGHT STATUS – has today's auto-archive already run?
+// ─────────────────────────────────────────────────────────────
+if ($action === 'check_midnight_status') {
+    $db->query("
+        CREATE TABLE IF NOT EXISTS `document_archive_log` (
+            `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            `run_date`     DATE         NOT NULL UNIQUE,
+            `archived`     INT UNSIGNED NOT NULL DEFAULT 0,
+            `triggered_by` VARCHAR(20)  NOT NULL DEFAULT 'auto',
+            `run_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $today = date('Y-m-d');
+    $row   = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$today' LIMIT 1");
+    $ran   = $row && $row->num_rows > 0;
+    json_out(['success' => true, 'already_ran' => $ran, 'today' => $today, 'server_time' => date('Y-m-d H:i:s')]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// MIDNIGHT ARCHIVE  – copy documents to archive (NO delete)
+// Documents stay in document_records untouched.
+// Callable by: JS auto-trigger, masteradmin manual, or cron.
+// ─────────────────────────────────────────────────────────────
+if ($action === 'midnight_archive') {
+    $caller       = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    $is_cron      = (($_POST['cron_token'] ?? '') === getenv('ARCHIVE_CRON_TOKEN') && getenv('ARCHIVE_CRON_TOKEN') !== '');
+    $is_auto      = ($_POST['triggered_by'] ?? '') === 'auto';
+    $triggered_by = $is_cron ? 'cron' : ($is_auto ? 'auto' : 'manual');
+
+    // Only masteradmin can trigger manually (auto & cron are unrestricted)
+    if (!$is_cron && !$is_auto) {
+        $chk = $db->prepare("SELECT 1 FROM users u JOIN user_roles ur ON u.role_id=ur.id WHERE u.employee_id=? AND ur.id=1 LIMIT 1");
+        if (!$chk) { json_out(['success' => false, 'message' => 'DB error checking permission.']); }
+        $chk->bind_param("i", $caller);
+        $chk->execute();
+        if ($chk->get_result()->num_rows === 0) {
+            json_out(['success' => false, 'message' => 'Unauthorised. Only Masteradmin can trigger archiving.']);
+        }
+    }
+
+    // Ensure tables exist
+    $db->query("
+        CREATE TABLE IF NOT EXISTS `document_archive` (
+            `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            `original_id`     INT UNSIGNED NOT NULL,
+            `archive_date`    DATE         NOT NULL,
+            `kind`            VARCHAR(20)  NOT NULL,
+            `document_number` VARCHAR(100) NOT NULL,
+            `document_name`   VARCHAR(255) NOT NULL,
+            `document_type`   VARCHAR(100) DEFAULT NULL,
+            `status`          VARCHAR(50)  DEFAULT NULL,
+            `forwarded_by`    VARCHAR(150) DEFAULT NULL,
+            `from_section`    VARCHAR(150) DEFAULT NULL,
+            `to_section`      VARCHAR(150) DEFAULT NULL,
+            `date_forwarded`  DATETIME     DEFAULT NULL,
+            `remarks`         TEXT         DEFAULT NULL,
+            `snapshot_json`   LONGTEXT     DEFAULT NULL,
+            `archived_by_emp` INT UNSIGNED DEFAULT NULL,
+            `archived_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX `idx_archive_date` (`archive_date`),
+            INDEX `idx_original_id`  (`original_id`),
+            INDEX `idx_kind`         (`kind`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $db->query("
+        CREATE TABLE IF NOT EXISTS `document_archive_log` (
+            `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            `run_date`     DATE         NOT NULL UNIQUE,
+            `archived`     INT UNSIGNED NOT NULL DEFAULT 0,
+            `triggered_by` VARCHAR(20)  NOT NULL DEFAULT 'auto',
+            `run_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // Which date to archive
+    $force_date = trim($_POST['archive_date'] ?? '');
+    if ($triggered_by === 'manual' && $force_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $force_date)) {
+        $arc_date = $force_date;
+    } elseif ($triggered_by === 'auto' || $triggered_by === 'cron') {
+        $arc_date = date('Y-m-d', strtotime('-1 day'));
+    } else {
+        $arc_date = date('Y-m-d');
+    }
+
+    // Idempotency: skip if already ran for this date (except manual re-runs)
+    $already = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$arc_date' LIMIT 1");
+    if ($already && $already->num_rows > 0 && $triggered_by !== 'manual') {
+        json_out(['success' => true, 'message' => "Already archived for {$arc_date}. Skipped.", 'archived' => 0, 'skipped' => true]);
+    }
+
+    // Fetch all documents belonging to this date (created OR forwarded)
+    $sel = $db->prepare("
+        SELECT dr.*,
+               dt.type_name,
+               COALESCE(
+                   CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)),
+                   dr.forwarded_by_name
+               ) AS resolved_fwd_by,
+               s1.section_name AS from_section_name,
+               s2.section_name AS to_section_name,
+               us1.unit_name   AS from_unit_name,
+               us2.unit_name   AS to_unit_name
+        FROM document_records dr
+        LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
+        LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id      = fbe.emp_id
+        LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
+        LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
+        LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
+        LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
+        WHERE (
+            DATE(dr.created_at) = ?
+            OR (
+                dr.date_forwarded IS NOT NULL
+                AND dr.date_forwarded != '0000-00-00 00:00:00'
+                AND DATE(dr.date_forwarded) = ?
+            )
+        )
+        AND dr.id NOT IN (
+            SELECT original_id FROM document_archive WHERE archive_date = ?
+        )
+    ");
+    $sel->bind_param("sss", $arc_date, $arc_date, $arc_date);
+    $sel->execute();
+    $rows = $sel->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    if (!$rows) {
+        $db->query("INSERT IGNORE INTO document_archive_log (run_date, archived, triggered_by) VALUES ('$arc_date', 0, '$triggered_by')");
+        json_out(['success' => true, 'message' => "No new documents to archive for {$arc_date}.", 'archived' => 0]);
+    }
+
+    // Insert into document_archive — documents are NOT deleted from document_records
+    $ins = $db->prepare("
+        INSERT INTO document_archive
+            (original_id, archive_date, kind, document_number, document_name,
+             document_type, status, forwarded_by, from_section, to_section,
+             date_forwarded, remarks, snapshot_json, archived_by_emp, archived_at)
+        VALUES (?,?,?,?,?, ?,?,?,?,?, ?,?,?,?, NOW())
+    ");
+
+    $archived_count = 0;
+    foreach ($rows as $doc) {
+        $date_fwd = (!empty($doc['date_forwarded']) && $doc['date_forwarded'] !== '0000-00-00 00:00:00')
+                    ? $doc['date_forwarded'] : null;
+        $fwd_by   = trim($doc['resolved_fwd_by'] ?? '');
+
+        $ins->bind_param(
+            "issss" . "sssss" . "sssi",
+            $doc['id'],
+            $arc_date,
+            $doc['kind'],
+            $doc['document_number'],
+            $doc['document_name'],
+            $doc['type_name'],
+            $doc['status'],
+            $fwd_by,
+            $doc['from_section_name'],
+            $doc['to_section_name'],
+            $date_fwd,
+            $doc['remarks'],
+            json_encode($doc),
+            $caller
+        );
+        if ($ins->execute()) { $archived_count++; }
+    }
+
+    // Log this run
+    $log = $db->prepare("
+        INSERT INTO document_archive_log (run_date, archived, triggered_by)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE archived = archived + ?, triggered_by = ?, run_at = NOW()
+    ");
+    $log->bind_param("sisss", $arc_date, $archived_count, $triggered_by, $archived_count, $triggered_by);
+    $log->execute();
+
+    json_out([
+        'success'      => true,
+        'message'      => "Archived {$archived_count} document(s) for {$arc_date}. Documents remain in the live table.",
+        'archived'     => $archived_count,
+        'date'         => $arc_date,
+        'triggered_by' => $triggered_by,
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// UPLOAD FILE  –  attach one or more files to a document
+// POST: action=upload_file, document_id=<id>
+// FILES: files[] (multipart)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'upload_file') {
+    $doc_id   = (int)($_POST['document_id'] ?? 0);
+    $emp_id   = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+
+    if (!$doc_id) {
+        json_out(['success' => false, 'message' => 'Document ID is required.']);
+    }
+
+    // Verify document exists
+    $chk = $db->prepare("SELECT id FROM document_records WHERE id = ? LIMIT 1");
+    $chk->bind_param("i", $doc_id);
+    $chk->execute();
+    if ($chk->get_result()->num_rows === 0) {
+        json_out(['success' => false, 'message' => 'Document not found.']);
+    }
+
+    // Upload directory — one level up from the actions file, inside /uploads/document_files/
+    // Adjust $upload_dir to match your server layout if needed.
+    $upload_dir = __DIR__ . '/../uploads/document_files/';
+    if (!is_dir($upload_dir)) {
+        if (!mkdir($upload_dir, 0775, true)) {
+            json_out(['success' => false, 'message' => 'Upload directory could not be created.']);
+        }
+    }
+
+    // Allowed MIME types
+    $allowed_mime = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'text/plain', 'text/csv',
+    ];
+    $max_size = 20 * 1024 * 1024; // 20 MB per file
+
+    $saved    = [];
+    $errors   = [];
+    $uploaded = $_FILES['files'] ?? null;
+
+    if (!$uploaded || !is_array($uploaded['name'])) {
+        json_out(['success' => false, 'message' => 'No files received.']);
+    }
+
+    $count = count($uploaded['name']);
+    for ($i = 0; $i < $count; $i++) {
+        if ($uploaded['error'][$i] !== UPLOAD_ERR_OK) {
+            $errors[] = $uploaded['name'][$i] . ': Upload error code ' . $uploaded['error'][$i];
+            continue;
+        }
+        $orig_name = basename($uploaded['name'][$i]);
+        $tmp_path  = $uploaded['tmp_name'][$i];
+        $file_size = $uploaded['size'][$i];
+
+        // Size guard
+        if ($file_size > $max_size) {
+            $errors[] = $orig_name . ': exceeds 20 MB limit.';
+            continue;
+        }
+
+        // MIME guard (use finfo for reliability)
+        $finfo     = new finfo(FILEINFO_MIME_TYPE);
+        $mime_type = $finfo->file($tmp_path);
+        if (!in_array($mime_type, $allowed_mime)) {
+            $errors[] = $orig_name . ': file type not allowed (' . $mime_type . ').';
+            continue;
+        }
+
+        // Generate a unique stored filename
+        $ext         = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+        $stored_name = bin2hex(random_bytes(16)) . ($ext ? '.' . $ext : '');
+        $dest        = $upload_dir . $stored_name;
+
+        if (!move_uploaded_file($tmp_path, $dest)) {
+            $errors[] = $orig_name . ': could not be saved.';
+            continue;
+        }
+
+        // Insert DB record
+        $ins = $db->prepare("
+            INSERT INTO document_files
+                (document_id, original_name, stored_name, mime_type, file_size, uploaded_by, uploaded_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $ins->bind_param("isssii", $doc_id, $orig_name, $stored_name, $mime_type, $file_size, $emp_id);
+        if ($ins->execute()) {
+            $saved[] = ['id' => $db->insert_id, 'original_name' => $orig_name, 'mime_type' => $mime_type, 'file_size' => $file_size];
+        } else {
+            // Clean up orphaned file
+            @unlink($dest);
+            $errors[] = $orig_name . ': DB insert failed.';
+        }
+    }
+
+    json_out([
+        'success' => count($saved) > 0,
+        'saved'   => $saved,
+        'errors'  => $errors,
+        'message' => count($saved) . ' file(s) uploaded' . (count($errors) ? '; ' . count($errors) . ' error(s).' : '.'),
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GET FILES  –  list all attachments for a document
+// GET: action=get_files&document_id=<id>
+// ─────────────────────────────────────────────────────────────
+if ($action === 'get_files') {
+    $doc_id = (int)($_GET['document_id'] ?? 0);
+    if (!$doc_id) {
+        json_out(['success' => false, 'message' => 'Document ID required.']);
+    }
+
+    $stmt = $db->prepare("
+        SELECT df.id, df.original_name, df.stored_name, df.mime_type, df.file_size, df.uploaded_at,
+               CONCAT(TRIM(e.first_name), ' ', TRIM(e.last_name)) AS uploaded_by_name
+        FROM document_files df
+        LEFT JOIN employee e ON df.uploaded_by = e.emp_id
+        WHERE df.document_id = ?
+        ORDER BY df.uploaded_at ASC
+    ");
+    $stmt->bind_param("i", $doc_id);
+    $stmt->execute();
+    $files = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    json_out(['success' => true, 'files' => $files]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// DOWNLOAD FILE  –  stream a stored file to the browser
+// GET: action=download_file&file_id=<id>&inline=1  (inline=preview)
+// ─────────────────────────────────────────────────────────────
+if ($action === 'download_file') {
+    $file_id = (int)($_GET['file_id'] ?? 0);
+    $inline  = (int)($_GET['inline']  ?? 0); // 1 = inline (preview), 0 = attachment (download)
+
+    if (!$file_id) {
+        json_out(['success' => false, 'message' => 'File ID required.']);
+    }
+
+    $stmt = $db->prepare("SELECT * FROM document_files WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $file_id);
+    $stmt->execute();
+    $file = $stmt->get_result()->fetch_assoc();
+
+    if (!$file) {
+        http_response_code(404);
+        echo 'File not found.';
+        exit;
+    }
+
+    $upload_dir = __DIR__ . '/../uploads/document_files/';
+    $path       = $upload_dir . $file['stored_name'];
+
+    if (!file_exists($path)) {
+        http_response_code(404);
+        echo 'File missing on disk.';
+        exit;
+    }
+
+    // Stream the file
+    $disposition = $inline ? 'inline' : 'attachment';
+    $safe_name   = rawurlencode($file['original_name']);
+
+    ob_end_clean();
+    header('Content-Type: '        . $file['mime_type']);
+    header('Content-Length: '      . filesize($path));
+    header('Content-Disposition: ' . $disposition . '; filename="' . $file['original_name'] . '"; filename*=UTF-8\'\'' . $safe_name);
+    header('Cache-Control: private, max-age=3600');
+    readfile($path);
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────
+// DELETE FILE  –  remove one attachment
+// POST: action=delete_file&file_id=<id>
+// Only the uploader or a Masteradmin may delete.
+// ─────────────────────────────────────────────────────────────
+if ($action === 'delete_file') {
+    $file_id = (int)($_POST['file_id'] ?? 0);
+    $emp_id  = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+
+    if (!$file_id || !$emp_id) {
+        json_out(['success' => false, 'message' => 'Invalid parameters.']);
+    }
+
+    $stmt = $db->prepare("SELECT * FROM document_files WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $file_id);
+    $stmt->execute();
+    $file = $stmt->get_result()->fetch_assoc();
+
+    if (!$file) {
+        json_out(['success' => false, 'message' => 'File not found.']);
+    }
+
+    // Check permission: uploader or masteradmin
+    $is_uploader   = ((int)($file['uploaded_by'] ?? -1) === $emp_id);
+    $admin_ids     = getMasteradminIds($db);
+    $is_masteradmin = in_array($emp_id, $admin_ids);
+
+    if (!$is_uploader && !$is_masteradmin) {
+        json_out(['success' => false, 'message' => 'You do not have permission to delete this file.']);
+    }
+
+    // Delete DB record
+    $del = $db->prepare("DELETE FROM document_files WHERE id = ?");
+    $del->bind_param("i", $file_id);
+    if (!$del->execute()) {
+        json_out(['success' => false, 'message' => 'DB delete failed: ' . $del->error]);
+    }
+
+    // Remove physical file
+    $upload_dir = __DIR__ . '/../uploads/document_files/';
+    @unlink($upload_dir . $file['stored_name']);
+
+    json_out(['success' => true, 'message' => 'File deleted.']);
 }
 
 json_out(['success' => false, 'message' => 'Unknown action.']);

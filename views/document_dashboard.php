@@ -45,50 +45,195 @@ $recent_docs = $db->query($recent_query);
     <title>Document Monitoring Records | NIA-ACIMO</title>
     <?php include '../includes/header.php'; ?>
     <style>
+        /* ══════════════════════════════════════════
+           DESIGN TOKENS — light (default)
+           Aligned with login.php green/forest palette
+        ══════════════════════════════════════════ */
         :root {
-            --doc-primary: #1a3c5e;
-            --doc-incoming: #0d6efd;
-            --doc-outgoing: #198754;
-            --doc-internal: #6f42c1;
-            --doc-pending: #fd7e14;
-            --doc-completed: #20c997;
+            --green:          #24e78f;
+            --green-dark:     #2a9863;
+            --green-mid:      #1a5c38;
+
+            --doc-primary:    #1c4d38;
+            --doc-incoming:   #2563eb;
+            --doc-outgoing:   #16a34a;
+            --doc-internal:   #7c3aed;
+            --doc-pending:    #ea580c;
+            --doc-completed:  #2a9863;
+
+            --doc-muted:      #4a7a5e;
+            --doc-border:     rgba(42,152,99,.18);
+            --doc-hover:      #e6f7ef;
+            --doc-stripe:     #f0faf5;
+            --shadow-card:    0 2px 12px rgba(42,152,99,.10);
+            --shadow-hover:   0 6px 20px rgba(42,152,99,.18);
         }
+
+        /* ══════════════════════════════════════════
+           DESIGN TOKENS — dark mode
+        ══════════════════════════════════════════ */
+        body.dark-mode {
+            --doc-primary:    #24e78f;
+            --doc-muted:      #6aad8a;
+            --doc-border:     var(--card-border, rgba(36,231,143,.10));
+            --doc-hover:      rgba(36,231,143,.07);
+            --doc-stripe:     rgba(36,231,143,.04);
+            --shadow-card:    0 2px 12px rgba(0,0,0,.30);
+            --shadow-hover:   0 6px 20px rgba(0,0,0,.40);
+        }
+
+        /* ── Stat cards ──────────────────────────────────────────────────────── */
         .stat-card {
             border-radius: 12px;
-            border: none;
-            box-shadow: 0 2px 12px rgba(0,0,0,.08);
+            border: 1px solid var(--doc-border) !important;
+            box-shadow: var(--shadow-card);
             transition: transform .2s, box-shadow .2s;
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.13); }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
         .stat-icon {
             width: 54px; height: 54px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
             font-size: 22px; color: #fff;
+            flex-shrink: 0;
         }
-        .stat-number { font-size: 2rem; font-weight: 700; line-height: 1; }
-        .stat-label  { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #6c757d; }
-        .kind-badge  { padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-        .kind-incoming  { background: #dbeafe; color: #1d4ed8; }
-        .kind-outgoing  { background: #dcfce7; color: #166534; }
-        .kind-internal  { background: #ede9fe; color: #5b21b6; }
+        .stat-number {
+            font-size: 2rem; font-weight: 700; line-height: 1;
+            color: var(--text-primary, #0f2d1e);
+        }
+        .stat-label {
+            font-size: .78rem; text-transform: uppercase;
+            letter-spacing: .06em; color: var(--doc-muted);
+        }
+
+        /* ── Kind badges ─────────────────────────────────────────────────────── */
+        .kind-badge {
+            padding: 3px 10px; border-radius: 20px;
+            font-size: .72rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .05em;
+        }
+        .kind-incoming { background:#dbeafe; color:#1d4ed8; }
+        .kind-outgoing { background:#dcfce7; color:#166534; }
+        .kind-internal { background:#ede9fe; color:#5b21b6; }
+
+        body.dark-mode .kind-incoming { background:#1e3a5f; color:#93c5fd; }
+        body.dark-mode .kind-outgoing { background:#14532d; color:#86efac; }
+        body.dark-mode .kind-internal { background:#2e1065; color:#c4b5fd; }
+
+        /* ── Status badges ───────────────────────────────────────────────────── */
         .status-badge { padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; }
-        .status-pending   { background: #ffedd5; color: #c2410c; }
-        .status-received  { background: #dbeafe; color: #1d4ed8; }
-        .status-returned  { background: #fce7f3; color: #9d174d; }
-        .status-completed { background: #d1fae5; color: #065f46; }
-        .status-archived  { background: #f3f4f6; color: #374151; }
-        .action-btn { width: 30px; height: 30px; padding: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
-        .page-section-title {
-            font-size: 1.05rem; font-weight: 700; color: var(--doc-primary);
-            border-left: 4px solid var(--doc-primary); padding-left: 10px;
+        .status-pending   { background:#fff7ed; color:#c2410c; }
+        .status-received  { background:#e6f7ef; color:#1c4d38; }
+        .status-returned  { background:#fce7f3; color:#9d174d; }
+        .status-completed { background:#d1fae5; color:#065f46; }
+        .status-archived  { background:#f0faf5; color:#4a7a5e; }
+
+        body.dark-mode .status-pending   { background:#431407; color:#fdba74; }
+        body.dark-mode .status-received  { background:#064e3b; color:#6ee7b7; }
+        body.dark-mode .status-returned  { background:#4a044e; color:#f0abfc; }
+        body.dark-mode .status-completed { background:#064e3b; color:#6ee7b7; }
+        body.dark-mode .status-archived  { background:#122b1d; color:#6aad8a; }
+
+        /* ── Action buttons ──────────────────────────────────────────────────── */
+        .action-btn {
+            width: 30px; height: 30px; padding: 0;
+            border-radius: 6px;
+            display: inline-flex; align-items: center; justify-content: center;
         }
-        body.dark-mode .kind-incoming { background: #1e3a5f; color: #93c5fd; }
-        body.dark-mode .kind-outgoing { background: #14532d; color: #86efac; }
-        body.dark-mode .kind-internal { background: #2e1065; color: #c4b5fd; }
-        body.dark-mode .status-pending   { background: #431407; color: #fdba74; }
-        body.dark-mode .status-received  { background: #1e3a5f; color: #93c5fd; }
-        body.dark-mode .status-completed { background: #064e3b; color: #6ee7b7; }
-        body.dark-mode .page-section-title { color: #7aabdf; border-color: #7aabdf; }
+
+        /* ── Section title ───────────────────────────────────────────────────── */
+        .page-section-title {
+            font-size: 1.05rem; font-weight: 700;
+            color: var(--doc-primary);
+            border-left: 4px solid var(--doc-primary);
+            padding-left: 10px;
+        }
+
+        /* ── Quick-access card sub-text ──────────────────────────────────────── */
+        .qa-sub { font-size: .78rem; color: var(--doc-muted); }
+
+        /* ── Table thead ─────────────────────────────────────────────────────── */
+        #recentDocsTable thead th {
+            background-color: #1c4d38 !important;
+            color: #ffffff !important;
+            font-size: .72rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .07em !important;
+            border: none !important;
+            padding: 13px 14px !important;
+        }
+        body.dark-mode #recentDocsTable thead th {
+            background-color: #091d14 !important;
+            color: #d4f5e5 !important;
+        }
+
+        /* ── View All / Add Document buttons ─────────────────────────────────── */
+        .btn-outline-primary {
+            color: #1c4d38 !important;
+            border-color: #1c4d38 !important;
+        }
+        .btn-outline-primary:hover {
+            background: #1c4d38 !important;
+            color: #fff !important;
+        }
+        .btn-primary {
+            background: #1c4d38 !important;
+            border-color: #1c4d38 !important;
+            color: #fff !important;
+        }
+        .btn-primary:hover {
+            background: #2a9863 !important;
+            border-color: #2a9863 !important;
+        }
+        body.dark-mode .btn-outline-primary {
+            color: #24e78f !important;
+            border-color: #24e78f !important;
+        }
+        body.dark-mode .btn-outline-primary:hover {
+            background: rgba(36,231,143,.12) !important;
+        }
+        body.dark-mode .btn-primary {
+            background: #24e78f !important;
+            border-color: #24e78f !important;
+            color: #091d14 !important;
+        }
+        body.dark-mode .btn-primary:hover {
+            background: #2a9863 !important;
+            border-color: #2a9863 !important;
+            color: #fff !important;
+        }
+
+        /* ── doc-number code cell ────────────────────────────────────────────── */
+        #recentDocsTable code {
+            background: #e6f7ef;
+            color: #1c4d38;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: .76rem;
+            font-weight: 700;
+            border: 1px solid rgba(42,152,99,.25);
+        }
+        body.dark-mode #recentDocsTable code {
+            background: rgba(36,231,143,.10);
+            color: #24e78f;
+            border-color: rgba(36,231,143,.20);
+        }
+
+        /* ── DataTables pagination/info ──────────────────────────────────────── */
+        body.dark-mode .dataTables_wrapper .dataTables_info,
+        body.dark-mode .dataTables_wrapper .dataTables_paginate { color: #6aad8a; }
+        body.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+            color: #d4f5e5 !important;
+            border-color: rgba(36,231,143,.15) !important;
+        }
+        body.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: #24e78f !important;
+            border-color: #24e78f !important;
+            color: #091d14 !important;
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -124,7 +269,7 @@ $recent_docs = $db->query($recent_query);
                     <div class="col-6 col-md-4 col-lg-2 mb-3">
                         <div class="card stat-card h-100">
                             <div class="card-body p-3 d-flex align-items-center">
-                                <div class="stat-icon mr-3" style="background:#1a3c5e;">
+                                <div class="stat-icon mr-3" style="background:#1c4d38;">
                                     <i class="fas fa-folder-open"></i>
                                 </div>
                                 <div>
@@ -216,7 +361,7 @@ $recent_docs = $db->query($recent_query);
                                         </div>
                                         <div>
                                             <div style="font-weight:700; font-size:.95rem; color:var(--doc-incoming);">Incoming Documents</div>
-                                            <div style="font-size:.78rem; color:#6c757d;">Documents received from external sources</div>
+                                            <div class="qa-sub">Documents received from external sources</div>
                                         </div>
                                         <i class="fas fa-chevron-right ml-auto text-muted"></i>
                                     </div>
@@ -234,7 +379,7 @@ $recent_docs = $db->query($recent_query);
                                         </div>
                                         <div>
                                             <div style="font-weight:700; font-size:.95rem; color:var(--doc-outgoing);">Outgoing Documents</div>
-                                            <div style="font-size:.78rem; color:#6c757d;">Documents sent to external parties</div>
+                                            <div class="qa-sub">Documents sent to external parties</div>
                                         </div>
                                         <i class="fas fa-chevron-right ml-auto text-muted"></i>
                                     </div>
@@ -252,7 +397,7 @@ $recent_docs = $db->query($recent_query);
                                         </div>
                                         <div>
                                             <div style="font-weight:700; font-size:.95rem; color:var(--doc-internal);">Internal Documents</div>
-                                            <div style="font-size:.78rem; color:#6c757d;">Inter-section communications</div>
+                                            <div class="qa-sub">Inter-section communications</div>
                                         </div>
                                         <i class="fas fa-chevron-right ml-auto text-muted"></i>
                                     </div>
@@ -278,7 +423,7 @@ $recent_docs = $db->query($recent_query);
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0" id="recentDocsTable">
-                                <thead class="thead-light">
+                                <thead>
                                     <tr>
                                         <th style="width:50px;">#</th>
                                         <th>Doc No.</th>

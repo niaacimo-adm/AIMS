@@ -65,3 +65,39 @@ Stack trace:
 #0 C:\xampp\htdocs\AIMS\views\document_actions.php(505): mysqli->prepare('SELECT id FROM ...')
 #1 {main}
   thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 505
+[18-May-2026 11:34:28 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1004
+[18-May-2026 11:38:31 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1004
+[19-May-2026 02:41:38 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1004
+[19-May-2026 02:41:38 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1004
+[19-May-2026 03:10:28 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:1013
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(1013): mysqli_stmt->bind_param('iiissis sssssss...', 1, '60', '2026-05-19', 'incoming', 'IMO-05182026-00...', '2', 'asdsa', NULL, NULL, 'Administrative ...', 'Administrative ...', '2026-05-18 11:4...', '2026-05-18 11:4...', 'received', 'dasdas', '2026-05-18 17:4...')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1013
+[19-May-2026 03:31:07 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1035
+[19-May-2026 03:54:27 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1296
+[19-May-2026 04:02:52 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1296
+[19-May-2026 04:02:52 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1296
+[19-May-2026 04:26:16 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1296
+[19-May-2026 07:49:24 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:529
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(529): mysqli_stmt->bind_param('iiiiis', 66, 32, 105, 1, NULL, NULL, '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 529
+[19-May-2026 07:49:30 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:529
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(529): mysqli_stmt->bind_param('iiiiis', 66, 32, 105, 1, 46, NULL, '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 529
+[19-May-2026 07:49:39 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:529
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(529): mysqli_stmt->bind_param('iiiiis', 66, 32, 23, NULL, NULL, 1, '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 529
+[19-May-2026 07:51:17 Europe/Berlin] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\xampp\htdocs\AIMS\views\document_actions.php:529
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\views\document_actions.php(529): mysqli_stmt->bind_param('iiiiis', 66, 32, 105, 1, NULL, NULL, '')
+#1 {main}
+  thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 529
+[19-May-2026 09:04:50 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1315
+[19-May-2026 09:04:50 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1315

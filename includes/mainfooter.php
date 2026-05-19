@@ -857,6 +857,43 @@ body.dark-mode .cw-msg-action-btn { background: rgba(255,255,255,.12); }
 body.dark-mode .cw-msg-action-btn:hover { background: rgba(255,255,255,.22); }
 body.dark-mode .cw-seen-indicator { color: var(--text-muted); }
 body.dark-mode .cw-seen-indicator.seen { color: #7aabdf; }
+
+/* Ensure main content area has bottom spacing */
+.content-wrapper,
+.main-footer + .content-wrapper {
+    padding-bottom: 70px !important;  /* Adjust if your footer height differs */
+}
+
+/* Footer should be relative, not fixed or absolute */
+.main-footer {
+    position: relative;
+    clear: both;
+    margin-top: 0;
+    background: inherit; /* preserve existing background */
+}
+
+/* In case of wrapper layout, also push footer */
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.content-wrapper {
+    flex: 1;
+}
+
+/* Prevent chat widget from overlapping footer (optional) */
+.cw-wrapper {
+    bottom: 90px !important; /* already set, but ensure it stays above */
+}
+
+/* Responsive adjustment */
+@media (max-width: 768px) {
+    .content-wrapper {
+        padding-bottom: 80px !important;
+    }
+}
 </style>
 
 <!-- ═══════════════════════════════════════════════════════

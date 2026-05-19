@@ -19,7 +19,10 @@ $stmt = $db->prepare("
            us1.unit_name   AS from_unit,
            us2.unit_name   AS to_unit,
            CONCAT(TRIM(e1.first_name),' ',TRIM(e1.last_name)) AS forwarded_by_name_emp,
-           CONCAT(TRIM(e2.first_name),' ',TRIM(e2.last_name)) AS forwarded_to_name_emp
+           CONCAT(TRIM(e2.first_name),' ',TRIM(e2.last_name)) AS forwarded_to_name_emp,
+           (SELECT df_last.fwd_date FROM document_forwards df_last
+            WHERE df_last.document_id = dr.id
+            ORDER BY df_last.id DESC LIMIT 1) AS last_fwd_date
     FROM document_records dr
     LEFT JOIN document_types dt  ON dr.document_type_id        = dt.id
     LEFT JOIN section        s1  ON dr.from_section_id         = s1.section_id
@@ -66,7 +69,11 @@ if (!function_exists('safeDate')) {
 function safeDate($dateStr, $format = 'M d, Y g:i A') {
     if (empty($dateStr) || $dateStr === '0000-00-00 00:00:00') return null;
     try {
-        $dt = new DateTime($dateStr);
+        // Dates returned by MariaDB with SET time_zone='+08:00' are already PHT strings.
+        // Explicitly create the DateTime in PHT (+08:00) so no additional offset is applied,
+        // regardless of the PHP server's default timezone setting.
+        $pht = new DateTimeZone('Asia/Manila');
+        $dt  = new DateTime($dateStr, $pht);
         return $dt->format($format);
     } catch (Exception $e) { return null; }
 }
@@ -166,8 +173,34 @@ if ($view_logged) {
     <title>Document #<?= $doc['id'] ?> — <?= htmlspecialchars($doc['document_number']) ?> | NIA-ACIMO</title>
     <?php include '../includes/header.php'; ?>
     <style>
-        /* (same CSS as before, keep as is) */
-        :root { --kc: <?= $kind_color ?>; --kl: <?= $kind_light ?>; --brand: #1a3c5e; --border: #e5e9ef; --bg-sub: #fafbfc; --r-lg: 14px; --r-md: 10px; --r-sm: 6px; --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.07); --t-muted: #6b7280; --t-sub: #9ca3af; }
+        /* ══════════════════════════════════════════
+           DESIGN TOKENS — light (default)
+           Aligned with login.php green/forest palette
+        ══════════════════════════════════════════ */
+        :root {
+            --kc:    <?= $kind_color ?>;
+            --kl:    <?= $kind_light ?>;
+            --brand: #1c4d38;
+            --border: rgba(42,152,99,.18);
+            --bg-sub: #f0faf5;
+            --r-lg:  14px;
+            --r-md:  10px;
+            --r-sm:  6px;
+            --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(42,152,99,.08);
+            --t-muted: #4a7a5e;
+            --t-sub:   #6aad8a;
+        }
+        /* ══════════════════════════════════════════
+           DESIGN TOKENS — dark mode
+        ══════════════════════════════════════════ */
+        body.dark-mode {
+            --brand:   #24e78f;
+            --border:  var(--card-border, rgba(36,231,143,.10));
+            --bg-sub:  var(--table-stripe, #122b1d);
+            --shadow:  0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+            --t-muted: #6aad8a;
+            --t-sub:   #4a7a5e;
+        }
         .dv-layout { display:flex; gap:22px; align-items:flex-start; }
         .dv-main { flex:1; min-width:0; }
         .dv-side { width:296px; flex-shrink:0; position:sticky; top:10px; }
@@ -222,7 +255,7 @@ if ($view_logged) {
         .dv-btn:last-child { margin-bottom:0; }
         .dv-btn i { width:16px; text-align:center; font-size:.88rem; flex-shrink:0; }
         .dv-btn:hover { filter:brightness(.92); }
-        .dv-btn.g { background:#059669; color:#fff; }
+        .dv-btn.g { background:#2a9863; color:#fff; }
         .dv-btn.y { background:#d97706; color:#fff; }
         .dv-btn.s { background:#f1f5f9; color:#475569; border:1px solid var(--border); }
         .dv-btn.b { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
@@ -230,28 +263,42 @@ if ($view_logged) {
         .dv-divider{ border:none; border-top:1px solid var(--border); margin:8px 0; }
         .dv-status-row { display:flex; gap:7px; align-items:center; }
         .dv-status-row select { flex:1; font-size:.83rem; }
-        .dv-save-btn { padding:6px 13px; border:none; border-radius:var(--r-sm); background:var(--kc); color:#fff; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:filter .12s; }
+        .dv-save-btn { padding:6px 13px; border:none; border-radius:var(--r-sm); background:#2a9863; color:#fff; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:filter .12s; }
         .dv-save-btn:hover { filter:brightness(.9); }
         @media (max-width:991px) { .dv-layout { flex-direction:column; } .dv-side { width:100%; position:static; } .dv-grid-4 { grid-template-columns:1fr 1fr; } }
         @media print { .dv-side, .content-header, .main-header, .main-sidebar, .main-footer { display:none!important; } .dv-main { width:100%!important; } }
-        body.dark-mode .dv-card { background:var(--card-bg); border-color:var(--card-border); }
-        body.dark-mode .dv-card-hd { background:rgba(255,255,255,.03); border-color:var(--card-border); }
-        body.dark-mode .dv-fnode { background:rgba(255,255,255,.05); border-color:var(--card-border); }
-        body.dark-mode .dv-fnode .fname { color:var(--text-primary); }
-        body.dark-mode .dv-val { color:var(--text-primary); }
-        body.dark-mode .dv-tl-card { background:var(--table-stripe); border-color:var(--card-border); }
-        body.dark-mode .dv-tl-who { color:var(--text-primary); }
-        body.dark-mode .dv-tl-dot { box-shadow:0 0 0 4px var(--card-bg), 0 0 0 5px rgba(255,255,255,.1); }
-        body.dark-mode .dv-dt-item { background:var(--table-stripe); border-color:var(--card-border); }
-        body.dark-mode .dv-dt-item .v { color:var(--text-primary); }
-        body.dark-mode .dv-remarks { background:var(--table-stripe); border-color:var(--card-border); color:var(--text-primary); }
-        body.dark-mode .dv-btn.s { background:rgba(255,255,255,.06); color:var(--text-primary); border-color:var(--card-border); }
+        body.dark-mode .dv-card { background:var(--card-bg, #102f22); border-color:var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .dv-card-hd { background:rgba(36,231,143,.04); border-color:var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .dv-card-hd .dv-card-title { color:#6aad8a; }
+        body.dark-mode .dv-fnode { background:rgba(36,231,143,.06); border-color:var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .dv-fnode .fname { color:var(--text-primary, #d4f5e5); }
+        body.dark-mode .dv-fnode .fsub  { color:#6aad8a; }
+        body.dark-mode .dv-val { color:var(--text-primary, #d4f5e5); }
+        body.dark-mode .dv-tl-card { background:var(--table-stripe, #122b1d); border-color:var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .dv-tl-who { color:var(--text-primary, #d4f5e5); }
+        body.dark-mode .dv-tl-dot { box-shadow:0 0 0 4px var(--card-bg, #102f22), 0 0 0 5px rgba(36,231,143,.15); }
+        body.dark-mode .dv-tl-line { background:var(--card-border, rgba(36,231,143,.12)); }
+        body.dark-mode .dv-tl-rmk { color:#6aad8a; }
+        body.dark-mode .dv-tl-dt  { color:#4a7a5e; }
+        body.dark-mode .dv-tl-empty { background:var(--table-stripe, #122b1d); border-color:var(--card-border, rgba(36,231,143,.10)); color:#6aad8a; }
+        body.dark-mode .dv-dt-item { background:var(--table-stripe, #122b1d); border-color:var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .dv-dt-item .v { color:var(--text-primary, #d4f5e5); }
+        body.dark-mode .dv-dt-item .v.dim { color:#6aad8a; }
+        body.dark-mode .dv-remarks { background:var(--table-stripe, #122b1d); border-color:var(--card-border, rgba(36,231,143,.10)); color:var(--text-primary, #d4f5e5); }
+        body.dark-mode .dv-btn.s { background:rgba(36,231,143,.06); color:var(--text-primary, #d4f5e5); border-color:var(--card-border, rgba(36,231,143,.12)); }
+        body.dark-mode .dv-btn.b { background:rgba(36,231,143,.08); color:#24e78f; border-color:rgba(36,231,143,.20); }
+        body.dark-mode .dv-status-row select { background:var(--input-bg, #0e2619); color:var(--text-primary, #d4f5e5); border-color:var(--input-border, rgba(36,231,143,.18)); }
+        /* pill overrides dark */
         body.dark-mode .pill-incoming { background:#1e3a5f; color:#93c5fd; }
         body.dark-mode .pill-outgoing { background:#14532d; color:#86efac; }
         body.dark-mode .pill-internal { background:#2e1065; color:#c4b5fd; }
-        body.dark-mode .pill-pending { background:#431407; color:#fdba74; }
-        body.dark-mode .pill-received { background:#1e3a5f; color:#93c5fd; }
-        body.dark-mode .pill-completed { background:#064e3b; color:#6ee7b7; }
+        body.dark-mode .pill-pending  { background:#431407; color:#fdba74; }
+        body.dark-mode .pill-received { background:#064e3b; color:#6ee7b7; }
+        body.dark-mode .pill-returned { background:#4a044e; color:#f0abfc; }
+        body.dark-mode .pill-completed{ background:#064e3b; color:#6ee7b7; }
+        body.dark-mode .pill-archived { background:#122b1d; color:#6aad8a; }
+        /* hero dark overlay */
+        body.dark-mode .dv-hero { background: linear-gradient(135deg, #091d14 0%, var(--kc) 100%); }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -262,7 +309,7 @@ if ($view_logged) {
         <div class="content-header">
             <div class="container-fluid">
                 <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
-                    <h1 class="m-0" style="font-size:1.15rem;font-weight:700;color:#1a3c5e;"><i class="fas fa-file-alt mr-2" style="color:<?= $kind_color ?>;"></i>Document Detail</h1>
+                    <h1 class="m-0" style="font-size:1.15rem;font-weight:700;color:var(--brand);"><i class="fas fa-file-alt mr-2" style="color:<?= $kind_color ?>;"></i>Document Detail</h1>
                     <ol class="breadcrumb mb-0" style="background:transparent;padding:0;font-size:.82rem;">
                         <li class="breadcrumb-item"><a href="document_dashboard.php">Dashboard</a></li>
                         <li class="breadcrumb-item"><a href="document_list.php">Documents</a></li>
@@ -329,13 +376,15 @@ if ($view_logged) {
                         <!-- Dates & Timeline -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-calendar-alt"></i>Dates &amp; Timeline</div></div>
-                            <div class="dv-card-bd"><div class="dv-grid-2"><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-paper-plane mr-1"></i>Date &amp; Time Forwarded</div><?php $fd = safeDate($doc['date_forwarded']); ?><div class="v <?= $fd?'':'dim' ?>"><?= $fd??'—' ?></div></div><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-check-circle mr-1" style="color:#059669;"></i>Date Received</div><?php $rd = safeDate($doc['date_received']); ?><div class="v <?= $rd?'':'dim' ?>"><?= $rd??'—' ?></div></div><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-plus-circle mr-1"></i>Record Created</div><div class="v"><?= safeDate($doc['created_at'])??'—' ?></div></div><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-pencil-alt mr-1"></i>Last Updated</div><div class="v"><?= safeDate($doc['updated_at'])??'—' ?></div></div></div></div>
+                            <div class="dv-card-bd"><div class="dv-grid-2"><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-paper-plane mr-1"></i>Date &amp; Time Forwarded</div><?php $fd = safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']); ?><div class="v <?= $fd?'':'dim' ?>"><?= $fd??'—' ?></div></div><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-check-circle mr-1" style="color:#059669;"></i>Date Received</div><?php $rd = safeDate($doc['date_received']); ?><div class="v <?= $rd?'':'dim' ?>"><?= $rd??'Not yet received' ?></div></div><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-plus-circle mr-1"></i>Record Created</div><div class="v"><?= safeDate($doc['created_at'])??'—' ?></div></div><div class="dv-dt-item"><div class="dv-lbl"><i class="fas fa-pencil-alt mr-1"></i>Last Updated</div><div class="v"><?= safeDate($doc['updated_at'])??'—' ?></div></div></div></div>
                         </div>
                         <!-- Remarks -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-comment-alt"></i>Remarks</div></div>
                             <div class="dv-card-bd"><div class="dv-remarks"><?= !empty($doc['remarks']) ? nl2br(htmlspecialchars($doc['remarks'])) : '<span style="color:#9ca3af;font-style:italic;">No remarks provided.</span>' ?></div></div>
                         </div>
+
+                        
                     </div>
                     <div class="dv-side">
                         <!-- Status -->
@@ -371,12 +420,40 @@ if ($view_logged) {
                                 <?php endif; ?>
                             </div>
                         </div>
+                        <!-- ── Attachments ── -->
+                        <div class="dv-card" id="attachmentsCard">
+                            <div class="dv-card-hd">
+                                <div class="dv-card-title">
+                                    <i class="fas fa-paperclip"></i>Attachments
+                                    <span id="attachCountBadge" style="background:var(--kc);color:#fff;border-radius:20px;padding:1px 8px;font-size:.62rem;margin-left:2px;">0</span>
+                                </div>
+                            </div>
+                            <div class="dv-card-bd" style="padding:14px;">
+                                <!-- File list renders here -->
+                                <div id="viewAttachmentList">
+                                    <div style="text-align:center;padding:18px;color:var(--t-sub);font-size:.8rem;"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+                                </div>
+                                <!-- Upload drop zone (at bottom) -->
+                                <div id="viewFileDropZone" style="margin-top:10px;border:2px dashed rgba(42,152,99,.25);border-radius:10px;padding:18px 14px;text-align:center;background:var(--bg-sub);cursor:pointer;transition:border-color .2s,background .2s;">
+                                    <input type="file" id="viewFileInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv" style="display:none;">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;color:rgba(42,152,99,.4);display:block;margin-bottom:5px;"></i>
+                                    <div style="font-size:.78rem;color:var(--t-muted);font-weight:600;">Drag &amp; drop to upload, or <span style="color:var(--kc);text-decoration:underline;">click to browse</span></div>
+                                    <div style="font-size:.68rem;color:var(--t-sub);margin-top:2px;">PDF &middot; Word &middot; Excel &middot; Images &middot; max 20 MB each</div>
+                                </div>
+                                <!-- Upload progress -->
+                                <div id="viewUploadProgress" style="display:none;margin-top:8px;">
+                                    <div style="background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden;">
+                                        <div id="viewProgressBar" style="background:#2a9863;height:100%;width:0%;transition:width .3s;"></div>
+                                    </div>
+                                    <div style="font-size:.72rem;color:var(--t-muted);margin-top:3px;text-align:center;" id="viewProgressLabel">Uploading…</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <?php include '../includes/mainfooter.php'; ?>
 </div>
 
 <!-- DELETE REQUEST MODAL -->
@@ -416,7 +493,7 @@ if ($view_logged) {
 <div class="modal fade" id="forwardModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content" style="border-radius:var(--r-lg);overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.2);">
-            <div class="modal-header" style="background:linear-gradient(135deg,#1a3c5e,#059669);color:#fff;border:none;padding:16px 22px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1c4d38,#24e78f);color:#fff;border:none;padding:16px 22px;">
                 <h5 class="modal-title" style="font-weight:700;font-size:.95rem;"><i class="fas fa-share mr-2"></i>Forward Document</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" style="opacity:.8;"><span>&times;</span></button>
             </div>
@@ -435,11 +512,12 @@ if ($view_logged) {
             </div>
             <div class="modal-footer" style="border:none;padding:12px 22px;background:#f9fafb;">
                 <button type="button" class="btn btn-light btn-sm" data-dismiss="modal" style="font-weight:600;">Cancel</button>
-                <button type="button" class="btn btn-sm" id="confirmVForwardBtn" style="background:#059669;color:#fff;font-weight:600;border-radius:var(--r-sm);padding:6px 16px;"><i class="fas fa-share mr-1"></i>Forward Document</button>
+                <button type="button" class="btn btn-sm" id="confirmVForwardBtn" style="background:#2a9863;color:#fff;font-weight:600;border-radius:var(--r-sm);padding:6px 16px;"><i class="fas fa-share mr-1"></i>Forward Document</button>
             </div>
         </div>
     </div>
 </div>
+<?php include '../includes/mainfooter.php'; ?>
 
 <script>
 function openForwardModal(id, docNum) {
@@ -552,6 +630,201 @@ $(function() {
     $.post('document_actions.php', { action: 'mark_notifications_read' });
 });
 <?php endif; ?>
+
+// ══════════════════════════════════════════════════════════════
+//  FILE ATTACHMENTS  (document_view.php)
+// ══════════════════════════════════════════════════════════════
+const VIEW_DOC_ID = <?= (int)$doc['id'] ?>;
+
+const FILE_ICONS_VIEW = {
+    'application/pdf': { icon: 'fa-file-pdf',        color: '#dc2626' },
+    'application/msword': { icon: 'fa-file-word',     color: '#2563eb' },
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'fa-file-word', color: '#2563eb' },
+    'application/vnd.ms-excel': { icon: 'fa-file-excel', color: '#16a34a' },
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: 'fa-file-excel', color: '#16a34a' },
+    'application/vnd.ms-powerpoint': { icon: 'fa-file-powerpoint', color: '#ea580c' },
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: 'fa-file-powerpoint', color: '#ea580c' },
+};
+function vFileIcon(mime) {
+    if (FILE_ICONS_VIEW[mime]) return FILE_ICONS_VIEW[mime];
+    if (mime && mime.startsWith('image/')) return { icon: 'fa-file-image', color: '#7c3aed' };
+    return { icon: 'fa-file-alt', color: '#6b7280' };
+}
+function vFmtBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+}
+function vEsc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+
+function isPreviewable(mime) {
+    return ['application/pdf','image/jpeg','image/png','image/gif','image/webp'].includes(mime);
+}
+
+function loadAttachments() {
+    $.get('document_actions.php', { action: 'get_files', document_id: VIEW_DOC_ID }, function(r) {
+        const files = r.files || [];
+        $('#attachCountBadge').text(files.length);
+        if (!files.length) {
+            $('#viewAttachmentList').html(
+                '<div style="text-align:center;padding:22px 16px;color:var(--t-sub);font-size:.82rem;">' +
+                '<i class="fas fa-paperclip" style="font-size:1.8rem;opacity:.25;display:block;margin-bottom:8px;"></i>' +
+                '<div style="font-weight:600;color:var(--t-muted);">No attachments yet</div>' +
+                '<div style="font-size:.74rem;margin-top:3px;">Drop files or click the area below to upload</div></div>'
+            );
+            return;
+        }
+        let html = '<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:4px;">';
+        files.forEach(f => {
+            const fi  = vFileIcon(f.mime_type);
+            const fid = f.id;
+            const isImg = f.mime_type && f.mime_type.startsWith('image/');
+            const canPreview = isPreviewable(f.mime_type);
+            const thumbHtml = isImg
+                ? `<div style="width:40px;height:40px;border-radius:7px;overflow:hidden;flex-shrink:0;background:#f3f4f6;border:1px solid var(--border);">
+                     <img src="document_actions.php?action=download_file&file_id=${fid}&inline=1" alt="" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
+                   </div>`
+                : `<div style="width:40px;height:40px;border-radius:7px;flex-shrink:0;background:${fi.color}15;border:1px solid ${fi.color}30;display:flex;align-items:center;justify-content:center;">
+                     <i class="fas ${fi.icon}" style="color:${fi.color};font-size:1.1rem;"></i>
+                   </div>`;
+            html += `
+            <div id="vFile_${fid}" style="display:flex;align-items:center;gap:10px;background:var(--bg-sub);border:1px solid var(--border);border-radius:10px;padding:9px 11px;transition:box-shadow .15s;">
+                ${thumbHtml}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:.82rem;font-weight:600;color:#1c4d38;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${vEsc(f.original_name)}">${vEsc(f.original_name)}</div>
+                    <div style="font-size:.69rem;color:var(--t-sub);margin-top:2px;">
+                        <span style="background:#f0faf5;color:#2a9863;border-radius:4px;padding:1px 6px;font-weight:600;">${vFmtBytes(f.file_size)}</span>
+                        &nbsp;${vEsc(f.uploaded_by_name||'Unknown')} &middot; ${f.uploaded_at.substring(0,10)}
+                    </div>
+                </div>
+                <div style="display:flex;gap:5px;flex-shrink:0;">
+                    ${canPreview ? `<button onclick="previewFile(${fid},'${vEsc(f.original_name)}','${f.mime_type}')" title="Preview" style="width:30px;height:30px;border:none;border-radius:7px;background:#eff6ff;color:#2563eb;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:filter .1s;" onmouseover="this.style.filter='brightness(.88)'" onmouseout="this.style.filter='none'"><i class="fas fa-eye"></i></button>` : ''}
+                    <a href="document_actions.php?action=download_file&file_id=${fid}&inline=0" download="${vEsc(f.original_name)}" title="Download" style="width:30px;height:30px;border:none;border-radius:7px;background:#f0faf5;color:#2a9863;font-size:.8rem;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;transition:filter .1s;" onmouseover="this.style.filter='brightness(.88)'" onmouseout="this.style.filter='none'"><i class="fas fa-download"></i></a>
+                    <button onclick="deleteAttachment(${fid},'${vEsc(f.original_name)}')" title="Delete" style="width:30px;height:30px;border:none;border-radius:7px;background:#fef2f2;color:#dc2626;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:filter .1s;" onmouseover="this.style.filter='brightness(.88)'" onmouseout="this.style.filter='none'"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        $('#viewAttachmentList').html(html);
+    }, 'json').fail(() => {
+        $('#viewAttachmentList').html('<div style="color:#ef4444;font-size:.8rem;text-align:center;padding:12px;">Failed to load attachments.</div>');
+    });
+}
+
+function uploadViewFiles(fileList) {
+    if (!fileList.length) return;
+    const fd = new FormData();
+    fd.append('action', 'upload_file');
+    fd.append('document_id', VIEW_DOC_ID);
+    Array.from(fileList).forEach(f => fd.append('files[]', f));
+
+    $('#viewUploadProgress').show();
+    $('#viewProgressBar').css('width', '0%');
+    $('#viewProgressLabel').text('Uploading…');
+
+    $.ajax({
+        url: 'document_actions.php',
+        method: 'POST',
+        data: fd,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        xhr: function() {
+            const x = new window.XMLHttpRequest();
+            x.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    $('#viewProgressBar').css('width', pct + '%');
+                    $('#viewProgressLabel').text('Uploading… ' + pct + '%');
+                }
+            });
+            return x;
+        },
+        success: function(r) {
+            $('#viewUploadProgress').hide();
+            if (r.errors && r.errors.length) {
+                Swal.fire('Some files failed', r.errors.join('<br>'), 'warning');
+            }
+            loadAttachments();
+        },
+        error: function() {
+            $('#viewUploadProgress').hide();
+            Swal.fire('Upload Failed', 'An error occurred while uploading.', 'error');
+        }
+    });
+}
+
+function deleteAttachment(fileId, fileName) {
+    Swal.fire({
+        title: 'Delete attachment?',
+        html: `Remove <strong>${vEsc(fileName)}</strong> from this document?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Delete',
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        $.post('document_actions.php', { action: 'delete_file', file_id: fileId }, function(r) {
+            if (r.success) {
+                $('#vFile_' + fileId).fadeOut(200, function() { $(this).remove(); loadAttachments(); });
+            } else {
+                Swal.fire('Failed', r.message || 'Could not delete file.', 'error');
+            }
+        }, 'json');
+    });
+}
+
+// Preview modal for PDF and images
+function previewFile(fileId, fileName, mimeType) {
+    const url = `document_actions.php?action=download_file&file_id=${fileId}&inline=1`;
+    const isPDF = (mimeType === 'application/pdf') || fileName.toLowerCase().endsWith('.pdf');
+    const isImg = mimeType && mimeType.startsWith('image/');
+
+    let bodyHtml;
+    if (isPDF) {
+        bodyHtml = `<div style="background:#f1f3f5;border-radius:8px;overflow:hidden;">
+            <iframe src="${url}" style="width:100%;height:82vh;border:none;display:block;"></iframe>
+        </div>`;
+    } else if (isImg) {
+        bodyHtml = `<div style="background:#0f172a;border-radius:8px;padding:8px;display:flex;align-items:center;justify-content:center;min-height:200px;">
+            <img src="${url}" alt="${vEsc(fileName)}" style="max-width:100%;max-height:80vh;border-radius:6px;display:block;object-fit:contain;">
+        </div>`;
+    } else {
+        bodyHtml = `<div style="text-align:center;padding:30px;color:#6b7280;">Preview not available for this file type.</div>`;
+    }
+
+    Swal.fire({
+        title: `<span style="font-size:.88rem;font-weight:600;color:#374151;word-break:break-all;">${vEsc(fileName)}</span>`,
+        html: bodyHtml,
+        width: isPDF ? '92%' : '80%',
+        padding: '0',
+        showConfirmButton: false,
+        showCloseButton: true,
+        customClass: { popup: 'swal2-file-preview-popup', closeButton: 'swal2-preview-close' },
+    });
+}
+
+$(function() {
+    // Load attachments on page load
+    loadAttachments();
+
+    // File input change
+    document.getElementById('viewFileInput').addEventListener('change', function() {
+        uploadViewFiles(this.files);
+        this.value = '';
+    });
+
+    // Drop zone
+    const dz = document.getElementById('viewFileDropZone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = '#2a9863'; dz.style.background = '#d1fae5'; });
+    dz.addEventListener('dragleave', () => { dz.style.borderColor = 'rgba(42,152,99,.3)'; dz.style.background = 'var(--bg-sub)'; });
+    dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.style.borderColor = 'rgba(42,152,99,.3)'; dz.style.background = 'var(--bg-sub)';
+        uploadViewFiles(e.dataTransfer.files);
+    });
+    dz.addEventListener('click', () => document.getElementById('viewFileInput').click());
+});
 </script>
 <?php include '../includes/footer.php'; ?>
 </body>

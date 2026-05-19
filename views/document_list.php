@@ -192,24 +192,56 @@ if ($sec_list_res) {
     <title><?= htmlspecialchars($page_title) ?> | NIA-ACIMO</title>
     <?php include '../includes/header.php'; ?>
     <style>
-        /* ── Design tokens ───────────────────────────────────────────────────── */
+        /* ══════════════════════════════════════════
+           DESIGN TOKENS — light (default)
+           Aligned with login.php green/forest palette
+        ══════════════════════════════════════════ */
         :root {
-            --doc-primary:   #1a3c5e;
-            --doc-primary-light: #e8f0f8;
-            --doc-incoming:  #2563eb;
-            --doc-outgoing:  #16a34a;
-            --doc-internal:  #7c3aed;
-            --doc-surface:   #ffffff;
-            --doc-border:    #e2e8f0;
-            --doc-text:      #1e293b;
-            --doc-muted:     #64748b;
-            --doc-hover:     #f8fafc;
-            --doc-stripe:    #f9fafb;
+            --green:             #24e78f;
+            --green-dark:        #2a9863;
+            --green-mid:         #1a5c38;
+
+            /* document semantic */
+            --doc-primary:       #1c4d38;
+            --doc-primary-light: #e6f7ef;
+            --doc-incoming:      #2563eb;
+            --doc-outgoing:      #16a34a;
+            --doc-internal:      #7c3aed;
+
+            /* surfaces */
+            --doc-surface:       var(--card-bg, #ffffff);
+            --doc-border:        var(--card-border, rgba(42,152,99,.18));
+            --doc-text:          var(--text-primary, #0f2d1e);
+            --doc-muted:         var(--text-muted, #4a7a5e);
+            --doc-hover:         #e6f7ef;
+            --doc-stripe:        #f0faf5;
+
             --radius-sm:     6px;
             --radius-md:     10px;
             --radius-lg:     14px;
-            --shadow-card:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+            --shadow-card:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(42,152,99,.08);
             --shadow-btn:    0 1px 2px rgba(0,0,0,.08);
+
+            /* thead */
+            --thead-bg:    #1c4d38;
+            --thead-color: #ffffff;
+        }
+
+        /* ══════════════════════════════════════════
+           DESIGN TOKENS — dark mode overrides
+        ══════════════════════════════════════════ */
+        body.dark-mode {
+            --doc-primary:       #24e78f;
+            --doc-primary-light: rgba(36,231,143,.12);
+            --doc-surface:       var(--card-bg, #102f22);
+            --doc-border:        var(--card-border, rgba(36,231,143,.10));
+            --doc-text:          var(--text-primary, #d4f5e5);
+            --doc-muted:         #6aad8a;
+            --doc-hover:         rgba(36,231,143,.07);
+            --doc-stripe:        rgba(36,231,143,.04);
+            --shadow-card:       0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+            --thead-bg:          #528c72;
+            --thead-color:       #d4f5e5;
         }
 
         /* ── Kind badges ─────────────────────────────────────────────────────── */
@@ -224,6 +256,10 @@ if ($sec_list_res) {
         .kind-outgoing { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
         .kind-internal { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
 
+        body.dark-mode .kind-incoming { background:#1e3a5f; color:#93c5fd; border-color:#1e40af; }
+        body.dark-mode .kind-outgoing { background:#14532d; color:#86efac; border-color:#166534; }
+        body.dark-mode .kind-internal { background:#2e1065; color:#c4b5fd; border-color:#4c1d95; }
+
         /* ── Status badges ───────────────────────────────────────────────────── */
         .status-badge {
             display: inline-flex; align-items: center; gap: 5px;
@@ -237,14 +273,20 @@ if ($sec_list_res) {
         }
         .status-pending   { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
         .status-pending::before   { background:#f97316; }
-        .status-received  { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
-        .status-received::before  { background:#3b82f6; }
+        .status-received  { background:#e6f7ef; color:#1c4d38; border:1px solid #a7f3d0; }
+        .status-received::before  { background:#24e78f; }
         .status-returned  { background:#fdf2f8; color:#9d174d; border:1px solid #fbcfe8; }
         .status-returned::before  { background:#ec4899; }
-        .status-completed { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
-        .status-completed::before { background:#22c55e; }
-        .status-archived  { background:#f8fafc; color:#475569; border:1px solid #e2e8f0; }
-        .status-archived::before  { background:#94a3b8; }
+        .status-completed { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+        .status-completed::before { background:#2a9863; }
+        .status-archived  { background:#f0faf5; color:#4a7a5e; border:1px solid #a7d8bc; }
+        .status-archived::before  { background:#6aad8a; }
+
+        body.dark-mode .status-pending   { background:#431407; color:#fdba74; border-color:#7c2d12; }
+        body.dark-mode .status-received  { background:#064e3b; color:#6ee7b7; border-color:#065f46; }
+        body.dark-mode .status-returned  { background:#4a044e; color:#f0abfc; border-color:#86198f; }
+        body.dark-mode .status-completed { background:#064e3b; color:#6ee7b7; border-color:#065f46; }
+        body.dark-mode .status-archived  { background:#122b1d; color:#6aad8a; border-color:rgba(36,231,143,.18); }
 
         /* ── Filter pills ────────────────────────────────────────────────────── */
         .filter-bar {
@@ -268,10 +310,15 @@ if ($sec_list_res) {
             letter-spacing: .01em;
         }
         .filter-pill:hover { background: var(--doc-hover); color: var(--doc-primary); text-decoration: none; }
-        .filter-pill.active-all      { background: var(--doc-primary); color: #fff; box-shadow: 0 2px 8px rgba(26,60,94,.25); }
+        .filter-pill.active-all      { background: var(--doc-primary); color: #fff; box-shadow: 0 2px 8px rgba(28,77,56,.35); }
         .filter-pill.active-incoming { background: #2563eb; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,.25); }
         .filter-pill.active-outgoing { background: #16a34a; color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.25); }
         .filter-pill.active-internal { background: #7c3aed; color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+
+        body.dark-mode .filter-bar  { background: var(--card-bg, #102f22); border-color: var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .filter-pill { color: #6aad8a; }
+        body.dark-mode .filter-pill:hover { background: rgba(36,231,143,.08); color: #d4f5e5; }
+        body.dark-mode .filter-pill.active-all { background: #24e78f; color: #091d14; box-shadow: 0 2px 8px rgba(36,231,143,.25); }
 
         /* ── Action toolbar buttons ──────────────────────────────────────────── */
         .toolbar-btn {
@@ -285,14 +332,24 @@ if ($sec_list_res) {
             text-decoration: none;
         }
         .toolbar-btn:hover { filter: brightness(.93); transform: translateY(-1px); }
-        .toolbar-btn-export  { background:#fff; color:#475569; border-color:#cbd5e1; }
-        .toolbar-btn-export:hover { color:#1e293b; }
+        .toolbar-btn-export  { background:#fff; color:#4a7a5e; border-color:rgba(42,152,99,.3); }
+        .toolbar-btn-export:hover { background:#e6f7ef; color:#1c4d38; }
         .toolbar-btn-print   { background:#fff; color:#dc2626; border-color:#fca5a5; }
         .toolbar-btn-print:hover { background:#fef2f2; }
         .toolbar-btn-delete  { background:#fff; color:#374151; border-color:#d1d5db; }
         .toolbar-btn-delete:hover { background:#f9fafb; }
-        .toolbar-btn-add     { background: var(--doc-primary); color:#fff; border-color: var(--doc-primary); }
-        .toolbar-btn-add:hover { background:#153251; }
+        .toolbar-btn-add     { background: #1c4d38; color:#fff; border-color:#1c4d38; }
+        .toolbar-btn-add:hover { background: #2a9863; border-color:#2a9863; }
+
+        body.dark-mode .toolbar-btn-export,
+        body.dark-mode .toolbar-btn-print,
+        body.dark-mode .toolbar-btn-delete {
+            background: var(--card-bg, #102f22);
+            color: #d4f5e5;
+            border-color: var(--card-border, rgba(36,231,143,.12));
+        }
+        body.dark-mode .toolbar-btn-add { background: #24e78f; color: #091d14; border-color: #24e78f; }
+        body.dark-mode .toolbar-btn-add:hover { background: #2a9863; border-color: #2a9863; color: #fff; }
 
         /* ── Main table card ─────────────────────────────────────────────────── */
         .doc-table-card {
@@ -302,6 +359,7 @@ if ($sec_list_res) {
             box-shadow: var(--shadow-card);
             overflow: hidden;
         }
+        body.dark-mode .doc-table-card { background: var(--card-bg, #102f22); border-color: var(--card-border, rgba(36,231,143,.10)); }
 
         /* ── Table ───────────────────────────────────────────────────────────── */
         #documentsTable {
@@ -314,12 +372,12 @@ if ($sec_list_res) {
         /* Use !important + double selector to beat AdminLTE specificity in both light & dark */
         table#documentsTable thead tr,
         table#documentsTable > thead > tr {
-            background-color: #1a3c5e !important;
+            background-color: var(--thead-bg) !important;
         }
         table#documentsTable thead th,
         table#documentsTable > thead > tr > th {
-            color: #ffffff !important;
-            background-color: #1a3c5e !important;
+            color: var(--thead-color) !important;
+            background-color: var(--thead-bg) !important;
             font-size: .72rem !important;
             font-weight: 700 !important;
             text-transform: uppercase !important;
@@ -331,9 +389,7 @@ if ($sec_list_res) {
         }
         table#documentsTable thead th.sorting,
         table#documentsTable thead th.sorting_asc,
-        table#documentsTable thead th.sorting_desc {
-            background-color: #1a3c5e !important;
-        }
+
         #documentsTable thead th.sorting::after,
         #documentsTable thead th.sorting_asc::after,
         #documentsTable thead th.sorting_desc::after { color: rgba(255,255,255,.55) !important; }
@@ -362,7 +418,7 @@ if ($sec_list_res) {
             border-radius: 5px;
             display: inline-block;
             letter-spacing: .02em;
-            border: 1px solid #c7d9ec;
+            border: 1px solid rgba(42,152,99,.3);
             white-space: nowrap;
         }
 
@@ -478,38 +534,20 @@ if ($sec_list_res) {
         .kind-radio:checked + .kind-opt-outgoing { border-color:#16a34a;background:#dcfce7;color:#15803d; }
         .kind-radio:checked + .kind-opt-internal { border-color:#7c3aed;background:#ede9fe;color:#6d28d9; }
 
-        /* ── Dark mode ───────────────────────────────────────────────────────── */
-        body.dark-mode {
-            --doc-surface: var(--card-bg, #1e2535);
-            --doc-border: var(--card-border, #2d3748);
-            --doc-hover: rgba(255,255,255,.04);
-            --doc-stripe: rgba(255,255,255,.02);
-            --doc-text: var(--text-primary, #e2e8f0);
-            --doc-muted: #94a3b8;
-            --doc-primary-light: rgba(26,60,94,.35);
+        /* ── Dark mode extras (tokens set above on body.dark-mode) ─────────── */
+        body.dark-mode .doc-number-cell {
+            background: rgba(36,231,143,.10);
+            color: #24e78f;
+            border-color: rgba(36,231,143,.20);
         }
-        body.dark-mode .kind-incoming { background:#1e3a5f;color:#93c5fd;border-color:#1e40af; }
-        body.dark-mode .kind-outgoing { background:#14532d;color:#86efac;border-color:#166534; }
-        body.dark-mode .kind-internal { background:#2e1065;color:#c4b5fd;border-color:#4c1d95; }
-        body.dark-mode .status-pending   { background:#431407;color:#fdba74;border-color:#7c2d12; }
-        body.dark-mode .status-received  { background:#1e3a5f;color:#93c5fd;border-color:#1e40af; }
-        body.dark-mode .status-completed { background:#064e3b;color:#6ee7b7;border-color:#065f46; }
-        body.dark-mode .status-archived  { background:#1e293b;color:#94a3b8;border-color:#334155; }
-        body.dark-mode .filter-bar { background:var(--card-bg,#1e2535);border-color:var(--card-border,#2d3748); }
-        body.dark-mode .filter-pill { color:#94a3b8; }
-        body.dark-mode .filter-pill:hover { background:rgba(255,255,255,.06);color:#e2e8f0; }
-        body.dark-mode .doc-number-cell { background:rgba(26,60,94,.4);color:#7aabdf;border-color:#2d4a6a; }
-        body.dark-mode .doc-table-card { background:var(--card-bg,#1e2535);border-color:var(--card-border,#2d3748); }
-        body.dark-mode #documentsTable tbody tr { border-color:var(--card-border,#2d3748); }
-        body.dark-mode .toolbar-btn-export,
-        body.dark-mode .toolbar-btn-print,
-        body.dark-mode .toolbar-btn-delete { background:var(--card-bg,#1e2535);color:#cbd5e1;border-color:var(--card-border,#2d3748); }
-        body.dark-mode .kind-option { background:var(--input-bg);color:var(--text-primary);border-color:var(--input-border); }
-        body.dark-mode .page-section-title { color:#7aabdf;border-color:#7aabdf; }
+        body.dark-mode #documentsTable tbody tr { border-color: var(--card-border, rgba(36,231,143,.10)); }
+        body.dark-mode .kind-option { background:var(--input-bg, #0e2619);color:var(--text-primary, #d4f5e5);border-color:var(--input-border, rgba(36,231,143,.18)); }
+        body.dark-mode .page-section-title { color:#24e78f;border-color:#24e78f; }
         body.dark-mode .dataTables_wrapper .dataTables_filter input,
         body.dark-mode .dataTables_wrapper .dataTables_length select {
-            background: var(--input-bg, #2d3748); color: var(--text-primary, #e2e8f0);
-            border-color: var(--input-border, #4a5568);
+            background: var(--input-bg, #0e2619);
+            color: var(--text-primary, #d4f5e5);
+            border-color: var(--input-border, rgba(36,231,143,.18));
         }
     </style>
 </head>
@@ -527,7 +565,7 @@ if ($sec_list_res) {
                             <?php if ($kind==='incoming'):  ?><i class="fas fa-inbox mr-2" style="color:var(--doc-incoming);"></i>
                             <?php elseif ($kind==='outgoing'): ?><i class="fas fa-paper-plane mr-2" style="color:var(--doc-outgoing);"></i>
                             <?php elseif ($kind==='internal'): ?><i class="fas fa-exchange-alt mr-2" style="color:var(--doc-internal);"></i>
-                            <?php else: ?><i class="fas fa-file-alt mr-2"></i><?php endif; ?>
+                            <?php else: ?><i class="fas fa-file-alt mr-2" style="color:var(--green-dark, #2a9863);"></i><?php endif; ?>
                             <?= htmlspecialchars($page_title) ?>
                         </h1>
                     </div>
@@ -555,9 +593,11 @@ if ($sec_list_res) {
 
                     <!-- Toolbar actions -->
                     <div class="ml-auto d-flex flex-wrap" style="gap:6px;align-items:center;">
-                        <button class="toolbar-btn toolbar-btn-export" onclick="exportTableToCSV()">
-                            <i class="fas fa-file-csv"></i> Export
-                        </button>
+                        <div class="btn-group" style="gap:0;">
+                            <a href="document_export.php?type=list<?= $kind ? '&kind='.$kind : '' ?>" class="toolbar-btn toolbar-btn-export" style="border-radius:6px 0 0 6px;text-decoration:none;">
+                                <i class="fas fa-file-excel"></i> Export XLSX
+                            </a>
+                        </div>
                         <button class="toolbar-btn toolbar-btn-print" onclick="window.print()">
                             <i class="fas fa-print"></i> Print
                         </button>
@@ -597,7 +637,7 @@ if ($sec_list_res) {
                                     while ($doc = $documents->fetch_assoc()): ?>
                                     <tr>
                                         <td><span class="doc-id-cell">#<?= $doc['id'] ?></span></td>
-                                        <td><span class="doc-number-cell"><?= htmlspecialchars($doc['document_number']) ?></span></td>
+                                        <td><?= htmlspecialchars($doc['document_number']) ?></span></td>
                                         <td>
                                             <div style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;" title="<?= htmlspecialchars($doc['document_name']) ?>">
                                                 <?= htmlspecialchars($doc['document_name']) ?>
@@ -765,6 +805,22 @@ if ($sec_list_res) {
                         <div class="col-12 mb-3">
                             <label class="font-weight-bold">Remarks</label>
                             <textarea class="form-control" name="remarks" rows="2"></textarea>
+                        </div>
+
+                        <!-- File Attachments -->
+                        <div class="col-12 mb-1">
+                            <label class="font-weight-bold">
+                                <i class="fas fa-paperclip mr-1" style="color:#2a9863;"></i>
+                                Attachments <small class="text-muted font-weight-normal">(optional &mdash; PDF, Word, Excel, images; max 20 MB each)</small>
+                            </label>
+                            <div id="addFileDropZone"
+                                 style="border:2px dashed rgba(42,152,99,.4);border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;background:#f0faf5;transition:all .2s;position:relative;">
+                                <input type="file" id="addFileInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+                                <i class="fas fa-cloud-upload-alt" style="font-size:1.6rem;color:rgba(42,152,99,.5);margin-bottom:6px;display:block;"></i>
+                                <div style="font-size:.84rem;color:#4a7a5e;font-weight:600;">Drag &amp; drop files here, or click to browse</div>
+                                <div style="font-size:.73rem;color:#6aad8a;margin-top:3px;">PDF &middot; Word &middot; Excel &middot; PowerPoint &middot; Images &middot; Text</div>
+                            </div>
+                            <div id="addFileList" style="margin-top:8px;display:none;"></div>
                         </div>
                     </div>
                 </form>
@@ -935,35 +991,6 @@ $(document).ready(function() {
     // ── Select2 ─────────────────────────────────────────────────────────────
     $('.select2').select2({ theme: 'bootstrap4', dropdownParent: $('body') });
 
-    // ── Save Document (Add) ──────────────────────────────────────────────────
-    $('#saveDocumentBtn').on('click', function() {
-        const form = $('#addDocumentForm');
-        if (!form.find('input[name="kind"]:checked').val()) {
-            Swal.fire({ icon: 'warning', title: 'Kind Required', text: 'Please select the kind of document.' }); return;
-        }
-        if (!form[0].checkValidity()) { form[0].reportValidity(); return; }
-        const $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
-
-        $.post('document_actions.php', form.serialize(), function(r) {
-            if (r.success) {
-                $('#addDocumentModal').modal('hide');
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Document Saved!',
-                    text: 'The document record has been saved successfully.',
-                    timer: 1800,
-                    showConfirmButton: false,
-                    timerProgressBar: true
-                }).then(() => location.reload());
-            } else {
-                Swal.fire({ icon: 'error', title: 'Failed to Save', text: r.message || 'An error occurred while saving.' });
-            }
-        }, 'json').fail(function(xhr) {
-            Swal.fire({ icon: 'error', title: 'Server Error', text: 'An unexpected server error occurred. Check console for details.' });
-            console.error(xhr.responseText);
-        }).always(() => $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Document'));
-    });
-
     // ── Kind option visual feedback ─────────────────────────────────────────
     $(document).on('change', '.kind-radio', function() {
         const val = $(this).val();
@@ -1075,6 +1102,11 @@ $(document).ready(function() {
         $('.kind-option').css({ border: '2px solid #dee2e6', background: '#f8f9fa', color: '#495057' });
     });
 
+    $('#editDocumentModal').on('hidden.bs.modal', function() {
+        editPendingFiles = [];
+        currentEditDocId = null;
+    });
+
     $('#forwardModal').on('show.bs.modal', function() {
         $('#fwdToSectionSelect, #fwdToUnitSelect, #fwdToOfficeSelect').prop('disabled', false);
         $('#fwdToSectionSelect, #fwdToOfficeSelect').select2({ theme: 'bootstrap4', dropdownParent: $('#forwardModal') });
@@ -1153,12 +1185,44 @@ function editDocument(id) {
                         </div>
                     </div>
                 </form>
+                <!-- ── Attachments (Edit Mode) ── -->
+                <div style="margin-top:4px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#4a7a5e;display:flex;align-items:center;gap:6px;">
+                            <i class="fas fa-paperclip" style="color:#2a9863;"></i>Attachments
+                            <span id="editAttachBadge" style="background:#2a9863;color:#fff;border-radius:20px;padding:1px 7px;font-size:.62rem;">0</span>
+                        </div>
+                    </div>
+                    <!-- Existing files list -->
+                    <div id="editAttachList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
+                        <div style="text-align:center;padding:10px;color:#6aad8a;font-size:.78rem;"><i class="fas fa-spinner fa-spin"></i> Loading attachments…</div>
+                    </div>
+                    <!-- Drop zone for adding new files -->
+                    <div id="editFileDropZone" style="border:2px dashed rgba(42,152,99,.3);border-radius:10px;padding:14px;text-align:center;background:#f0faf5;cursor:pointer;transition:border-color .2s,background .2s;">
+                        <input type="file" id="editFileInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv" style="display:none;">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:1.3rem;color:rgba(42,152,99,.45);display:block;margin-bottom:4px;"></i>
+                        <div style="font-size:.77rem;color:#4a7a5e;font-weight:600;">Drag &amp; drop to add files, or <span style="color:#2a9863;text-decoration:underline;">click to browse</span></div>
+                        <div style="font-size:.68rem;color:#6aad8a;margin-top:2px;">PDF &middot; Word &middot; Excel &middot; Images &middot; max 20 MB each</div>
+                    </div>
+                    <!-- Pending new files (not yet uploaded) -->
+                    <div id="editPendingList" style="margin-top:6px;display:none;"></div>
+                    <!-- Upload progress -->
+                    <div id="editUploadProgress" style="display:none;margin-top:6px;">
+                        <div style="background:#e5e7eb;border-radius:4px;height:5px;overflow:hidden;">
+                            <div id="editProgressBar" style="background:#2a9863;height:100%;width:0%;transition:width .3s;"></div>
+                        </div>
+                        <div style="font-size:.7rem;color:#4a7a5e;margin-top:2px;text-align:center;" id="editProgressLabel">Uploading…</div>
+                    </div>
+                </div>
             `);
 
             // FIX: re-apply kind-radio visual state after dynamic HTML injection
             $('#editModalBody input[name="kind"]:checked').trigger('change');
             $('#editDocumentModal .select2e').select2({ theme: 'bootstrap4', dropdownParent: $('#editDocumentModal') });
             $('#updateDocumentBtn').show();
+            // Load attachments for this document in edit mode
+            loadEditAttachments(d.id);
+            initEditDropZone(d.id);
         } catch(e) {
             $('#editModalBody').html('<div class="alert alert-danger">Failed to load document: ' + e.message + '</div>');
         }
@@ -1174,8 +1238,13 @@ $(document).on('click', '#updateDocumentBtn', function() {
     if (!form[0].checkValidity()) { form[0].reportValidity(); return; }
     const $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
 
-    $.post('document_actions.php', form.serialize(), function(r) {
+    $.post('document_actions.php', form.serialize(), async function(r) {
         if (r.success) {
+            // Upload any pending new files before closing
+            if (editPendingFiles.length && currentEditDocId) {
+                $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i> Uploading files...');
+                await uploadEditPendingFiles(currentEditDocId);
+            }
             $('#editDocumentModal').modal('hide');
             Swal.fire({
                 icon: 'success',
@@ -1211,24 +1280,8 @@ function openForwardModal(id, docNum) {
     $('#forwardModal').modal('show');
 }
 
-// ── CSV Export ──────────────────────────────────────────────────────────────
-function exportTableToCSV() {
-    let csv = [];
-    const rows = document.querySelectorAll('#documentsTable tr');
-    for (let i = 0; i < rows.length; i++) {
-        const row = [], cols = rows[i].querySelectorAll('td, th');
-        for (let j = 0; j < cols.length - 1; j++) { // skip Actions column
-            row.push('"' + cols[j].innerText.replace(/"/g, '""').replace(/,/g, ';') + '"');
-        }
-        csv.push(row.join(','));
-    }
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'documents_export_<?= date('Ymd') ?>.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
-}
+// ── XLSX Export (server-side via document_export.php) ───────────
+// Export handled via <a href> link on the Export XLSX button -- no JS needed.
 
 // ── Delete Request Modal ──────────────────────────────────────────────────────
 function openDeleteRequestModal(id, docNum) {
@@ -1396,6 +1449,319 @@ $(function() {
         // Mark as read after showing
         $.post('document_actions.php', { action: 'mark_notifications_read' });
     }, 'json');
+});
+
+// ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+//  EDIT MODAL — ATTACHMENT MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+let editPendingFiles = [];   // Files chosen in edit modal, not yet uploaded
+let currentEditDocId = null;
+
+const EDIT_FILE_ICONS = {
+    'application/pdf': { icon: 'fa-file-pdf', color: '#dc2626' },
+    'application/msword': { icon: 'fa-file-word', color: '#2563eb' },
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'fa-file-word', color: '#2563eb' },
+    'application/vnd.ms-excel': { icon: 'fa-file-excel', color: '#16a34a' },
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: 'fa-file-excel', color: '#16a34a' },
+    'application/vnd.ms-powerpoint': { icon: 'fa-file-powerpoint', color: '#ea580c' },
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: 'fa-file-powerpoint', color: '#ea580c' },
+};
+function editFileIcon(mime) {
+    if (EDIT_FILE_ICONS[mime]) return EDIT_FILE_ICONS[mime];
+    if (mime && mime.startsWith('image/')) return { icon: 'fa-file-image', color: '#7c3aed' };
+    return { icon: 'fa-file-alt', color: '#6b7280' };
+}
+function editFmtBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+}
+function editEsc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+
+function loadEditAttachments(docId) {
+    currentEditDocId = docId;
+    $.get('document_actions.php', { action: 'get_files', document_id: docId }, function(r) {
+        const files = r.files || [];
+        $('#editAttachBadge').text(files.length + editPendingFiles.length);
+        if (!files.length) {
+            $('#editAttachList').html(
+                '<div style="text-align:center;padding:12px;color:#6aad8a;font-size:.78rem;">' +
+                '<i class="fas fa-paperclip" style="opacity:.3;margin-right:5px;"></i>No files attached yet</div>'
+            );
+            return;
+        }
+        let html = '';
+        files.forEach(f => {
+            const fi = editFileIcon(f.mime_type);
+            const isImg = f.mime_type && f.mime_type.startsWith('image/');
+            const thumbHtml = isImg
+                ? `<div style="width:34px;height:34px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1px solid #e5e7eb;"><img src="document_actions.php?action=download_file&file_id=${f.id}&inline=1" style="width:100%;height:100%;object-fit:cover;" loading="lazy"></div>`
+                : `<div style="width:34px;height:34px;border-radius:6px;flex-shrink:0;background:${fi.color}15;display:flex;align-items:center;justify-content:center;"><i class="fas ${fi.icon}" style="color:${fi.color};font-size:.95rem;"></i></div>`;
+            html += `
+            <div id="editFile_${f.id}" style="display:flex;align-items:center;gap:8px;background:#f0faf5;border:1px solid rgba(42,152,99,.18);border-radius:8px;padding:7px 9px;">
+                ${thumbHtml}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:.78rem;font-weight:600;color:#1c4d38;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${editEsc(f.original_name)}">${editEsc(f.original_name)}</div>
+                    <div style="font-size:.66rem;color:#6aad8a;">${editFmtBytes(f.file_size)} &middot; ${editEsc(f.uploaded_by_name||'Unknown')}</div>
+                </div>
+                <button onclick="deleteEditAttachment(${f.id},'${editEsc(f.original_name)}')" title="Remove" style="width:26px;height:26px;border:none;border-radius:6px;background:#fef2f2;color:#dc2626;cursor:pointer;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>`;
+        });
+        $('#editAttachList').html(html);
+    }, 'json');
+}
+
+function deleteEditAttachment(fileId, fileName) {
+    Swal.fire({
+        title: 'Remove attachment?',
+        html: `Delete <strong>${editEsc(fileName)}</strong>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        $.post('document_actions.php', { action: 'delete_file', file_id: fileId }, function(r) {
+            if (r.success) {
+                $(`#editFile_${fileId}`).fadeOut(150, function() {
+                    $(this).remove();
+                    const remaining = $('#editAttachList').children('div[id^="editFile_"]').length;
+                    const total = remaining + editPendingFiles.length;
+                    $('#editAttachBadge').text(total);
+                    if (remaining === 0 && !editPendingFiles.length) {
+                        $('#editAttachList').html('<div style="text-align:center;padding:12px;color:#6aad8a;font-size:.78rem;"><i class="fas fa-paperclip" style="opacity:.3;margin-right:5px;"></i>No files attached yet</div>');
+                    }
+                });
+            } else {
+                Swal.fire('Failed', r.message || 'Could not delete file.', 'error');
+            }
+        }, 'json');
+    });
+}
+
+function renderEditPendingList() {
+    const $list = $('#editPendingList');
+    if (!editPendingFiles.length) { $list.hide().empty(); return; }
+    $list.show();
+    let html = '<div style="font-size:.7rem;font-weight:700;color:#6aad8a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">New files (will upload on Save):</div>';
+    editPendingFiles.forEach((f, i) => {
+        const fi = editFileIcon(f.type);
+        html += `
+        <div style="display:flex;align-items:center;gap:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 9px;margin-bottom:4px;">
+            <i class="fas ${fi.icon}" style="color:${fi.color};font-size:.95rem;width:18px;text-align:center;flex-shrink:0;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:.77rem;font-weight:600;color:#92400e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${editEsc(f.name)}</div>
+                <div style="font-size:.66rem;color:#b45309;">${editFmtBytes(f.size)}</div>
+            </div>
+            <button type="button" onclick="removeEditPending(${i})" style="width:22px;height:22px;border:none;border-radius:5px;background:#fef2f2;color:#dc2626;cursor:pointer;font-size:.72rem;display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>`;
+    });
+    $list.html(html);
+    // update badge
+    const existing = $('#editAttachList').children('div[id^="editFile_"]').length;
+    $('#editAttachBadge').text(existing + editPendingFiles.length);
+}
+
+function removeEditPending(idx) {
+    editPendingFiles.splice(idx, 1);
+    renderEditPendingList();
+}
+
+function initEditDropZone(docId) {
+    const dz = document.getElementById('editFileDropZone');
+    const fi = document.getElementById('editFileInput');
+    if (!dz || !fi) return;
+
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = '#2a9863'; dz.style.background = '#d1fae5'; });
+    dz.addEventListener('dragleave', () => { dz.style.borderColor = 'rgba(42,152,99,.3)'; dz.style.background = '#f0faf5'; });
+    dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.style.borderColor = 'rgba(42,152,99,.3)'; dz.style.background = '#f0faf5';
+        addToEditPending(e.dataTransfer.files);
+    });
+    dz.addEventListener('click', () => fi.click());
+    fi.addEventListener('change', () => { addToEditPending(fi.files); fi.value = ''; });
+
+    function addToEditPending(fileList) {
+        Array.from(fileList).forEach(f => {
+            if (f.size > 20971520) { Swal.fire('Too large', `${f.name} exceeds 20 MB.`, 'warning'); return; }
+            editPendingFiles.push(f);
+        });
+        renderEditPendingList();
+    }
+}
+
+async function uploadEditPendingFiles(docId) {
+    if (!editPendingFiles.length) return;
+    const fd = new FormData();
+    fd.append('action', 'upload_file');
+    fd.append('document_id', docId);
+    editPendingFiles.forEach(f => fd.append('files[]', f));
+
+    $('#editUploadProgress').show();
+    $('#editProgressBar').css('width', '0%');
+
+    try {
+        await $.ajax({
+            url: 'document_actions.php',
+            method: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            xhr: function() {
+                const x = new window.XMLHttpRequest();
+                x.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round((e.loaded / e.total) * 100);
+                        $('#editProgressBar').css('width', pct + '%');
+                        $('#editProgressLabel').text('Uploading… ' + pct + '%');
+                    }
+                });
+                return x;
+            }
+        });
+    } catch(e) {
+        console.warn('Edit modal file upload failed', e);
+    }
+    $('#editUploadProgress').hide();
+    editPendingFiles = [];
+}
+
+//  FILE ATTACHMENT HELPERS  (used by Add Document modal)
+// ══════════════════════════════════════════════════════════════
+
+// Pending file list for the Add-Document form (files chosen before doc is saved)
+let addPendingFiles = [];   // Array of File objects
+
+const FILE_ICONS = {
+    'application/pdf': { icon: 'fa-file-pdf',   color: '#dc2626' },
+    'application/msword': { icon: 'fa-file-word', color: '#2563eb' },
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'fa-file-word', color: '#2563eb' },
+    'application/vnd.ms-excel': { icon: 'fa-file-excel', color: '#16a34a' },
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: 'fa-file-excel', color: '#16a34a' },
+    'application/vnd.ms-powerpoint': { icon: 'fa-file-powerpoint', color: '#ea580c' },
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: 'fa-file-powerpoint', color: '#ea580c' },
+};
+function fileIcon(mime) {
+    if (FILE_ICONS[mime]) return FILE_ICONS[mime];
+    if (mime.startsWith('image/')) return { icon: 'fa-file-image', color: '#7c3aed' };
+    return { icon: 'fa-file-alt', color: '#6b7280' };
+}
+function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+}
+
+function renderAddFileList() {
+    const $list = $('#addFileList');
+    if (!addPendingFiles.length) { $list.hide().empty(); return; }
+    $list.show();
+    let html = '<div style="display:flex;flex-direction:column;gap:5px;">';
+    addPendingFiles.forEach((f, i) => {
+        const fi = fileIcon(f.type);
+        html += `
+        <div style="display:flex;align-items:center;gap:9px;background:#f0faf5;border:1px solid rgba(42,152,99,.2);border-radius:8px;padding:7px 10px;">
+            <i class="fas ${fi.icon}" style="color:${fi.color};font-size:1.1rem;flex-shrink:0;width:20px;text-align:center;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:.8rem;font-weight:600;color:#1c4d38;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
+                <div style="font-size:.7rem;color:#6aad8a;">${formatBytes(f.size)}</div>
+            </div>
+            <button type="button" onclick="removeAddFile(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:2px 4px;font-size:.85rem;" title="Remove"><i class="fas fa-times"></i></button>
+        </div>`;
+    });
+    html += '</div>';
+    $list.html(html);
+}
+
+function removeAddFile(idx) {
+    addPendingFiles.splice(idx, 1);
+    renderAddFileList();
+}
+
+// Wire up the drop zone and file input
+$(function() {
+    const dz = document.getElementById('addFileDropZone');
+    const fi = document.getElementById('addFileInput');
+
+    // Drag-over visual
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = '#2a9863'; dz.style.background = '#d1fae5'; });
+    dz.addEventListener('dragleave', () => { dz.style.borderColor = 'rgba(42,152,99,.4)'; dz.style.background = '#f0faf5'; });
+    dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.style.borderColor = 'rgba(42,152,99,.4)'; dz.style.background = '#f0faf5';
+        addFilesToList(e.dataTransfer.files);
+    });
+
+    fi.addEventListener('change', () => { addFilesToList(fi.files); fi.value = ''; });
+
+    function addFilesToList(fileList) {
+        Array.from(fileList).forEach(f => {
+            if (f.size > 20971520) { Swal.fire('Too large', `${f.name} exceeds the 20 MB limit.`, 'warning'); return; }
+            addPendingFiles.push(f);
+        });
+        renderAddFileList();
+    }
+
+    // Reset pending files when modal closes
+    $('#addDocumentModal').on('hidden.bs.modal', function() {
+        addPendingFiles = [];
+        renderAddFileList();
+    });
+});
+
+// After document is saved, upload any pending files
+async function uploadPendingFilesForDoc(docId) {
+    if (!addPendingFiles.length) return;
+    const fd = new FormData();
+    fd.append('action', 'upload_file');
+    fd.append('document_id', docId);
+    addPendingFiles.forEach(f => fd.append('files[]', f));
+    try {
+        await $.ajax({ url: 'document_actions.php', method: 'POST', data: fd, processData: false, contentType: false, dataType: 'json' });
+    } catch(e) {
+        console.warn('File upload after doc save failed', e);
+    }
+    addPendingFiles = [];
+}
+
+// Save Document (Add) — handles both the record insert and any pending file uploads
+$('#saveDocumentBtn').on('click', function() {
+    const form = $('#addDocumentForm');
+    if (!form.find('input[name="kind"]:checked').val()) {
+        Swal.fire({ icon: 'warning', title: 'Kind Required', text: 'Please select the kind of document.' }); return;
+    }
+    if (!form[0].checkValidity()) { form[0].reportValidity(); return; }
+    const $btn = $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+
+    $.post('document_actions.php', form.serialize(), async function(r) {
+        if (r.success) {
+            if (addPendingFiles.length) {
+                $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i> Uploading files...');
+                await uploadPendingFilesForDoc(r.id);
+            }
+            $('#addDocumentModal').modal('hide');
+            Swal.fire({
+                icon: 'success', title: 'Document Saved!',
+                text: 'The document record has been saved successfully.',
+                timer: 1800, showConfirmButton: false, timerProgressBar: true
+            }).then(() => location.reload());
+        } else {
+            Swal.fire({ icon: 'error', title: 'Failed to Save', text: r.message || 'An error occurred while saving.' });
+        }
+    }, 'json').fail(function(xhr) {
+        Swal.fire({ icon: 'error', title: 'Server Error', text: 'An unexpected server error occurred.' });
+        console.error(xhr.responseText);
+    }).always(() => $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Document'));
 });
 </script>
 <?php include '../includes/footer.php'; ?>
