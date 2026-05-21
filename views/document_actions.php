@@ -185,7 +185,7 @@ if ($action === 'get_notifications') {
         $office_id = (int)($urow['office_id']       ?? 0);
     }
 
-    $counts = ['incoming' => 0, 'outgoing' => 0, 'internal' => 0, 'total' => 0];
+    $counts = ['incoming' => 0, 'outgoing' => 0, 'external' => 0, 'total' => 0];
 
     // 1) Documents forwarded to my section/unit
     if ($sec_id) {
@@ -271,7 +271,7 @@ if ($action === 'add') {
         json_out(['success' => false, 'message' => 'Kind, Document Number, and Name are required.']);
     }
 
-    if (!in_array($kind, ['incoming', 'outgoing', 'internal'])) {
+    if (!in_array($kind, ['incoming', 'outgoing', 'external'])) {
         json_out(['success' => false, 'message' => 'Invalid kind value.']);
     }
 
@@ -334,6 +334,27 @@ if ($action === 'update') {
     $id = (int)($_POST['id'] ?? 0);
     if (!$id) { json_out(['success' => false, 'message' => 'Invalid ID']); }
 
+    // ── Ownership / permission guard ─────────────────────────────────────────
+    // Only the document creator OR a Masteradmin may edit a document.
+    $caller_emp = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    if (!$caller_emp) {
+        json_out(['success' => false, 'message' => 'Not authenticated.']);
+    }
+    $own_chk = $db->prepare("SELECT created_by_emp_id FROM document_records WHERE id = ? LIMIT 1");
+    $own_chk->bind_param("i", $id);
+    $own_chk->execute();
+    $own_row = $own_chk->get_result()->fetch_assoc();
+    if (!$own_row) {
+        json_out(['success' => false, 'message' => 'Document not found.']);
+    }
+    $is_creator   = ((int)($own_row['created_by_emp_id'] ?? 0) === $caller_emp);
+    $admin_ids_u  = getMasteradminIds($db);
+    $is_admin_u   = in_array($caller_emp, $admin_ids_u);
+    if (!$is_creator && !$is_admin_u) {
+        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator or a Masteradmin can edit this document.']);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     $kind       = trim($_POST['kind'] ?? '');
     $doc_num    = trim($_POST['document_number'] ?? '');
     $type_id    = (int)($_POST['document_type_id'] ?? 0) ?: null;
@@ -348,7 +369,7 @@ if ($action === 'update') {
     $status     = $_POST['status'] ?? 'pending';
     $remarks    = trim($_POST['remarks'] ?? '');
 
-    if (!in_array($kind, ['incoming', 'outgoing', 'internal'])) {
+    if (!in_array($kind, ['incoming', 'outgoing', 'external'])) {
         json_out(['success' => false, 'message' => 'Invalid kind value.']);
     }
 
@@ -394,15 +415,37 @@ if ($action === 'update') {
 if ($action === 'forward') {
     $doc_id      = (int)($_POST['id'] ?? 0);
     $fwd_by_emp  = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0) ?: null;
-    $fwd_to_sec  = (int)($_POST['fwd_to_section_id'] ?? 0) ?: null;
-    $fwd_to_unit = (int)($_POST['fwd_to_unit_id'] ?? 0) ?: null;
-    $fwd_to_off  = (int)($_POST['fwd_to_office_id'] ?? 0) ?: null;
-    $fwd_remarks  = trim($_POST['fwd_remarks'] ?? '');
-    $forward_to   = trim($_POST['forward_to'] ?? 'section');
 
     if (!$doc_id) {
         json_out(['success' => false, 'message' => 'Document ID missing']);
     }
+    if (!$fwd_by_emp) {
+        json_out(['success' => false, 'message' => 'Not authenticated.']);
+    }
+
+    // ── Ownership / permission guard ─────────────────────────────────────────
+    // Only the document creator OR a Masteradmin may forward a document
+    // that has not yet been forwarded (i.e. still sits with its creator).
+    $fwd_own_chk = $db->prepare("SELECT created_by_emp_id, forwarded_to_section_id, forwarded_to_office_id FROM document_records WHERE id = ? LIMIT 1");
+    $fwd_own_chk->bind_param("i", $doc_id);
+    $fwd_own_chk->execute();
+    $fwd_own_row = $fwd_own_chk->get_result()->fetch_assoc();
+    if (!$fwd_own_row) {
+        json_out(['success' => false, 'message' => 'Document not found.']);
+    }
+    $is_fwd_creator = ((int)($fwd_own_row['created_by_emp_id'] ?? 0) === $fwd_by_emp);
+    $admin_ids_f    = getMasteradminIds($db);
+    $is_admin_f     = in_array($fwd_by_emp, $admin_ids_f);
+    if (!$is_fwd_creator && !$is_admin_f) {
+        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator or a Masteradmin can forward this document.']);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    $fwd_to_unit = (int)($_POST['fwd_to_unit_id'] ?? 0) ?: null;
+    $fwd_to_sec  = (int)($_POST['fwd_to_section_id'] ?? 0) ?: null;
+    $fwd_to_off  = (int)($_POST['fwd_to_office_id'] ?? 0) ?: null;
+    $fwd_remarks  = trim($_POST['fwd_remarks'] ?? '');
+    $forward_to   = trim($_POST['forward_to'] ?? 'section');
 
     // Stamp current PHT time using SQL NOW() — the session tz is already set to +08:00,
     // so NOW() returns PHT and MariaDB stores/reads it correctly. Using PHP date() here
@@ -566,21 +609,33 @@ if ($action === 'forward') {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// UPDATE STATUS
-// ─────────────────────────────────────────────────────────────
 if ($action === 'update_status') {
     $id     = (int)($_POST['id'] ?? 0);
     $status = trim($_POST['status'] ?? '');
+
     if (!$id || !in_array($status, ['pending', 'received', 'returned', 'completed', 'archived'])) {
         json_out(['success' => false, 'message' => 'Invalid status or ID.']);
     }
 
-    // When status is set to 'received', stamp date_received with current PHT time.
-    // Use SQL NOW() so MariaDB applies the session timezone (+08:00) directly —
-    // avoids any 8-hour gap that can occur when PHP date() and MariaDB TIMESTAMP
-    // conversions disagree.
-    // When set back to 'pending', clear date_received so it reflects the next actual receipt.
+    // ── ADDED: Ownership / permission guard ──────────────────────────────────
+    $caller_emp = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0);
+    if (!$caller_emp) {
+        json_out(['success' => false, 'message' => 'Not authenticated.']);
+    }
+    $own_chk = $db->prepare("SELECT created_by_emp_id FROM document_records WHERE id = ? LIMIT 1");
+    $own_chk->bind_param("i", $id);
+    $own_chk->execute();
+    $own_row = $own_chk->get_result()->fetch_assoc();
+    if (!$own_row) {
+        json_out(['success' => false, 'message' => 'Document not found.']);
+    }
+    $is_creator = ((int)($own_row['created_by_emp_id'] ?? 0) === $caller_emp);
+    $is_admin   = in_array($caller_emp, getMasteradminIds($db));
+    if (!$is_creator && !$is_admin) {
+        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator or a Masteradmin can change this status.']);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     if ($status === 'received') {
         $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NOW() WHERE id = ?");
         $stmt->bind_param("si", $status, $id);
@@ -1099,7 +1154,7 @@ if ($action === 'get_archive') {
     $bind_types  = "s";
     $bind_vals   = [$arc_date];
 
-    if ($kind_filter && in_array($kind_filter, ['incoming','outgoing','internal'])) {
+    if ($kind_filter && in_array($kind_filter, ['incoming','outgoing','external'])) {
         $where_parts[] = "kind = ?";
         $bind_types   .= "s";
         $bind_vals[]   = $kind_filter;
@@ -1142,7 +1197,7 @@ if ($action === 'get_archive_days') {
         SELECT archive_date, COUNT(*) AS total,
                SUM(kind='incoming') AS incoming,
                SUM(kind='outgoing') AS outgoing,
-               SUM(kind='internal') AS internal
+               SUM(kind='external') AS external
         FROM document_archive
         GROUP BY archive_date
         ORDER BY archive_date DESC
@@ -1165,10 +1220,16 @@ if ($action === 'check_midnight_status') {
             `run_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
-    $today = date('Y-m-d');
+
+    // BUGFIX: Use PHT date from MariaDB session (already set to +08:00 above),
+    // not PHP's date() which may use server UTC and return wrong date at midnight PHT.
+    $pht_row = $db->query("SELECT DATE(NOW()) AS today_pht, NOW() AS now_pht");
+    $pht     = $pht_row ? $pht_row->fetch_assoc() : [];
+    $today   = $pht['today_pht'] ?? date('Y-m-d');
+
     $row   = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$today' LIMIT 1");
     $ran   = $row && $row->num_rows > 0;
-    json_out(['success' => true, 'already_ran' => $ran, 'today' => $today, 'server_time' => date('Y-m-d H:i:s')]);
+    json_out(['success' => true, 'already_ran' => $ran, 'today' => $today, 'server_time' => $pht['now_pht'] ?? date('Y-m-d H:i:s')]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1228,16 +1289,24 @@ if ($action === 'midnight_archive') {
     ");
 
     // Which date to archive
+    // BUGFIX: Use PHT date from MariaDB session (SET time_zone='+08:00' already applied above),
+    // not PHP date() which may use server UTC and produce wrong dates around midnight PHT.
+    $pht_row  = $db->query("SELECT DATE(NOW()) AS today_pht, DATE(NOW() - INTERVAL 1 DAY) AS yesterday_pht");
+    $pht_data = $pht_row ? $pht_row->fetch_assoc() : [];
+    $pht_today     = $pht_data['today_pht']     ?? date('Y-m-d');
+    $pht_yesterday = $pht_data['yesterday_pht'] ?? date('Y-m-d', strtotime('-1 day'));
+
     $force_date = trim($_POST['archive_date'] ?? '');
     if ($triggered_by === 'manual' && $force_date && preg_match('/^\d{4}-\d{2}-\d{2}$/', $force_date)) {
         $arc_date = $force_date;
     } elseif ($triggered_by === 'auto' || $triggered_by === 'cron') {
-        $arc_date = date('Y-m-d', strtotime('-1 day'));
+        $arc_date = $pht_yesterday;   // auto/cron: archive yesterday's docs
     } else {
-        $arc_date = date('Y-m-d');
+        $arc_date = $pht_today;
     }
 
     // Idempotency: skip if already ran for this date (except manual re-runs)
+    // BUGFIX: Query uses $arc_date (already PHT-correct), not today's server date.
     $already = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$arc_date' LIMIT 1");
     if ($already && $already->num_rows > 0 && $triggered_by !== 'manual') {
         json_out(['success' => true, 'message' => "Already archived for {$arc_date}. Skipped.", 'archived' => 0, 'skipped' => true]);
@@ -1283,7 +1352,8 @@ if ($action === 'midnight_archive') {
         json_out(['success' => true, 'message' => "No new documents to archive for {$arc_date}.", 'archived' => 0]);
     }
 
-    // Insert into document_archive — documents are NOT deleted from document_records
+    // Insert into document_archive, then DELETE from document_records inside a transaction
+    // so the live table is only cleared if all rows archive successfully.
     $ins = $db->prepare("
         INSERT INTO document_archive
             (original_id, archive_date, kind, document_number, document_name,
@@ -1293,29 +1363,60 @@ if ($action === 'midnight_archive') {
     ");
 
     $archived_count = 0;
-    foreach ($rows as $doc) {
-        $date_fwd = (!empty($doc['date_forwarded']) && $doc['date_forwarded'] !== '0000-00-00 00:00:00')
-                    ? $doc['date_forwarded'] : null;
-        $fwd_by   = trim($doc['resolved_fwd_by'] ?? '');
+    $archived_ids   = [];   // collect IDs for the DELETE step
 
-        $ins->bind_param(
-            "issss" . "sssss" . "sssi",
-            $doc['id'],
-            $arc_date,
-            $doc['kind'],
-            $doc['document_number'],
-            $doc['document_name'],
-            $doc['type_name'],
-            $doc['status'],
-            $fwd_by,
-            $doc['from_section_name'],
-            $doc['to_section_name'],
-            $date_fwd,
-            $doc['remarks'],
-            json_encode($doc),
-            $caller
-        );
-        if ($ins->execute()) { $archived_count++; }
+    $db->begin_transaction();
+    try {
+        foreach ($rows as $doc) {
+            $date_fwd = (!empty($doc['date_forwarded']) && $doc['date_forwarded'] !== '0000-00-00 00:00:00')
+                        ? $doc['date_forwarded'] : null;
+            $fwd_by   = trim($doc['resolved_fwd_by'] ?? '');
+
+            $ins->bind_param(
+                "issss" . "sssss" . "sssi",
+                $doc['id'],
+                $arc_date,
+                $doc['kind'],
+                $doc['document_number'],
+                $doc['document_name'],
+                $doc['type_name'],
+                $doc['status'],
+                $fwd_by,
+                $doc['from_section_name'],
+                $doc['to_section_name'],
+                $date_fwd,
+                $doc['remarks'],
+                json_encode($doc),
+                $caller
+            );
+            if ($ins->execute()) {
+                $archived_count++;
+                $archived_ids[] = (int)$doc['id'];
+            }
+        }
+
+        // BUGFIX: Delete archived records from the live table so it resets daily.
+        // We delete only the rows we just successfully archived (by collected IDs),
+        // and only after all inserts succeed — transaction ensures atomicity.
+        $deleted_count = 0;
+        if ($archived_ids) {
+            $id_list = implode(',', $archived_ids);
+
+            // Remove forwarding history first (FK dependency)
+            $db->query("DELETE FROM document_forwards WHERE document_id IN ($id_list)");
+
+            // Remove any pending delete requests for these docs
+            $db->query("DELETE FROM document_delete_requests WHERE document_id IN ($id_list)");
+
+            // Now delete the main records
+            $del = $db->query("DELETE FROM document_records WHERE id IN ($id_list)");
+            $deleted_count = $del ? (int)$db->affected_rows : 0;
+        }
+
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollback();
+        json_out(['success' => false, 'message' => 'Archive transaction failed: ' . $e->getMessage()]);
     }
 
     // Log this run
@@ -1329,8 +1430,9 @@ if ($action === 'midnight_archive') {
 
     json_out([
         'success'      => true,
-        'message'      => "Archived {$archived_count} document(s) for {$arc_date}. Documents remain in the live table.",
+        'message'      => "Archived {$archived_count} document(s) for {$arc_date}. {$deleted_count} record(s) removed from live table.",
         'archived'     => $archived_count,
+        'deleted'      => $deleted_count,
         'date'         => $arc_date,
         'triggered_by' => $triggered_by,
     ]);
@@ -1561,4 +1663,125 @@ if ($action === 'delete_file') {
     json_out(['success' => true, 'message' => 'File deleted.']);
 }
 
+if ($action === 'get_types') {
+    $rows = $db->query("SELECT id, type_name, description FROM document_types ORDER BY type_name ASC");
+    $types = $rows ? $rows->fetch_all(MYSQLI_ASSOC) : [];
+    json_out(['success' => true, 'types' => $types]);
+}
+ 
+// ─────────────────────────────────────────────────────────────
+// ADD TYPE
+// POST: action=add_type  |  type_name, description
+// ─────────────────────────────────────────────────────────────
+if ($action === 'add_type') {
+    $type_name   = trim($_POST['type_name']   ?? '');
+    $description = trim($_POST['description'] ?? '');
+ 
+    if (!$type_name) {
+        json_out(['success' => false, 'message' => 'Type name is required.']);
+    }
+    if (mb_strlen($type_name) > 100) {
+        json_out(['success' => false, 'message' => 'Type name must be 100 characters or fewer.']);
+    }
+ 
+    // Duplicate check (case-insensitive)
+    $dup = $db->prepare("SELECT id FROM document_types WHERE LOWER(type_name) = LOWER(?) LIMIT 1");
+    $dup->bind_param("s", $type_name);
+    $dup->execute();
+    if ($dup->get_result()->num_rows > 0) {
+        json_out(['success' => false, 'message' => "A type named \"$type_name\" already exists."]);
+    }
+ 
+    $stmt = $db->prepare("INSERT INTO document_types (type_name, description) VALUES (?, ?)");
+    if (!$stmt) {
+        json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
+    }
+    $desc_val = $description ?: null;
+    $stmt->bind_param("ss", $type_name, $desc_val);
+ 
+    if ($stmt->execute()) {
+        json_out(['success' => true, 'id' => $db->insert_id, 'message' => 'Document type added.']);
+    } else {
+        json_out(['success' => false, 'message' => 'Insert failed: ' . $stmt->error]);
+    }
+}
+ 
+// ─────────────────────────────────────────────────────────────
+// UPDATE TYPE
+// POST: action=update_type  |  id, type_name, description
+// ─────────────────────────────────────────────────────────────
+if ($action === 'update_type') {
+    $id          = (int)($_POST['id']          ?? 0);
+    $type_name   = trim($_POST['type_name']    ?? '');
+    $description = trim($_POST['description']  ?? '');
+ 
+    if (!$id) {
+        json_out(['success' => false, 'message' => 'Invalid ID.']);
+    }
+    if (!$type_name) {
+        json_out(['success' => false, 'message' => 'Type name is required.']);
+    }
+    if (mb_strlen($type_name) > 100) {
+        json_out(['success' => false, 'message' => 'Type name must be 100 characters or fewer.']);
+    }
+ 
+    // Duplicate check — exclude self
+    $dup = $db->prepare("SELECT id FROM document_types WHERE LOWER(type_name) = LOWER(?) AND id != ? LIMIT 1");
+    $dup->bind_param("si", $type_name, $id);
+    $dup->execute();
+    if ($dup->get_result()->num_rows > 0) {
+        json_out(['success' => false, 'message' => "Another type named \"$type_name\" already exists."]);
+    }
+ 
+    $stmt = $db->prepare("UPDATE document_types SET type_name = ?, description = ? WHERE id = ?");
+    if (!$stmt) {
+        json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
+    }
+    $desc_val = $description ?: null;
+    $stmt->bind_param("ssi", $type_name, $desc_val, $id);
+ 
+    if ($stmt->execute()) {
+        json_out(['success' => true, 'message' => 'Document type updated.']);
+    } else {
+        json_out(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
+    }
+}
+ 
+// ─────────────────────────────────────────────────────────────
+// DELETE TYPE
+// POST: action=delete_type  |  id
+// ─────────────────────────────────────────────────────────────
+if ($action === 'delete_type') {
+    $id = (int)($_POST['id'] ?? 0);
+ 
+    if (!$id) {
+        json_out(['success' => false, 'message' => 'Invalid ID.']);
+    }
+ 
+    // Soft-guard: warn if documents still reference this type
+    $ref = $db->prepare("SELECT COUNT(*) AS cnt FROM document_records WHERE document_type_id = ?");
+    $ref->bind_param("i", $id);
+    $ref->execute();
+    $ref_count = (int)($ref->get_result()->fetch_assoc()['cnt'] ?? 0);
+    if ($ref_count > 0) {
+        json_out([
+            'success' => false,
+            'message' => "Cannot delete: $ref_count document record(s) are still using this type. Reassign them first."
+        ]);
+    }
+ 
+    $stmt = $db->prepare("DELETE FROM document_types WHERE id = ?");
+    if (!$stmt) {
+        json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
+    }
+    $stmt->bind_param("i", $id);
+ 
+    if ($stmt->execute()) {
+        json_out(['success' => true, 'message' => 'Document type deleted.']);
+    } else {
+        json_out(['success' => false, 'message' => 'Delete failed: ' . $stmt->error]);
+    }
+}
+
+// Catch-all — must be the very last line
 json_out(['success' => false, 'message' => 'Unknown action.']);

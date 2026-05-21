@@ -519,21 +519,7 @@ $uploads_url = '../dist/img/employees/';
 
     <div class="content-wrapper" style="background:var(--bg,#f0f2f7);">
 
-        <!-- ── Top bar ── -->
-        <div class="dash-topbar">
-            <div class="container-fluid">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div>
-                        <h1></i>Organization Dashboard</h1>
-                        <div class="sub">Welcome back, <strong><?= htmlspecialchars($user['user']) ?></strong> &mdash; <?= htmlspecialchars($role_name) ?></div>
-                    </div>
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="#">Home</a></li>
-                        <li class="breadcrumb-item active">Dashboard</li>
-                    </ol>
-                </div>
-            </div>
-        </div>
+
 
         <div class="content" style="padding:20px 0 0;">
             <div class="container-fluid">

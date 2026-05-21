@@ -211,8 +211,7 @@ $stmt->close();
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .btn-toolbar-primary.active {
-      background: #fff;
-      color: #4f46e5 !important;
+      background: #10b981;
       border-color: #fff;
     }
     .btn-toolbar-add {
@@ -785,6 +784,41 @@ $stmt->close();
                     <div class="pg-hero-title"><i class="fas fa-users"></i>Employee Directory</div>
                     <div class="pg-hero-divider"></div>
                     <p class="pg-hero-sub">View, search and manage all employees</p>
+                    <p class="pg-hero-sub"><?= count($employees) ?> total employees</p>
+                    <div class="pg-hero-divider"></div>
+                </div>
+                
+                <div class="page-toolbar-right">
+                  <!-- View Toggle -->
+                  <div class="btn-group">
+                    <button id="tableViewBtn" class="btn-toolbar-primary active" title="Table View">
+                      <i class="fas fa-table"></i>
+                      <span class="d-none d-sm-inline ml-1">Table</span>
+                    </button>
+                    <button id="gridViewBtn" class="btn-toolbar-primary" title="Grid View">
+                      <i class="fas fa-th-large"></i>
+                      <span class="d-none d-sm-inline ml-1">Grid</span>
+                    </button>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <a href="emp.create.php" class="btn-toolbar-add" title="Add Employee">
+                    <i class="fas fa-plus"></i>
+                    <span class="d-none d-sm-inline ml-1">Add New</span>
+                  </a>
+                  <button type="button" class="btn-toolbar-primary" data-toggle="modal" data-target="#importModal" title="Import">
+                    <i class="fas fa-file-import"></i>
+                    <span class="d-none d-sm-inline ml-1">Import</span>
+                  </button>
+                  <a href="emp.export.php" class="btn-toolbar-primary" title="Export">
+                    <i class="fas fa-file-export"></i>
+                    <span class="d-none d-sm-inline ml-1">Export</span>
+                  </a>
+                  <button type="button" class="btn-toolbar-primary" id="advancedSearchBtn" title="Advanced Search">
+                    <i class="fas fa-sliders-h"></i>
+                    <span class="d-none d-sm-inline ml-1">Filters</span>
+                    <span id="activeFilterCount" class="btn-toolbar-filter-badge" style="display:none;">0</span>
+                  </button>
                 </div>
             </div>
         </div>
@@ -799,46 +833,6 @@ $stmt->close();
             <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
           </div>
         <?php endif; ?>
-
-        <!-- ===== PAGE TOOLBAR ===== -->
-        <div class="page-toolbar">
-          <div class="page-toolbar-left">
-            <h1><i class="fas fa-users mr-2"></i>Employee Directory</h1>
-            <p><?= count($employees) ?> total employees</p>
-          </div>
-          <div class="page-toolbar-right">
-            <!-- View Toggle -->
-            <div class="btn-group">
-              <button id="tableViewBtn" class="btn-toolbar-primary active" title="Table View">
-                <i class="fas fa-table"></i>
-                <span class="d-none d-sm-inline ml-1">Table</span>
-              </button>
-              <button id="gridViewBtn" class="btn-toolbar-primary" title="Grid View">
-                <i class="fas fa-th-large"></i>
-                <span class="d-none d-sm-inline ml-1">Grid</span>
-              </button>
-            </div>
-
-            <!-- Action Buttons -->
-            <a href="emp.create.php" class="btn-toolbar-add" title="Add Employee">
-              <i class="fas fa-plus"></i>
-              <span class="d-none d-sm-inline ml-1">Add New</span>
-            </a>
-            <button type="button" class="btn-toolbar-primary" data-toggle="modal" data-target="#importModal" title="Import">
-              <i class="fas fa-file-import"></i>
-              <span class="d-none d-sm-inline ml-1">Import</span>
-            </button>
-            <a href="emp.export.php" class="btn-toolbar-primary" title="Export">
-              <i class="fas fa-file-export"></i>
-              <span class="d-none d-sm-inline ml-1">Export</span>
-            </a>
-            <button type="button" class="btn-toolbar-primary" id="advancedSearchBtn" title="Advanced Search">
-              <i class="fas fa-sliders-h"></i>
-              <span class="d-none d-sm-inline ml-1">Filters</span>
-              <span id="activeFilterCount" class="btn-toolbar-filter-badge" style="display:none;">0</span>
-            </button>
-          </div>
-        </div>
 
         <!-- ===== MAIN CARD ===== -->
         <div class="card list-card">

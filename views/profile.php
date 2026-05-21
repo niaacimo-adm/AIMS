@@ -894,6 +894,88 @@ if ($row['is_manager_staff'] > 0) {
     ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:var(--pf-scrollbar-track)}
     ::-webkit-scrollbar-thumb{background:var(--pf-scrollbar-thumb);border-radius:3px}
     ::-webkit-scrollbar-thumb:hover{background:var(--clr-accent)}
+
+    .manager-hero {
+            background: #0b1f17;
+            border-radius: var(--radius-lg);
+            padding: 28px 30px;
+            color: white;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .manager-hero::before { display:none; }
+        .manager-hero::after  { display:none; }
+        .mh-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.15) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.12) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:mhMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0; pointer-events:none;
+        }
+        .mh-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
+        }
+        .mh-hex {
+            position:absolute; inset:0; pointer-events:none; opacity:.04; z-index:0;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+            background-size:56px 100px;
+        }
+        .mh-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .mh-orb  { position:absolute; border-radius:50%; filter:blur(60px); animation:mhOrbFloat 18s ease-in-out infinite; }
+        .mh-orb-1 { width:260px; height:260px; background:rgba(36,231,143,.10); top:-70px;   left:-50px;  animation-duration:21s; }
+        .mh-orb-2 { width:200px; height:200px; background:rgba(42,152,99,.09);  bottom:-40px;right:-30px; animation-delay:-7s; animation-duration:17s; }
+        .mh-orb-3 { width:140px; height:140px; background:rgba(212,175,55,.05); top:40%;     right:18%;   animation-delay:-13s; animation-duration:24s; }
+        .mh-logo-watermark {
+            position:absolute; top:50%; right:3%;
+            transform:translateY(-50%);
+            width:150px; height:auto; pointer-events:none; z-index:0;
+            opacity:0.50;
+        }
+        .mh-arc {
+            position:absolute; top:-40px; right:-40px;
+            width:180px; height:180px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.16) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .mh-content { position:relative; z-index:2; }
+        .mh-inner { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+        .mh-avatar {
+            width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
+            border: 3px solid rgba(255,255,255,.35);
+            object-fit: cover;
+            background: rgba(255,255,255,.15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.2rem; color: rgba(255,255,255,.8);
+            overflow: hidden;
+        }
+        .mh-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .mh-info { flex: 1; min-width: 0; }
+        .mh-tag { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 6px; }
+        .mh-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 4px; }
+        .mh-title { font-size: .95rem; color: rgba(255,255,255,.8); margin-bottom: 8px; }
+        .mh-meta { display: flex; gap: 16px; flex-wrap: wrap; }
+        .mh-meta-item { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: rgba(255,255,255,.7); }
+        .mh-staff-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 16px; }
+        .mh-staff-pill {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,.12); border-radius: 40px;
+            padding: 5px 12px 5px 5px; font-size: .78rem; color: rgba(255,255,255,.9);
+            backdrop-filter: blur(4px);
+        }
+        .mh-sp-av {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: rgba(255,255,255,.25); overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .7rem; font-weight: 700; flex-shrink: 0;
+        }
+        .mh-sp-av img { width: 100%; height: 100%; object-fit: cover; }
   </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -918,45 +1000,59 @@ if ($row['is_manager_staff'] > 0) {
     <section class="content">
       <div class="container-fluid" style="max-width:1100px;">
 
-        <!-- ── Hero Banner ── -->
-        <div class="profile-hero">
-          <?php
-          $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture'] ?? '');
-          $initials  = strtoupper(substr($employee['first_name'],0,1).substr($employee['last_name'],0,1));
-          if (!empty($employee['picture']) && file_exists($imagePath)): ?>
-            <img class="profile-hero-avatar" src="<?= $imagePath ?>"
-                 alt="<?= htmlspecialchars($employee['first_name'].' '.$employee['last_name']) ?>">
-          <?php else: ?>
-            <div class="profile-hero-initials"><?= $initials ?></div>
-          <?php endif; ?>
+         <div class="manager-hero mb-4">
+                    <!-- Login-style background layers -->
+                    <div class="mh-mesh"></div>
+                    <div class="mh-dots"></div>
+                    <div class="mh-hex"></div>
+                    <div class="mh-orbs">
+                        <div class="mh-orb mh-orb-1"></div>
+                        <div class="mh-orb mh-orb-2"></div>
+                        <div class="mh-orb mh-orb-3"></div>
+                    </div>
+                    <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+                    <div class="mh-arc"></div>
+                    <div class="mh-content">
+                    <div class="mh-inner">
+                        <?php
+                        $imagePath = '../dist/img/employees/' . htmlspecialchars($employee['picture'] ?? '');
+                        $initials  = strtoupper(substr($employee['first_name'],0,1).substr($employee['last_name'],0,1));
+                        if (!empty($employee['picture']) && file_exists($imagePath)): ?>
+                          <img class="profile-hero-avatar"  src="<?= $imagePath ?>"
+                                alt="<?= htmlspecialchars($employee['first_name'].' '.$employee['last_name']) ?>">
+                        <?php else: ?>
+                          <div class="profile-hero-initials"><?= $initials ?></div>
+                        <?php endif; ?>
 
-          <div class="profile-hero-info">
-            <h2><?= htmlspecialchars($employee['first_name'].' '.$employee['last_name']) ?></h2>
-            <p class="hero-sub"><?= htmlspecialchars($employee['position_name'] ?? '—') ?></p>
-            <p class="hero-id"><?= htmlspecialchars($employee['id_number'] ?? '') ?></p>
-            <div class="hero-badges">
-              <?php if (!empty($employee['employment_color'])): ?>
-                <span class="hero-status-badge"
-                      style="background-color:<?= htmlspecialchars($employee['employment_color']) ?>;color:<?= (hexdec(substr($employee['employment_color'],1))>0xffffff/2)?'#000':'#fff' ?>">
-                  <i class="fas fa-circle" style="font-size:.55rem;"></i>
-                  <?= htmlspecialchars($employee['employment_status']) ?>
-                </span>
-              <?php endif; ?>
-              <?php if (!empty($employee['appointment_color'])): ?>
-                <span class="hero-status-badge"
-                      style="background-color:<?= htmlspecialchars($employee['appointment_color']) ?>;color:<?= (hexdec(substr($employee['appointment_color'],1))>0xffffff/2)?'#000':'#fff' ?>">
-                  <i class="fas fa-file-signature" style="font-size:.7rem;"></i>
-                  <?= htmlspecialchars($employee['appointment_status']) ?>
-                </span>
-              <?php endif; ?>
-              <?php if ($is_manager_office_staff): ?>
-                <span class="hero-status-badge" style="background:rgba(255,255,255,.2);color:#fff;">
-                  <i class="fas fa-star" style="font-size:.7rem;"></i> Manager's Office Staff
-                </span>
-              <?php endif; ?>
-            </div>
-          </div>
-        </div><!-- /.profile-hero -->
+                        <div class="profile-hero-info">
+                          <h2><?= htmlspecialchars($employee['first_name'].' '.$employee['last_name']) ?></h2>
+                          <p class="hero-sub"><?= htmlspecialchars($employee['position_name'] ?? '—') ?></p>
+                          <p class="hero-id"><?= htmlspecialchars($employee['id_number'] ?? '') ?></p>
+                          <div class="hero-badges">
+                            <?php if (!empty($employee['employment_color'])): ?>
+                              <span class="hero-status-badge"
+                                    style="background-color:<?= htmlspecialchars($employee['employment_color']) ?>;color:<?= (hexdec(substr($employee['employment_color'],1))>0xffffff/2)?'#000':'#fff' ?>">
+                                <i class="fas fa-circle" style="font-size:.55rem;"></i>
+                                <?= htmlspecialchars($employee['employment_status']) ?>
+                              </span>
+                            <?php endif; ?>
+                            <?php if (!empty($employee['appointment_color'])): ?>
+                              <span class="hero-status-badge"
+                                    style="background-color:<?= htmlspecialchars($employee['appointment_color']) ?>;color:<?= (hexdec(substr($employee['appointment_color'],1))>0xffffff/2)?'#000':'#fff' ?>">
+                                <i class="fas fa-file-signature" style="font-size:.7rem;"></i>
+                                <?= htmlspecialchars($employee['appointment_status']) ?>
+                              </span>
+                            <?php endif; ?>
+                            <?php if ($is_manager_office_staff): ?>
+                              <span class="hero-status-badge" style="background:rgba(255,255,255,.2);color:#fff;">
+                                <i class="fas fa-star" style="font-size:.7rem;"></i> Manager's Office Staff
+                              </span>
+                            <?php endif; ?>
+                          </div>
+                        </div>
+                      </div>
+                      </div>
+                  </div><!-- /.profile-hero -->
 
         <!-- ── Tab bar ── -->
         <div class="pf-tabs-bar">

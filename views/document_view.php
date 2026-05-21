@@ -38,11 +38,11 @@ $stmt->execute();
 $doc = $stmt->get_result()->fetch_assoc();
 if (!$doc) { header('Location: document_list.php'); exit; }
 
-$kind_colors = ['incoming' => '#2563eb', 'outgoing' => '#059669', 'internal' => '#7c3aed'];
-$kind_lights = ['incoming' => '#eff6ff', 'outgoing' => '#ecfdf5', 'internal' => '#f5f3ff'];
+$kind_colors = ['incoming' => '#2563eb', 'outgoing' => '#059669', 'external' => '#7c3aed'];
+$kind_lights = ['incoming' => '#eff6ff', 'outgoing' => '#ecfdf5', 'external' => '#f5f3ff'];
 $kind_color  = $kind_colors[$doc['kind']] ?? '#1a3c5e';
 $kind_light  = $kind_lights[$doc['kind']] ?? '#f0f4f8';
-$kind_icons  = ['incoming' => 'fa-inbox', 'outgoing' => 'fa-paper-plane', 'internal' => 'fa-exchange-alt'];
+$kind_icons  = ['incoming' => 'fa-inbox', 'outgoing' => 'fa-paper-plane', 'external' => 'fa-exchange-alt'];
 $kind_icon   = $kind_icons[$doc['kind']] ?? 'fa-file-alt';
 
 $fhstmt = $db->prepare("
@@ -214,7 +214,7 @@ if ($view_logged) {
         .pill-glass { background:rgba(255,255,255,.2); color:#fff; }
         .pill-incoming { background:#dbeafe; color:#1d4ed8; }
         .pill-outgoing { background:#dcfce7; color:#166534; }
-        .pill-internal { background:#ede9fe; color:#5b21b6; }
+        .pill-external { background:#ede9fe; color:#5b21b6; }
         .pill-pending { background:#ffedd5; color:#c2410c; }
         .pill-received { background:#dbeafe; color:#1d4ed8; }
         .pill-returned { background:#fce7f3; color:#9d174d; }
@@ -291,7 +291,7 @@ if ($view_logged) {
         /* pill overrides dark */
         body.dark-mode .pill-incoming { background:#1e3a5f; color:#93c5fd; }
         body.dark-mode .pill-outgoing { background:#14532d; color:#86efac; }
-        body.dark-mode .pill-internal { background:#2e1065; color:#c4b5fd; }
+        body.dark-mode .pill-external { background:#2e1065; color:#c4b5fd; }
         body.dark-mode .pill-pending  { background:#431407; color:#fdba74; }
         body.dark-mode .pill-received { background:#064e3b; color:#6ee7b7; }
         body.dark-mode .pill-returned { background:#4a044e; color:#f0abfc; }
@@ -349,7 +349,7 @@ if ($view_logged) {
                         </div>
                         <!-- Forwarding History -->
                         <div class="dv-card">
-                            <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-history"></i>Forwarding History<span style="background:var(--kc);color:#fff;border-radius:20px;padding:1px 8px;font-size:.62rem;margin-left:2px;"><?= count($fwd_history) ?></span></div><button onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')" style="background:var(--kc);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 12px;font-size:.76rem;font-weight:600;cursor:pointer;"><i class="fas fa-share mr-1"></i>Forward Again</button></div>
+                            <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-history"></i>Forwarding History<span style="background:var(--kc);color:#fff;border-radius:20px;padding:1px 8px;font-size:.62rem;margin-left:2px;"><?= count($fwd_history) ?></span></div><?php if ($view_isOwner || $view_isMasteradmin): ?><button onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')" style="background:var(--kc);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 12px;font-size:.76rem;font-weight:600;cursor:pointer;"><i class="fas fa-share mr-1"></i>Forward Again</button><?php endif; ?></div>
                             <div class="dv-card-bd">
                                 <?php if (!empty($fwd_history)): ?>
                                 <?php foreach ($fwd_history as $idx => $h):
@@ -390,14 +390,19 @@ if ($view_logged) {
                         <!-- Status -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-toggle-on"></i>Status</div><span class="dv-pill pill-<?= $doc['status'] ?>" id="statusBadge"><?= ucfirst($doc['status']) ?></span></div>
-                            <div class="dv-card-bd"><div class="dv-status-row"><select class="form-control form-control-sm" id="quickStatusSelect"><option value="pending" <?= $doc['status']==='pending' ?'selected':'' ?>>Pending</option><option value="received" <?= $doc['status']==='received' ?'selected':'' ?>>Received</option><option value="returned" <?= $doc['status']==='returned' ?'selected':'' ?>>Returned</option><option value="completed" <?= $doc['status']==='completed' ?'selected':'' ?>>Completed</option><option value="archived" <?= $doc['status']==='archived' ?'selected':'' ?>>Archived</option></select><button class="dv-save-btn" onclick="updateStatus()"><i class="fas fa-check mr-1"></i>Save</button></div></div>
+                            <div class="dv-card-bd"><div class="dv-status-row"><select class="form-control form-control-sm" id="quickStatusSelect" <?= (!$view_isOwner && !$view_isMasteradmin) ? 'disabled title="Only the document creator or a Masteradmin can change the status"' : '' ?>><option value="pending" <?= $doc['status']==='pending' ?'selected':'' ?>>Pending</option><option value="received" <?= $doc['status']==='received' ?'selected':'' ?>>Received</option><option value="returned" <?= $doc['status']==='returned' ?'selected':'' ?>>Returned</option><option value="completed" <?= $doc['status']==='completed' ?'selected':'' ?>>Completed</option><option value="archived" <?= $doc['status']==='archived' ?'selected':'' ?>>Archived</option></select><button class="dv-save-btn" onclick="updateStatus()" <?= (!$view_isOwner && !$view_isMasteradmin) ? 'disabled title="Only the document creator or a Masteradmin can change the status" style="opacity:.45;cursor:not-allowed;"' : '' ?>><i class="fas fa-check mr-1"></i>Save</button></div></div>
                         </div>
                         <!-- Actions -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-bolt"></i>Actions</div></div>
                             <div class="dv-card-bd" style="padding:14px;">
+                                <?php if ($view_isOwner || $view_isMasteradmin): ?>
                                 <button class="dv-btn g" onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')"><i class="fas fa-share"></i>Forward Document</button>
                                 <button class="dv-btn y" onclick="editDocumentFromView(<?= $doc['id'] ?>)"><i class="fas fa-pencil-alt"></i>Edit Document</button>
+                                <?php else: ?>
+                                <button class="dv-btn" style="background:#f1f5f9;color:#9ca3af;border:1px solid #e2e8f0;cursor:not-allowed;" disabled title="Only the document creator can forward this document"><i class="fas fa-share"></i>Forward Document</button>
+                                <button class="dv-btn" style="background:#f1f5f9;color:#9ca3af;border:1px solid #e2e8f0;cursor:not-allowed;" disabled title="Only the document creator can edit this document"><i class="fas fa-pencil-alt"></i>Edit Document</button>
+                                <?php endif; ?>
                                 <hr class="dv-divider">
                                 <a href="document_list.php" class="dv-btn s"><i class="fas fa-arrow-left"></i>Back to List</a>
                                 <button class="dv-btn b" onclick="window.print()"><i class="fas fa-print"></i>Print Record</button>

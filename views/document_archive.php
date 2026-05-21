@@ -37,7 +37,7 @@ $page_title = 'Daily Document Archive';
             --doc-primary-light: #e6f7ef;
             --doc-incoming:      #2563eb;
             --doc-outgoing:      #16a34a;
-            --doc-internal:      #7c3aed;
+            --doc-external:      #7c3aed;
 
             --doc-surface:       var(--card-bg, #ffffff);
             --doc-border:        var(--card-border, rgba(42,152,99,.18));
@@ -129,7 +129,7 @@ $page_title = 'Daily Document Archive';
         .filter-pill.fp-active-all      { background: var(--doc-primary); color: #fff; box-shadow: 0 2px 8px rgba(28,77,56,.35); }
         .filter-pill.fp-active-incoming { background: #2563eb; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,.25); }
         .filter-pill.fp-active-outgoing { background: #16a34a; color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.25); }
-        .filter-pill.fp-active-internal { background: #7c3aed; color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .filter-pill.fp-active-external { background: #7c3aed; color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
         body.dark-mode .filter-pill { color: #6aad8a; }
         body.dark-mode .filter-pill:hover { background: rgba(36,231,143,.08); color: #d4f5e5; }
         body.dark-mode .filter-pill.fp-active-all { background: #24e78f; color: #091d14; }
@@ -314,7 +314,7 @@ $page_title = 'Daily Document Archive';
         .kind-filter-btn.active.kf-all      { background: var(--doc-primary); }
         .kind-filter-btn.active.kf-incoming { background: #2563eb; }
         .kind-filter-btn.active.kf-outgoing { background: #16a34a; }
-        .kind-filter-btn.active.kf-internal { background: #7c3aed; }
+        .kind-filter-btn.active.kf-external { background: #7c3aed; }
         body.dark-mode .kind-filter-btn { border-color:rgba(36,231,143,.1); color:#6aad8a; }
         body.dark-mode .kind-filter-btn:hover { background:rgba(36,231,143,.07); color:#d4f5e5; }
         body.dark-mode .kind-filter-btn.active.kf-all { background:#24e78f; color:#091d14; }
@@ -379,10 +379,10 @@ $page_title = 'Daily Document Archive';
         }
         .kind-incoming { background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe; }
         .kind-outgoing { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
-        .kind-internal { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
+        .kind-external { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
         body.dark-mode .kind-incoming { background:#1e3a5f; color:#93c5fd; border-color:#1e40af; }
         body.dark-mode .kind-outgoing { background:#14532d; color:#86efac; border-color:#166534; }
-        body.dark-mode .kind-internal { background:#2e1065; color:#c4b5fd; border-color:#4c1d95; }
+        body.dark-mode .kind-external { background:#2e1065; color:#c4b5fd; border-color:#4c1d95; }
 
         /* ── Status badges (matches document_list exactly) */
         .status-badge {
@@ -683,8 +683,8 @@ $page_title = 'Daily Document Archive';
                     <span class="filter-pill" data-kind="outgoing" id="fp-outgoing">
                         <i class="fas fa-paper-plane"></i> Outgoing
                     </span>
-                    <span class="filter-pill" data-kind="internal" id="fp-internal">
-                        <i class="fas fa-exchange-alt"></i> Internal
+                    <span class="filter-pill" data-kind="external" id="fp-external">
+                        <i class="fas fa-exchange-alt"></i> External
                     </span>
 
                     <span class="toolbar-divider"></span>
@@ -923,7 +923,7 @@ document.querySelectorAll('.filter-pill').forEach(pill=>{
 });
 
 /* ── Calendar engine ───────────────────────────────────────── */
-// archiveDaysMap: 'YYYY-MM-DD' -> {total, incoming, outgoing, internal}
+// archiveDaysMap: 'YYYY-MM-DD' -> {total, incoming, outgoing, external}
 let archiveDaysMap = {};
 
 // Safe defaults so renderCalendar() never sees undefined
@@ -948,7 +948,7 @@ function loadDays(){
                     total:    +d.total,
                     incoming: +d.incoming,
                     outgoing: +d.outgoing,
-                    internal: +d.internal
+                    external: +d.external
                 };
             });
         }
@@ -979,7 +979,7 @@ function renderCalendar(){
 
     const todayStr = fmtYMD(new Date());
 
-    const firstDay    = new Date(calYear, calMonth, 1).getDay();      // 0=Sun
+    const firstDay    = new Date(calYear, calMonth, 1).getDay();
     const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
     const daysInPrev  = new Date(calYear, calMonth, 0).getDate();
 
@@ -990,10 +990,10 @@ function renderCalendar(){
         html += `<div class="arc-cal-day cal-other-month"><span>${daysInPrev-i}</span></div>`;
     }
 
-    // Current month's day cells
+    // Current month's day cells — ALL days are clickable; archived ones get highlight
     for(let d = 1; d <= daysInMonth; d++){
         const dateStr = fmtYMD(new Date(calYear, calMonth, d));
-        const info    = archiveDaysMap[dateStr];  // truthy only for archived days
+        const info    = archiveDaysMap[dateStr];
         const isToday = dateStr === todayStr;
         const isSel   = dateStr === selectedDate;
 
@@ -1002,12 +1002,11 @@ function renderCalendar(){
         if(isSel)   cls += ' cal-selected';
         if(info)    cls += ' cal-has-archive';
 
-        // Store the date on a data-attr — event delegation reads it (no inline onclick)
-        const dataDate = info ? `data-arcdate="${dateStr}"` : '';
-        const tipText  = info
-            ? `${info.total} doc(s) · ${info.incoming||0} in / ${info.outgoing||0} out / ${info.internal||0} int`
-            : '';
-        const titleAttr = info ? `title="${tipText}"` : '';
+        // BUGFIX: give EVERY day a data-arcdate so delegation fires on any click.
+        // selectCalDay() handles the no-archive case by showing an empty-state message.
+        const tipText = info
+            ? `${info.total} doc(s) · ${info.incoming||0} in / ${info.outgoing||0} out / ${info.external||0} int`
+            : 'No archive for this day';
 
         let inner = `<span>${d}</span>`;
         if(info){
@@ -1015,7 +1014,7 @@ function renderCalendar(){
             if(info.total > 0) inner += `<div class="arc-cal-count">${info.total}</div>`;
         }
 
-        html += `<div class="${cls}" ${dataDate} ${titleAttr}>${inner}</div>`;
+        html += `<div class="${cls}" style="cursor:pointer" data-arcdate="${dateStr}" title="${tipText}">${inner}</div>`;
     }
 
     // Trailing filler cells
@@ -1027,16 +1026,33 @@ function renderCalendar(){
 
     $('#calDayGrid').html(html);
 
-    // Disable "next" when already on current month
     const now = new Date();
     const atCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth();
     $('#calNext').prop('disabled', atCurrentMonth).css('opacity', atCurrentMonth ? .35 : 1);
 }
 
 function selectCalDay(dateStr){
-    if(!archiveDaysMap[dateStr]) return; // not an archived day — ignore
     selectedDate = dateStr;
     renderCalendar();  // re-render to move the selected highlight
+
+    if(!archiveDaysMap[dateStr]){
+        // No archive for this day — show a friendly empty state
+        $('#selectedDateLabel').html(
+            '<i class="fas fa-calendar-day mr-1"></i>' + formatDate(dateStr)
+        );
+        $('#archiveSummary').text('No documents archived for this day.');
+        if(archiveDT){ archiveDT.destroy(); archiveDT = null; }
+        $('#archiveTableWrapper').html(
+            '<div class="archive-empty">' +
+            '<i class="fas fa-calendar-times"></i>' +
+            'No archived documents for <strong>' + formatDate(dateStr) + '</strong>.' +
+            '<div style="font-size:.8rem;margin-top:8px;color:var(--doc-muted);">Documents are archived automatically each midnight PHT.</div>' +
+            '</div>'
+        );
+        $('#exportBtn').prop('disabled', true);
+        return;
+    }
+
     loadArchive();
 }
 
@@ -1093,11 +1109,11 @@ function loadArchive(){
         // Banner stats
         const inc=currentRows.filter(d=>d.kind==='incoming').length;
         const out=currentRows.filter(d=>d.kind==='outgoing').length;
-        const int_=currentRows.filter(d=>d.kind==='internal').length;
+        const int_=currentRows.filter(d=>d.kind==='external').length;
         let sc='';
         if(inc) sc+=`<span class="stat-chip"><span class="chip-dot" style="background:#93c5fd;"></span>${inc} Incoming</span>`;
         if(out) sc+=`<span class="stat-chip"><span class="chip-dot" style="background:#86efac;"></span>${out} Outgoing</span>`;
-        if(int_) sc+=`<span class="stat-chip"><span class="chip-dot" style="background:#c4b5fd;"></span>${int_} Internal</span>`;
+        if(int_) sc+=`<span class="stat-chip"><span class="chip-dot" style="background:#c4b5fd;"></span>${int_} External</span>`;
         $('#bannerStats').html(sc);
 
         if(!currentRows.length){
@@ -1107,7 +1123,7 @@ function loadArchive(){
 
         let rows='';
         currentRows.forEach((doc,i)=>{
-            const kindIcon={'incoming':'fa-inbox','outgoing':'fa-paper-plane','internal':'fa-exchange-alt'}[doc.kind]||'fa-file';
+            const kindIcon={'incoming':'fa-inbox','outgoing':'fa-paper-plane','external':'fa-exchange-alt'}[doc.kind]||'fa-file';
             const kb=`<span class="kind-badge kind-${esc(doc.kind)}"><i class="fas ${kindIcon}"></i>${esc(doc.kind)}</span>`;
             const sk=(doc.status||'pending').toLowerCase().replace(/\s+/g,'-');
             const sb=`<span class="status-badge status-${sk}">${esc(doc.status||'—')}</span>`;

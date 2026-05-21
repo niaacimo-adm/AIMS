@@ -203,7 +203,19 @@ if ($employee_id) {
                     </a>
                 </li>
 
-                <!-- Daily Archive -->
+                <li class="nav-header text-uppercase text-muted" style="font-size:.68rem;letter-spacing:.1em;">Settings</li>
+
+                                <!-- Document Types -->
+                <li class="nav-item">
+                    <a href="document_types.php"
+                       class="nav-link <?= $current_page === 'document_types.php' ? 'active bg-olive' : 'text-white' ?>"
+                       title="Manage document types">
+                        <i class="nav-icon fas fa-tags"></i>
+                        <p>Document Types</p>
+                    </a>
+                </li>
+
+                                <!-- Daily Archive -->
                 <li class="nav-item">
                     <a href="document_archive.php"
                        class="nav-link <?= $current_page === 'document_archive.php' ? 'active' : 'text-white' ?>"

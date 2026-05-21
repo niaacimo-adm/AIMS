@@ -101,3 +101,44 @@ Stack trace:
   thrown in C:\xampp\htdocs\AIMS\views\document_actions.php on line 529
 [19-May-2026 09:04:50 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1315
 [19-May-2026 09:04:50 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1315
+[20-May-2026 02:29:37 Europe/Berlin] Connection error: No connection could be made because the target machine actively refused it
+[20-May-2026 02:29:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: No connection could be made because the target machine actively refused it in C:\xampp\htdocs\AIMS\config\database.php:12
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\config\database.php(12): mysqli->__construct('localhost', 'root', Object(SensitiveParameterValue), 'sahur')
+#1 C:\xampp\htdocs\AIMS\config\database.php(27): Database->getConnection()
+#2 C:\xampp\htdocs\AIMS\views\document_actions.php(9): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\AIMS\config\database.php on line 12
+[20-May-2026 02:31:37 Europe/Berlin] Connection error: No connection could be made because the target machine actively refused it
+[20-May-2026 02:31:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: No connection could be made because the target machine actively refused it in C:\xampp\htdocs\AIMS\config\database.php:12
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\config\database.php(12): mysqli->__construct('localhost', 'root', Object(SensitiveParameterValue), 'sahur')
+#1 C:\xampp\htdocs\AIMS\config\database.php(27): Database->getConnection()
+#2 C:\xampp\htdocs\AIMS\views\document_actions.php(9): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\AIMS\config\database.php on line 12
+[20-May-2026 02:33:37 Europe/Berlin] Connection error: No connection could be made because the target machine actively refused it
+[20-May-2026 02:33:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: No connection could be made because the target machine actively refused it in C:\xampp\htdocs\AIMS\config\database.php:12
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\config\database.php(12): mysqli->__construct('localhost', 'root', Object(SensitiveParameterValue), 'sahur')
+#1 C:\xampp\htdocs\AIMS\config\database.php(27): Database->getConnection()
+#2 C:\xampp\htdocs\AIMS\views\document_actions.php(9): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\AIMS\config\database.php on line 12
+[20-May-2026 02:35:37 Europe/Berlin] Connection error: No connection could be made because the target machine actively refused it
+[20-May-2026 02:35:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: No connection could be made because the target machine actively refused it in C:\xampp\htdocs\AIMS\config\database.php:12
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\config\database.php(12): mysqli->__construct('localhost', 'root', Object(SensitiveParameterValue), 'sahur')
+#1 C:\xampp\htdocs\AIMS\config\database.php(27): Database->getConnection()
+#2 C:\xampp\htdocs\AIMS\views\document_actions.php(9): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\AIMS\config\database.php on line 12
+[20-May-2026 02:37:37 Europe/Berlin] Connection error: No connection could be made because the target machine actively refused it
+[20-May-2026 02:37:37 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: No connection could be made because the target machine actively refused it in C:\xampp\htdocs\AIMS\config\database.php:12
+Stack trace:
+#0 C:\xampp\htdocs\AIMS\config\database.php(12): mysqli->__construct('localhost', 'root', Object(SensitiveParameterValue), 'sahur')
+#1 C:\xampp\htdocs\AIMS\config\database.php(27): Database->getConnection()
+#2 C:\xampp\htdocs\AIMS\views\document_actions.php(9): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\AIMS\config\database.php on line 12
+[20-May-2026 02:53:04 Europe/Berlin] PHP Notice:  Only variables should be passed by reference in C:\xampp\htdocs\AIMS\views\document_actions.php on line 1334

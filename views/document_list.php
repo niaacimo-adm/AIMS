@@ -7,7 +7,7 @@ require_once '../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
 
-$kind = isset($_GET['kind']) && in_array($_GET['kind'], ['incoming','outgoing','internal']) ? $_GET['kind'] : '';
+$kind = isset($_GET['kind']) && in_array($_GET['kind'], ['incoming','outgoing','external']) ? $_GET['kind'] : '';
 $page_title = $kind ? ucfirst($kind) . ' Documents' : 'All Documents';
 
 // Logged-in user info
@@ -206,7 +206,7 @@ if ($sec_list_res) {
             --doc-primary-light: #e6f7ef;
             --doc-incoming:      #2563eb;
             --doc-outgoing:      #16a34a;
-            --doc-internal:      #7c3aed;
+            --doc-external:      #7c3aed;
 
             /* surfaces */
             --doc-surface:       var(--card-bg, #ffffff);
@@ -244,6 +244,17 @@ if ($sec_list_res) {
             --thead-color:       #d4f5e5;
         }
 
+
+        /* ── Select2 inside Bootstrap modals ───────────────────────────────────
+           Ensure the dropdown container clears the modal backdrop (z-index 1050)
+           and the modal itself (z-index 1055). Bootstrap 4 sets .modal at 1050,
+           .modal-dialog at auto, so the dropdown needs at least 1056.        */
+        .select2-container--open { z-index: 9999 !important; }
+        .select2-dropdown        { z-index: 9999 !important; }
+
+        /* Prevent the Select2 container from overflowing its column */
+        .select2-container { width: 100% !important; }
+
         /* ── Kind badges ─────────────────────────────────────────────────────── */
         .kind-badge {
             display: inline-flex; align-items: center; gap: 4px;
@@ -254,11 +265,11 @@ if ($sec_list_res) {
         }
         .kind-incoming { background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe; }
         .kind-outgoing { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
-        .kind-internal { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
+        .kind-external { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
 
         body.dark-mode .kind-incoming { background:#1e3a5f; color:#93c5fd; border-color:#1e40af; }
         body.dark-mode .kind-outgoing { background:#14532d; color:#86efac; border-color:#166534; }
-        body.dark-mode .kind-internal { background:#2e1065; color:#c4b5fd; border-color:#4c1d95; }
+        body.dark-mode .kind-external { background:#2e1065; color:#c4b5fd; border-color:#4c1d95; }
 
         /* ── Status badges ───────────────────────────────────────────────────── */
         .status-badge {
@@ -313,7 +324,7 @@ if ($sec_list_res) {
         .filter-pill.active-all      { background: var(--doc-primary); color: #fff; box-shadow: 0 2px 8px rgba(28,77,56,.35); }
         .filter-pill.active-incoming { background: #2563eb; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,.25); }
         .filter-pill.active-outgoing { background: #16a34a; color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.25); }
-        .filter-pill.active-internal { background: #7c3aed; color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
+        .filter-pill.active-external { background: #7c3aed; color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.25); }
 
         body.dark-mode .filter-bar  { background: var(--card-bg, #102f22); border-color: var(--card-border, rgba(36,231,143,.10)); }
         body.dark-mode .filter-pill { color: #6aad8a; }
@@ -532,7 +543,7 @@ if ($sec_list_res) {
         .kind-option:hover { border-color:#adb5bd; }
         .kind-radio:checked + .kind-opt-incoming { border-color:#2563eb;background:#dbeafe;color:#1d4ed8; }
         .kind-radio:checked + .kind-opt-outgoing { border-color:#16a34a;background:#dcfce7;color:#15803d; }
-        .kind-radio:checked + .kind-opt-internal { border-color:#7c3aed;background:#ede9fe;color:#6d28d9; }
+        .kind-radio:checked + .kind-opt-external { border-color:#7c3aed;background:#ede9fe;color:#6d28d9; }
 
         /* ── Dark mode extras (tokens set above on body.dark-mode) ─────────── */
         body.dark-mode .doc-number-cell {
@@ -564,7 +575,7 @@ if ($sec_list_res) {
                         <h1 class="m-0" style="font-size:1.4rem;font-weight:700;color:var(--doc-primary);">
                             <?php if ($kind==='incoming'):  ?><i class="fas fa-inbox mr-2" style="color:var(--doc-incoming);"></i>
                             <?php elseif ($kind==='outgoing'): ?><i class="fas fa-paper-plane mr-2" style="color:var(--doc-outgoing);"></i>
-                            <?php elseif ($kind==='internal'): ?><i class="fas fa-exchange-alt mr-2" style="color:var(--doc-internal);"></i>
+                            <?php elseif ($kind==='external'): ?><i class="fas fa-exchange-alt mr-2" style="color:var(--doc-external);"></i>
                             <?php else: ?><i class="fas fa-file-alt mr-2" style="color:var(--green-dark, #2a9863);"></i><?php endif; ?>
                             <?= htmlspecialchars($page_title) ?>
                         </h1>
@@ -586,7 +597,7 @@ if ($sec_list_res) {
                     <a href="document_list.php"               class="filter-pill <?= !$kind ? 'active-all' : '' ?>"><i class="fas fa-folder-open"></i> All</a>
                     <a href="document_list.php?kind=incoming" class="filter-pill <?= $kind==='incoming' ? 'active-incoming' : '' ?>"><i class="fas fa-inbox"></i> Incoming</a>
                     <a href="document_list.php?kind=outgoing" class="filter-pill <?= $kind==='outgoing' ? 'active-outgoing' : '' ?>"><i class="fas fa-paper-plane"></i> Outgoing</a>
-                    <a href="document_list.php?kind=internal" class="filter-pill <?= $kind==='internal' ? 'active-internal' : '' ?>"><i class="fas fa-exchange-alt"></i> Internal</a>
+                    <a href="document_list.php?kind=external" class="filter-pill <?= $kind==='external' ? 'active-external' : '' ?>"><i class="fas fa-exchange-alt"></i> External</a>
 
                     <!-- Divider -->
                     <span style="width:1px;height:24px;background:#e2e8f0;margin:0 4px;flex-shrink:0;"></span>
@@ -677,13 +688,20 @@ if ($sec_list_res) {
                                             </span>
                                         </td>
                                         <td>
+                                            <?php
+                                            $isOwner = ((int)($doc['created_by_emp_id'] ?? 0) === $logged_emp_id);
+                                            $delReqStatus = $myPendingRequests[$doc['id']] ?? null;
+                                            ?>
                                             <div class="actions-cell">
                                                 <a href="document_view.php?id=<?= $doc['id'] ?>" class="action-btn action-btn-view" title="View Document"><i class="fas fa-eye"></i></a>
+                                                <?php if ($isOwner || $isMasteradmin): ?>
                                                 <button class="action-btn action-btn-edit"    title="Edit Document"   onclick="editDocument(<?= $doc['id'] ?>)"><i class="fas fa-pencil-alt"></i></button>
                                                 <button class="action-btn action-btn-forward" title="Forward Document" onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')"><i class="fas fa-share"></i></button>
+                                                <?php else: ?>
+                                                <button class="action-btn" title="Only the document creator can edit" disabled style="background:#e5e7eb;color:#9ca3af;cursor:not-allowed;"><i class="fas fa-pencil-alt"></i></button>
+                                                <button class="action-btn" title="Only the document creator can forward" disabled style="background:#e5e7eb;color:#9ca3af;cursor:not-allowed;"><i class="fas fa-share"></i></button>
+                                                <?php endif; ?>
                                                 <?php
-                                                $isOwner = ((int)($doc['created_by_emp_id'] ?? 0) === $logged_emp_id);
-                                                $delReqStatus = $myPendingRequests[$doc['id']] ?? null;
                                                 if ($isOwner):
                                                     if ($delReqStatus === 'pending'): ?>
                                                 <button class="action-btn action-btn-pending" title="Delete request pending approval" disabled><i class="fas fa-clock"></i></button>
@@ -766,8 +784,8 @@ if ($sec_list_res) {
                                     <div class="kind-option kind-opt-outgoing"><i class="fas fa-paper-plane fa-lg mb-1"></i><br>Outgoing</div>
                                 </label>
                                 <label class="kind-selector-label" style="flex:1;">
-                                    <input type="radio" name="kind" value="internal" style="display:none;" class="kind-radio">
-                                    <div class="kind-option kind-opt-internal"><i class="fas fa-exchange-alt fa-lg mb-1"></i><br>Internal</div>
+                                    <input type="radio" name="kind" value="external" style="display:none;" class="kind-radio">
+                                    <div class="kind-option kind-opt-external"><i class="fas fa-exchange-alt fa-lg mb-1"></i><br>External</div>
                                 </label>
                             </div>
                         </div>
@@ -988,14 +1006,34 @@ $(document).ready(function() {
         }
     });
 
-    // ── Select2 ─────────────────────────────────────────────────────────────
-    $('.select2').select2({ theme: 'bootstrap4', dropdownParent: $('body') });
+    // ── Select2 (Add modal) ──────────────────────────────────────────────────
+    // Initialised inside shown.bs.modal so the modal is fully visible and has
+    // correct dimensions before Select2 measures it. dropdownParent is set to
+    // the modal itself (not body) so the dropdown renders inside the stacking
+    // context and stays above the modal backdrop.
+    function initAddModalSelect2() {
+        var $sel = $('#addDocumentForm .select2');
+        // Destroy any previous instance to prevent double-init warnings
+        $sel.each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+        });
+        $sel.select2({
+            theme: 'bootstrap4',
+            dropdownParent: $('#addDocumentModal'),
+            width: '100%'
+        });
+    }
+    $('#addDocumentModal').on('shown.bs.modal', function() {
+        initAddModalSelect2();
+    });
 
     // ── Kind option visual feedback ─────────────────────────────────────────
     $(document).on('change', '.kind-radio', function() {
         const val = $(this).val();
         $(this).closest('.d-flex').find('.kind-option').css({border: '2px solid #dee2e6', background: '#f8f9fa', color: '#495057'});
-        const colors = { incoming: ['#0d6efd','#dbeafe','#1d4ed8'], outgoing: ['#198754','#dcfce7','#166534'], internal: ['#6f42c1','#ede9fe','#5b21b6'] };
+        const colors = { incoming: ['#0d6efd','#dbeafe','#1d4ed8'], outgoing: ['#198754','#dcfce7','#166534'], external: ['#6f42c1','#ede9fe','#5b21b6'] };
         if (colors[val]) {
             $(this).next('.kind-option').css({ borderColor: colors[val][0], background: colors[val][1], color: colors[val][2] });
         }
@@ -1096,20 +1134,70 @@ $(document).ready(function() {
         }, 'json');
     });
 
+    // ── Auto-select kind when Add Document modal opens ───────────────────────
+    // Reads the active filter-pill kind from the server-rendered PHP variable.
+    // If the user is on ?kind=incoming, the modal pre-selects Incoming, etc.
+    const activeFilterKind = <?= json_encode($kind) ?>;  // '', 'incoming', 'outgoing', 'external'
+
+    function applyKindSelection(kind) {
+        if (!kind) return;  // 'All' filter — leave unselected so user chooses
+        const $radio = $(`#addDocumentForm input[name="kind"][value="${kind}"]`);
+        if (!$radio.length) return;
+        $radio.prop('checked', true);
+        // Trigger the visual highlight (reuse the existing change handler)
+        $radio.trigger('change');
+    }
+
+    $('#addDocumentModal').on('show.bs.modal', function() {
+        // Only pre-select if not already selected (e.g. user manually picked one earlier)
+        const alreadyChecked = $('#addDocumentForm input[name="kind"]:checked').val();
+        if (!alreadyChecked) {
+            applyKindSelection(activeFilterKind);
+        }
+    });
+
     // ── Reset modals on close ─────────────────────────────────────────────────
     $('#addDocumentModal').on('hidden.bs.modal', function() {
         $('#addDocumentForm')[0].reset();
-        $('.kind-option').css({ border: '2px solid #dee2e6', background: '#f8f9fa', color: '#495057' });
+        // Reset all kind-option visuals
+        $('#addDocumentForm .kind-option').css({ border: '2px solid #dee2e6', background: '#f8f9fa', color: '#495057' });
     });
 
     $('#editDocumentModal').on('hidden.bs.modal', function() {
         editPendingFiles = [];
         currentEditDocId = null;
+        $(this).data('select2Ready', false);
     });
 
-    $('#forwardModal').on('show.bs.modal', function() {
+    // Init (or re-init) Select2 on the edit modal's type dropdown once the modal
+    // is fully visible — this is the only reliable time to call select2() inside
+    // a Bootstrap modal so measurements are correct.
+    $('#editDocumentModal').on('shown.bs.modal', function() {
+        if (!$(this).data('select2Ready')) return; // content not injected yet
+        var $sel = $('#editDocumentModal .select2e');
+        if (!$sel.length) return;
+        if ($sel.hasClass('select2-hidden-accessible')) {
+            $sel.select2('destroy');
+        }
+        $sel.select2({
+            theme: 'bootstrap4',
+            dropdownParent: $('#editDocumentModal'),
+            width: '100%'
+        });
+    });
+
+    $('#forwardModal').on('shown.bs.modal', function() {
         $('#fwdToSectionSelect, #fwdToUnitSelect, #fwdToOfficeSelect').prop('disabled', false);
-        $('#fwdToSectionSelect, #fwdToOfficeSelect').select2({ theme: 'bootstrap4', dropdownParent: $('#forwardModal') });
+        // Destroy before re-init to prevent duplicate instances on repeated opens
+        ['#fwdToSectionSelect', '#fwdToOfficeSelect'].forEach(function(sel) {
+            var $el = $(sel);
+            if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+                $el.select2('destroy');
+            }
+            if ($el.length) {
+                $el.select2({ theme: 'bootstrap4', dropdownParent: $('#forwardModal'), width: '100%' });
+            }
+        });
     });
 });
 
@@ -1135,8 +1223,8 @@ function editDocument(id) {
                 statusHtml += `<option value="${s}" ${d.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`;
             });
 
-            const kindIcons = { incoming: 'fa-inbox', outgoing: 'fa-paper-plane', internal: 'fa-exchange-alt' };
-            const kindHtml = ['incoming','outgoing','internal'].map(k => `
+            const kindIcons = { incoming: 'fa-inbox', outgoing: 'fa-paper-plane', external: 'fa-exchange-alt' };
+            const kindHtml = ['incoming','outgoing','external'].map(k => `
                 <label style="flex:1;">
                     <input type="radio" name="kind" value="${k}" class="kind-radio" style="display:none;" ${d.kind === k ? 'checked' : ''}>
                     <div class="kind-option kind-opt-${k}">
@@ -1216,9 +1304,9 @@ function editDocument(id) {
                 </div>
             `);
 
-            // FIX: re-apply kind-radio visual state after dynamic HTML injection
+            // Re-apply kind-radio visual state after dynamic HTML injection
             $('#editModalBody input[name="kind"]:checked').trigger('change');
-            $('#editDocumentModal .select2e').select2({ theme: 'bootstrap4', dropdownParent: $('#editDocumentModal') });
+            $('#editDocumentModal').data('select2Ready', true);
             $('#updateDocumentBtn').show();
             // Load attachments for this document in edit mode
             loadEditAttachments(d.id);

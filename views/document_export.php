@@ -16,7 +16,7 @@
  *
  * GET params:
  *   type = "list" (default) | "archive"
- *   kind = "" | "incoming" | "outgoing" | "internal"
+ *   kind = "" | "incoming" | "outgoing" | "external"
  *   date = "YYYY-MM-DD"  (archive only)
  */
 
@@ -41,7 +41,7 @@ use PhpOffice\PhpSpreadsheet\Style\Font;
 
 // ── Parameters ────────────────────────────────────────────────────────────────
 $type      = (isset($_GET['type']) && $_GET['type'] === 'archive') ? 'archive' : 'list';
-$kind      = (isset($_GET['kind']) && in_array($_GET['kind'], ['incoming','outgoing','internal']))
+$kind      = (isset($_GET['kind']) && in_array($_GET['kind'], ['incoming','outgoing','external']))
              ? $_GET['kind'] : '';
 $dateParam = trim($_GET['date'] ?? '');
 
