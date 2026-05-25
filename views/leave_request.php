@@ -217,14 +217,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
 // Form Submission (POST without AJAX)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $employee) {
-    $leave_type_id   = intval($_POST['leave_type_id'] ?? 0);
-    $selected_dates  = $_POST['selected_dates'] ?? '';
-    $reason          = trim($_POST['reason'] ?? '');
-    $inclusive_dates = $_POST['inclusive_dates'] ?? '';
+    $leave_type_id_raw  = $_POST['leave_type_id'] ?? '';
+    $others_leave_label = trim($_POST['others_leave_label'] ?? '');
+    $selected_dates     = $_POST['selected_dates'] ?? '';
+    $reason             = trim($_POST['reason'] ?? '');
+    $inclusive_dates    = $_POST['inclusive_dates'] ?? '';
+
+    // Resolve "Others" — try to match existing leave type by name, or default to a generic Others entry
+    $leave_type_id = 0;
+    if ($leave_type_id_raw === 'others') {
+        if (!$others_leave_label) {
+            $error_msg = 'Please specify the type of leave under "Others".';
+        } else {
+            // Try to find a matching leave_type by name (case-insensitive)
+            $match_stmt = $db->prepare("SELECT leave_type_id FROM leave_type WHERE LOWER(leave_type_name) LIKE ? LIMIT 1");
+            $like_val   = '%' . strtolower($others_leave_label) . '%';
+            $match_stmt->bind_param('s', $like_val);
+            $match_stmt->execute();
+            $match_row = $match_stmt->get_result()->fetch_assoc();
+            $match_stmt->close();
+            if ($match_row) {
+                $leave_type_id = intval($match_row['leave_type_id']);
+            } else {
+                // Store the label in reason as context; use leave_type_id=0 as sentinel only
+                // Actually fall back: look for an "Others" leave type or use the first unmatched
+                $fb_stmt = $db->prepare("SELECT leave_type_id FROM leave_type WHERE LOWER(leave_type_name) LIKE '%other%' LIMIT 1");
+                $fb_stmt->execute();
+                $fb_row  = $fb_stmt->get_result()->fetch_assoc();
+                $fb_stmt->close();
+                if ($fb_row) {
+                    $leave_type_id = intval($fb_row['leave_type_id']);
+                } else {
+                    // Cannot resolve; we cannot insert with foreign key = 0.
+                    // Insert a temporary leave_type row for this label.
+                    $ins_lt = $db->prepare("INSERT INTO leave_type (leave_type_name, description, is_active, is_main) VALUES (?, 'User-specified leave type', 1, 0)");
+                    $ins_lt->bind_param('s', $others_leave_label);
+                    $ins_lt->execute();
+                    $leave_type_id = intval($ins_lt->insert_id);
+                    $ins_lt->close();
+                }
+            }
+        }
+    } else {
+        $leave_type_id = intval($leave_type_id_raw);
+    }
 
     $date_arr = array_filter(array_map('trim', explode(',', $selected_dates)));
 
-    if (!$leave_type_id || empty($date_arr) || !$reason) {
+    if (!$error_msg && (!$leave_type_id || empty($date_arr) || !$reason)) {
         $error_msg = 'Please fill in all required fields.';
     } else {
         sort($date_arr);
@@ -287,11 +327,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $employee) {
     }
 }
 
-// Fetch leave types for dropdown
-$leave_types = [];
-$lt_result = $db->query("SELECT * FROM leave_type ORDER BY leave_type_name");
+// Fetch leave types for dropdown — main types first, then others
+$leave_types       = [];
+$leave_types_main  = [];
+$leave_types_other = [];
+$lt_result = $db->query("SELECT * FROM leave_type WHERE is_active = 1 ORDER BY is_main DESC, leave_type_name");
 if ($lt_result) {
-    while ($row = $lt_result->fetch_assoc()) $leave_types[] = $row;
+    while ($row = $lt_result->fetch_assoc()) {
+        $leave_types[] = $row;
+        if (($row['is_main'] ?? 1) == 1) $leave_types_main[]  = $row;
+        else                              $leave_types_other[] = $row;
+    }
 }
 
 // Fetch user's own requests for history
@@ -838,10 +884,44 @@ if ($emp_id) {
                                     <label class="lr-label">Leave Type <span style="color:var(--lr-danger)">*</span></label>
                                     <select name="leave_type_id" id="leave_type_id" class="lr-select" required>
                                         <option value="">— Select Leave Type —</option>
-                                        <?php foreach ($leave_types as $lt): ?>
-                                        <option value="<?= $lt['leave_type_id'] ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
-                                        <?php endforeach; ?>
+                                        <?php if (!empty($leave_types_main)): ?>
+                                        <optgroup label="── Main Leave Types ──">
+                                            <?php foreach ($leave_types_main as $lt): ?>
+                                            <option value="<?= $lt['leave_type_id'] ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                        <?php if (!empty($leave_types_other)): ?>
+                                        <optgroup label="── Other Leave Types ──">
+                                            <?php foreach ($leave_types_other as $lt): ?>
+                                            <option value="<?= $lt['leave_type_id'] ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                        <option value="others">Others (please specify)</option>
                                     </select>
+                                </div>
+
+                                <div class="form-group" id="others_leave_wrap" style="display:none;">
+                                    <label class="lr-label">Specify Leave Type <span style="color:var(--lr-danger)">*</span></label>
+                                    <select name="others_leave_label" id="others_leave_label" class="lr-select">
+                                        <option value="">— Choose a leave type —</option>
+                                        <?php if (!empty($leave_types_other)): ?>
+                                        <optgroup label="── Other Leave Types ──">
+                                            <?php foreach ($leave_types_other as $lt): ?>
+                                            <option value="<?= htmlspecialchars($lt['leave_type_name']) ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                        <?php if (!empty($leave_types_main)): ?>
+                                        <optgroup label="── Main Leave Types ──">
+                                            <?php foreach ($leave_types_main as $lt): ?>
+                                            <option value="<?= htmlspecialchars($lt['leave_type_name']) ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                    </select>
+                                    <input type="hidden" name="leave_type_id_override" id="leave_type_id_override" value="">
                                 </div>
 
                                     <div class="form-group">
@@ -1393,15 +1473,33 @@ $(document).ready(function(){
     Swal.fire({icon:'error',title:'Submission Failed',text:'<?= addslashes($error_msg) ?>',confirmButtonColor:'#c92a2a'});
     <?php endif; ?>
 
+    /* ── Others leave type toggle ── */
+    $('#leave_type_id').on('change', function(){
+        var val = $(this).val();
+        if(val === 'others'){
+            $('#others_leave_wrap').slideDown(180);
+            $('#others_leave_label').prop('required', true);
+        } else {
+            $('#others_leave_wrap').slideUp(180);
+            $('#others_leave_label').prop('required', false).val('');
+        }
+    });
+
     $('#leaveForm').on('submit', function(e){
         e.preventDefault();
-        var leaveType = $('#leave_type_id').val();
-        var datesRaw  = $('#hidSelectedDates').val();
-        var reason    = $('#reason').val().trim();
-        var empId     = $('#current_emp_id').val();
+        var leaveType    = $('#leave_type_id').val();
+        var othersLabel  = $('#others_leave_label').val().trim();
+        var datesRaw     = $('#hidSelectedDates').val();
+        var reason       = $('#reason').val().trim();
+        var empId        = $('#current_emp_id').val();
 
         if(!leaveType){
             Swal.fire({icon:'warning',title:'Select Leave Type',text:'Please choose a leave type.',confirmButtonColor:'#3b5bdb'});
+            return;
+        }
+        if(leaveType === 'others' && !othersLabel){
+            Swal.fire({icon:'warning',title:'Specify Leave Type',text:'Please type the leave type under "Others".',confirmButtonColor:'#3b5bdb'});
+            $('#others_leave_label').focus();
             return;
         }
         if(!datesRaw){
@@ -1410,6 +1508,38 @@ $(document).ready(function(){
         }
         if(!reason){
             Swal.fire({icon:'warning',title:'Reason Required',text:'Please provide a reason.',confirmButtonColor:'#3b5bdb'});
+            return;
+        }
+
+        // For "Others", skip balance validation (no leave_type_id integer available yet)
+        if(leaveType === 'others'){
+            var dateArr = datesRaw.split(',');
+            var sorted  = dateArr.slice().sort();
+            var datesHtml = sorted.map(function(k){
+                var dt  = new Date(k+'T00:00:00');
+                var lbl = dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+                return '<span style="display:inline-block;background:#dbe4ff;color:#2f4ac0;border-radius:12px;padding:2px 10px;margin:2px;font-size:.78rem;font-weight:700">'+lbl+'</span>';
+            }).join('');
+
+            Swal.fire({
+                title:'Confirm Leave Request',
+                html:`<div style="text-align:left;font-size:.88rem;line-height:1.8">
+                        <p><strong>Leave Type:</strong> Others – ${othersLabel}</p>
+                        <p><strong>Selected Dates (${sorted.length} day/s):</strong><br>${datesHtml}</p>
+                        <p style="margin-top:8px"><strong>Reason:</strong> ${reason}</p>
+                      </div>`,
+                icon:'question',
+                showCancelButton:true,
+                confirmButtonColor:'#3b5bdb',
+                cancelButtonColor:'#64748b',
+                confirmButtonText:'<i class="fas fa-paper-plane"></i> Submit',
+                cancelButtonText:'Review Again'
+            }).then(function(r){
+                if(r.isConfirmed){
+                    $('#submitBtn').prop('disabled',true).html('<i class="fas fa-spinner fa-spin"></i> Submitting…');
+                    document.getElementById('leaveForm').submit();
+                }
+            });
             return;
         }
 

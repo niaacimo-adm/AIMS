@@ -167,11 +167,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         echo json_encode($s->get_result()->fetch_assoc());
     } elseif ($action === 'validate_leave') {
         $emp_id         = intval($_POST['emp_id'] ?? 0);
-        $leave_type_id  = intval($_POST['leave_type_id'] ?? 0);
+        $leave_type_id_raw = $_POST['leave_type_id'] ?? '';
+        $leave_type_id  = ($leave_type_id_raw === 'others') ? 0 : intval($leave_type_id_raw);
         $selected_dates = trim($_POST['selected_dates'] ?? '');
         $date_arr       = array_filter(array_map('trim', explode(',', $selected_dates)));
 
-        if (!$emp_id || !$leave_type_id || empty($date_arr)) {
+        if (!$emp_id || (!$leave_type_id && $leave_type_id_raw !== 'others') || empty($date_arr)) {
             echo json_encode(['valid' => false, 'message' => 'Missing required fields.']);
             exit;
         }
@@ -203,6 +204,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
             if ($dow < 6) $days++;
         }
 
+        // Skip balance check for "Others" leave type
+        if ($leave_type_id_raw === 'others') {
+            echo json_encode(['valid' => true, 'days' => $days, 'available' => 0, 'others' => true]);
+            exit;
+        }
+
         // Check balance
         $current_year = (int) date('Y');
         $bal_sql = "SELECT COALESCE(total_credits,0) AS total_credits, 
@@ -229,10 +236,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         exit;
         } elseif ($action === 'apply_leave_for_emp') {
         $emp_id_target   = intval($_POST['target_emp_id']   ?? 0);
-        $leave_type_id   = intval($_POST['leave_type_id']   ?? 0);
+        $leave_type_id_raw  = $_POST['leave_type_id']       ?? '';
+        $others_leave_label = trim($_POST['others_leave_label'] ?? '');
         $selected_dates  = trim($_POST['selected_dates']    ?? '');
         $reason          = trim($_POST['reason']            ?? '');
         $inclusive_dates = trim($_POST['inclusive_dates']   ?? '');
+
+        // Resolve "others" leave type
+        $leave_type_id = 0;
+        if ($leave_type_id_raw === 'others') {
+            if (!$others_leave_label) {
+                echo json_encode(['success'=>false,'message'=>'Please specify the leave type under "Others".']); exit;
+            }
+            // Try fuzzy match on existing leave types
+            $mt = $db->prepare("SELECT leave_type_id FROM leave_type WHERE LOWER(leave_type_name) LIKE ? LIMIT 1");
+            $lk = '%' . strtolower($others_leave_label) . '%';
+            $mt->bind_param('s', $lk); $mt->execute();
+            $mr = $mt->get_result()->fetch_assoc(); $mt->close();
+            if ($mr) {
+                $leave_type_id = intval($mr['leave_type_id']);
+            } else {
+                // Check for generic "Others" row
+                $fb = $db->prepare("SELECT leave_type_id FROM leave_type WHERE LOWER(leave_type_name) LIKE '%other%' LIMIT 1");
+                $fb->execute(); $fbr = $fb->get_result()->fetch_assoc(); $fb->close();
+                if ($fbr) {
+                    $leave_type_id = intval($fbr['leave_type_id']);
+                } else {
+                    // Insert new leave type for this label
+                    $il = $db->prepare("INSERT INTO leave_type (leave_type_name, description, is_active, is_main) VALUES (?, 'User-specified leave type', 1, 0)");
+                    $il->bind_param('s', $others_leave_label); $il->execute();
+                    $leave_type_id = intval($il->insert_id); $il->close();
+                }
+            }
+        } else {
+            $leave_type_id = intval($leave_type_id_raw);
+        }
         $hr_id           = $_SESSION['emp_id'] ?? 0;
 
         $date_arr = array_filter(array_map('trim', explode(',', $selected_dates)));
@@ -379,7 +417,10 @@ $stats = $db->query("
 
 $sections      = $db->query("SELECT * FROM section ORDER BY section_name")->fetch_all(MYSQLI_ASSOC);
 $appt_statuses = $db->query("SELECT * FROM appointment_status WHERE status_name!='Job Order' ORDER BY status_name")->fetch_all(MYSQLI_ASSOC);
-$leave_types   = $db->query("SELECT * FROM leave_type ORDER BY leave_type_name")->fetch_all(MYSQLI_ASSOC);
+$leave_types_all = $db->query("SELECT * FROM leave_type WHERE is_active = 1 ORDER BY is_main DESC, leave_type_name")->fetch_all(MYSQLI_ASSOC);
+$leave_types       = $leave_types_all; // keep for backwards-compat
+$leave_types_main  = array_values(array_filter($leave_types_all, fn($r) => ($r['is_main'] ?? 1) == 1));
+$leave_types_other = array_values(array_filter($leave_types_all, fn($r) => ($r['is_main'] ?? 1) == 0));
 
 $role_labels = [1=>'Administrator',2=>'Manager',12=>'Heads',14=>'Unit Head'];
 $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
@@ -1137,10 +1178,45 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                                     <label class="al-label">Leave Type <span style="color:#c92a2a">*</span></label>
                                     <select id="alLeaveType" class="al-ctrl">
                                         <option value="">— Select Leave Type —</option>
-                                        <?php foreach($leave_types as $lt): ?>
-                                        <option value="<?= $lt['leave_type_id'] ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
-                                        <?php endforeach; ?>
+                                        <?php if (!empty($leave_types_main)): ?>
+                                        <optgroup label="── Main Leave Types ──">
+                                            <?php foreach($leave_types_main as $lt): ?>
+                                            <option value="<?= $lt['leave_type_id'] ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                        <?php if (!empty($leave_types_other)): ?>
+                                        <optgroup label="── Other Leave Types ──">
+                                            <?php foreach($leave_types_other as $lt): ?>
+                                            <option value="<?= $lt['leave_type_id'] ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                        <option value="others">Others (please specify)</option>
                                     </select>
+                                </div>
+                                <!-- Others dropdown — hidden by default -->
+                                <div class="al-fg" id="alOthersWrap" style="display:none;">
+                                    <label class="al-label">Select Specific Leave Type <span style="color:#c92a2a">*</span></label>
+                                    <select id="alOthersLabel" class="al-ctrl">
+                                        <option value="">— Choose specific leave type —</option>
+                                        <?php if (!empty($leave_types_other)): ?>
+                                        <optgroup label="── Other Leave Types ──">
+                                            <?php foreach($leave_types_other as $lt): ?>
+                                            <option value="<?= htmlspecialchars($lt['leave_type_name']) ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                        <?php if (!empty($leave_types_main)): ?>
+                                        <optgroup label="── Main Leave Types ──">
+                                            <?php foreach($leave_types_main as $lt): ?>
+                                            <option value="<?= htmlspecialchars($lt['leave_type_name']) ?>"><?= htmlspecialchars($lt['leave_type_name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                        <?php endif; ?>
+                                    </select>
+                                    <!-- Description hint -->
+                                    <div id="alOthersDesc" style="display:none;margin-top:8px;padding:10px 13px;background:var(--h-card-alt);border:1px solid var(--h-border);border-radius:8px;font-size:.79rem;color:var(--h-muted);line-height:1.55;"></div>
                                 </div>
                                 <!-- Reason -->
                                 <div class="al-fg">
@@ -1514,6 +1590,9 @@ $(document).ready(function(){
         $('#alEmpId').val('');
         $('#alLeaveType').val('');
         $('#alReason').val('');
+        $('#alOthersWrap').hide();
+        $('#alOthersLabel').val('');
+        $('#alOthersDesc').hide().html('');
 
         if(employeesList.length===0){
             $('#alEmpLoading').show();
@@ -1549,16 +1628,98 @@ $(document).ready(function(){
         },'json');
     });
 
+    /* ── Others leave type toggle in Apply Leave modal ── */
+    var AL_OTHERS_DESC = {
+        <?php foreach($leave_types as $lt): if(empty($lt['description'])) continue; ?>
+        <?= json_encode($lt['leave_type_name']) ?>: <?= json_encode($lt['description']) ?>,
+        <?php endforeach; ?>
+    };
+
+    $(document).on('change','#alLeaveType',function(){
+        if($(this).val()==='others'){
+            $('#alOthersWrap').slideDown(180);
+            $('#alOthersLabel').prop('required',true);
+            $('#alOthersDesc').hide().html('');
+        } else {
+            $('#alOthersWrap').slideUp(180);
+            $('#alOthersLabel').prop('required',false).val('');
+            $('#alOthersDesc').hide().html('');
+        }
+    });
+
+    $(document).on('change','#alOthersLabel',function(){
+        var val = $(this).val();
+        if(val && AL_OTHERS_DESC[val]){
+            $('#alOthersDesc').html('<i class="fas fa-info-circle" style="margin-right:5px;color:var(--h-primary);"></i>' + AL_OTHERS_DESC[val]).slideDown(160);
+        } else {
+            $('#alOthersDesc').slideUp(140).html('');
+        }
+    });
+
     $('#btnSubmitApplyLeave').on('click',function(){
-        var empId     = $('#alEmpId').val();
-        var leaveType = $('#alLeaveType').val();
-        var reason    = $('#alReason').val().trim();
-        var keys      = alCal.getKeys();
+        var empId       = $('#alEmpId').val();
+        var leaveType   = $('#alLeaveType').val();
+        var othersLabel = $('#alOthersLabel').val().trim();
+        var reason      = $('#alReason').val().trim();
+        var keys        = alCal.getKeys();
 
         if(!empId){    Swal.fire({icon:'warning',title:'Select Employee',   text:'Please select an employee.',       confirmButtonColor:'#2a9863'}); return; }
         if(!leaveType){Swal.fire({icon:'warning',title:'Select Leave Type', text:'Please choose a leave type.',      confirmButtonColor:'#2a9863'}); return; }
+        if(leaveType==='others' && !othersLabel){
+            Swal.fire({icon:'warning',title:'Select Specific Leave Type',text:'Please select a specific leave type from the "Others" dropdown.',confirmButtonColor:'#2a9863'});
+            $('#alOthersLabel').focus(); return;
+        }
         if(keys.length===0){ Swal.fire({icon:'warning',title:'No Dates',   text:'Please select at least one date.', confirmButtonColor:'#2a9863'}); return; }
         if(!reason){   Swal.fire({icon:'warning',title:'Reason Required',  text:'Please provide a reason.',         confirmButtonColor:'#2a9863'}); return; }
+
+        // For "Others" type, skip the server balance validation and go straight to confirm
+        if(leaveType==='others'){
+            var sorted  = keys.slice().sort();
+            var incl    = sorted.map(function(k){
+                var dt=new Date(k+'T00:00:00');
+                return dt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+            }).join(', ');
+            var dHtml = sorted.map(function(k){
+                var dt=new Date(k+'T00:00:00');
+                var l=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+                return '<span style="display:inline-block;background:#d4f5e5;color:#1c4d38;border-radius:12px;padding:2px 10px;margin:2px;font-size:.76rem;font-weight:700">'+l+'</span>';
+            }).join('');
+            var empName=$('#alEmpId option:selected').text();
+
+            Swal.fire({
+                title:'Confirm Leave Application',
+                html:'<div style="text-align:left;font-size:.87rem;line-height:1.8">'+
+                     '<p><strong>Employee:</strong> '+empName+'</p>'+
+                     '<p><strong>Leave Type:</strong> Others – '+othersLabel+'</p>'+
+                     '<p><strong>Dates ('+sorted.length+' day/s):</strong><br>'+dHtml+'</p>'+
+                     '<p style="margin-top:8px"><strong>Reason:</strong> '+reason+'</p></div>',
+                icon:'question',showCancelButton:true,
+                confirmButtonColor:'#2a9863',cancelButtonColor:'#4a7a5e',
+                confirmButtonText:'<i class="fas fa-paper-plane"></i> Submit',
+                cancelButtonText:'Review Again'
+            }).then(function(r){
+                if(!r.isConfirmed) return;
+                $('#btnSubmitApplyLeave').prop('disabled',true).html('<i class="fas fa-spinner fa-spin"></i> Submitting…');
+                $.post('hr_leave_monitoring.php',{
+                    ajax:1, action:'apply_leave_for_emp',
+                    target_emp_id: empId,
+                    leave_type_id: 'others',
+                    others_leave_label: othersLabel,
+                    selected_dates: sorted.join(','),
+                    reason: reason,
+                    inclusive_dates: incl
+                },function(res){
+                    $('#btnSubmitApplyLeave').prop('disabled',false).html('<i class="fas fa-paper-plane"></i> Submit Leave Request');
+                    if(res.success){
+                        $('#applyLeaveModal').modal('hide');
+                        Swal.fire({icon:'success',title:'Leave Applied!',text:'Leave request has been filed successfully.',confirmButtonColor:'#2a9863'}).then(()=>location.reload());
+                    } else {
+                        Swal.fire({icon:'error',title:'Error',text:res.message||'Could not submit.',confirmButtonColor:'#c92a2a'});
+                    }
+                },'json');
+            });
+            return;
+        }
 
         // Show loading
         Swal.fire({

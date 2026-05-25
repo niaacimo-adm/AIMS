@@ -150,7 +150,7 @@ $query = "
     LEFT JOIN unit_section   us1 ON dr.from_unit_id              = us1.unit_id
     LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id      = us2.unit_id
     $where
-    ORDER BY dr.date_forwarded DESC
+    ORDER BY dr.id DESC
 ";
 
 $stmt = $db->prepare($query);
@@ -988,7 +988,7 @@ $(document).ready(function() {
 
     $('#documentsTable').DataTable({
         pageLength: 25,
-        order: [[0, 'desc']],
+        order: [[0, 'asc']],
         columnDefs: [
             { orderable: false, targets: [0, 9] },
             { searchable: false, targets: [0] }

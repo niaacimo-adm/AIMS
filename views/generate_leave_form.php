@@ -1,20 +1,4 @@
 <?php
-/**
- * generate_leave_form.php
- *
- * Two modes:
- *   ?leave_request_id=XX            → HTML preview page with Download DOCX button
- *   ?leave_request_id=XX&download=1 → stream the filled DOCX to browser
- *
- * Picks the correct template from /public/templates/leave_forms/ based on section_name.
- * Fills name, dates, leave type checkbox, working days, inclusive dates, and
- * approval/disapproval data directly into the official NIA-ACIMO DOCX templates.
- *
- * Access control:
- *   Employees  → own requests only
- *   HR roles (1, 2, 12, 14) → any request
- */
-
 session_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
@@ -52,6 +36,7 @@ if (!$leave_request_id) die('<p style="font-family:Arial;padding:20px;color:red"
 $stmt = $db->prepare("
     SELECT lr.*,
            lt.leave_type_name,
+           lt.is_main AS lt_is_main,
            e.first_name, e.last_name, e.middle_name, e.id_number,
            e.emp_id   AS employee_emp_id,
            pos.position_name,
@@ -82,7 +67,7 @@ if (!$is_hr && intval($d['employee_emp_id']) !== $emp_id) {
 }
 
 /* ── Template directory ── */
-define('TEMPLATE_DIR', realpath(__DIR__ . '/../public/templates/leave_forms/'));
+define('TEMPLATE_DIR', realpath(__DIR__ . '/../public/templates/'));
 
 $section_lc = strtolower($d['section_name'] ?? '');
 if (str_contains($section_lc, 'admin')) {
@@ -111,6 +96,7 @@ $status        = strtolower($d['status'] ?? '');
 $is_approved   = ($status === 'approved');
 $is_rejected   = in_array($status, ['rejected', 'disapproved']);
 $lt_lc         = strtolower($d['leave_type_name'] ?? '');
+$lt_is_main    = (int)($d['lt_is_main'] ?? 1); // 0 = user-specified "Others" type
 
 /* ── Fetch VL (leave_type_id=1) and SL (leave_type_id=2) balances for 7.A ── */
 $bal_year = (int) date('Y', strtotime($d['created_at'] ?? 'now'));
@@ -134,8 +120,8 @@ while ($brow = $bal_res->fetch_assoc()) {
 $bal_stmt->close();
 
 // Which column does "Less This Application" apply to?
-$is_vl_request = str_contains($lt_lc, 'vacation') || str_contains($lt_lc, 'mandatory') || str_contains($lt_lc, 'forced');
-$is_sl_request = str_contains($lt_lc, 'sick');
+$is_vl_request = $lt_is_main && (str_contains($lt_lc, 'vacation') || str_contains($lt_lc, 'mandatory') || str_contains($lt_lc, 'forced'));
+$is_sl_request = $lt_is_main && str_contains($lt_lc, 'sick');
 
 // Format: whole numbers show as integer, decimals show 3 places
 function fmt_days($v): string {
@@ -161,14 +147,17 @@ $leave_checkbox_map = [
     'special emergency'            => 'SPECIAL EMERGENCY (CALAMITY) LEAVE',
     'calamity'                     => 'SPECIAL EMERGENCY (CALAMITY) LEAVE',
     'adoption'                     => 'ADOPTION LEAVE',
+    'wellness'                     => 'WELLNESS LEAVE',
     'monetization'                 => 'Monetization of Leave Credits',
     'terminal'                     => 'Terminal Leave',
 ];
 $matched_leave = '';
-foreach ($leave_checkbox_map as $kw => $label) {
-    if (str_contains($lt_lc, $kw)) { $matched_leave = $label; break; }
+if ($lt_is_main) {
+    foreach ($leave_checkbox_map as $kw => $label) {
+        if (str_contains($lt_lc, $kw)) { $matched_leave = $label; break; }
+    }
 }
-
+// $matched_leave === '' at this point means: use the OTHERS checkbox + fill the label.
 /* ══════════════════════════════════════════════════════
    HELPER: inject text into an empty floating text box
    The box has: <w:txbxContent><w:p ...><w:pPr>...</w:pPr></w:p></w:txbxContent>
@@ -230,7 +219,7 @@ function fill_docx(string $tpl, array $o): string
     if (!$tpl || !file_exists($tpl)) {
         die('<p style="font-family:Arial;padding:20px;color:red">Template not found: <code>' .
             htmlspecialchars($tpl) . '</code><br>' .
-            'Place the four leave form DOCX templates in <code>/public/templates/leave_forms/</code></p>');
+            'Place the four leave form DOCX templates in <code>/public/templates/</code></p>');
     }
 
     $out = tempnam(sys_get_temp_dir(), 'lvf_') . '.docx';
@@ -243,14 +232,49 @@ function fill_docx(string $tpl, array $o): string
     if ($xml === false) { $zip->close(); @unlink($out); die('Cannot read document.xml'); }
 
     /* 1 ── Tick the correct leave-type checkbox
-             Pattern: ☐ in one <w:t> run, followed within ~800 chars by the label text       */
+             FIX: The ☐ character and its label are in SEPARATE table cells (<w:tc>),
+             so the boundary must be </w:tr> (end of row) not </w:tc> (end of cell).
+             Pattern: ☐ in one <w:t> run, followed within ~1100 chars by the label text,
+             allowing the match to cross cell boundaries within the same row.            */
     if ($o['matched_leave']) {
         $escaped = preg_quote($o['matched_leave'], '/');
         $xml = preg_replace(
-            '/(<w:t[^>]*>)(☐)(<\/w:t>)((?:(?!<\/w:tc>).){0,900})(' . $escaped . ')/s',
+            '/(<w:t[^>]*>)(☐)(<\/w:t>)((?:(?!<\/w:tr>).){0,1100})(' . $escaped . ')/s',
             '$1☑$3$4$5',
             $xml, 1
         );
+    } else {
+        $others_pos = strpos($xml, 'OTHERS:');
+        if ($others_pos !== false) {
+            $before_others = substr($xml, 0, $others_pos);
+            $after_others  = substr($xml, $others_pos);
+
+
+            $xml = $before_others . $after_others;
+        }
+
+        // Fill the OTHERS label - method depends on which template is being used
+        if (!empty($o['others_label'])) {
+            $safe_label = htmlspecialchars($o['others_label'], ENT_XML1, 'UTF-8');
+            $is_eng = str_contains($o['tpl_file'], 'Eng');
+            if ($is_eng) {
+                // Eng template: inject into floating textbox that overlays the underline
+                $xml = inject_textbox($xml, '1698696659', $o['others_label']);
+            } else {
+                // Admin/Fin/OM: replace the plain _____+ text run after OTHERS:
+                $others_pos2 = strpos($xml, 'OTHERS:');
+                if ($others_pos2 !== false) {
+                    $before2 = substr($xml, 0, $others_pos2);
+                    $after2  = substr($xml, $others_pos2);
+                    $after2  = preg_replace(
+                        '/<w:t[^>]*>_____+<\/w:t>/',
+                        '<w:t>' . $safe_label . '</w:t>',
+                        $after2, 1
+                    );
+                    $xml = $before2 . $after2;
+                }
+            }
+        }
     }
 
     /* 2 ── DATE OF FILING / POSITION line ── */
@@ -299,12 +323,12 @@ function fill_docx(string $tpl, array $o): string
     /* 7 ── Section 7B checkboxes ── */
     if ($o['is_approved']) {
         $xml = preg_replace(
-            '/(<w:t[^>]*>)(☐)(<\/w:t>)((?:(?!<\/w:tc>).){0,400})(For approval)/s',
+            '/(<w:t[^>]*>)(☐)(<\/w:t>)((?:(?!<\/w:tr>).){0,1100})(For approval)/s',
             '$1☑$3$4$5', $xml, 1
         );
     } elseif ($o['is_rejected']) {
         $xml = preg_replace(
-            '/(<w:t[^>]*>)(☐)(<\/w:t>)((?:(?!<\/w:tc>).){0,500})(For disapproval due to)/s',
+            '/(<w:t[^>]*>)(☐)(<\/w:t>)((?:(?!<\/w:tr>).){0,1100})(For disapproval due to)/s',
             '$1☑$3$4$5', $xml, 1
         );
         if ($o['hr_remarks']) {
@@ -359,6 +383,8 @@ if ($download) {
         'matched_leave','is_approved','is_rejected',
         'vl_total','sl_total','vl_less','sl_less','vl_balance','sl_balance'
     );
+    $opts['others_label'] = $d['leave_type_name'] ?? '';
+    $opts['tpl_file']     = $tpl_file;
     $filled   = fill_docx($template_path, $opts);
     $safe     = preg_replace('/[^A-Za-z0-9_\-]/', '_', $last_name . '_' . $first_name);
     $filename = 'LeaveForm_' . $safe . '_' . date('Ymd') . '.docx';
@@ -590,7 +616,7 @@ if (str_contains($section_lc, 'admin')) {
         <i class="fas fa-exclamation-triangle mt-1"></i>
         <span>
             <strong>Template DOCX not found.</strong> Place the four leave form templates in
-            <code><?= htmlspecialchars(TEMPLATE_DIR ?: dirname(__DIR__).'/public/templates/leave_forms') ?>/</code>.
+            <code><?= htmlspecialchars(TEMPLATE_DIR ?: dirname(__DIR__).'/public/templates/') ?>/</code>.
             The preview below is available but Download will be enabled once the templates are in place.
         </span>
     </div>
@@ -644,24 +670,29 @@ if (str_contains($section_lc, 'admin')) {
                             <div class="lt-grid">
                                 <?php
                                 $leaves = [
-                                    'VACATION LEAVE'                    => str_contains($lt_lc,'vacation'),
-                                    'MANDATORY LEAVE'                   => str_contains($lt_lc,'mandatory')||str_contains($lt_lc,'forced'),
-                                    'SICK LEAVE'                        => str_contains($lt_lc,'sick'),
-                                    'MATERNITY LEAVE'                   => str_contains($lt_lc,'maternity'),
-                                    'PATERNITY LEAVE'                   => str_contains($lt_lc,'paternity'),
-                                    'SPECIAL PRIVILEGE LEAVE'           => str_contains($lt_lc,'special privilege'),
-                                    'SOLO PARENT LEAVE'                 => str_contains($lt_lc,'solo parent'),
-                                    'STUDY LEAVE'                       => str_contains($lt_lc,'study'),
-                                    '10-DAY VAWC LEAVE'                 => str_contains($lt_lc,'vawc')||str_contains($lt_lc,'10-day'),
-                                    'REHABILITATION PRIVILEGE'          => str_contains($lt_lc,'rehabilitation'),
-                                    'SPECIAL LEAVE BENEFITS FOR WOMEN'  => str_contains($lt_lc,'women')||str_contains($lt_lc,'special leave b'),
-                                    'SPECIAL EMERGENCY (CALAMITY) LEAVE'=> str_contains($lt_lc,'calamity')||str_contains($lt_lc,'emergency'),
-                                    'ADOPTION LEAVE'                    => str_contains($lt_lc,'adoption'),
-                                    'Monetization of Leave Credits'     => str_contains($lt_lc,'monetization'),
-                                    'Terminal Leave'                    => str_contains($lt_lc,'terminal'),
-                                    'OTHERS: ' . ($matched_leave ? '' : htmlspecialchars($d['leave_type_name']))
-                                                                        => !$matched_leave,
+                                    'VACATION LEAVE'                    => $lt_is_main && str_contains($lt_lc,'vacation'),
+                                    'MANDATORY LEAVE'                   => $lt_is_main && (str_contains($lt_lc,'mandatory')||str_contains($lt_lc,'forced')),
+                                    'SICK LEAVE'                        => $lt_is_main && str_contains($lt_lc,'sick'),
+                                    'MATERNITY LEAVE'                   => $lt_is_main && str_contains($lt_lc,'maternity'),
+                                    'PATERNITY LEAVE'                   => $lt_is_main && str_contains($lt_lc,'paternity'),
+                                    'SPECIAL PRIVILEGE LEAVE'           => $lt_is_main && str_contains($lt_lc,'special privilege'),
+                                    'SOLO PARENT LEAVE'                 => $lt_is_main && str_contains($lt_lc,'solo parent'),
+                                    'STUDY LEAVE'                       => $lt_is_main && str_contains($lt_lc,'study'),
+                                    '10-DAY VAWC LEAVE'                 => $lt_is_main && (str_contains($lt_lc,'vawc')||str_contains($lt_lc,'10-day')),
+                                    'REHABILITATION PRIVILEGE'          => $lt_is_main && str_contains($lt_lc,'rehabilitation'),
+                                    'SPECIAL LEAVE BENEFITS FOR WOMEN'  => $lt_is_main && (str_contains($lt_lc,'women')||str_contains($lt_lc,'special leave b')),
+                                    'SPECIAL EMERGENCY (CALAMITY) LEAVE'=> $lt_is_main && (str_contains($lt_lc,'calamity')||str_contains($lt_lc,'emergency')),
+                                    'ADOPTION LEAVE'                    => $lt_is_main && str_contains($lt_lc,'adoption'),
+                                    'WELLNESS LEAVE'                    => $lt_is_main && str_contains($lt_lc,'wellness'),
+                                    'Monetization of Leave Credits'     => $lt_is_main && str_contains($lt_lc,'monetization'),
+                                    'Terminal Leave'                    => $lt_is_main && str_contains($lt_lc,'terminal'),
                                 ];
+                                $has_std_match = (array_sum($leaves) > 0);
+                                // OTHERS row – ticked only when nothing above matches
+                                $others_label_preview = $has_std_match
+                                    ? 'OTHERS: _____________________'
+                                    : 'OTHERS: ' . htmlspecialchars($d['leave_type_name']);
+                                $leaves[$others_label_preview] = !$has_std_match;
                                 foreach ($leaves as $label => $on): ?>
                                 <div class="lt-item">
                                     <?= chkbx($on) ?>

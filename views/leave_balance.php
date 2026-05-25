@@ -124,26 +124,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     // ── Initialize default balances for a single employee ──────────────────────
+    // Dynamic: reads default_credits from leave_type table — no hardcoding needed.
     if ($action === 'init_defaults') {
         if (!$emp_id) {
             echo json_encode(['success' => false, 'message' => 'Invalid employee.']);
             exit();
         }
-        // Default credits per leave_type_id (matches leave_type table seed data)
-        $defaults = [
-            1  => 15.0,   // Vacation Leave
-            2  => 15.0,   // Sick Leave
-            3  => 105.0,  // Maternity Leave
-            4  => 7.0,    // Paternity Leave
-            5  => 3.0,    // Special Privilege Leave
-            6  => 7.0,    // Solo Parent Leave
-            7  => 0.0,    // Study Leave (unlimited – seed as 0)
-            8  => 10.0,   // VAWC Leave
-            9  => 0.0,    // Rehabilitation Leave (case-to-case)
-            10 => 5.0,    // Special Emergency Leave
-            11 => 0.0,    // Forced Leave (computed)
-            12 => 0.0,    // Terminal Leave (computed)
-        ];
+        // Pull active leave types + their default_credits from leave_type table
+        $lt_res  = $db->query("SELECT leave_type_id, COALESCE(default_credits, 0) AS default_credits
+                                FROM leave_type WHERE is_active = 1");
+        $defaults = [];
+        while ($lt_row = $lt_res->fetch_assoc()) {
+            $defaults[(int)$lt_row['leave_type_id']] = (float)$lt_row['default_credits'];
+        }
+
         $inserted = 0;
         foreach ($defaults as $lt_id => $credits) {
             // Only insert if no row yet — never overwrite existing balances
@@ -168,12 +162,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     // ── Bulk-initialize defaults for ALL non-Job-Order employees ────────────────
+    // Dynamic: reads default_credits from leave_type table — no hardcoding needed.
     if ($action === 'bulk_init_defaults') {
-        $defaults = [
-            1=>15.0, 2=>15.0, 3=>105.0, 4=>7.0, 5=>3.0,
-            6=>7.0,  7=>0.0,  8=>10.0,  9=>0.0, 10=>5.0,
-            11=>0.0, 12=>0.0,
-        ];
+        // Pull active leave types + their default_credits from leave_type table
+        $lt_res  = $db->query("SELECT leave_type_id, COALESCE(default_credits, 0) AS default_credits
+                                FROM leave_type WHERE is_active = 1");
+        $defaults = [];
+        while ($lt_row = $lt_res->fetch_assoc()) {
+            $defaults[(int)$lt_row['leave_type_id']] = (float)$lt_row['default_credits'];
+        }
+
         // Get all eligible employees (no Job Order)
         $emp_res = $db->query("
             SELECT e.emp_id FROM employee e
