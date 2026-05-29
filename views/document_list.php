@@ -150,7 +150,7 @@ $query = "
     LEFT JOIN unit_section   us1 ON dr.from_unit_id              = us1.unit_id
     LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id      = us2.unit_id
     $where
-    ORDER BY dr.id DESC
+    ORDER BY dr.created_at DESC
 ";
 
 $stmt = $db->prepare($query);
@@ -645,9 +645,11 @@ if ($sec_list_res) {
                                 </thead>
                                 <tbody>
                                 <?php if ($documents && $documents->num_rows > 0):
-                                    while ($doc = $documents->fetch_assoc()): ?>
+                                    $row_counter = 0;
+                                    while ($doc = $documents->fetch_assoc()):
+                                    $row_counter++; ?>
                                     <tr>
-                                        <td><span class="doc-id-cell">#<?= $doc['id'] ?></span></td>
+                                        <td data-order="<?= $row_counter ?>"><span class="doc-id-cell"><?= $row_counter ?></span></td>
                                         <td><?= htmlspecialchars($doc['document_number']) ?></span></td>
                                         <td>
                                             <div style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;" title="<?= htmlspecialchars($doc['document_name']) ?>">
@@ -988,7 +990,7 @@ $(document).ready(function() {
 
     $('#documentsTable').DataTable({
         pageLength: 25,
-        order: [[0, 'asc']],
+        order: [],
         columnDefs: [
             { orderable: false, targets: [0, 9] },
             { searchable: false, targets: [0] }
@@ -1001,8 +1003,11 @@ $(document).ready(function() {
             zeroRecords: '<div class="text-center py-4" style="color:#9ca3af;"><i class="fas fa-search fa-2x d-block mb-2" style="opacity:.4;"></i><div style="font-size:.92rem;font-weight:600;color:#6b7280;">No matching documents</div></div>',
             emptyTable: '<div class="text-center py-4" style="color:#9ca3af;"><i class="fas fa-folder-open fa-2x d-block mb-2" style="opacity:.4;"></i><div style="font-size:.92rem;font-weight:600;color:#6b7280;">No documents found</div><div style="font-size:.8rem;margin-top:3px;">Try a different filter or add a new document.</div></div>'
         },
-        rowCallback: function(row, data, displayIndex) {
-            $('td:first', row).html('<span class="doc-id-cell">' + (displayIndex + 1) + '</span>');
+        drawCallback: function() {
+            this.api().rows({ page: 'current' }).every(function(rowIdx) {
+                var displayIndexFull = this.index('display');
+                $('td:first', this.node()).html('<span class="doc-id-cell">' + (displayIndexFull + 1) + '</span>');
+            });
         }
     });
 
@@ -1851,6 +1856,60 @@ $('#saveDocumentBtn').on('click', function() {
         console.error(xhr.responseText);
     }).always(() => $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Document'));
 });
+</script>
+
+<?php
+// ── Silent auto-archive watcher ───────────────────────────────────────────────
+// Embed a lightweight version on the main document list page so the archive
+// fires whenever any user opens this page in the morning, not only when someone
+// opens the dedicated archive page. This is the reliable browser-side fallback
+// when the server cron is not configured or missed a run.
+?>
+<script>
+(function() {
+    'use strict';
+
+    // Only run once per page load — a simple module pattern avoids conflicts
+    // if this snippet is ever included on multiple pages.
+    if (window.__autoArchiveWatcherRunning) return;
+    window.__autoArchiveWatcherRunning = true;
+
+    var fired = false;
+
+    function runArchive() {
+        if (fired) return;
+        fired = true;
+        $.post('document_actions.php', { action: 'midnight_archive', triggered_by: 'auto' }, function(r) {
+            if (r && r.archived > 0) {
+                console.info('[Auto-archive] Archived ' + r.archived + ' document(s) for ' + r.date + '.');
+            }
+        }, 'json').fail(function() {
+            console.warn('[Auto-archive] Silent archive attempt failed.');
+        });
+    }
+
+    // Check status, then decide: fire now or arm timer for tonight
+    $.get('document_actions.php', { action: 'check_midnight_status' }, function(r) {
+        if (!r || !r.success) return;
+        if (r.already_ran) return; // nothing to do today
+
+        if (r.fire_now) {
+            // Midnight has passed but archive hasn't run — fire after short delay
+            setTimeout(runArchive, 2000);
+        } else {
+            // Arm a timer to fire exactly at midnight PHT
+            var now = new Date();
+            var pht = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 8 * 3600000);
+            var msUntilMidnight = (new Date(pht).setHours(24, 0, 5, 0)) - pht.getTime();
+            if (msUntilMidnight > 0) {
+                setTimeout(runArchive, msUntilMidnight);
+            }
+        }
+    }, 'json');
+}());
+$.get('document_actions.php', { action: 'check_midnight_status' }, function(r) {
+    console.log(r);
+}, 'json');
 </script>
 <?php include '../includes/footer.php'; ?>
 </body>

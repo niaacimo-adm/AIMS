@@ -218,6 +218,12 @@ if ($employee_id) {
                       <p>Intern Databank</p>
                   </a>
               </li>
+              <li class="nav-item">
+                <a href="../views/room_reservation.php" class="nav-link <?= $current_page == 'room_reservation.php' ? 'active' : 'text-white' ?>">
+                  <i class="fas fa-bed nav-icon"></i>
+                  <p>Room Reservation</p>
+                </a>
+              </li>
           <?php endif; ?>
           
           <?php if (hasPermission('manage_settings')): ?>

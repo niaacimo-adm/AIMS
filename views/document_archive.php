@@ -437,7 +437,9 @@ $page_title = 'Daily Document Archive';
             box-shadow:0 1px 2px rgba(0,0,0,.1);
         }
         .action-btn:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.18); }
-        .action-btn-view { background:#0ea5e9; color:#fff; }
+        .action-btn-view    { background:#0ea5e9; color:#fff; }
+        .action-btn-receipt { background:#059669; color:#fff; }
+        .action-btn-files   { background:#7c3aed; color:#fff; }
 
         /* ── DataTables overrides ──────────────────────── */
         .dataTables_wrapper .dataTables_length,
@@ -852,18 +854,34 @@ function startMidnightWatcher() {
     $.get('document_actions.php', { action: 'check_midnight_status' }, function(r) {
         const chip = $('#autoArchiveStatus');
         if (r.already_ran) {
+            // Archive already ran for yesterday — show status and arm timer for TONIGHT
             chip.removeClass('pending').addClass('ran').html(
-                `<i class="fas fa-check-circle"></i> Auto-archived today (${r.today})`
+                `<i class="fas fa-check-circle"></i> Auto-archived (${r.yesterday}) &mdash; next run at midnight PHT`
             );
-        } else {
+            // Arm the timer so tonight's archive fires even if the page stays open
             const secs = secondsUntilMidnightPHT();
-            chip.removeClass('ran').addClass('pending').html(
-                `<i class="fas fa-hourglass-half"></i> Auto-archive pending — fires at midnight PHT`
-            );
-            if (secs <= 0) {
-                runMidnightArchive('auto');
+            if (secs > 0) {
+                setTimeout(() => {
+                    midnightFired = false; // reset so tonight's run is allowed
+                    runMidnightArchive('auto');
+                }, secs * 1000);
+            }
+        } else {
+            // Archive has NOT run yet for yesterday.
+            // fire_now = true means midnight has passed — fire immediately.
+            // fire_now = false means we haven't hit midnight yet — arm a timer.
+            if (r.fire_now) {
+                chip.removeClass('ran').addClass('pending').html(
+                    `<i class="fas fa-sync fa-spin"></i> Auto-archiving yesterday&hellip;`
+                );
+                // Fire after a short delay so the page finishes loading
+                setTimeout(() => runMidnightArchive('auto'), 1500);
             } else {
-                setTimeout(() => runMidnightArchive('auto'), secs * 1000);
+                const secs = secondsUntilMidnightPHT();
+                chip.removeClass('ran').addClass('pending').html(
+                    `<i class="fas fa-hourglass-half"></i> Auto-archive pending &mdash; fires at midnight PHT`
+                );
+                setTimeout(() => runMidnightArchive('auto'), Math.max(secs, 1) * 1000);
             }
         }
     }, 'json').fail(() => {
@@ -1130,7 +1148,7 @@ function loadArchive(){
             const df=doc.date_forwarded?formatDT(doc.date_forwarded):'—';
             const aa=doc.archived_at?formatDT(doc.archived_at):'—';
             rows+=`<tr>
-                <td><span class="doc-id-cell">#${i+1}</span></td>
+                <td class="row-num"></td>
                 <td>${esc(doc.document_number)}</span></td>
                 <td>
                     <div style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;" title="${esc(doc.document_name)}">${esc(doc.document_name)}</div>
@@ -1148,7 +1166,11 @@ function loadArchive(){
                 </td>
                 <td style="font-size:.75rem;color:var(--doc-muted);white-space:nowrap;">${aa}</td>
                 <td>
-                    <button class="action-btn action-btn-view" onclick="viewSnapshot(${i})" title="View full snapshot"><i class="fas fa-eye"></i></button>
+                    <div style="display:flex;gap:4px;justify-content:center;">
+                        <button class="action-btn action-btn-view"    onclick="viewSnapshot(${i})"       title="View snapshot"><i class="fas fa-eye"></i></button>
+                        <button class="action-btn action-btn-receipt" onclick="printArcReceipt(${i})"    title="Print receipt"><i class="fas fa-receipt"></i></button>
+                        <button class="action-btn action-btn-files"   onclick="viewArcFiles(${i})"       title="View attachments"><i class="fas fa-paperclip"></i></button>
+                    </div>
                 </td>
             </tr>`;
         });
@@ -1166,7 +1188,7 @@ function loadArchive(){
                     <th style="min-width:160px;">Forwarded By</th>
                     <th style="min-width:160px;">Forwarded To / Date</th>
                     <th style="width:135px;">Archived At</th>
-                    <th style="width:50px;"></th>
+                    <th style="width:100px;text-align:center;">Actions</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
@@ -1178,7 +1200,10 @@ function loadArchive(){
             order:[[0,'asc']],
             columnDefs:[{orderable:false,targets:[9]}],
             language:{search:'Search archive:',emptyTable:'No archived documents.'},
-            dom:'<"d-flex align-items-center justify-content-between px-1 pt-2"lf>rt<"d-flex align-items-center justify-content-between px-1 pb-2"ip>'
+            dom:'<"d-flex align-items-center justify-content-between px-1 pt-2"lf>rt<"d-flex align-items-center justify-content-between px-1 pb-2"ip>',
+            rowCallback: function(row, data, displayIndex) {
+                $('td.row-num', row).html('<span class="doc-id-cell">#' + (displayIndex + 1) + '</span>');
+            }
         });
 
         $('#exportBtn').prop('disabled',false);
@@ -1319,6 +1344,200 @@ function formatDT(ds){
 
 
 </script>
+
+<!-- ── Archive Receipt Modal ── -->
+<div class="modal fade" id="arcReceiptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1c4d38,#2a9863);color:#fff;border:none;padding:14px 20px;">
+                <h5 class="modal-title" style="font-weight:700;font-size:.95rem;"><i class="fas fa-receipt mr-2"></i>Document Tracking Receipt <span id="arcReceiptDocNum" style="opacity:.8;font-weight:400;font-size:.85rem;"></span></h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="background:#f9fafb;padding:22px;">
+                <div id="arcReceiptBody" style="background:#fff;border-radius:10px;border:1px solid #e5e7eb;padding:24px;font-family:Georgia,serif;max-width:560px;margin:0 auto;">
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none;padding:12px 20px;background:#f1f5f9;">
+                <button type="button" class="btn btn-light btn-sm" data-dismiss="modal" style="font-weight:600;">Close</button>
+                <button type="button" class="btn btn-sm" onclick="doPrintArcReceipt()" style="background:#1c4d38;color:#fff;font-weight:600;border-radius:8px;padding:6px 18px;">
+                    <i class="fas fa-print mr-1"></i>Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Archive Files Modal ── -->
+<div class="modal fade" id="arcFilesModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1c4d38,#7c3aed);color:#fff;border:none;padding:14px 20px;">
+                <h5 class="modal-title" style="font-weight:700;font-size:.95rem;"><i class="fas fa-paperclip mr-2"></i>Attachments — <span id="arcFilesDocNum" style="opacity:.8;font-weight:400;"></span></h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="padding:18px;" id="arcFilesBody">
+                <div style="text-align:center;padding:24px;color:#6b7280;"><i class="fas fa-spinner fa-spin mr-1"></i> Loading attachments…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden print area for archive receipt -->
+<div id="arcReceiptPrintArea" style="display:none;"></div>
+
+<script>
+/* ── Archive Receipt ────────────────────────────────────────── */
+let _arcReceiptDoc = null;
+
+function printArcReceipt(idx) {
+    const doc = currentRows[idx]; if (!doc) return;
+    _arcReceiptDoc = doc;
+
+    let snap = {}; try { snap = JSON.parse(doc.snapshot_json || '{}'); } catch(e) {}
+
+    // Merge: archived columns take priority, snapshot fills gaps
+    const d = Object.assign({}, snap, {
+        document_number : doc.document_number || snap.document_number,
+        document_name   : doc.document_name   || snap.document_name,
+        document_type   : doc.document_type   || snap.type_name,
+        kind            : doc.kind            || snap.kind,
+        status          : doc.status          || snap.status,
+        forwarded_by    : doc.forwarded_by    || snap.resolved_fwd_by || snap.forwarded_by_name,
+        from_section    : doc.from_section    || snap.from_section_name,
+        to_section      : doc.to_section      || snap.to_section_name,
+        date_forwarded  : doc.date_forwarded,
+        archived_at     : doc.archived_at,
+        remarks         : doc.remarks         || snap.remarks,
+        original_id     : doc.original_id,
+    });
+
+    function row(label, value) {
+        if (!value) return '';
+        return `<tr style="border-bottom:1px solid #f3f4f6;">
+            <td style="padding:7px 10px;font-size:.78rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;width:38%;">${esc(label)}</td>
+            <td style="padding:7px 10px;font-size:.84rem;color:#111827;font-family:inherit;">${esc(value||'—')}</td>
+        </tr>`;
+    }
+
+    const html = `
+        <div style="text-align:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #1c4d38;">
+            <div style="font-size:1rem;font-weight:800;color:#1c4d38;letter-spacing:.04em;">NIA — ACIMO</div>
+            <div style="font-size:.75rem;color:#6b7280;margin-top:2px;">Document Tracking System — Archived Record Receipt</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+            ${row('Document Number', d.document_number)}
+            ${row('Document Name',   d.document_name)}
+            ${row('Type',            d.document_type || d.type_name)}
+            ${row('Kind',            d.kind ? d.kind.charAt(0).toUpperCase()+d.kind.slice(1) : null)}
+            ${row('Status',          d.status ? d.status.charAt(0).toUpperCase()+d.status.slice(1) : null)}
+            ${row('From',            [d.forwarded_by, d.from_section].filter(Boolean).join(' · '))}
+            ${row('To',              d.to_section || d.forwarded_to || null)}
+            ${row('Date Forwarded',  d.date_forwarded && d.date_forwarded !== '0000-00-00 00:00:00' ? formatDT(d.date_forwarded) : null)}
+            ${row('Archived At',     d.archived_at ? formatDT(d.archived_at) : null)}
+            ${row('Remarks',         d.remarks)}
+            ${row('Original Record', d.original_id ? '#'+d.original_id : null)}
+        </table>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:.68rem;color:#9ca3af;">
+            This receipt was generated from the NIA-ACIMO Document Archive.<br>
+            Printed on <strong>${new Date().toLocaleString('en-PH',{timeZone:'Asia/Manila'})}</strong>
+        </div>`;
+
+    $('#arcReceiptDocNum').text(d.document_number ? '— '+d.document_number : '');
+    $('#arcReceiptBody').html(html);
+    $('#arcReceiptModal').modal('show');
+}
+
+function doPrintArcReceipt() {
+    const body = document.getElementById('arcReceiptBody').innerHTML;
+    const area = document.getElementById('arcReceiptPrintArea');
+    area.innerHTML = body;
+    area.style.display = 'block';
+    document.body.classList.add('print-receipt-only');
+    window.print();
+    setTimeout(() => {
+        document.body.classList.remove('print-receipt-only');
+        area.style.display = 'none';
+        area.innerHTML = '';
+    }, 800);
+}
+
+/* ── Archive Attachments ────────────────────────────────────── */
+function viewArcFiles(idx) {
+    const doc = currentRows[idx]; if (!doc) return;
+    const origId = doc.original_id;
+
+    $('#arcFilesDocNum').text(doc.document_number || '');
+    $('#arcFilesBody').html('<div style="text-align:center;padding:24px;color:#6b7280;"><i class="fas fa-spinner fa-spin mr-1"></i> Loading…</div>');
+    $('#arcFilesModal').modal('show');
+
+    // Reuse the existing get_files action — document_files rows are NOT deleted
+    // during archiving, so original_id = the original document_records.id
+    $.get('document_actions.php', { action: 'get_files', document_id: origId }, function(r) {
+        if (!r.success) {
+            $('#arcFilesBody').html('<div style="text-align:center;padding:24px;color:#dc2626;"><i class="fas fa-exclamation-circle mr-1"></i>Could not load files.</div>');
+            return;
+        }
+        if (!r.files || !r.files.length) {
+            $('#arcFilesBody').html('<div style="text-align:center;padding:24px;color:#6b7280;"><i class="fas fa-folder-open" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.3;"></i>No attachments for this document.</div>');
+            return;
+        }
+
+        function fileIcon(mime) {
+            if (!mime) return 'fa-file';
+            if (mime.includes('pdf'))   return 'fa-file-pdf';
+            if (mime.includes('word') || mime.includes('document')) return 'fa-file-word';
+            if (mime.includes('sheet') || mime.includes('excel'))   return 'fa-file-excel';
+            if (mime.includes('image')) return 'fa-file-image';
+            return 'fa-file-alt';
+        }
+        function fileSize(bytes) {
+            bytes = +bytes;
+            if (bytes < 1024)         return bytes + ' B';
+            if (bytes < 1024*1024)    return (bytes/1024).toFixed(1) + ' KB';
+            return (bytes/(1024*1024)).toFixed(1) + ' MB';
+        }
+
+        let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+        r.files.forEach(f => {
+            html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+                <i class="fas ${fileIcon(f.mime_type)}" style="font-size:1.4rem;color:#7c3aed;flex-shrink:0;width:24px;text-align:center;"></i>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:.84rem;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(f.original_name)}">${esc(f.original_name)}</div>
+                    <div style="font-size:.71rem;color:#6b7280;margin-top:2px;">${fileSize(f.file_size)} &middot; ${esc(f.uploaded_by_name||'Unknown')}</div>
+                </div>
+                <div style="display:flex;gap:5px;flex-shrink:0;">
+                    <a href="document_actions.php?action=download_file&file_id=${f.id}&inline=1" target="_blank"
+                       style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;font-size:.74rem;font-weight:600;text-decoration:none;">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                    <a href="document_actions.php?action=download_file&file_id=${f.id}&inline=0" download
+                       style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:6px;font-size:.74rem;font-weight:600;text-decoration:none;">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        $('#arcFilesBody').html(html);
+    }, 'json').fail(() => {
+        $('#arcFilesBody').html('<div style="text-align:center;padding:24px;color:#dc2626;"><i class="fas fa-exclamation-circle mr-1"></i>Server error.</div>');
+    });
+}
+</script>
+
+<style>
+/* Print: show only the receipt area */
+@media print {
+    body.print-receipt-only > *:not(#arcReceiptPrintArea) { display: none !important; }
+    #arcReceiptPrintArea {
+        display: block !important;
+        font-family: Georgia, serif;
+        padding: 24px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+}
+</style>
 
 <?php include '../includes/footer.php'; ?>
 </body>

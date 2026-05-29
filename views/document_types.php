@@ -351,7 +351,7 @@ $(document).ready(function() {
         pageLength: 25,
         order: [[1, 'asc']],
         columnDefs: [
-            { orderable: false, targets: [0, 4] },
+            { orderable: false, targets: [0, 3] },
             { searchable: false, targets: [0] }
         ],
         dom: '<"row align-items-center mb-2"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row mt-2"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',

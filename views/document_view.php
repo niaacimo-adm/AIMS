@@ -172,6 +172,7 @@ if ($view_logged) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Document #<?= $doc['id'] ?> — <?= htmlspecialchars($doc['document_number']) ?> | NIA-ACIMO</title>
     <?php include '../includes/header.php'; ?>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* ══════════════════════════════════════════
            DESIGN TOKENS — light (default)
@@ -266,7 +267,124 @@ if ($view_logged) {
         .dv-save-btn { padding:6px 13px; border:none; border-radius:var(--r-sm); background:#2a9863; color:#fff; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:filter .12s; }
         .dv-save-btn:hover { filter:brightness(.9); }
         @media (max-width:991px) { .dv-layout { flex-direction:column; } .dv-side { width:100%; position:static; } .dv-grid-4 { grid-template-columns:1fr 1fr; } }
-        @media print { .dv-side, .content-header, .main-header, .main-sidebar, .main-footer { display:none!important; } .dv-main { width:100%!important; } }
+        @media print {
+            body > *:not(#receiptPrintArea) { display:none!important; }
+            #receiptPrintArea { display:block!important; position:static!important; }
+            .wrapper, .content-wrapper, .main-header, .main-sidebar, .main-footer { display:none!important; }
+        }
+        /* ── Receipt print area (hidden on screen) ── */
+        #receiptPrintArea {
+            display: none;
+        }
+        /* ── Receipt modal ── */
+        #receiptPreviewModal .receipt-paper {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 28px 30px 22px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #111827;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        #receiptPreviewModal .rcp-header {
+            text-align: center;
+            border-bottom: 2px solid #1c4d38;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+        }
+        #receiptPreviewModal .rcp-org {
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: #1c4d38;
+        }
+        #receiptPreviewModal .rcp-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #111827;
+            margin: 4px 0 2px;
+        }
+        #receiptPreviewModal .rcp-sub {
+            font-size: .72rem;
+            color: #6b7280;
+        }
+        #receiptPreviewModal .rcp-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 5px 0;
+            border-bottom: 1px dashed #e5e7eb;
+            font-size: .78rem;
+            gap: 12px;
+        }
+        #receiptPreviewModal .rcp-row:last-child { border-bottom: none; }
+        #receiptPreviewModal .rcp-lbl {
+            color: #6b7280;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        #receiptPreviewModal .rcp-val {
+            color: #111827;
+            font-weight: 500;
+            text-align: right;
+            word-break: break-word;
+        }
+        #receiptPreviewModal .rcp-qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 2px solid #1c4d38;
+            gap: 6px;
+        }
+        #receiptPreviewModal .rcp-qr-label {
+            font-size: .65rem;
+            color: #6b7280;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        #receiptPreviewModal .rcp-footer-note {
+            font-size: .62rem;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 10px;
+        }
+        /* ── Actual printable receipt (injected to DOM, printed) ── */
+        #receiptPrintArea {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #111;
+            padding: 36px;
+            max-width: 560px;
+            margin: 0 auto;
+        }
+        #receiptPrintArea .rp-header {
+            text-align: center;
+            border-bottom: 2.5px solid #1c4d38;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+        #receiptPrintArea .rp-org  { font-size: 9pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #1c4d38; }
+        #receiptPrintArea .rp-title { font-size: 13pt; font-weight: 800; margin: 4px 0 2px; }
+        #receiptPrintArea .rp-sub  { font-size: 8pt; color: #6b7280; }
+        #receiptPrintArea table.rp-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+        #receiptPrintArea table.rp-table td { padding: 5px 3px; font-size: 9pt; border-bottom: 1px dashed #ddd; vertical-align: top; }
+        #receiptPrintArea table.rp-table td:first-child { color: #555; font-weight: 600; white-space: nowrap; width: 38%; }
+        #receiptPrintArea table.rp-table td:last-child  { color: #111; font-weight: 500; word-break: break-word; }
+        #receiptPrintArea .rp-qr-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-top: 2.5px solid #1c4d38;
+            padding-top: 16px;
+            gap: 6px;
+        }
+        #receiptPrintArea .rp-qr-lbl { font-size: 7.5pt; color: #6b7280; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+        #receiptPrintArea .rp-footer { font-size: 7pt; color: #aaa; text-align: center; margin-top: 10px; }
         body.dark-mode .dv-card { background:var(--card-bg, #102f22); border-color:var(--card-border, rgba(36,231,143,.10)); }
         body.dark-mode .dv-card-hd { background:rgba(36,231,143,.04); border-color:var(--card-border, rgba(36,231,143,.10)); }
         body.dark-mode .dv-card-hd .dv-card-title { color:#6aad8a; }
@@ -406,6 +524,7 @@ if ($view_logged) {
                                 <hr class="dv-divider">
                                 <a href="document_list.php" class="dv-btn s"><i class="fas fa-arrow-left"></i>Back to List</a>
                                 <button class="dv-btn b" onclick="window.print()"><i class="fas fa-print"></i>Print Record</button>
+                                <button class="dv-btn" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;" onclick="openReceiptModal()"><i class="fas fa-receipt"></i>Print Receipt</button>
                                 <hr class="dv-divider">
                                 <?php if ($view_isOwner): ?>
                                     <?php if ($view_delReqStatus === 'pending'): ?>
@@ -494,6 +613,80 @@ if ($view_logged) {
 </div>
 <?php endif; ?>
 
+<!-- ══════════════ PRINT RECEIPT MODAL ══════════════ -->
+<div class="modal fade" id="receiptPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1c4d38,#2a9863);color:#fff;border:none;padding:14px 20px;">
+                <h5 class="modal-title" style="font-weight:700;font-size:.95rem;"><i class="fas fa-receipt mr-2"></i>Document Receipt Preview</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" style="background:#f9fafb;padding:22px;">
+                <!-- Preview receipt rendered here -->
+                <div class="receipt-paper" id="receiptPreviewBody">
+                    <div class="rcp-header">
+                            <div class="rcp-title">Document Tracking Receipt</div>
+                    </div>
+                    <div class="rcp-row"><span class="rcp-lbl">Document ID</span><span class="rcp-val">#<?= $doc['id'] ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Document Number</span><span class="rcp-val"><?= htmlspecialchars($doc['document_number']) ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Document Name</span><span class="rcp-val"><?= htmlspecialchars($doc['document_name']) ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Type</span><span class="rcp-val"><?= htmlspecialchars($doc['type_name'] ?? '—') ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Kind</span><span class="rcp-val" style="text-transform:capitalize;"><?= htmlspecialchars($doc['kind']) ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Status</span><span class="rcp-val" style="text-transform:capitalize;"><?= htmlspecialchars($doc['status']) ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">From</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?= !empty($doc['from_section']) ? ' · '.htmlspecialchars($doc['from_section']) : '' ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">To</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Date Forwarded</span><span class="rcp-val"><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Date Received</span><span class="rcp-val"><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">Record Created</span><span class="rcp-val"><?= safeDate($doc['created_at']) ?? '—' ?></span></div>
+                    <?php if (!empty($doc['remarks'])): ?>
+                    <div class="rcp-row"><span class="rcp-lbl">Remarks</span><span class="rcp-val"><?= htmlspecialchars($doc['remarks']) ?></span></div>
+                    <?php endif; ?>
+                    <div class="rcp-qr-section">
+                        <div class="rcp-qr-label"><i class="fas fa-qrcode mr-1"></i>Scan to view this document</div>
+                        <div id="receiptQrCode"></div>
+                        <div class="rcp-footer-note">This receipt was generated by the NIA-ACIMO Document Tracking System.<br>Printed on <span id="receiptPrintDate"></span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none;padding:12px 20px;background:#f1f5f9;">
+                <button type="button" class="btn btn-light btn-sm" data-dismiss="modal" style="font-weight:600;">Close</button>
+                <button type="button" class="btn btn-sm" onclick="printReceipt()" style="background:#1c4d38;color:#fff;font-weight:600;border-radius:8px;padding:6px 18px;">
+                    <i class="fas fa-print mr-1"></i>Print Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden printable receipt area (injected to DOM, only visible during print) -->
+<div id="receiptPrintArea">
+    <div class="rp-header">
+        <div class="rp-org">NIA — ACIMO</div>
+        <div class="rp-title">Document Tracking Receipt</div>
+    </div>
+    <table class="rp-table">
+        <tr><td>Document ID</td><td>#<?= $doc['id'] ?></td></tr>
+        <tr><td>Document Number</td><td><?= htmlspecialchars($doc['document_number']) ?></td></tr>
+        <tr><td>Document Name</td><td><?= htmlspecialchars($doc['document_name']) ?></td></tr>
+        <tr><td>Type</td><td><?= htmlspecialchars($doc['type_name'] ?? '—') ?></td></tr>
+        <tr><td>Kind</td><td><?= ucfirst(htmlspecialchars($doc['kind'])) ?></td></tr>
+        <tr><td>Status</td><td><?= ucfirst(htmlspecialchars($doc['status'])) ?></td></tr>
+        <tr><td>From</td><td><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?= !empty($doc['from_section']) ? ' · '.htmlspecialchars($doc['from_section']) : '' ?></td></tr>
+        <tr><td>To</td><td><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></td></tr>
+        <tr><td>Date Forwarded</td><td><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></td></tr>
+        <tr><td>Date Received</td><td><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></td></tr>
+        <tr><td>Record Created</td><td><?= safeDate($doc['created_at']) ?? '—' ?></td></tr>
+        <?php if (!empty($doc['remarks'])): ?>
+        <tr><td>Remarks</td><td><?= htmlspecialchars($doc['remarks']) ?></td></tr>
+        <?php endif; ?>
+    </table>
+    <div class="rp-qr-wrap">
+        <div class="rp-qr-lbl">Scan to view this document</div>
+        <div id="receiptPrintQrCode"></div>
+        <div class="rp-footer">This receipt was generated by the NIA-ACIMO Document Tracking System. &nbsp;|&nbsp; Printed on <span id="receiptPrintAreaDate"></span></div>
+    </div>
+</div>
+
 <!-- FORWARD MODAL (IMO removed) -->
 <div class="modal fade" id="forwardModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -525,6 +718,73 @@ if ($view_logged) {
 <?php include '../includes/mainfooter.php'; ?>
 
 <script>
+// ══════════════════════════════════════════════════════════════
+//  PRINT RECEIPT  (document_view.php)
+// ══════════════════════════════════════════════════════════════
+const RECEIPT_URL = window.location.href.split('?')[0] + '?id=<?= $doc['id'] ?>';
+
+let _qrModalBuilt   = false;
+let _qrPrintBuilt   = false;
+
+function openReceiptModal() {
+    // Set print date
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    document.getElementById('receiptPrintDate').textContent = dateStr;
+
+    // Build QR code in modal preview (only once)
+    if (!_qrModalBuilt) {
+        const el = document.getElementById('receiptQrCode');
+        el.innerHTML = '';
+        new QRCode(el, {
+            text:         RECEIPT_URL,
+            width:        110,
+            height:       110,
+            colorDark:    '#1c4d38',
+            colorLight:   '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M,
+        });
+        _qrModalBuilt = true;
+    }
+
+    // Build QR code in print area (only once)
+    if (!_qrPrintBuilt) {
+        const pel = document.getElementById('receiptPrintQrCode');
+        pel.innerHTML = '';
+        new QRCode(pel, {
+            text:         RECEIPT_URL,
+            width:        120,
+            height:       120,
+            colorDark:    '#1c4d38',
+            colorLight:   '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M,
+        });
+        _qrPrintBuilt = true;
+    }
+
+    $('#receiptPreviewModal').modal('show');
+}
+
+function printReceipt() {
+    // Sync the print date into the print area
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    document.getElementById('receiptPrintAreaDate').textContent = dateStr;
+
+    // Temporarily show print area and hide everything else, then print
+    document.getElementById('receiptPrintArea').style.display = 'block';
+    $('#receiptPreviewModal').modal('hide');
+
+    // Small delay to let modal animate out before print dialog opens
+    setTimeout(function() {
+        window.print();
+        // After print dialog closes, hide the print area again
+        setTimeout(function() {
+            document.getElementById('receiptPrintArea').style.display = 'none';
+        }, 500);
+    }, 350);
+}
+
 function openForwardModal(id, docNum) {
     $('#fwdDocId').val(id);
     $('#fwdDocNumber').text(docNum);

@@ -276,15 +276,10 @@ if ($action === 'add') {
     }
 
     $forwarded_by_emp_id = (int)($_SESSION['emp_id'] ?? $_SESSION['user_id'] ?? 0) ?: null;
-    $date_forwarded      = date('Y-m-d H:i:s'); // PHT local time — MariaDB session tz converts to UTC on store
-    $date_received_db    = $date_forwarded;      // date_received = creation time
+    // Use NOW() directly in SQL — session tz is already SET to +08:00 above,
+    // so MariaDB's NOW() returns correct PHT time. Never use PHP date() here
+    // because the PHP server may run in UTC, causing an 8-hour offset on insert.
 
-    // FIX: previous bind_param had wrong type string "ssisisiiisiissss"
-    // Correct mapping: kind(s), doc_num(s), type_id(i), doc_name(s),
-    //   fwd_by_emp(i), fwd_by_name(s), from_sec(i), from_unit(i),
-    //   fwd_to_emp(i), fwd_to(s), fwd_to_sec(i), fwd_to_unit(i),
-    //   date_fwd(s), date_rcv(s), status(s), remarks(s)
-    // = "ssissiiiissssss" — but nulls for int still bind as i
     $null_str  = null;
     $null_int1 = null;
     $null_int2 = null;
@@ -302,21 +297,22 @@ if ($action === 'add') {
              forwarded_to_section_id, forwarded_to_unit_id,
              date_forwarded, date_received, status, remarks,
              created_by_emp_id)
-        VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?, ?,?,?,?, ?)
+        VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?, NOW(),NOW(),?,?, ?)
     ");
     if (!$stmt) {
         json_out(['success' => false, 'message' => 'Prepare failed: ' . $db->error]);
     }
 
-    // Correct type string: 17 params => s,s,i,s, i,s,i,i, i,s,i,i, s,s,s,s, i
+    // Type string: 15 params (date_forwarded & date_received now use NOW() in SQL)
+    // s,s,i,s, i,s,i,i, i,s,i,i, s,s,i
     $stmt->bind_param(
-        "ssisisiiissiisssi",
+        "ssisisiiississi",
         $kind, $document_num, $type_id, $doc_name,
         $forwarded_by_emp_id, $null_str,
         $null_int1, $null_int2,
         $null_int3, $empty_str,
         $null_int4, $null_int5,
-        $date_forwarded, $date_received_db, $status, $remarks,
+        $status, $remarks,
         $forwarded_by_emp_id  // created_by_emp_id = the inserting user
     );
 
@@ -1050,10 +1046,10 @@ if ($action === 'archive_daily') {
         LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
         LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
         WHERE (
-            -- created on this date (always populated, even for unforwarded docs)
+            -- FIX: Use DATE(col) directly — session tz is already '+08:00'
+            -- so CONVERT_TZ was double-converting and skipping valid rows.
             DATE(dr.created_at) = ?
             OR
-            -- forwarded on this date, but skip the zero-date sentinel
             (
                 dr.date_forwarded IS NOT NULL
                 AND dr.date_forwarded != '0000-00-00 00:00:00'
@@ -1209,6 +1205,10 @@ if ($action === 'get_archive_days') {
 
 // ─────────────────────────────────────────────────────────────
 // CHECK MIDNIGHT STATUS – has today's auto-archive already run?
+// Returns:
+//   already_ran : true              → archive for yesterday is done, nothing to do
+//   already_ran : false, fire_now : true  → archive missed, JS fires immediately
+//   already_ran : false, fire_now : false → not yet midnight, arm timer for tonight
 // ─────────────────────────────────────────────────────────────
 if ($action === 'check_midnight_status') {
     $db->query("
@@ -1221,15 +1221,32 @@ if ($action === 'check_midnight_status') {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
-    // BUGFIX: Use PHT date from MariaDB session (already set to +08:00 above),
-    // not PHP's date() which may use server UTC and return wrong date at midnight PHT.
-    $pht_row = $db->query("SELECT DATE(NOW()) AS today_pht, NOW() AS now_pht");
-    $pht     = $pht_row ? $pht_row->fetch_assoc() : [];
-    $today   = $pht['today_pht'] ?? date('Y-m-d');
+    // Session tz is already '+08:00', so NOW() returns PHT wall-clock time.
+    $pht_row = $db->query("
+        SELECT DATE(NOW())                  AS today_pht,
+               DATE(NOW() - INTERVAL 1 DAY) AS yesterday_pht,
+               NOW()                        AS now_pht
+    ");
+    $pht       = $pht_row ? $pht_row->fetch_assoc() : [];
+    $today     = $pht['today_pht']     ?? date('Y-m-d');
+    $yesterday = $pht['yesterday_pht'] ?? date('Y-m-d', strtotime('-1 day'));
 
-    $row   = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$today' LIMIT 1");
-    $ran   = $row && $row->num_rows > 0;
-    json_out(['success' => true, 'already_ran' => $ran, 'today' => $today, 'server_time' => $pht['now_pht'] ?? date('Y-m-d H:i:s')]);
+    // Archive is keyed to yesterday (the day that just finished).
+    $row = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$yesterday' LIMIT 1");
+    $ran = $row && $row->num_rows > 0;
+
+    // fire_now = true when archive hasn't run yet — JS fires immediately on page load.
+    // This catches the case where cron missed and a user opens the page in the morning.
+    $fire_now = !$ran;
+
+    json_out([
+        'success'     => true,
+        'already_ran' => $ran,
+        'fire_now'    => $fire_now,
+        'today'       => $today,
+        'yesterday'   => $yesterday,
+        'server_time' => $pht['now_pht'] ?? date('Y-m-d H:i:s'),
+    ]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1332,6 +1349,12 @@ if ($action === 'midnight_archive') {
         LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
         LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
         WHERE (
+            -- FIX: Use DATE(col) directly. The session timezone is already SET to
+            -- '+08:00' above, so MariaDB evaluates TIMESTAMP columns in PHT.
+            -- CONVERT_TZ(col, '+00:00', '+08:00') was causing a double-conversion
+            -- (MariaDB was reading the stored UTC value in PHT session context, then
+            -- converting again from '+00:00' → '+08:00'), which produced wrong dates
+            -- and caused valid rows to be skipped.
             DATE(dr.created_at) = ?
             OR (
                 dr.date_forwarded IS NOT NULL
@@ -1348,6 +1371,9 @@ if ($action === 'midnight_archive') {
     $rows = $sel->get_result()->fetch_all(MYSQLI_ASSOC);
 
     if (!$rows) {
+        // Only log "0 archived" if there truly were no docs — don't block future runs
+        // for dates where docs may still exist but weren't matched (e.g. tz mismatch).
+        // Use INSERT IGNORE so a duplicate run_date doesn't error out.
         $db->query("INSERT IGNORE INTO document_archive_log (run_date, archived, triggered_by) VALUES ('$arc_date', 0, '$triggered_by')");
         json_out(['success' => true, 'message' => "No new documents to archive for {$arc_date}.", 'archived' => 0]);
     }
