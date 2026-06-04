@@ -94,7 +94,7 @@ try {
                         </div>
                     </div>
                     <div class="form-actions-compact">
-                        <a href="<?= htmlspecialchars($filePath) ?>" class="btn btn-primary btn-xs" target="_blank" download="<?= htmlspecialchars($fileName) ?>" title="Download">
+                        <a href="download.php?id=<?= (int)$form['id'] ?>" class="btn btn-primary btn-xs" title="Download">
                             <i class="fas fa-download"></i>
                         </a>
                         <?php if (in_array(strtolower($fileExtension), ['pdf', 'jpg', 'jpeg', 'png', 'gif'])): ?>
@@ -159,33 +159,43 @@ $(document).ready(function() {
 </script>
 
 <style>
+/* Hide the built-in search/count header — handled by login.php modal */
+.forms-control { display: none !important; }
+
 /* Compact Forms Grid */
 .forms-grid-compact {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 70vh;
-    overflow-y: auto;
     padding: 5px;
 }
 
-/* Compact Form Card */
+/* Compact Form Card — theme-aware */
 .form-card-compact {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    background: white;
-    transition: all 0.2s ease;
+    border: 1px solid var(--fm-border);
+    border-radius: 10px;
+    background: rgba(36,231,143,.06);
+    transition: border-color .2s, background .2s, transform .15s;
     gap: 12px;
 }
 
 .form-card-compact:hover {
-    border-color: #007bff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: var(--green-mid);
+    background: rgba(36,231,143,.10);
     transform: translateY(-1px);
+}
+
+[data-theme="light"] .form-card-compact {
+    background: rgba(20,133,90,.05);
+}
+
+[data-theme="light"] .form-card-compact:hover {
+    background: rgba(20,133,90,.09);
+    border-color: var(--green-dark);
 }
 
 .form-card-header {
@@ -193,24 +203,19 @@ $(document).ready(function() {
     align-items: center;
     flex: 1;
     gap: 10px;
-    min-width: 0; /* Allow text truncation */
+    min-width: 0;
 }
 
-.form-icon-small {
-    flex-shrink: 0;
-}
-
-.form-icon-small i {
-    font-size: 1.2rem;
-}
+.form-icon-small { flex-shrink: 0; }
+.form-icon-small i { font-size: 1.2rem; }
 
 .form-info {
     flex: 1;
-    min-width: 0; /* Allow text truncation */
+    min-width: 0;
 }
 
 .form-title {
-    color: #343a40;
+    color: var(--fm-body-text);
     font-weight: 600;
     margin: 0 0 2px 0;
     font-size: 0.9rem;
@@ -221,7 +226,7 @@ $(document).ready(function() {
 }
 
 .form-desc {
-    color: #6c757d;
+    color: var(--subtitle-color);
     margin: 0;
     font-size: 0.8rem;
     line-height: 1.2;
@@ -240,82 +245,41 @@ $(document).ready(function() {
     padding: 4px 8px;
     font-size: 0.75rem;
     line-height: 1;
-    border-radius: 3px;
+    border-radius: 6px;
 }
 
-/* Compact Controls */
-.forms-control {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #e9ecef;
-    margin-bottom: 15px;
+/* Override Bootstrap btn colors to match theme */
+.form-actions-compact .btn-primary {
+    background: var(--green-dark) !important;
+    border-color: var(--green-dark) !important;
+    color: #fff !important;
 }
-
-.search-box {
-    flex: 1;
-    min-width: 180px;
+.form-actions-compact .btn-primary:hover {
+    background: var(--green-mid) !important;
+    border-color: var(--green-mid) !important;
 }
-
-.forms-info {
-    color: #6c757d;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    margin-left: 10px;
+.form-actions-compact .btn-outline-secondary {
+    color: var(--fm-body-text) !important;
+    border-color: var(--fm-border) !important;
+    background: transparent !important;
 }
-
-.input-group-sm .form-control {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
-.input-group-sm .input-group-text {
-    padding: 0.25rem 0.5rem;
+.form-actions-compact .btn-outline-secondary:hover {
+    background: rgba(36,231,143,.10) !important;
 }
 
 /* Scrollbar styling */
-.forms-grid-compact::-webkit-scrollbar {
-    width: 6px;
-}
-
-.forms-grid-compact::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-}
-
-.forms-grid-compact::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.forms-grid-compact::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
+.forms-grid-compact::-webkit-scrollbar { width: 5px; }
+.forms-grid-compact::-webkit-scrollbar-track { background: transparent; border-radius: 3px; }
+.forms-grid-compact::-webkit-scrollbar-thumb { background: var(--fm-border); border-radius: 3px; }
+.forms-grid-compact::-webkit-scrollbar-thumb:hover { background: var(--green-dark); }
 
 /* Responsive adjustments */
 @media (max-width: 576px) {
-    .forms-control {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
-    
-    .search-box {
-        min-width: auto;
-    }
-    
-    .forms-info {
-        margin-left: 0;
-        text-align: center;
-    }
-    
     .form-card-compact {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-    
     .form-actions-compact {
         align-self: flex-end;
     }

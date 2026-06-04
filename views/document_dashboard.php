@@ -648,36 +648,6 @@ $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good
                             </div>
                         </div>
 
-                        <!-- 7-Day Activity Bar Chart -->
-                        <div class="widget fade-up delay-4">
-                            <div class="widget-hd">
-                                <div class="widget-title">
-                                    <i class="fas fa-chart-bar"></i> 7-Day Document Activity
-                                </div>
-                                <span style="font-size:.72rem;color:var(--muted);">Documents logged per day</span>
-                            </div>
-                            <div class="widget-bd">
-                                <?php if ($counts['total'] === 0): ?>
-                                <div class="empty-feed" style="padding:20px 0;">
-                                    <i class="fas fa-chart-bar"></i>No data yet.
-                                </div>
-                                <?php else: ?>
-                                <div class="bar-chart">
-                                    <?php foreach ($activity as $day): ?>
-                                    <?php $h = $act_max > 0 ? max(4, round(($day['cnt'] / $act_max) * 68)) : 4; ?>
-                                    <div class="bar-col">
-                                        <div class="bar-cnt"><?= $day['cnt'] > 0 ? $day['cnt'] : '' ?></div>
-                                        <div class="bar-fill" data-cnt="<?= $day['cnt'] ?>"
-                                             style="height:<?= $h ?>px;"
-                                             title="<?= $day['date'] ?>: <?= $day['cnt'] ?> doc(s)"></div>
-                                        <div class="bar-day"><?= $day['label'] ?></div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
                     </div>
 
                     <!-- RIGHT column (4/12) -->

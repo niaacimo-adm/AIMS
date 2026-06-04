@@ -23,9 +23,11 @@ error_log("IA Profiles AJAX Action: " . $action);
 
 switch ($action) {
     case 'add':
+    case 'create': // alias used by the modal in ia_profiles.php
         addIaProfile($db);
         break;
     case 'update': // ADD THIS CASE
+    case 'edit': // alias used by the modal in ia_profiles.php
         updateIaProfile($db);
         break;
     case 'view':
@@ -36,6 +38,9 @@ switch ($action) {
         break;
     case 'get_ia_profiles': // ADD THIS CASE
         get_ia_profiles($db);
+        break;
+    case 'get_ia_profile': // Single profile for edit modal
+        getIaProfile($db);
         break;
     case 'get_regions':
         getRegions($db);
@@ -293,48 +298,48 @@ function updateIaProfile($db) {
             return;
         }
 
+        // Only update the fields that exist in the modal form
         $new_data = [
-            'ia_name' => $_POST['ia_name'] ?? '',
-            'ia_code' => $_POST['ia_code'] ?? '',
-            'mailing_address' => $_POST['mailing_address'] ?? '',
-            'president_name' => $_POST['president_name'] ?? '',
-            'contact_number' => $_POST['contact_number'] ?? '',
-            'date_organized' => $_POST['date_organized'] ?? null,
-            'sec_registration_date' => $_POST['sec_registration_date'] ?? null,
-            'sec_registration_number' => $_POST['sec_registration_number'] ?? '',
-            'ia_tin' => $_POST['ia_tin'] ?? '',
-            'service_area_ha' => $_POST['service_area_ha'] ?? 0,
-            'fusa_ha' => $_POST['fusa_ha'] ?? 0,
-            'farmer_beneficiaries' => $_POST['farmer_beneficiaries'] ?? 0,
-            'actual_ia_members' => $_POST['actual_ia_members'] ?? 0,
-            'tsags_count' => $_POST['tsags_count'] ?? 0,
-            'existing_contract' => $_POST['existing_contract'] ?? '',
-            'contract_effectivity_date' => $_POST['contract_effectivity_date'] ?? null,
-            'canal_length_km' => $_POST['canal_length_km'] ?? 0,
-            'male_members' => $_POST['male_members'] ?? 0,
-            'female_members' => $_POST['female_members'] ?? 0,
-            'congressional_district' => $_POST['district_text'] ?? '',
-            'region' => $_POST['region_text'] ?? '',
-            'province' => $_POST['province_text'] ?? '',
-            'imo' => $_POST['imo'] ?? '',
-            'status' => $_POST['status'] ?? 'operational',
-            'updated_at' => date('Y-m-d H:i:s')
+            'ia_name'                   => $_POST['ia_name'] ?? '',
+            'ia_code'                   => $_POST['ia_code'] ?? '',
+            'mailing_address'           => $_POST['mailing_address'] ?? '',
+            'president_name'            => $_POST['president_name'] ?? '',
+            'contact_number'            => $_POST['contact_number'] ?? '',
+            'date_organized'            => !empty($_POST['date_organized']) ? $_POST['date_organized'] : null,
+            'sec_registration_number'   => $_POST['sec_registration_number'] ?? '',
+            'sec_registration_date'     => !empty($_POST['sec_registration_date']) ? $_POST['sec_registration_date'] : null,
+            'ia_tin'                    => $_POST['ia_tin'] ?? '',
+            'existing_contract'         => $_POST['existing_contract'] ?? '',
+            'contract_effectivity_date' => !empty($_POST['contract_effectivity_date']) ? $_POST['contract_effectivity_date'] : null,
+            'status'                    => $_POST['status'] ?? 'operational',
+            'region'                    => $_POST['region'] ?? '',
+            'province'                  => $_POST['province'] ?? '',
+            'congressional_district'    => $_POST['district'] ?? '',
+            'service_area_ha'           => ($_POST['service_area_ha'] ?? '') !== '' ? $_POST['service_area_ha'] : null,
+            'fusa_ha'                   => ($_POST['fusa_ha'] ?? '') !== '' ? $_POST['fusa_ha'] : null,
+            'canal_length_km'           => ($_POST['canal_length_km'] ?? '') !== '' ? $_POST['canal_length_km'] : null,
+            'actual_ia_members'         => ($_POST['actual_ia_members'] ?? '') !== '' ? $_POST['actual_ia_members'] : null,
+            'farmer_beneficiaries'      => ($_POST['farmer_beneficiaries'] ?? '') !== '' ? $_POST['farmer_beneficiaries'] : null,
+            'male_members'              => ($_POST['male_members'] ?? '') !== '' ? $_POST['male_members'] : null,
+            'female_members'            => ($_POST['female_members'] ?? '') !== '' ? $_POST['female_members'] : null,
+            'tsags_count'               => ($_POST['tsags_count'] ?? '') !== '' ? $_POST['tsags_count'] : null,
+            'nis'                       => $_POST['nis_area_ha'] ?? '',
+            'imo'                       => $_POST['remarks'] ?? '',
+            'updated_by'                => $_SESSION['emp_id'] ?? null,
+            'updated_at'                => date('Y-m-d H:i:s')
         ];
 
         $logger = new IAHistoryLogger();
         $changes = $logger->findChanges($current_data, $new_data);
 
-        // Convert empty strings to NULL for date fields
-        if (empty($data['date_organized'])) $data['date_organized'] = null;
-        if (empty($data['sec_registration_date'])) $data['sec_registration_date'] = null;
-        if (empty($data['contract_effectivity_date'])) $data['contract_effectivity_date'] = null;
+        // date fields already handled as null above — remove the redundant conversions below
 
         // Build SET clause for update
         $setClause = [];
         $values = [];
         $types = '';
         
-        foreach ($data as $key => $value) {
+        foreach ($new_data as $key => $value) {
             $setClause[] = "{$key} = ?";
             $values[] = $value;
             if (is_float($value)) {
@@ -736,6 +741,44 @@ function getDistricts($db) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 }
+/**
+ * Get a single IA Profile by ID — used by the Edit modal in ia_profiles.php
+ */
+function getIaProfile($db) {
+    header('Content-Type: application/json');
+
+    $id = intval($_POST['id'] ?? $_GET['id'] ?? 0);
+
+    if (empty($id)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid profile ID']);
+        return;
+    }
+
+    try {
+        $query = "SELECT * FROM ia_profiles WHERE id = ?";
+        $stmt  = $db->prepare($query);
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $db->error);
+        }
+
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $profile = $result->fetch_assoc();
+        $stmt->close();
+
+        if ($profile) {
+            echo json_encode(['success' => true, 'data' => $profile]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Profile not found']);
+        }
+    } catch (Exception $e) {
+        error_log("Error fetching IA Profile: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+}
+
 function addIaProfile($db) {
     header('Content-Type: application/json');
     
@@ -747,39 +790,37 @@ function addIaProfile($db) {
 
     try {
         $data = [
-            'ia_name' => $_POST['ia_name'] ?? '',
-            'ia_code' => $_POST['ia_code'] ?? '',
-            'mailing_address' => $_POST['mailing_address'] ?? '',
-            'president_name' => $_POST['president_name'] ?? '',
-            'contact_number' => $_POST['contact_number'] ?? '',
-            'date_organized' => $_POST['date_organized'] ?? null,
-            'sec_registration_date' => $_POST['sec_registration_date'] ?? null,
-            'sec_registration_number' => $_POST['sec_registration_number'] ?? '',
-            'ia_tin' => $_POST['ia_tin'] ?? '',
-            'service_area_ha' => $_POST['service_area_ha'] ?? 0,
-            'fusa_ha' => $_POST['fusa_ha'] ?? 0,
-            'farmer_beneficiaries' => $_POST['farmer_beneficiaries'] ?? 0,
-            'actual_ia_members' => $_POST['actual_ia_members'] ?? 0,
-            'tsags_count' => $_POST['tsags_count'] ?? 0,
-            'existing_contract' => $_POST['existing_contract'] ?? '',
-            'contract_effectivity_date' => $_POST['contract_effectivity_date'] ?? null,
-            'canal_length_km' => $_POST['canal_length_km'] ?? 0,
-            'male_members' => $_POST['male_members'] ?? 0,
-            'female_members' => $_POST['female_members'] ?? 0,
-            'congressional_district' => $_POST['district_text'] ?? '', // Use the displayed text
-            'region' => $_POST['region_text'] ?? '', // Use the displayed text
-            'province' => $_POST['province_text'] ?? '', // ADD THIS LINE - Capture province text
-            'imo' => $_POST['imo'] ?? '',
-            // FIX: Use the status from the form instead of hardcoding 'active'
-            'status' => $_POST['status'] ?? 'operational', // Changed from 'active' to use form value
-            'created_by' => $_SESSION['emp_id'] ?? 1,
-            'created_at' => date('Y-m-d H:i:s')
+            'ia_name'                   => $_POST['ia_name'] ?? '',
+            'ia_code'                   => $_POST['ia_code'] ?? '',
+            'mailing_address'           => $_POST['mailing_address'] ?? '',
+            'president_name'            => $_POST['president_name'] ?? '',
+            'contact_number'            => $_POST['contact_number'] ?? '',
+            'date_organized'            => !empty($_POST['date_organized']) ? $_POST['date_organized'] : null,
+            'sec_registration_date'     => !empty($_POST['sec_registration_date']) ? $_POST['sec_registration_date'] : null,
+            'sec_registration_number'   => $_POST['sec_registration_number'] ?? '',
+            'ia_tin'                    => $_POST['ia_tin'] ?? '',
+            'service_area_ha'           => ($_POST['service_area_ha'] ?? '') !== '' ? $_POST['service_area_ha'] : null,
+            'fusa_ha'                   => ($_POST['fusa_ha'] ?? '') !== '' ? $_POST['fusa_ha'] : null,
+            'farmer_beneficiaries'      => ($_POST['farmer_beneficiaries'] ?? '') !== '' ? $_POST['farmer_beneficiaries'] : null,
+            'actual_ia_members'         => ($_POST['actual_ia_members'] ?? '') !== '' ? $_POST['actual_ia_members'] : null,
+            'tsags_count'               => ($_POST['tsags_count'] ?? '') !== '' ? $_POST['tsags_count'] : null,
+            'existing_contract'         => $_POST['existing_contract'] ?? '',
+            'contract_effectivity_date' => !empty($_POST['contract_effectivity_date']) ? $_POST['contract_effectivity_date'] : null,
+            'canal_length_km'           => ($_POST['canal_length_km'] ?? '') !== '' ? $_POST['canal_length_km'] : null,
+            'male_members'              => ($_POST['male_members'] ?? '') !== '' ? $_POST['male_members'] : null,
+            'female_members'            => ($_POST['female_members'] ?? '') !== '' ? $_POST['female_members'] : null,
+            'congressional_district'    => $_POST['district'] ?? '',
+            'region'                    => $_POST['region'] ?? '',
+            'province'                  => $_POST['province'] ?? '',
+            'imo'                       => $_POST['remarks'] ?? '',
+            'nis'                       => $_POST['nis_area_ha'] ?? '',
+            'status'                    => $_POST['status'] ?? 'operational',
+            'created_by'                => $_SESSION['emp_id'] ?? null,
+            'created_at'                => date('Y-m-d H:i:s')
         ];
 
-        // Convert empty strings to NULL for date fields
-        if (empty($data['date_organized'])) $data['date_organized'] = null;
-        if (empty($data['sec_registration_date'])) $data['sec_registration_date'] = null;
-        if (empty($data['contract_effectivity_date'])) $data['contract_effectivity_date'] = null;
+        // Convert empty ia_code to NULL (UNIQUE key must be NULL not empty string)
+        if (empty($data['ia_code'])) $data['ia_code'] = null;
 
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
@@ -1046,6 +1087,29 @@ function viewIaProfile($db) {
                 echo '<div class="col-12"><strong>IMO:</strong> ' . htmlspecialchars($profile['imo']) . '</div>';
                 echo '</div>';
             }
+
+            // Assigned IDU employee
+            $assignedQuery = "SELECT e.first_name, e.middle_name, e.last_name, e.ext_name
+                              FROM ia_profiles ip
+                              LEFT JOIN employee e ON ip.assigned_employee_id = e.emp_id
+                              WHERE ip.id = ?";
+            $assignedStmt = $db->prepare($assignedQuery);
+            if ($assignedStmt) {
+                $assignedStmt->bind_param('i', $id);
+                $assignedStmt->execute();
+                $assignedResult = $assignedStmt->get_result();
+                $assignedEmployee = $assignedResult->fetch_assoc();
+
+                if ($assignedEmployee && $assignedEmployee['first_name']) {
+                    $assignedName = trim($assignedEmployee['first_name'] . ' ' . $assignedEmployee['middle_name'] . ' ' . $assignedEmployee['last_name']);
+                    if (!empty($assignedEmployee['ext_name'])) {
+                        $assignedName .= ' ' . $assignedEmployee['ext_name'];
+                    }
+                    echo '<div class="row mt-3">';
+                    echo '<div class="col-12"><strong>Assigned IDU Employee:</strong> ' . htmlspecialchars($assignedName) . '</div>';
+                    echo '</div>';
+                }
+            }
         } else {
             echo '<div class="alert alert-warning">Profile not found</div>';
         }
@@ -1105,28 +1169,7 @@ function deleteIaProfile($db) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 }
-// Update the assigned employee query in viewIaProfile function
-$assignedQuery = "SELECT e.first_name, e.middle_name, e.last_name, e.ext_name 
-                  FROM ia_profiles ip 
-                  LEFT JOIN employee e ON ip.assigned_employee_id = e.emp_id 
-                  WHERE ip.id = ?";
-$assignedStmt = $db->prepare($assignedQuery);
-$assignedStmt->bind_param('i', $id);
-$assignedStmt->execute();
-$assignedResult = $assignedStmt->get_result();
-$assignedEmployee = $assignedResult->fetch_assoc();
 
-if ($assignedEmployee && $assignedEmployee['first_name']) {
-    $assignedName = $assignedEmployee['first_name'] . ' ' . $assignedEmployee['middle_name'] . ' ' . $assignedEmployee['last_name'];
-    if (!empty($assignedEmployee['ext_name'])) {
-        $assignedName .= ' ' . $assignedEmployee['ext_name'];
-    }
-    
-    echo '<div class="row mt-3">';
-    echo '<div class="col-12"><strong>Assigned IDU Employee:</strong> ' . htmlspecialchars(trim($assignedName)) . '</div>';
-    echo '</div>
-    ';
-}
 if ($_POST['action'] == 'generate_report') {
     try {
         require_once '../includes/ia_generate_excel.php';

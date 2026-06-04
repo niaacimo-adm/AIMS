@@ -1,41 +1,54 @@
 <?php
 /**
- * document_archive_cron.php  (FIXED)
- * ─────────────────────────
+ * document_archive_cron.php  (FIXED v2)
+ * ──────────────────────────────────────
  * Called by a server cron job once per day, just after midnight PHT.
  *
  * Recommended cron entry (runs at 00:05 PHT = 16:05 UTC):
  *   5 16 * * * php /path/to/your/project/document_archive_cron.php >> /var/log/doc_archive.log 2>&1
  *
- * Protect with a shared secret set in your environment:
- *   ARCHIVE_CRON_TOKEN=some-long-random-secret  (in .env or server env)
+ * Manual backfill for a specific date:
+ *   php document_archive_cron.php --date=2026-05-29
  *
- * Or call it directly from the web with the token:
- *   https://yoursite.com/document_archive_cron.php?cron_token=<secret>
+ * ── FIXES IN THIS VERSION ─────────────────────────────────────────────────────
  *
- * ── FIXES APPLIED ────────────────────────────────────────────────────────────
- * FIX 1: Define CRON_RUNNING before requiring auth_bypass.php so the stub
- *         knows it's being legitimately included (not direct web access).
- * FIX 2: Drop CONVERT_TZ() from the archive SELECT — because the session
- *         timezone is already SET to '+08:00', MariaDB's NOW()/CURRENT_TIMESTAMP
- *         returns PHT time, and TIMESTAMP columns are stored/read in the session
- *         timezone. Using CONVERT_TZ(col, '+00:00', '+08:00') when the session tz
- *         is already PHT causes a double-conversion that skips valid rows.
- *         Use DATE(col) directly — MariaDB applies the session tz automatically.
- * FIX 3: Load .env ARCHIVE_CRON_TOKEN from file if getenv() returns nothing
- *         (some shared-hosting setups don't propagate env vars to CLI).
+ * FIX A — BACKFILL LOOP
+ *   The old cron only ever targeted yesterday. Any missed run left records
+ *   stranded forever. Now we collect every date that has document_records rows
+ *   but no document_archive_log entry with archived > 0, and process them all.
+ *   You can also pass --date=YYYY-MM-DD (CLI) or ?date=YYYY-MM-DD (HTTP) to
+ *   force a specific date regardless of log state.
+ *
+ * FIX B — IDEMPOTENCY CHECK NOW CHECKS archived > 0
+ *   The old check exited immediately if ANY log row existed for the date,
+ *   even one with archived = 0 (written after a failed or empty run). This
+ *   meant a date that failed once could never be retried. Now we skip only
+ *   if the log says archived > 0 AND no unarchived records remain for that date.
+ *
+ * FIX C — DUPLICATE-SAFE ARCHIVE INSERT
+ *   Added a UNIQUE KEY on (original_id, archive_date) in the archive table DDL
+ *   and changed the INSERT to INSERT IGNORE so a duplicate row (same doc picked
+ *   up by both created_at and date_forwarded in the same batch) doesn't cause
+ *   a silent failure that leaves the document in the live table.
+ *
+ * FIX D — PROPER MySQLi ERROR PROPAGATION
+ *   $db->query() returns false on error but does NOT throw a PHP Exception.
+ *   The old catch(Exception) therefore never fired on DELETE failures (e.g.
+ *   FK constraint violations). Now every query result is checked; if it is
+ *   false, we throw a RuntimeException with $db->error so the rollback fires.
+ *
+ * FIX E — DEFINE CRON_RUNNING + .env token loading (carried over from v1)
  */
 
-// ── FIX 1: Mark this as a legitimate cron entry point ────────────────────────
+// ── FIX 1 (v1): Mark this as a legitimate cron entry point ───────────────────
 define('CRON_RUNNING', true);
 
-// ── Allow CLI or HTTP with a cron token ──────────────────────────────────────
+// ── CLI or HTTP with a cron token ────────────────────────────────────────────
 $is_cli = (php_sapi_name() === 'cli');
 
 if (!$is_cli) {
     $expected = _loadCronToken();
     $provided = $_GET['cron_token'] ?? $_POST['cron_token'] ?? '';
-
     if (!$expected || $provided !== $expected) {
         http_response_code(403);
         exit('Forbidden');
@@ -44,7 +57,7 @@ if (!$is_cli) {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 $base = dirname(__FILE__);
-require_once $base . '/includes/auth_bypass.php';   // now works — CRON_RUNNING is defined
+require_once $base . '/includes/auth_bypass.php';
 require_once $base . '/config/database.php';
 
 date_default_timezone_set('Asia/Manila');
@@ -52,19 +65,12 @@ date_default_timezone_set('Asia/Manila');
 $database = new Database();
 $db       = $database->getConnection();
 
-// Set session timezone to PHT. After this, DATE(col) on any TIMESTAMP column
-// returns the PHT date automatically — no CONVERT_TZ needed.
+// Set session timezone to PHT. DATE(col) on TIMESTAMP columns returns PHT date.
 $db->query("SET time_zone = '+08:00'");
 
-// ── Determine yesterday in PHT ───────────────────────────────────────────────
-// Use DATE(NOW() - INTERVAL 1 DAY) — since session tz = PHT, NOW() is already
-// PHT time, so this is always yesterday in Manila regardless of server clock.
-$pht_row      = $db->query("SELECT DATE(NOW() - INTERVAL 1 DAY) AS yesterday_pht, DATE(NOW()) AS today_pht");
-$pht_data     = $pht_row ? $pht_row->fetch_assoc() : [];
-$arc_date     = $pht_data['yesterday_pht'] ?? date('Y-m-d', strtotime('-1 day'));
-$triggered_by = 'cron';
+$triggered_by = $is_cli ? 'cron' : 'http';
 
-// ── Idempotency: skip if already ran today for this date ─────────────────────
+// ── Ensure schema tables exist ────────────────────────────────────────────────
 $db->query("
     CREATE TABLE IF NOT EXISTS `document_archive_log` (
         `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -75,14 +81,8 @@ $db->query("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
 
-$already = $db->query("SELECT id FROM document_archive_log WHERE run_date = '$arc_date' LIMIT 1");
-if ($already && $already->num_rows > 0) {
-    $msg = "[" . date('Y-m-d H:i:s') . "] Already archived for {$arc_date}. Skipped.\n";
-    echo $msg;
-    exit(0);
-}
-
-// ── Ensure archive table exists ───────────────────────────────────────────────
+// FIX C: Added UNIQUE KEY on (original_id, archive_date) so INSERT IGNORE is
+// effective when the same document is matched by both created_at and date_forwarded.
 $db->query("
     CREATE TABLE IF NOT EXISTS `document_archive` (
         `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -101,139 +101,265 @@ $db->query("
         `snapshot_json`   LONGTEXT     DEFAULT NULL,
         `archived_by_emp` INT UNSIGNED DEFAULT NULL,
         `archived_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY `uq_original_archive` (`original_id`, `archive_date`),
         INDEX `idx_archive_date` (`archive_date`),
         INDEX `idx_original_id`  (`original_id`),
         INDEX `idx_kind`         (`kind`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 ");
 
-// ── Fetch all documents belonging to yesterday ────────────────────────────────
-// FIX 2: Use DATE(col) directly — session tz is PHT so MariaDB already returns
-// PHT dates. CONVERT_TZ(col, '+00:00', '+08:00') was causing a double-conversion
-// because the session tz is NOT '+00:00'; it's already '+08:00'.
-//
-// Also handle the 0000-00-00 sentinel: MariaDB stores this when date_forwarded
-// was never set. We exclude it explicitly.
-$sel = $db->prepare("
-    SELECT dr.*,
-           dt.type_name,
-           COALESCE(
-               CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)),
-               dr.forwarded_by_name
-           ) AS resolved_fwd_by,
-           s1.section_name AS from_section_name,
-           s2.section_name AS to_section_name,
-           us1.unit_name   AS from_unit_name,
-           us2.unit_name   AS to_unit_name
-    FROM document_records dr
-    LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
-    LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id      = fbe.emp_id
-    LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
-    LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
-    LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
-    LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
-    WHERE (
-        DATE(dr.created_at) = ?
-        OR (
-            dr.date_forwarded IS NOT NULL
-            AND dr.date_forwarded != '0000-00-00 00:00:00'
-            AND DATE(dr.date_forwarded) = ?
-        )
-    )
-    AND dr.id NOT IN (
-        SELECT original_id FROM document_archive WHERE archive_date = ?
-    )
+// Add UNIQUE KEY to existing table if it was created without it (safe on re-run)
+$db->query("
+    ALTER TABLE `document_archive`
+    ADD UNIQUE KEY `uq_original_archive` (`original_id`, `archive_date`)
 ");
-$sel->bind_param("sss", $arc_date, $arc_date, $arc_date);
-$sel->execute();
-$rows = $sel->get_result()->fetch_all(MYSQLI_ASSOC);
+// Ignore error — key may already exist.
 
-if (!$rows) {
-    $db->query("INSERT IGNORE INTO document_archive_log (run_date, archived, triggered_by) VALUES ('$arc_date', 0, '$triggered_by')");
-    $msg = "[" . date('Y-m-d H:i:s') . "] No documents to archive for {$arc_date}.\n";
-    echo $msg;
-    exit(0);
+// ── FIX A: Determine which dates need archiving ───────────────────────────────
+//
+// Priority 1: explicit --date / ?date override
+// Priority 2: backfill — all distinct created_at / date_forwarded dates in
+//             document_records that have no log entry with archived > 0
+// Priority 3: yesterday (normal nightly run)
+
+$force_date = null;
+if ($is_cli) {
+    foreach ($argv as $arg) {
+        if (preg_match('/^--date=(\d{4}-\d{2}-\d{2})$/', $arg, $m)) {
+            $force_date = $m[1];
+        }
+    }
+} else {
+    $d = $_GET['date'] ?? $_POST['date'] ?? '';
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+        $force_date = $d;
+    }
 }
 
-// ── Archive + delete inside a transaction ────────────────────────────────────
-$ins = $db->prepare("
-    INSERT INTO document_archive
-        (original_id, archive_date, kind, document_number, document_name,
-         document_type, status, forwarded_by, from_section, to_section,
-         date_forwarded, remarks, snapshot_json, archived_by_emp, archived_at)
-    VALUES (?,?,?,?,?, ?,?,?,?,?, ?,?,?,0, NOW())
-");
+if ($force_date) {
+    // Forced single date — ignore log state
+    $dates_to_process = [$force_date];
+    $triggered_by     = 'manual';
+} else {
+    // FIX A: collect every date that has live records but no successful archive log
+    $dates_to_process = [];
 
-$archived_count = 0;
-$archived_ids   = [];
+    // Yesterday is always included (the normal nightly target)
+    $yesterday_row = $db->query("SELECT DATE(NOW() - INTERVAL 1 DAY) AS d");
+    $yesterday     = $yesterday_row ? $yesterday_row->fetch_assoc()['d'] : date('Y-m-d', strtotime('-1 day'));
+    $dates_to_process[] = $yesterday;
 
-$db->begin_transaction();
-try {
-    foreach ($rows as $doc) {
-        $date_fwd = (!empty($doc['date_forwarded']) && $doc['date_forwarded'] !== '0000-00-00 00:00:00')
-                    ? $doc['date_forwarded'] : null;
-        $fwd_by   = trim($doc['resolved_fwd_by'] ?? '');
+    // Find any additional dates in document_records with no log row (archived > 0)
+    $backfill_res = $db->query("
+        SELECT DISTINCT dr_date FROM (
+            SELECT DATE(created_at)    AS dr_date FROM document_records
+            UNION
+            SELECT DATE(date_forwarded) AS dr_date FROM document_records
+            WHERE date_forwarded IS NOT NULL
+              AND date_forwarded != '0000-00-00 00:00:00'
+        ) AS all_dates
+        WHERE dr_date IS NOT NULL
+          AND dr_date < DATE(NOW())      -- never archive today
+          AND dr_date NOT IN (
+              SELECT run_date FROM document_archive_log WHERE archived > 0
+          )
+        ORDER BY dr_date ASC
+    ");
 
-        $ins->bind_param(
-            "issss" . "sssss" . "sss",
-            $doc['id'],
-            $arc_date,
-            $doc['kind'],
-            $doc['document_number'],
-            $doc['document_name'],
-            $doc['type_name'],
-            $doc['status'],
-            $fwd_by,
-            $doc['from_section_name'],
-            $doc['to_section_name'],
-            $date_fwd,
-            $doc['remarks'],
-            json_encode($doc)
-        );
-        if ($ins->execute()) {
-            $archived_count++;
-            $archived_ids[] = (int)$doc['id'];
+    if ($backfill_res) {
+        while ($row = $backfill_res->fetch_assoc()) {
+            $d = $row['dr_date'];
+            if (!in_array($d, $dates_to_process, true)) {
+                $dates_to_process[] = $d;
+            }
         }
     }
 
-    $deleted_count = 0;
-    if ($archived_ids) {
-        $id_list = implode(',', $archived_ids);
-        $db->query("DELETE FROM document_forwards WHERE document_id IN ($id_list)");
-        $db->query("DELETE FROM document_delete_requests WHERE document_id IN ($id_list)");
-        $del           = $db->query("DELETE FROM document_records WHERE id IN ($id_list)");
-        $deleted_count = $del ? (int)$db->affected_rows : 0;
-    }
-
-    $db->commit();
-} catch (Exception $e) {
-    $db->rollback();
-    $msg = "[" . date('Y-m-d H:i:s') . "] Archive FAILED for {$arc_date}: " . $e->getMessage() . "\n";
-    echo $msg;
-    exit(1);
+    sort($dates_to_process); // oldest first
 }
 
-// ── Log the run ───────────────────────────────────────────────────────────────
-$log = $db->prepare("
-    INSERT INTO document_archive_log (run_date, archived, triggered_by)
-    VALUES (?, ?, ?)
-    ON DUPLICATE KEY UPDATE archived = archived + ?, triggered_by = ?, run_at = NOW()
-");
-$log->bind_param("sisss", $arc_date, $archived_count, $triggered_by, $archived_count, $triggered_by);
-$log->execute();
+// ── Process each date ─────────────────────────────────────────────────────────
+foreach ($dates_to_process as $arc_date) {
 
-$msg = "[" . date('Y-m-d H:i:s') . "] Archived {$archived_count} doc(s) for {$arc_date}. Deleted {$deleted_count} from live table.\n";
-echo $msg;
+    // FIX B: Skip only if log says archived > 0 AND no unarchived rows remain
+    if (!$force_date) {
+        $log_row = $db->query("SELECT archived FROM document_archive_log WHERE run_date = '$arc_date' LIMIT 1");
+        if ($log_row && $log_row->num_rows > 0) {
+            $log_data = $log_row->fetch_assoc();
+            if ((int)$log_data['archived'] > 0) {
+                // Double-check: are there any unarchived records still remaining?
+                $remaining = $db->query("
+                    SELECT COUNT(*) AS cnt FROM document_records
+                    WHERE DATE(created_at) = '$arc_date'
+                       OR (date_forwarded IS NOT NULL
+                           AND date_forwarded != '0000-00-00 00:00:00'
+                           AND DATE(date_forwarded) = '$arc_date')
+                ");
+                $rem_cnt = $remaining ? (int)$remaining->fetch_assoc()['cnt'] : 0;
+                if ($rem_cnt === 0) {
+                    $msg = "[" . date('Y-m-d H:i:s') . "] {$arc_date}: already fully archived. Skipped.\n";
+                    echo $msg;
+                    continue;
+                }
+                // Some remain — fall through and re-archive
+                $msg = "[" . date('Y-m-d H:i:s') . "] {$arc_date}: partially archived ({$rem_cnt} remaining). Re-running.\n";
+                echo $msg;
+            }
+            // archived = 0 means it ran before but got nothing or failed — retry
+        }
+    }
+
+    // ── Fetch all documents belonging to this date ────────────────────────────
+    // FIX 2 (v1): Use DATE(col) directly — session tz is PHT, no CONVERT_TZ needed.
+    // FIX C: Exclude by original_id globally (not scoped to archive_date) so a
+    //        document archived under a different archive_date is still excluded.
+    $sel = $db->prepare("
+        SELECT dr.*,
+               dt.type_name,
+               COALESCE(
+                   CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)),
+                   dr.forwarded_by_name
+               ) AS resolved_fwd_by,
+               s1.section_name AS from_section_name,
+               s2.section_name AS to_section_name,
+               us1.unit_name   AS from_unit_name,
+               us2.unit_name   AS to_unit_name
+        FROM document_records dr
+        LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
+        LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id      = fbe.emp_id
+        LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
+        LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
+        LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
+        LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
+        WHERE (
+            DATE(dr.created_at) = ?
+            OR (
+                dr.date_forwarded IS NOT NULL
+                AND dr.date_forwarded != '0000-00-00 00:00:00'
+                AND DATE(dr.date_forwarded) = ?
+            )
+        )
+        AND dr.id NOT IN (SELECT original_id FROM document_archive)
+    ");
+    $sel->bind_param("ss", $arc_date, $arc_date);
+    $sel->execute();
+    $rows = $sel->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    if (!$rows) {
+        $db->query("
+            INSERT INTO document_archive_log (run_date, archived, triggered_by)
+            VALUES ('$arc_date', 0, '$triggered_by')
+            ON DUPLICATE KEY UPDATE triggered_by = '$triggered_by', run_at = NOW()
+        ");
+        $msg = "[" . date('Y-m-d H:i:s') . "] {$arc_date}: no documents to archive.\n";
+        echo $msg;
+        continue;
+    }
+
+    // FIX C: INSERT IGNORE — skip if (original_id, archive_date) already exists
+    $ins = $db->prepare("
+        INSERT IGNORE INTO document_archive
+            (original_id, archive_date, kind, document_number, document_name,
+             document_type, status, forwarded_by, from_section, to_section,
+             date_forwarded, remarks, snapshot_json, archived_by_emp, archived_at)
+        VALUES (?,?,?,?,?, ?,?,?,?,?, ?,?,?,0, NOW())
+    ");
+
+    $archived_count = 0;
+    $archived_ids   = [];
+
+    $db->begin_transaction();
+    try {
+        foreach ($rows as $doc) {
+            $date_fwd = (!empty($doc['date_forwarded']) && $doc['date_forwarded'] !== '0000-00-00 00:00:00')
+                        ? $doc['date_forwarded'] : null;
+            $fwd_by   = trim($doc['resolved_fwd_by'] ?? '');
+
+            $ins->bind_param(
+                "issss" . "sssss" . "sss",
+                $doc['id'],
+                $arc_date,
+                $doc['kind'],
+                $doc['document_number'],
+                $doc['document_name'],
+                $doc['type_name'],
+                $doc['status'],
+                $fwd_by,
+                $doc['from_section_name'],
+                $doc['to_section_name'],
+                $date_fwd,
+                $doc['remarks'],
+                json_encode($doc)
+            );
+
+            if (!$ins->execute()) {
+                // FIX D: throw so rollback fires
+                throw new RuntimeException("Archive INSERT failed for doc #{$doc['id']}: " . $ins->error);
+            }
+
+            // affected_rows = 0 means INSERT IGNORE skipped a duplicate — still safe,
+            // document was already archived; include its id for deletion.
+            $archived_count++;
+            $archived_ids[] = (int)$doc['id'];
+        }
+
+        $deleted_count = 0;
+        if ($archived_ids) {
+            $id_list = implode(',', $archived_ids);
+
+            // FIX D: check every DELETE result and throw on failure
+            $r1 = $db->query("DELETE FROM document_forwards WHERE document_id IN ($id_list)");
+            if ($r1 === false) {
+                throw new RuntimeException("DELETE document_forwards failed: " . $db->error);
+            }
+
+            $r2 = $db->query("DELETE FROM document_delete_requests WHERE document_id IN ($id_list)");
+            if ($r2 === false) {
+                throw new RuntimeException("DELETE document_delete_requests failed: " . $db->error);
+            }
+
+            // Add DELETE statements for any other child tables here, e.g.:
+            // $db->query("DELETE FROM document_notifications WHERE document_id IN ($id_list)");
+
+            $del = $db->query("DELETE FROM document_records WHERE id IN ($id_list)");
+            if ($del === false) {
+                throw new RuntimeException("DELETE document_records failed: " . $db->error);
+            }
+            $deleted_count = (int)$db->affected_rows;
+        }
+
+        $db->commit();
+
+    } catch (Exception $e) {
+        $db->rollback();
+        $msg = "[" . date('Y-m-d H:i:s') . "] {$arc_date}: FAILED — " . $e->getMessage() . "\n";
+        echo $msg;
+        continue; // try next date
+    }
+
+    // ── Log the run ───────────────────────────────────────────────────────────
+    $log = $db->prepare("
+        INSERT INTO document_archive_log (run_date, archived, triggered_by)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            archived     = archived + ?,
+            triggered_by = ?,
+            run_at       = NOW()
+    ");
+    $log->bind_param("sisss", $arc_date, $archived_count, $triggered_by, $archived_count, $triggered_by);
+    $log->execute();
+
+    $msg = "[" . date('Y-m-d H:i:s') . "] {$arc_date}: archived {$archived_count} doc(s), deleted {$deleted_count} from live table.\n";
+    echo $msg;
+}
+
 exit(0);
 
 // ── Helper: load ARCHIVE_CRON_TOKEN from env or .env file ────────────────────
-// FIX 3: Some hosting environments don't expose env vars to CLI. Fall back to
-// reading a .env file in the project root so the token is always available.
 function _loadCronToken(): string {
     $token = getenv('ARCHIVE_CRON_TOKEN');
     if ($token) return $token;
 
-    // Try to load from a .env file in the project root
     $envFile = dirname(__FILE__) . '/.env';
     if (file_exists($envFile)) {
         foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {

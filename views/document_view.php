@@ -14,23 +14,29 @@ $db->query("SET time_zone = '+08:00'");
 $stmt = $db->prepare("
     SELECT dr.*,
            dt.type_name,
-           s1.section_name AS from_section, s1.section_code AS from_code,
+           COALESCE(s1.section_name, o_from.office_name) AS from_section,
+           s1.section_code AS from_code,
            s2.section_name AS to_section,   s2.section_code AS to_code,
            us1.unit_name   AS from_unit,
            us2.unit_name   AS to_unit,
+           (e1.section_id IS NULL AND e1.office_id IS NOT NULL) AS from_is_office,
+           o_from.office_name AS from_office_name,
            CONCAT(TRIM(e1.first_name),' ',TRIM(e1.last_name)) AS forwarded_by_name_emp,
            CONCAT(TRIM(e2.first_name),' ',TRIM(e2.last_name)) AS forwarded_to_name_emp,
+           CONCAT(TRIM(er.first_name),' ',TRIM(er.last_name)) AS received_by_name,
            (SELECT df_last.fwd_date FROM document_forwards df_last
             WHERE df_last.document_id = dr.id
             ORDER BY df_last.id DESC LIMIT 1) AS last_fwd_date
     FROM document_records dr
-    LEFT JOIN document_types dt  ON dr.document_type_id        = dt.id
-    LEFT JOIN section        s1  ON dr.from_section_id         = s1.section_id
-    LEFT JOIN section        s2  ON dr.forwarded_to_section_id = s2.section_id
-    LEFT JOIN unit_section   us1 ON dr.from_unit_id            = us1.unit_id
-    LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id    = us2.unit_id
-    LEFT JOIN employee       e1  ON dr.forwarded_by_emp_id     = e1.emp_id
-    LEFT JOIN employee       e2  ON dr.forwarded_to_emp_id     = e2.emp_id
+    LEFT JOIN document_types dt    ON dr.document_type_id        = dt.id
+    LEFT JOIN section        s1    ON dr.from_section_id         = s1.section_id
+    LEFT JOIN section        s2    ON dr.forwarded_to_section_id = s2.section_id
+    LEFT JOIN unit_section   us1   ON dr.from_unit_id            = us1.unit_id
+    LEFT JOIN unit_section   us2   ON dr.forwarded_to_unit_id    = us2.unit_id
+    LEFT JOIN employee       e1    ON dr.forwarded_by_emp_id     = e1.emp_id
+    LEFT JOIN employee       e2    ON dr.forwarded_to_emp_id     = e2.emp_id
+    LEFT JOIN employee       er    ON dr.received_by_emp_id      = er.emp_id
+    LEFT JOIN office         o_from ON e1.office_id              = o_from.office_id
     WHERE dr.id = ?
 ");
 $stmt->bind_param("i", $id);
@@ -51,13 +57,15 @@ $fhstmt = $db->prepare("
            CONCAT(TRIM(et.first_name),' ',TRIM(et.last_name)) AS fwd_to_name,
            s.section_name  AS to_section_name,
            us.unit_name    AS to_unit_name,
-           o.office_name   AS to_office_name
+           o.office_name   AS to_office_name,
+           CONCAT(TRIM(er.first_name),' ',TRIM(er.last_name)) AS fwd_received_by_name
     FROM document_forwards df
-    LEFT JOIN employee       eb ON df.fwd_by_emp_id     = eb.emp_id
-    LEFT JOIN employee       et ON df.fwd_to_emp_id     = et.emp_id
-    LEFT JOIN section        s  ON df.fwd_to_section_id = s.section_id
-    LEFT JOIN unit_section   us ON df.fwd_to_unit_id    = us.unit_id
-    LEFT JOIN office         o  ON df.fwd_to_office_id  = o.office_id
+    LEFT JOIN employee       eb ON df.fwd_by_emp_id      = eb.emp_id
+    LEFT JOIN employee       et ON df.fwd_to_emp_id      = et.emp_id
+    LEFT JOIN employee       er ON df.received_by_emp_id = er.emp_id
+    LEFT JOIN section        s  ON df.fwd_to_section_id  = s.section_id
+    LEFT JOIN unit_section   us ON df.fwd_to_unit_id     = us.unit_id
+    LEFT JOIN office         o  ON df.fwd_to_office_id   = o.office_id
     WHERE df.document_id = ?
     ORDER BY df.id ASC
 ");
@@ -132,6 +140,39 @@ if ($view_logged) {
 
 // ── Is current user the document creator? ───────────────────────────────────
 $view_isOwner = ($view_logged > 0 && (int)($doc['created_by_emp_id'] ?? 0) === $view_logged);
+
+// ── Is current user the IMO manager/office-staff for this document's office? ─
+// Allows them to forward, edit, and change status on documents sent to their office.
+$view_isOfficeRecipient = false;
+if ($view_logged && !empty($doc['forwarded_to_office_id'])) {
+    $fwd_office = (int)$doc['forwarded_to_office_id'];
+    // Check if office manager
+    $vorChk = $db->prepare("SELECT 1 FROM office WHERE office_id = ? AND manager_emp_id = ? LIMIT 1");
+    if ($vorChk) {
+        $vorChk->bind_param("ii", $fwd_office, $view_logged);
+        $vorChk->execute();
+        $view_isOfficeRecipient = $vorChk->get_result()->num_rows > 0;
+    }
+    // Check if manager_office_staff
+    if (!$view_isOfficeRecipient) {
+        $vorChk2 = $db->prepare("
+            SELECT 1 FROM employee
+            WHERE emp_id = ? AND office_id = ?
+              AND (is_manager = 1 OR is_manager_office_staff = 1)
+            LIMIT 1
+        ");
+        if ($vorChk2) {
+            $vorChk2->bind_param("ii", $view_logged, $fwd_office);
+            $vorChk2->execute();
+            $view_isOfficeRecipient = $vorChk2->get_result()->num_rows > 0;
+        }
+    }
+}
+// Once forwarded (to a section or IMO office), only the creator or Masteradmin may edit.
+// Office recipients retain the ability to forward onward, but not to edit document details.
+$view_canEdit     = $view_isOwner || $view_isMasteradmin;
+$view_canForward  = $view_isOwner || $view_isMasteradmin || $view_isOfficeRecipient;
+$view_canActOnDoc = $view_canEdit || $view_canForward; // kept for any legacy checks
 
 // ── Pending delete request status for this document (owner only) ─────────────
 $view_delReqStatus = null;
@@ -267,6 +308,16 @@ if ($view_logged) {
         .dv-save-btn { padding:6px 13px; border:none; border-radius:var(--r-sm); background:#2a9863; color:#fff; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:filter .12s; }
         .dv-save-btn:hover { filter:brightness(.9); }
         @media (max-width:991px) { .dv-layout { flex-direction:column; } .dv-side { width:100%; position:static; } .dv-grid-4 { grid-template-columns:1fr 1fr; } }
+        /* ── Forwarding History 3-col grid ───────────────────────────────── */
+        .fh-grid { display:grid; grid-template-columns:1fr 1px 1fr 1px 1fr; }
+        @media (max-width:767px) {
+            .fh-grid { grid-template-columns:1fr; }
+            .fh-divider-v { display:none; }
+            .fh-col { border-bottom:1px solid var(--border); }
+            .fh-col:last-child { border-bottom:none; }
+        }
+        body.dark-mode .fh-col-header { background:rgba(36,231,143,.04); }
+        body.dark-mode .fh-row:nth-child(even) { background:rgba(36,231,143,.02); }
         @media print {
             body > *:not(#receiptPrintArea) { display:none!important; }
             #receiptPrintArea { display:block!important; position:static!important; }
@@ -463,32 +514,134 @@ if ($view_logged) {
                         <!-- Document Flow -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-route"></i>Document Flow</div></div>
-                            <div class="dv-card-bd"><div class="dv-flow"><div class="dv-fnode"><div class="flbl"><i class="fas fa-sign-out-alt mr-1"></i>From</div><div class="fname"><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?></div><div class="fsub"><?= htmlspecialchars($doc['from_section'] ?: 'External / Not Specified') ?></div><?php if (!empty($doc['from_unit'])): ?><div class="fsub"><i class="fas fa-layer-group mr-1" style="font-size:.58rem;"></i><?= htmlspecialchars($doc['from_unit']) ?></div><?php endif; ?></div><div class="dv-farrow"><i class="fas fa-arrow-right"></i></div><div class="dv-fnode"><div class="flbl"><i class="fas fa-sign-in-alt mr-1"></i>To</div><div class="fname"><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: 'Not yet forwarded')) ?></div><div class="fsub"><?= htmlspecialchars($doc['to_section'] ?: 'Not Specified') ?></div><?php if (!empty($doc['to_unit'])): ?><div class="fsub"><i class="fas fa-layer-group mr-1" style="font-size:.58rem;"></i><?= htmlspecialchars($doc['to_unit']) ?></div><?php endif; ?></div></div></div>
+                            <div class="dv-card-bd"><div class="dv-flow"><div class="dv-fnode"><div class="flbl"><i class="fas fa-sign-out-alt mr-1"></i>From</div><div class="fname"><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?></div><div class="fsub"><?php if (!empty($doc['from_is_office']) && !empty($doc['from_office_name'])): ?><i class="fas fa-star mr-1" style="color:#2563eb;font-size:.65rem;"></i><?= htmlspecialchars($doc['from_office_name']) ?><?php else: ?><?= htmlspecialchars($doc['from_section'] ?: 'External / Not Specified') ?><?php endif; ?></div><?php if (!empty($doc['from_unit'])): ?><div class="fsub"><i class="fas fa-layer-group mr-1" style="font-size:.58rem;"></i><?= htmlspecialchars($doc['from_unit']) ?></div><?php endif; ?></div><div class="dv-farrow"><i class="fas fa-arrow-right"></i></div><div class="dv-fnode"><div class="flbl"><i class="fas fa-sign-in-alt mr-1"></i>To</div><div class="fname"><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: 'Not yet forwarded')) ?></div><div class="fsub"><?= htmlspecialchars($doc['to_section'] ?: 'Not Specified') ?></div><?php if (!empty($doc['to_unit'])): ?><div class="fsub"><i class="fas fa-layer-group mr-1" style="font-size:.58rem;"></i><?= htmlspecialchars($doc['to_unit']) ?></div><?php endif; ?></div></div></div>
                         </div>
                         <!-- Forwarding History -->
                         <div class="dv-card">
-                            <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-history"></i>Forwarding History<span style="background:var(--kc);color:#fff;border-radius:20px;padding:1px 8px;font-size:.62rem;margin-left:2px;"><?= count($fwd_history) ?></span></div><?php if ($view_isOwner || $view_isMasteradmin): ?><button onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')" style="background:var(--kc);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 12px;font-size:.76rem;font-weight:600;cursor:pointer;"><i class="fas fa-share mr-1"></i>Forward Again</button><?php endif; ?></div>
-                            <div class="dv-card-bd">
+                            <div class="dv-card-hd">
+                                <div class="dv-card-title">
+                                    <i class="fas fa-history"></i>Forwarding History
+                                    <span style="background:var(--kc);color:#fff;border-radius:20px;padding:1px 8px;font-size:.62rem;margin-left:2px;"><?= count($fwd_history) ?></span>
+                                </div>
+                                <?php if ($view_canForward): ?>
+                                <button onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')" style="background:var(--kc);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 12px;font-size:.76rem;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-share mr-1"></i>Forward Again
+                                </button>
+                                <?php endif; ?>
+                            </div>
+                            <div class="dv-card-bd" style="padding:0;">
+
                                 <?php if (!empty($fwd_history)): ?>
-                                <?php foreach ($fwd_history as $idx => $h):
+
+                                <!-- Column headers -->
+                                <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;background:var(--bg-sub);border-bottom:1px solid var(--border);padding:8px 0;">
+                                    <div style="padding:0 16px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t-sub);"><i class="fas fa-route mr-1"></i>Route</div>
+                                    <div style="background:var(--border);"></div>
+                                    <div style="padding:0 16px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t-sub);"><i class="fas fa-comment-alt mr-1"></i>Remarks</div>
+                                    <div style="background:var(--border);"></div>
+                                    <div style="padding:0 16px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--t-sub);"><i class="fas fa-user-check mr-1"></i>Received By</div>
+                                </div>
+
+                                <?php
+                                $lastIdx = count($fwd_history) - 1;
+                                // received_by and date_received are on the document (last hop fallback)
+                                $recvName = trim($doc['received_by_name'] ?? '');
+                                $recvDate = safeDate($doc['date_received'] ?? '');
+                                foreach ($fwd_history as $idx => $h):
                                     $fds = safeDate($h['fwd_date']) ?? null;
+                                    // Per-row received info (from document_forwards.received_by_emp_id)
+                                    $rowRecvName = trim($h['fwd_received_by_name'] ?? '');
+                                    $rowRecvDate = !empty($h['received_at']) ? safeDate($h['received_at']) : null;
+                                    // Fallback: last row uses document-level received info if forward row not stamped yet
+                                    $isLast = ($idx === $lastIdx);
+                                    if ($isLast && !$rowRecvName && $recvName) {
+                                        $rowRecvName = $recvName;
+                                        $rowRecvDate = $rowRecvDate ?? $recvDate;
+                                    }
                                     if (!empty($h['to_office_name'])) {
                                         $di='fa-star'; $dc='#2563eb'; $db_='#dbeafe';
                                         $dl=$h['to_office_name']; $ds='IMO Office';
                                     } elseif (!empty($h['to_section_name'])) {
                                         $di='fa-building'; $dc='#059669'; $db_='#d1fae5';
                                         $dl=$h['to_section_name'];
-                                        $ds=!empty($h['to_unit_name'])?$h['to_unit_name']:'Entire Section';
+                                        $ds=!empty($h['to_unit_name'])?$h['to_unit_name']:'';
                                     } else {
                                         $di='fa-user'; $dc='#7c3aed'; $db_='#ede9fe';
-                                        $dl=$h['fwd_to_name']?:'—'; $ds='Direct';
+                                        $dl=$h['fwd_to_name']?:'—'; $ds='';
                                     }
+                                    $rowBg  = ($idx % 2 === 0) ? '' : 'background:rgba(0,0,0,.018);';
                                 ?>
-                                <div class="dv-tl-item"><div class="dv-tl-left"><div class="dv-tl-dot" style="background:<?= $dc ?>;"><?= $idx+1 ?></div><?php if ($idx < count($fwd_history)-1): ?><div class="dv-tl-line"></div><?php endif; ?></div><div class="dv-tl-card"><div class="dv-tl-who"><span style="color:#374151;"><?= htmlspecialchars($h['fwd_by_name']?:'—') ?></span><i class="fas fa-arrow-right mx-2" style="color:#d1d5db;font-size:.65rem;"></i><span style="color:#1a3c5e;"><?= htmlspecialchars($h['fwd_to_name']?:'—') ?></span></div><div class="dv-tl-dest"><span class="dv-tl-chip" style="background:<?= $db_ ?>;color:<?= $dc ?>;"><i class="fas <?= $di ?>"></i><?= htmlspecialchars($dl) ?></span><?php if ($ds && ($ds!=='Entire Section'||!empty($h['to_unit_name']))): ?><span class="dv-tl-chip" style="background:#f3f4f6;color:#6b7280;"><?= htmlspecialchars($ds) ?></span><?php endif; ?></div><?php if (!empty($h['fwd_remarks'])): ?><div class="dv-tl-rmk"><i class="fas fa-comment mr-1" style="font-size:.58rem;color:#9ca3af;"></i><?= htmlspecialchars($h['fwd_remarks']) ?></div><?php endif; ?><?php if ($fds): ?><div class="dv-tl-dt"><i class="fas fa-clock" style="color:#9ca3af;"></i><?= $fds ?></div><?php endif; ?></div></div>
+                                <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;border-bottom:<?= $isLast ? 'none' : '1px solid var(--border)' ?>;<?= $rowBg ?>min-height:72px;">
+
+                                    <!-- Col 1 : Route -->
+                                    <div style="padding:12px 16px;display:flex;gap:10px;align-items:flex-start;">
+                                        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:2px;">
+                                            <div style="width:26px;height:26px;border-radius:50%;background:<?= $dc ?>;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;box-shadow:0 0 0 3px #fff,0 0 0 4px <?= $dc ?>44;"><?= $idx+1 ?></div>
+                                        </div>
+                                        <div style="min-width:0;flex:1;">
+                                            <!-- From name -->
+                                            <div style="font-size:.82rem;font-weight:600;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($h['fwd_by_name'] ?: '—') ?></div>
+                                            <!-- Arrow + To name -->
+                                            <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+                                                <i class="fas fa-arrow-right" style="color:var(--kc);font-size:.6rem;flex-shrink:0;"></i>
+                                                <div style="font-size:.82rem;font-weight:600;color:#1a3c5e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($h['fwd_to_name'] ?: '—') ?></div>
+                                            </div>
+                                            <!-- Destination chips -->
+                                            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;">
+                                                <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:.65rem;font-weight:600;background:<?= $db_ ?>;color:<?= $dc ?>;"><i class="fas <?= $di ?>" style="font-size:.6rem;"></i><?= htmlspecialchars($dl) ?></span>
+                                                <?php if ($ds): ?>
+                                                <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:.65rem;font-weight:600;background:#f3f4f6;color:#6b7280;"><?= htmlspecialchars($ds) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <!-- Date forwarded -->
+                                            <?php if ($fds): ?>
+                                            <div style="font-size:.69rem;color:var(--t-sub);margin-top:5px;display:flex;align-items:center;gap:3px;">
+                                                <i class="fas fa-clock" style="color:#9ca3af;"></i><?= $fds ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <!-- Divider -->
+                                    <div style="background:var(--border);"></div>
+
+                                    <!-- Col 2 : Remarks -->
+                                    <div style="padding:12px 16px;display:flex;align-items:flex-start;">
+                                        <?php if (!empty($h['fwd_remarks'])): ?>
+                                        <div style="font-size:.82rem;color:#374151;line-height:1.55;font-style:italic;">
+                                            <i class="fas fa-quote-left" style="font-size:.58rem;color:#d1d5db;margin-right:4px;vertical-align:middle;"></i><?= nl2br(htmlspecialchars($h['fwd_remarks'])) ?>
+                                        </div>
+                                        <?php else: ?>
+                                        <div style="font-size:.78rem;color:#d1d5db;font-style:italic;">No remarks</div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Divider -->
+                                    <div style="background:var(--border);"></div>
+
+                                    <!-- Col 3 : Received By (per forwarding hop) -->
+                                    <div style="padding:12px 16px;display:flex;align-items:flex-start;">
+                                        <?php if ($rowRecvName): ?>
+                                        <div>
+                                            <div style="font-size:.82rem;font-weight:600;color:#065f46;"><?= htmlspecialchars($rowRecvName) ?></div>
+                                            <?php if ($rowRecvDate): ?>
+                                            <div style="font-size:.69rem;color:var(--t-sub);margin-top:4px;display:flex;align-items:center;gap:3px;">
+                                                <i class="fas fa-calendar-check" style="color:#6ee7b7;"></i><?= $rowRecvDate ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php else: ?>
+                                        <div style="font-size:.78rem;color:#d1d5db;font-style:italic;">Not yet received</div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                </div><!-- end row -->
                                 <?php endforeach; ?>
+
                                 <?php else: ?>
-                                <div class="dv-tl-empty"><i class="fas fa-share-alt mb-2 d-block" style="font-size:1.4rem;opacity:.3;"></i>No forwarding history yet.</div>
+                                <div class="dv-tl-empty" style="padding:24px 16px;"><i class="fas fa-share-alt mb-2 d-block" style="font-size:1.4rem;opacity:.3;"></i>No forwarding history yet.</div>
                                 <?php endif; ?>
+
                             </div>
                         </div>
                         <!-- Dates & Timeline -->
@@ -508,17 +661,20 @@ if ($view_logged) {
                         <!-- Status -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-toggle-on"></i>Status</div><span class="dv-pill pill-<?= $doc['status'] ?>" id="statusBadge"><?= ucfirst($doc['status']) ?></span></div>
-                            <div class="dv-card-bd"><div class="dv-status-row"><select class="form-control form-control-sm" id="quickStatusSelect" <?= (!$view_isOwner && !$view_isMasteradmin) ? 'disabled title="Only the document creator or a Masteradmin can change the status"' : '' ?>><option value="pending" <?= $doc['status']==='pending' ?'selected':'' ?>>Pending</option><option value="received" <?= $doc['status']==='received' ?'selected':'' ?>>Received</option><option value="returned" <?= $doc['status']==='returned' ?'selected':'' ?>>Returned</option><option value="completed" <?= $doc['status']==='completed' ?'selected':'' ?>>Completed</option><option value="archived" <?= $doc['status']==='archived' ?'selected':'' ?>>Archived</option></select><button class="dv-save-btn" onclick="updateStatus()" <?= (!$view_isOwner && !$view_isMasteradmin) ? 'disabled title="Only the document creator or a Masteradmin can change the status" style="opacity:.45;cursor:not-allowed;"' : '' ?>><i class="fas fa-check mr-1"></i>Save</button></div></div>
+                            <div class="dv-card-bd"><div class="dv-status-row"><select class="form-control form-control-sm" id="quickStatusSelect" <?= (!$view_canActOnDoc) ? 'disabled title="Only the document creator, a Masteradmin, or the assigned office recipient can change the status"' : '' ?>><option value="pending" <?= $doc['status']==='pending' ?'selected':'' ?>>Pending</option><option value="received" <?= $doc['status']==='received' ?'selected':'' ?>>Received</option><option value="returned" <?= $doc['status']==='returned' ?'selected':'' ?>>Returned</option><option value="completed" <?= $doc['status']==='completed' ?'selected':'' ?>>Completed</option><option value="archived" <?= $doc['status']==='archived' ?'selected':'' ?>>Archived</option></select><button class="dv-save-btn" onclick="updateStatus()" <?= (!$view_canActOnDoc) ? 'disabled title="Only the document creator, a Masteradmin, or the assigned office recipient can change the status" style="opacity:.45;cursor:not-allowed;"' : '' ?>><i class="fas fa-check mr-1"></i>Save</button></div></div>
                         </div>
                         <!-- Actions -->
                         <div class="dv-card">
                             <div class="dv-card-hd"><div class="dv-card-title"><i class="fas fa-bolt"></i>Actions</div></div>
                             <div class="dv-card-bd" style="padding:14px;">
-                                <?php if ($view_isOwner || $view_isMasteradmin): ?>
+                                <?php if ($view_canForward): ?>
                                 <button class="dv-btn g" onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')"><i class="fas fa-share"></i>Forward Document</button>
-                                <button class="dv-btn y" onclick="editDocumentFromView(<?= $doc['id'] ?>)"><i class="fas fa-pencil-alt"></i>Edit Document</button>
                                 <?php else: ?>
                                 <button class="dv-btn" style="background:#f1f5f9;color:#9ca3af;border:1px solid #e2e8f0;cursor:not-allowed;" disabled title="Only the document creator can forward this document"><i class="fas fa-share"></i>Forward Document</button>
+                                <?php endif; ?>
+                                <?php if ($view_canEdit): ?>
+                                <button class="dv-btn y" onclick="editDocumentFromView(<?= $doc['id'] ?>)"><i class="fas fa-pencil-alt"></i>Edit Document</button>
+                                <?php else: ?>
                                 <button class="dv-btn" style="background:#f1f5f9;color:#9ca3af;border:1px solid #e2e8f0;cursor:not-allowed;" disabled title="Only the document creator can edit this document"><i class="fas fa-pencil-alt"></i>Edit Document</button>
                                 <?php endif; ?>
                                 <hr class="dv-divider">
@@ -633,7 +789,7 @@ if ($view_logged) {
                     <div class="rcp-row"><span class="rcp-lbl">Type</span><span class="rcp-val"><?= htmlspecialchars($doc['type_name'] ?? '—') ?></span></div>
                     <div class="rcp-row"><span class="rcp-lbl">Kind</span><span class="rcp-val" style="text-transform:capitalize;"><?= htmlspecialchars($doc['kind']) ?></span></div>
                     <div class="rcp-row"><span class="rcp-lbl">Status</span><span class="rcp-val" style="text-transform:capitalize;"><?= htmlspecialchars($doc['status']) ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">From</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?= !empty($doc['from_section']) ? ' · '.htmlspecialchars($doc['from_section']) : '' ?></span></div>
+                    <div class="rcp-row"><span class="rcp-lbl">From</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?php $from_label = !empty($doc['from_section']) ? $doc['from_section'] : (!empty($doc['from_office_name']) ? $doc['from_office_name'] : ''); echo $from_label ? ' · '.htmlspecialchars($from_label) : ''; ?></span></div>
                     <div class="rcp-row"><span class="rcp-lbl">To</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></span></div>
                     <div class="rcp-row"><span class="rcp-lbl">Date Forwarded</span><span class="rcp-val"><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></span></div>
                     <div class="rcp-row"><span class="rcp-lbl">Date Received</span><span class="rcp-val"><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></span></div>
@@ -671,7 +827,7 @@ if ($view_logged) {
         <tr><td>Type</td><td><?= htmlspecialchars($doc['type_name'] ?? '—') ?></td></tr>
         <tr><td>Kind</td><td><?= ucfirst(htmlspecialchars($doc['kind'])) ?></td></tr>
         <tr><td>Status</td><td><?= ucfirst(htmlspecialchars($doc['status'])) ?></td></tr>
-        <tr><td>From</td><td><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?= !empty($doc['from_section']) ? ' · '.htmlspecialchars($doc['from_section']) : '' ?></td></tr>
+        <tr><td>From</td><td><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?php $from_print = !empty($doc['from_section']) ? $doc['from_section'] : (!empty($doc['from_office_name']) ? $doc['from_office_name'] : ''); echo $from_print ? ' · '.htmlspecialchars($from_print) : ''; ?></td></tr>
         <tr><td>To</td><td><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></td></tr>
         <tr><td>Date Forwarded</td><td><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></td></tr>
         <tr><td>Date Received</td><td><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></td></tr>

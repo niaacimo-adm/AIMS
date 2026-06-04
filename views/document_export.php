@@ -71,7 +71,7 @@ if ($type === 'archive') {
 
     $sql = "SELECT kind, document_number, document_name,
                    document_type AS type_name, status, remarks, date_forwarded,
-                   created_at, updated_at
+                   date_forwarded AS created_at, archived_at AS updated_at
             FROM document_archive
             WHERE archive_date = ?" . ($kind ? " AND kind = ?" : "") . "
             ORDER BY kind ASC, document_number ASC";
@@ -279,8 +279,8 @@ foreach ($rows as $i => $doc) {
     $ws->getStyleByColumnAndRow(9, $rowNum)
        ->applyFromArray(array_merge(['font' => $fontBase], $alignC, $fill, $thinBorder));
 
-    $ws->getRowDimension($rowNum)->setRowHeight(18);
 }
+// Row heights for data rows are set to auto (-1) in the autofit section below.
 
 // ── Total row ─────────────────────────────────────────────────────────────────
 $totalRow = $DATA_START + count($rows);
@@ -295,6 +295,49 @@ $ws->getStyleByColumnAndRow(1, $totalRow)->applyFromArray([
                               'color'       => ['argb' => 'FF5B9BD5']]],
 ]);
 $ws->getRowDimension($totalRow)->setRowHeight(16);
+
+// ── Autofit columns ───────────────────────────────────────────────────────────
+// setAutoSize() measures each cell's text width and widens to the longest value.
+// Free-text columns (C = doc name, G = remarks) are capped so the page stays
+// printable; all other columns size freely up to their own cap.
+$colMaxWidths = [
+    1 => 6,    // A  #          — narrow counter
+    2 => 28,   // B  Doc No.
+    3 => 55,   // C  Doc Name   — capped (can be very long)
+    4 => 28,   // D  Type
+    5 => 14,   // E  Kind
+    6 => 14,   // F  Status
+    7 => 40,   // G  Remarks    — capped
+    8 => 24,   // H  Created
+    9 => 24,   // I  Updated
+];
+
+for ($col = 1; $col <= 9; $col++) {
+    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+    $ws->getColumnDimension($colLetter)->setAutoSize(true);
+}
+
+// Force PhpSpreadsheet to calculate column widths now (before we apply caps).
+$ws->calculateColumnWidths();
+
+// Clamp any auto-sized column that exceeds its max width.
+for ($col = 1; $col <= 9; $col++) {
+    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+    $dim       = $ws->getColumnDimension($colLetter);
+    $autoWidth = $dim->getWidth();
+    $maxWidth  = $colMaxWidths[$col] ?? 30;
+    if ($autoWidth > $maxWidth) {
+        $dim->setAutoSize(false);
+        $dim->setWidth($maxWidth);
+    }
+}
+
+// ── Autofit row heights (data rows only) ──────────────────────────────────────
+// Setting height to -1 lets Excel/LibreOffice auto-wrap text in each row.
+// Header rows (1–8) and the total row keep their fixed heights from the template.
+for ($r = $DATA_START; $r < $totalRow; $r++) {
+    $ws->getRowDimension($r)->setRowHeight(-1);
+}
 
 // ── Update print area to match actual data range ──────────────────────────────
 // FIX: The template has a fixed print area (e.g. $A$1:$G$155). After writing

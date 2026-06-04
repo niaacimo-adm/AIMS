@@ -498,7 +498,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light nav-glass fixed-top">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="index.php">
+            <a class="navbar-brand d-flex align-items-center" href="login.php">
                 <img src="dist/img/nialogo.png" alt="NIA Logo" height="40" class="mr-2">
                 <span class="font-weight-bold text-dark">NIA Albay-Catanduanes IMO</span>
             </a>

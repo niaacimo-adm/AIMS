@@ -65,6 +65,23 @@ if ($logged_emp_id) {
     }
 }
 
+// Is the logged-in user an IMO manager or office staff?
+// Used to show Forward/Edit buttons on documents assigned to their office.
+$isImoStaff = false;
+if ($logged_emp_id) {
+    $imoChk = $db->prepare("
+        SELECT 1 FROM employee
+        WHERE emp_id = ? AND office_id IS NOT NULL
+          AND (is_manager = 1 OR is_manager_office_staff = 1)
+        LIMIT 1
+    ");
+    if ($imoChk) {
+        $imoChk->bind_param("i", $logged_emp_id);
+        $imoChk->execute();
+        $isImoStaff = $imoChk->get_result()->num_rows > 0;
+    }
+}
+
 // Pending delete requests count (for admin badge)
 $pendingDeleteCount = 0;
 if ($isMasteradmin) {
@@ -138,17 +155,19 @@ $query = "
     SELECT dr.*,
            dt.type_name,
            CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)) AS forwarded_by_name,
-           s1.section_name AS from_section,
+           COALESCE(s1.section_name, o_from.office_name) AS from_section,
+           (fbe.section_id IS NULL AND fbe.office_id IS NOT NULL)  AS from_is_office,
            s2.section_name AS to_section,
            us1.unit_name   AS from_unit,
            us2.unit_name   AS to_unit
     FROM document_records dr
-    LEFT JOIN document_types dt  ON dr.document_type_id          = dt.id
-    LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id       = fbe.emp_id
-    LEFT JOIN section        s1  ON dr.from_section_id           = s1.section_id
-    LEFT JOIN section        s2  ON dr.forwarded_to_section_id   = s2.section_id
-    LEFT JOIN unit_section   us1 ON dr.from_unit_id              = us1.unit_id
-    LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id      = us2.unit_id
+    LEFT JOIN document_types dt    ON dr.document_type_id          = dt.id
+    LEFT JOIN employee       fbe   ON dr.forwarded_by_emp_id       = fbe.emp_id
+    LEFT JOIN section        s1    ON dr.from_section_id           = s1.section_id
+    LEFT JOIN section        s2    ON dr.forwarded_to_section_id   = s2.section_id
+    LEFT JOIN unit_section   us1   ON dr.from_unit_id              = us1.unit_id
+    LEFT JOIN unit_section   us2   ON dr.forwarded_to_unit_id      = us2.unit_id
+    LEFT JOIN office         o_from ON fbe.office_id               = o_from.office_id
     $where
     ORDER BY dr.created_at DESC
 ";
@@ -648,7 +667,7 @@ if ($sec_list_res) {
                                     $row_counter = 0;
                                     while ($doc = $documents->fetch_assoc()):
                                     $row_counter++; ?>
-                                    <tr>
+                                    <tr id="doc-row-<?= $doc['id'] ?>" data-doc-id="<?= $doc['id'] ?>">
                                         <td data-order="<?= $row_counter ?>"><span class="doc-id-cell"><?= $row_counter ?></span></td>
                                         <td><?= htmlspecialchars($doc['document_number']) ?></span></td>
                                         <td>
@@ -661,7 +680,14 @@ if ($sec_list_res) {
                                         <td>
                                             <div class="person-name"><?= htmlspecialchars($doc['forwarded_by_name'] ?? '—') ?></div>
                                             <?php if (!empty($doc['from_section'])): ?>
-                                            <div class="cell-meta"><i class="fas fa-building"></i><?= htmlspecialchars($doc['from_section']) ?></div>
+                                            <div class="cell-meta">
+                                                <?php if ($doc['from_is_office']): ?>
+                                                <i class="fas fa-star" style="color:#2563eb;"></i>
+                                                <?php else: ?>
+                                                <i class="fas fa-building"></i>
+                                                <?php endif; ?>
+                                                <?= htmlspecialchars($doc['from_section']) ?>
+                                            </div>
                                             <?php endif; ?>
                                             <?php if (!empty($doc['from_unit'])): ?>
                                             <div class="cell-meta"><i class="fas fa-layer-group"></i><?= htmlspecialchars($doc['from_unit']) ?></div>
@@ -693,14 +719,23 @@ if ($sec_list_res) {
                                             <?php
                                             $isOwner = ((int)($doc['created_by_emp_id'] ?? 0) === $logged_emp_id);
                                             $delReqStatus = $myPendingRequests[$doc['id']] ?? null;
+                                            // IMO staff can forward documents sent to their office, but cannot edit them
+                                            $isOfficeRecipient = ($isImoStaff && (int)($doc['forwarded_to_office_id'] ?? 0) > 0);
+                                            // Once forwarded (to a section or IMO office), only the creator or Masteradmin may edit
+                                            $isForwarded = !empty($doc['forwarded_to_section_id']) || !empty($doc['forwarded_to_office_id']);
+                                            $canEdit    = $isOwner || $isMasteradmin;
+                                            $canForward = $isOwner || $isMasteradmin || $isOfficeRecipient;
                                             ?>
                                             <div class="actions-cell">
                                                 <a href="document_view.php?id=<?= $doc['id'] ?>" class="action-btn action-btn-view" title="View Document"><i class="fas fa-eye"></i></a>
-                                                <?php if ($isOwner || $isMasteradmin): ?>
-                                                <button class="action-btn action-btn-edit"    title="Edit Document"   onclick="editDocument(<?= $doc['id'] ?>)"><i class="fas fa-pencil-alt"></i></button>
-                                                <button class="action-btn action-btn-forward" title="Forward Document" onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')"><i class="fas fa-share"></i></button>
+                                                <?php if ($canEdit): ?>
+                                                <button class="action-btn action-btn-edit" title="Edit Document" onclick="editDocument(<?= $doc['id'] ?>)"><i class="fas fa-pencil-alt"></i></button>
                                                 <?php else: ?>
                                                 <button class="action-btn" title="Only the document creator can edit" disabled style="background:#e5e7eb;color:#9ca3af;cursor:not-allowed;"><i class="fas fa-pencil-alt"></i></button>
+                                                <?php endif; ?>
+                                                <?php if ($canForward): ?>
+                                                <button class="action-btn action-btn-forward" title="Forward Document" onclick="openForwardModal(<?= $doc['id'] ?>, '<?= addslashes(htmlspecialchars($doc['document_number'])) ?>')"><i class="fas fa-share"></i></button>
+                                                <?php else: ?>
                                                 <button class="action-btn" title="Only the document creator can forward" disabled style="background:#e5e7eb;color:#9ca3af;cursor:not-allowed;"><i class="fas fa-share"></i></button>
                                                 <?php endif; ?>
                                                 <?php
@@ -750,12 +785,119 @@ if ($sec_list_res) {
 </div>
 
 <?php if ($isMasteradmin): ?>
+<style>
+/* ── Admin Delete Modal – enhanced styles ────────────────────────────── */
+#adminDeleteModal .adm-toolbar {
+    display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+    padding:12px 16px; border-bottom:1px solid #e9ecef;
+    background:#f8f9fa;
+}
+#adminDeleteModal .adm-filter-label { font-size:.75rem; font-weight:700; color:#495057; white-space:nowrap; }
+#adminDeleteModal .adm-filter-sel {
+    border:1.5px solid #dee2e6; border-radius:6px;
+    padding:4px 10px; font-size:.8rem; color:#374151;
+    background:#fff; min-width:120px; cursor:pointer;
+}
+#adminDeleteModal .adm-bulk-bar {
+    display:none; align-items:center; gap:8px;
+    padding:8px 16px; background:#fff3cd; border-bottom:1px solid #ffc107;
+    font-size:.82rem; font-weight:600; color:#856404;
+}
+#adminDeleteModal .adm-bulk-bar.visible { display:flex; }
+#adminDeleteModal .adm-bulk-count { font-weight:800; color:#dc3545; }
+#adminDeleteModal table { font-size:.82rem; }
+#adminDeleteModal thead th {
+    background:#1a3c5e !important; color:#fff !important;
+    font-size:.72rem !important; font-weight:700 !important;
+    text-transform:uppercase; letter-spacing:.07em;
+    padding:10px 12px !important; border:none !important;
+    position:sticky; top:0; z-index:2;
+}
+#adminDeleteModal tbody tr { transition:background .1s; }
+#adminDeleteModal tbody tr.row-approved { background:#f0fdf4; }
+#adminDeleteModal tbody tr.row-rejected { background:#fef2f2; }
+#adminDeleteModal tbody tr.row-pending  { background:#fff; }
+#adminDeleteModal tbody tr.row-selected { background:#fffbeb !important; }
+#adminDeleteModal tbody td { padding:10px 12px; border-color:#f1f5f9 !important; vertical-align:middle; }
+.adm-check { width:16px; height:16px; accent-color:#1a3c5e; cursor:pointer; }
+.adm-select-all { width:16px; height:16px; accent-color:#fff; cursor:pointer; }
+.adm-act-btn {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 10px; border-radius:6px; font-size:.75rem; font-weight:600;
+    border:none; cursor:pointer; transition:filter .12s;
+}
+.adm-act-btn:hover { filter:brightness(.9); }
+.adm-act-approve { background:#dcfce7; color:#166534; }
+.adm-act-reject  { background:#fee2e2; color:#991b1b; }
+.adm-act-bulk-approve { background:#2a9863; color:#fff; }
+.adm-act-bulk-reject  { background:#dc3545; color:#fff; }
+</style>
 <div class="modal fade" id="adminDeleteModal" tabindex="-1" role="dialog" aria-labelledby="adminDeleteModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="background:#1a3c5e;color:#fff;"><h5 class="modal-title" id="adminDeleteModalLabel"><i class="fas fa-trash-alt mr-2"></i>Document Delete Requests<?php if ($pendingDeleteCount > 0): ?><span class="badge badge-danger ml-1"><?= $pendingDeleteCount ?> Pending</span><?php endif; ?></h5><button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button></div>
-            <div class="modal-body p-0"><div class="p-3 border-bottom d-flex align-items-center" style="gap:8px;"><label class="mb-0 font-weight-bold mr-2">Filter:</label><select id="adminDeleteFilterSelect" class="form-control form-control-sm" style="width:140px;" onchange="loadDeleteRequests(this.value)"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option></select><button class="btn btn-sm btn-outline-secondary ml-auto" onclick="loadDeleteRequests($('#adminDeleteFilterSelect').val())"><i class="fas fa-sync-alt mr-1"></i> Refresh</button></div><div class="table-responsive" style="max-height:500px;overflow-y:auto;"><table class="table table-bordered table-hover table-sm mb-0" style="font-size:.83rem;"><thead class="thead-light" style="position:sticky;top:0;z-index:1;"><tr><th style="width:90px;">Status</th><th style="min-width:180px;">Document</th><th style="width:90px;">Kind</th><th style="min-width:130px;">Requested By</th><th style="min-width:200px;">Reason</th><th style="min-width:180px;">Action</th></tr></thead><tbody id="adminDeleteTableBody"><tr><td colspan="6" class="text-center py-4 text-muted">Loading...</td></tr></tbody></table></div></div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div>
+        <div class="modal-content" style="border-radius:12px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+            <!-- Header -->
+            <div class="modal-header" style="background:linear-gradient(135deg,#1a3c5e,#2563eb);color:#fff;border:none;padding:16px 22px;">
+                <h5 class="modal-title" id="adminDeleteModalLabel" style="font-weight:700;font-size:.98rem;">
+                    <i class="fas fa-trash-alt mr-2"></i>Document Delete Requests
+                    <?php if ($pendingDeleteCount > 0): ?>
+                    <span id="adminDeletePendingBadge" class="badge badge-danger ml-1" style="font-size:.7rem;"><?= $pendingDeleteCount ?> Pending</span>
+                    <?php else: ?>
+                    <span id="adminDeletePendingBadge" class="badge badge-danger ml-1" style="font-size:.7rem;display:none;">0 Pending</span>
+                    <?php endif; ?>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" style="opacity:.8;"><span>&times;</span></button>
+            </div>
+            <!-- Toolbar -->
+            <div class="adm-toolbar">
+                <span class="adm-filter-label"><i class="fas fa-filter mr-1"></i>Filter:</span>
+                <select id="adminDeleteFilterSelect" class="adm-filter-sel" onchange="loadDeleteRequests(this.value)">
+                    <option value="pending">⏳ Pending</option>
+                    <option value="approved">✅ Approved</option>
+                    <option value="rejected">❌ Rejected</option>
+                    <option value="all">📋 All</option>
+                </select>
+                <button class="btn btn-sm btn-outline-secondary ml-auto" onclick="loadDeleteRequests($('#adminDeleteFilterSelect').val())" style="font-size:.78rem;">
+                    <i class="fas fa-sync-alt mr-1"></i>Refresh
+                </button>
+            </div>
+            <!-- Bulk action bar (visible when checkboxes selected) -->
+            <div class="adm-bulk-bar" id="adminBulkBar">
+                <i class="fas fa-check-square" style="color:#856404;"></i>
+                <span><span class="adm-bulk-count" id="adminBulkCount">0</span> request(s) selected</span>
+                <button class="adm-act-btn adm-act-bulk-approve" onclick="bulkActOnRequests('approve')">
+                    <i class="fas fa-check"></i> Approve All Selected
+                </button>
+                <button class="adm-act-btn adm-act-bulk-reject" onclick="bulkActOnRequests('reject')">
+                    <i class="fas fa-times"></i> Reject All Selected
+                </button>
+                <button class="btn btn-sm btn-link text-muted ml-auto" onclick="clearAllChecks()" style="font-size:.76rem;">Clear selection</button>
+            </div>
+            <!-- Table -->
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height:480px;overflow-y:auto;">
+                    <table class="table table-hover mb-0" style="border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th style="width:42px;text-align:center;">
+                                    <input type="checkbox" class="adm-select-all" id="adminSelectAll" title="Select / deselect all pending" onchange="toggleSelectAll(this)">
+                                </th>
+                                <th style="width:95px;">Status</th>
+                                <th style="min-width:200px;">Document</th>
+                                <th style="width:90px;">Kind</th>
+                                <th style="min-width:140px;">Requested By</th>
+                                <th style="min-width:200px;">Reason</th>
+                                <th style="min-width:170px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminDeleteTableBody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none;background:#f8f9fa;padding:12px 20px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" style="font-weight:600;">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1418,53 +1560,210 @@ function openAdminDeletePanel() {
 }
 
 function loadDeleteRequests(filter) {
-    $('#adminDeleteTableBody').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+    const cols = 7;
+    $('#adminDeleteTableBody').html(`<tr><td colspan="${cols}" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Loading...</td></tr>`);
+    clearAllChecks();
     $.get('document_actions.php', { action: 'get_delete_requests', filter }, function(r) {
         if (!r.success) {
-            $('#adminDeleteTableBody').html('<tr><td colspan="6" class="text-danger text-center">' + (r.message || 'Error') + '</td></tr>');
+            $('#adminDeleteTableBody').html(`<tr><td colspan="${cols}" class="text-danger text-center py-3">${r.message || 'Error loading requests.'}</td></tr>`);
             return;
         }
         if (!r.requests.length) {
-            $('#adminDeleteTableBody').html('<tr><td colspan="6" class="text-center text-muted py-4">No ' + filter + ' requests.</td></tr>');
+            $('#adminDeleteTableBody').html(`<tr><td colspan="${cols}" class="text-center text-muted py-4"><i class="fas fa-inbox d-block mb-2" style="font-size:1.8rem;opacity:.3;"></i>No ${filter} requests.</td></tr>`);
             return;
         }
         let html = '';
         r.requests.forEach(req => {
+            const isPending = req.status === 'pending';
             const statusBadge = {
-                pending:  '<span class="badge badge-warning">Pending</span>',
-                approved: '<span class="badge badge-success">Approved</span>',
-                rejected: '<span class="badge badge-danger">Rejected</span>'
+                pending:  '<span class="badge" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:20px;padding:3px 8px;font-size:.68rem;">⏳ Pending</span>',
+                approved: '<span class="badge" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;border-radius:20px;padding:3px 8px;font-size:.68rem;">✅ Approved</span>',
+                rejected: '<span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:20px;padding:3px 8px;font-size:.68rem;">❌ Rejected</span>'
             }[req.status] || req.status;
 
             const kindBadge = `<span class="kind-badge kind-${req.kind}">${req.kind.charAt(0).toUpperCase()+req.kind.slice(1)}</span>`;
-            const actions = req.status === 'pending'
-                ? `<button class="btn btn-xs btn-success mr-1" onclick="adminActOnRequest(${req.id},'approve')"><i class="fas fa-check"></i> Approve</button>
-                   <button class="btn btn-xs btn-danger"  onclick="adminActOnRequest(${req.id},'reject')"><i class="fas fa-times"></i> Reject</button>`
-                : `<small class="text-muted">${req.reviewer_name || '—'}<br>${req.reviewed_at ? req.reviewed_at.substring(0,16) : ''}</small>`;
 
-            html += `<tr>
+            const checkCell = isPending
+                ? `<td style="text-align:center;"><input type="checkbox" class="adm-check adm-req-check" data-id="${req.id}" onchange="updateBulkBar()"></td>`
+                : `<td></td>`;
+
+            const actions = isPending
+                ? `<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+                     <button class="adm-act-btn adm-act-approve" id="adm-approve-${req.id}" onclick="adminActOnRequest(${req.id},'approve',undefined,${req.document_id})"><i class="fas fa-check"></i> Approve</button>
+                     <button class="adm-act-btn adm-act-reject"  id="adm-reject-${req.id}"  onclick="adminActOnRequest(${req.id},'reject',undefined,${req.document_id})"><i class="fas fa-times"></i> Reject</button>
+                   </div>`
+                : `<div style="font-size:.76rem;color:#6b7280;line-height:1.5;">
+                     <i class="fas fa-user-check mr-1" style="color:#9ca3af;"></i>${escHtml(req.reviewer_name || '—')}<br>
+                     <i class="fas fa-clock mr-1" style="color:#9ca3af;"></i>${req.reviewed_at ? req.reviewed_at.substring(0,16) : '—'}
+                   </div>`;
+
+            const rowClass = isPending ? 'row-pending' : (req.status === 'approved' ? 'row-approved' : 'row-rejected');
+
+            html += `<tr id="adm-row-${req.id}" class="${rowClass}" data-doc-id="${req.document_id}">
+                ${checkCell}
                 <td>${statusBadge}</td>
-                <td><code style="font-size:.75rem;">${escHtml(req.document_number)}</code><br><small class="text-muted">${escHtml(req.document_name)}</small></td>
+                <td>
+                    <code style="font-size:.74rem;background:#f0f9ff;color:#0369a1;padding:2px 6px;border-radius:4px;">${escHtml(req.document_number)}</code>
+                    <div style="font-size:.75rem;color:#6b7280;margin-top:2px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(req.document_name)}">${escHtml(req.document_name)}</div>
+                </td>
                 <td>${kindBadge}</td>
-                <td>${escHtml(req.requester_name)}<br><small class="text-muted">${req.created_at.substring(0,16)}</small></td>
-                <td style="max-width:180px;white-space:normal;">${escHtml(req.reason)}</td>
-                <td>${actions}</td>
+                <td>
+                    <div style="font-size:.8rem;font-weight:600;color:#374151;">${escHtml(req.requester_name)}</div>
+                    <div style="font-size:.69rem;color:#9ca3af;"><i class="fas fa-clock mr-1"></i>${req.created_at.substring(0,16)}</div>
+                </td>
+                <td style="max-width:190px;">
+                    <div style="font-size:.78rem;color:#374151;white-space:normal;line-height:1.45;">${escHtml(req.reason)}</div>
+                </td>
+                <td id="adm-actions-${req.id}">${actions}</td>
             </tr>`;
         });
         $('#adminDeleteTableBody').html(html);
+        updateBulkBar();
     }, 'json');
 }
 
-function adminActOnRequest(requestId, action) {
+// ── Per-row approve/reject (no page reload) ───────────────────────────────────
+function adminActOnRequest(requestId, action, adminNote, docId) {
     const label = action === 'approve' ? 'Approve' : 'Reject';
     const color = action === 'approve' ? '#198754' : '#dc3545';
+
+    // If note not already provided (not called from bulk), show prompt
+    if (adminNote === undefined) {
+        Swal.fire({
+            title: `<span style="font-size:.95rem;">${label} Request?</span>`,
+            html: `<textarea id="adminNoteInput" class="swal2-textarea" style="font-size:.84rem;" placeholder="${action === 'reject' ? 'Required: reason for rejection' : 'Optional note to requester'}"></textarea>`,
+            icon: action === 'approve' ? 'warning' : 'question',
+            showCancelButton: true,
+            confirmButtonColor: color,
+            confirmButtonText: `<i class="fas fa-${action === 'approve' ? 'check' : 'times'} mr-1"></i>${label}`,
+            preConfirm: () => {
+                const note = document.getElementById('adminNoteInput').value.trim();
+                if (action === 'reject' && !note) {
+                    Swal.showValidationMessage('Please provide a reason for rejection.');
+                    return false;
+                }
+                return note;
+            }
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            adminActOnRequest(requestId, action, result.value || '', docId);
+        });
+        return;
+    }
+
+    // Disable row buttons while processing
+    $(`#adm-approve-${requestId}, #adm-reject-${requestId}`).prop('disabled', true).css('opacity', '.5');
+
+    $.post('document_actions.php', { action: action + '_delete', request_id: requestId, admin_note: adminNote }, function(r) {
+        if (r.success) {
+            // ── If approved: remove the document row from the main table live ──
+            if (action === 'approve') {
+                const targetDocId = docId || r.document_id;
+                if (targetDocId) {
+                    const $docRow = $(`#doc-row-${targetDocId}`);
+                    if ($docRow.length) {
+                        if ($.fn.DataTable.isDataTable('#documentsTable')) {
+                            $docRow.fadeOut(400, function() {
+                                const dt = $('#documentsTable').DataTable();
+                                dt.row($docRow).remove().draw(false);
+                            });
+                        } else {
+                            $docRow.fadeOut(400, function() { $(this).remove(); });
+                        }
+                    }
+                }
+            }
+            const newStatus   = action === 'approve' ? 'approved' : 'rejected';
+            const newRowClass = action === 'approve' ? 'row-approved' : 'row-rejected';
+            const newBadge    = action === 'approve'
+                ? '<span class="badge" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;border-radius:20px;padding:3px 8px;font-size:.68rem;">✅ Approved</span>'
+                : '<span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:20px;padding:3px 8px;font-size:.68rem;">❌ Rejected</span>';
+
+            const $row = $(`#adm-row-${requestId}`);
+            $row.attr('class', newRowClass).addClass('row-selected');
+            $row.find('td:nth-child(2)').html(newBadge);
+            $row.find('td:nth-child(1)').html(''); // remove checkbox
+            $(`#adm-actions-${requestId}`).html(
+                `<div style="font-size:.76rem;color:#6b7280;line-height:1.5;">
+                    <i class="fas fa-user-check mr-1" style="color:#9ca3af;"></i>You<br>
+                    <i class="fas fa-clock mr-1" style="color:#9ca3af;"></i>Just now
+                 </div>`
+            );
+
+            // Update the pending badge in the modal header
+            const currentPending = parseInt($('#adminDeletePendingBadge').text()) || 0;
+            const newPending = Math.max(0, currentPending - 1);
+            if (newPending > 0) {
+                $('#adminDeletePendingBadge').text(newPending + ' Pending').show();
+            } else {
+                $('#adminDeletePendingBadge').hide();
+            }
+            // Also update toolbar badge
+            const $toolbarBadge = $('.toolbar-btn-delete .pending-badge');
+            if ($toolbarBadge.length) {
+                const tb = Math.max(0, (parseInt($toolbarBadge.text()) || 0) - 1);
+                tb > 0 ? $toolbarBadge.text(tb) : $toolbarBadge.remove();
+            }
+
+            updateBulkBar();
+
+            // Flash green/red feedback on the row
+            $row.css('transition', 'background .4s');
+            setTimeout(() => $row.removeClass('row-selected'), 1200);
+
+            // ── Live notification push ────────────────────────────────────────
+            // After a short delay (let the server finish writing the notification),
+            // poll for unread notifications and show them immediately — no reload.
+            setTimeout(() => checkAndShowDeleteNotifications(), 800);
+
+        } else {
+            Swal.fire({ icon: 'error', title: 'Failed', text: r.message });
+            $(`#adm-approve-${requestId}, #adm-reject-${requestId}`).prop('disabled', false).css('opacity', '1');
+        }
+    }, 'json').fail(function() {
+        Swal.fire({ icon: 'error', title: 'Server Error', text: 'Unexpected error. Try again.' });
+        $(`#adm-approve-${requestId}, #adm-reject-${requestId}`).prop('disabled', false).css('opacity', '1');
+    });
+}
+
+// ── Select-all / bulk helpers ─────────────────────────────────────────────────
+function toggleSelectAll(cb) {
+    $('.adm-req-check').prop('checked', cb.checked);
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    const count = $('.adm-req-check:checked').length;
+    const total = $('.adm-req-check').length;
+    $('#adminBulkCount').text(count);
+    count > 0 ? $('#adminBulkBar').addClass('visible') : $('#adminBulkBar').removeClass('visible');
+    // Sync select-all state
+    $('#adminSelectAll').prop('indeterminate', count > 0 && count < total);
+    $('#adminSelectAll').prop('checked', total > 0 && count === total);
+}
+
+function clearAllChecks() {
+    $('.adm-req-check').prop('checked', false);
+    $('#adminSelectAll').prop('checked', false).prop('indeterminate', false);
+    updateBulkBar();
+}
+
+function bulkActOnRequests(action) {
+    const reqs = $('.adm-req-check:checked').map(function() {
+        return { id: parseInt($(this).data('id')), docId: parseInt($(this).closest('tr').data('doc-id') || 0) };
+    }).get();
+    const ids = reqs.map(r => r.id);
+    if (!ids.length) return;
+    const label = action === 'approve' ? 'Approve' : 'Reject';
+    const color = action === 'approve' ? '#198754' : '#dc3545';
+
     Swal.fire({
-        title: label + ' Delete Request?',
-        html: `<textarea id="adminNoteInput" class="swal2-textarea" placeholder="Optional note to requester (${action === 'reject' ? 'required reason' : 'optional'})"></textarea>`,
+        title: `${label} ${ids.length} Request(s)?`,
+        html: `<textarea id="adminNoteInput" class="swal2-textarea" style="font-size:.84rem;" placeholder="${action === 'reject' ? 'Required: reason for rejection' : 'Optional note to all requesters'}"></textarea>`,
         icon: action === 'approve' ? 'warning' : 'question',
         showCancelButton: true,
         confirmButtonColor: color,
-        confirmButtonText: label,
+        confirmButtonText: `<i class="fas fa-${action === 'approve' ? 'check' : 'times'} mr-1"></i>${label} All`,
         preConfirm: () => {
             const note = document.getElementById('adminNoteInput').value.trim();
             if (action === 'reject' && !note) {
@@ -1475,15 +1774,11 @@ function adminActOnRequest(requestId, action) {
         }
     }).then(result => {
         if (!result.isConfirmed) return;
-        const admin_note = result.value || '';
-        $.post('document_actions.php', { action: action + '_delete', request_id: requestId, admin_note }, function(r) {
-            if (r.success) {
-                Swal.fire({ icon: 'success', title: label + 'd!', text: r.message, timer: 2000, showConfirmButton: false, timerProgressBar: true })
-                    .then(() => loadDeleteRequests($('#adminDeleteFilterSelect').val() || 'pending'));
-            } else {
-                Swal.fire({ icon: 'error', title: 'Failed', text: r.message });
-            }
-        }, 'json');
+        const note = result.value || '';
+        // Process one by one using the single-row function (no extra prompts)
+        ids.forEach((id, i) => adminActOnRequest(id, action, note, reqs[i].docId));
+        clearAllChecks();
+        Swal.fire({ icon: 'success', title: `${ids.length} request(s) ${label.toLowerCase()}d`, timer: 1600, showConfirmButton: false, timerProgressBar: true });
     });
 }
 
@@ -1494,11 +1789,12 @@ function escHtml(str) {
 }
 
 // ── User Delete-Request Notifications (SweetAlert2) ──────────────────────────
-$(function() {
+// Reusable: called on page load AND pushed live after admin approves/rejects
+function checkAndShowDeleteNotifications(callback) {
     $.get('document_actions.php', { action: 'get_delete_notifications' }, function(r) {
-        if (!r.success || !r.notifications.length) return;
+        if (!r.success || !r.notifications.length) { if (callback) callback(false); return; }
         const unread = r.notifications.filter(n => !n.is_read);
-        if (!unread.length) return;
+        if (!unread.length) { if (callback) callback(false); return; }
 
         const hasApproved = unread.some(n => n.type === 'delete_approved');
         const hasRejected = unread.some(n => n.type === 'delete_rejected');
@@ -1523,6 +1819,9 @@ $(function() {
                 </div>`;
         });
 
+        // Close the admin modal first so the notification Swal renders on top cleanly
+        $('#adminDeleteModal').modal('hide');
+
         Swal.fire({
             icon: swalIcon,
             title: `<span style="font-size:1.05rem;font-weight:700;color:${swalColor};">`
@@ -1541,8 +1840,12 @@ $(function() {
 
         // Mark as read after showing
         $.post('document_actions.php', { action: 'mark_notifications_read' });
+        if (callback) callback(true);
     }, 'json');
-});
+}
+
+// Run on page load
+$(function() { checkAndShowDeleteNotifications(); });
 
 // ══════════════════════════════════════════════════════════════
 

@@ -295,11 +295,11 @@ if (isset($_SESSION['emp_id'])) {
                     type: 'POST',
                     success: function(response) {
                         // Redirect to login page after logout completes
-                        window.location.href = 'index.php';
+                        window.location.href = 'login.php';
                     },
                     error: function() {
                         // Still redirect even if AJAX fails
-                        window.location.href = 'index.php';
+                        window.location.href = 'login.php';
                     }
                 });
             }, 3000);

@@ -78,18 +78,23 @@ if ($action === 'get') {
                dt.type_name,
                CONCAT(TRIM(e1.first_name), ' ', TRIM(e1.last_name)) AS forwarded_by_name,
                CONCAT(TRIM(e2.first_name), ' ', TRIM(e2.last_name)) AS forwarded_to_name,
-               s1.section_name  AS from_section_name,
+               CONCAT(TRIM(er.first_name), ' ', TRIM(er.last_name)) AS received_by_name,
+               COALESCE(s1.section_name, o_from.office_name) AS from_section_name,
                s2.section_name  AS to_section_name,
                us1.unit_name    AS from_unit_name,
-               us2.unit_name    AS to_unit_name
+               us2.unit_name    AS to_unit_name,
+               o_from.office_name AS from_office_name,
+               (e1.section_id IS NULL AND e1.office_id IS NOT NULL) AS from_is_office
         FROM document_records dr
         LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
         LEFT JOIN employee       e1  ON dr.forwarded_by_emp_id      = e1.emp_id
         LEFT JOIN employee       e2  ON dr.forwarded_to_emp_id      = e2.emp_id
+        LEFT JOIN employee       er  ON dr.received_by_emp_id       = er.emp_id
         LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
         LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
         LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
         LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
+        LEFT JOIN office         o_from ON e1.office_id             = o_from.office_id
         WHERE dr.id = ?
     ");
     $stmt->bind_param("i", $id);
@@ -107,13 +112,15 @@ if ($action === 'get') {
                CONCAT(TRIM(e_to.first_name), ' ', TRIM(e_to.last_name)) AS fwd_to_name,
                s.section_name   AS to_section_name,
                u.unit_name      AS to_unit_name,
-               o.office_name    AS to_office_name
+               o.office_name    AS to_office_name,
+               CONCAT(TRIM(e_rc.first_name), ' ', TRIM(e_rc.last_name)) AS received_by_name
         FROM document_forwards df
-        LEFT JOIN employee     e_by ON df.fwd_by_emp_id     = e_by.emp_id
-        LEFT JOIN employee     e_to ON df.fwd_to_emp_id     = e_to.emp_id
-        LEFT JOIN section      s    ON df.fwd_to_section_id = s.section_id
-        LEFT JOIN unit_section u    ON df.fwd_to_unit_id    = u.unit_id
-        LEFT JOIN office       o    ON df.fwd_to_office_id  = o.office_id
+        LEFT JOIN employee     e_by ON df.fwd_by_emp_id      = e_by.emp_id
+        LEFT JOIN employee     e_to ON df.fwd_to_emp_id      = e_to.emp_id
+        LEFT JOIN employee     e_rc ON df.received_by_emp_id = e_rc.emp_id
+        LEFT JOIN section      s    ON df.fwd_to_section_id  = s.section_id
+        LEFT JOIN unit_section u    ON df.fwd_to_unit_id     = u.unit_id
+        LEFT JOIN office       o    ON df.fwd_to_office_id   = o.office_id
         WHERE df.document_id = ?
         ORDER BY df.id ASC
     ");
@@ -280,13 +287,27 @@ if ($action === 'add') {
     // so MariaDB's NOW() returns correct PHT time. Never use PHP date() here
     // because the PHP server may run in UTC, causing an 8-hour offset on insert.
 
+    // ── Resolve creator's section/unit so IMO Office staff are tracked correctly ──
+    // Employees assigned to the Manager's Office have section_id = NULL but have
+    // office_id set. We read their section_id and unit_section_id directly so the
+    // document record always knows where it originated — even for IMO staff.
+    $creator_section_id = null;
+    $creator_unit_id    = null;
+    if ($forwarded_by_emp_id) {
+        $cr = $db->prepare("SELECT section_id, unit_section_id FROM employee WHERE emp_id = ? LIMIT 1");
+        $cr->bind_param("i", $forwarded_by_emp_id);
+        $cr->execute();
+        $crrow = $cr->get_result()->fetch_assoc();
+        $creator_section_id = ($crrow['section_id']      ?? null) ?: null;
+        $creator_unit_id    = ($crrow['unit_section_id'] ?? null) ?: null;
+    }
+
     $null_str  = null;
     $null_int1 = null;
     $null_int2 = null;
-    $null_int3 = null;
     $empty_str = '';
+    $null_int3 = null;
     $null_int4 = null;
-    $null_int5 = null;
 
     $stmt = $db->prepare("
         INSERT INTO document_records
@@ -309,9 +330,9 @@ if ($action === 'add') {
         "ssisisiiississi",
         $kind, $document_num, $type_id, $doc_name,
         $forwarded_by_emp_id, $null_str,
-        $null_int1, $null_int2,
-        $null_int3, $empty_str,
-        $null_int4, $null_int5,
+        $creator_section_id, $creator_unit_id,   // resolved from employee — NULL for IMO staff
+        $null_int1, $empty_str,
+        $null_int2, $null_int3,
         $status, $remarks,
         $forwarded_by_emp_id  // created_by_emp_id = the inserting user
     );
@@ -420,8 +441,8 @@ if ($action === 'forward') {
     }
 
     // ── Ownership / permission guard ─────────────────────────────────────────
-    // Only the document creator OR a Masteradmin may forward a document
-    // that has not yet been forwarded (i.e. still sits with its creator).
+    // The document creator, a Masteradmin, OR a manager/office-staff of the
+    // office the document was forwarded to may forward it onward.
     $fwd_own_chk = $db->prepare("SELECT created_by_emp_id, forwarded_to_section_id, forwarded_to_office_id FROM document_records WHERE id = ? LIMIT 1");
     $fwd_own_chk->bind_param("i", $doc_id);
     $fwd_own_chk->execute();
@@ -429,11 +450,12 @@ if ($action === 'forward') {
     if (!$fwd_own_row) {
         json_out(['success' => false, 'message' => 'Document not found.']);
     }
-    $is_fwd_creator = ((int)($fwd_own_row['created_by_emp_id'] ?? 0) === $fwd_by_emp);
-    $admin_ids_f    = getMasteradminIds($db);
-    $is_admin_f     = in_array($fwd_by_emp, $admin_ids_f);
-    if (!$is_fwd_creator && !$is_admin_f) {
-        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator or a Masteradmin can forward this document.']);
+    $is_fwd_creator  = ((int)($fwd_own_row['created_by_emp_id'] ?? 0) === $fwd_by_emp);
+    $admin_ids_f     = getMasteradminIds($db);
+    $is_admin_f      = in_array($fwd_by_emp, $admin_ids_f);
+    $is_office_recip = isOfficeRecipient($fwd_own_row, $fwd_by_emp, $db);
+    if (!$is_fwd_creator && !$is_admin_f && !$is_office_recip) {
+        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator, a Masteradmin, or the assigned office recipient can forward this document.']);
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -618,25 +640,42 @@ if ($action === 'update_status') {
     if (!$caller_emp) {
         json_out(['success' => false, 'message' => 'Not authenticated.']);
     }
-    $own_chk = $db->prepare("SELECT created_by_emp_id FROM document_records WHERE id = ? LIMIT 1");
+    $own_chk = $db->prepare("SELECT id, created_by_emp_id, forwarded_to_office_id FROM document_records WHERE id = ? LIMIT 1");
     $own_chk->bind_param("i", $id);
     $own_chk->execute();
     $own_row = $own_chk->get_result()->fetch_assoc();
     if (!$own_row) {
         json_out(['success' => false, 'message' => 'Document not found.']);
     }
-    $is_creator = ((int)($own_row['created_by_emp_id'] ?? 0) === $caller_emp);
-    $is_admin   = in_array($caller_emp, getMasteradminIds($db));
-    if (!$is_creator && !$is_admin) {
-        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator or a Masteradmin can change this status.']);
+    $is_creator      = ((int)($own_row['created_by_emp_id'] ?? 0) === $caller_emp);
+    $is_admin        = in_array($caller_emp, getMasteradminIds($db));
+    $is_office_recip = isOfficeRecipient($own_row, $caller_emp, $db);
+    if (!$is_creator && !$is_admin && !$is_office_recip) {
+        json_out(['success' => false, 'message' => 'Permission denied. Only the document creator, a Masteradmin, or the assigned office recipient can change this status.']);
     }
     // ─────────────────────────────────────────────────────────────────────────
 
     if ($status === 'received') {
-        $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NOW() WHERE id = ?");
-        $stmt->bind_param("si", $status, $id);
+        // Record who received the document (document level)
+        $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NOW(), received_by_emp_id = ? WHERE id = ?");
+        $stmt->bind_param("sii", $status, $caller_emp, $id);
+
+        // Also stamp the latest document_forwards row so each hop tracks its own receiver
+        $fwd_stamp = $db->prepare("
+            UPDATE document_forwards
+            SET received_by_emp_id = ?, received_at = NOW()
+            WHERE document_id = ?
+              AND received_by_emp_id IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        if ($fwd_stamp) {
+            $fwd_stamp->bind_param("ii", $caller_emp, $id);
+            $fwd_stamp->execute();
+        }
     } elseif ($status === 'pending') {
-        $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NULL WHERE id = ?");
+        // Clear receiver when reset to pending
+        $stmt = $db->prepare("UPDATE document_records SET status = ?, date_received = NULL, received_by_emp_id = NULL WHERE id = ?");
         $stmt->bind_param("si", $status, $id);
     } else {
         $stmt = $db->prepare("UPDATE document_records SET status = ? WHERE id = ?");
@@ -648,6 +687,33 @@ if ($action === 'update_status') {
         'success' => $success,
         'message' => $success ? 'Status updated' : 'Update failed: ' . $stmt->error,
     ]);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helper: check if $emp_id is the manager or office staff of
+// the office that this document was forwarded to.
+// Allows IMO manager/staff to receive and re-forward documents.
+// ─────────────────────────────────────────────────────────────
+function isOfficeRecipient(array $doc_row, int $emp_id, $db): bool {
+    $fwd_to_office = (int)($doc_row['forwarded_to_office_id'] ?? 0);
+    if (!$fwd_to_office || !$emp_id) return false;
+
+    // Is this employee the designated office manager?
+    $chk = $db->prepare("SELECT 1 FROM office WHERE office_id = ? AND manager_emp_id = ? LIMIT 1");
+    $chk->bind_param("ii", $fwd_to_office, $emp_id);
+    $chk->execute();
+    if ($chk->get_result()->num_rows > 0) return true;
+
+    // Is this employee flagged as manager or manager_office_staff in that office?
+    $chk2 = $db->prepare("
+        SELECT 1 FROM employee
+        WHERE emp_id = ? AND office_id = ?
+          AND (is_manager = 1 OR is_manager_office_staff = 1)
+        LIMIT 1
+    ");
+    $chk2->bind_param("ii", $emp_id, $fwd_to_office);
+    $chk2->execute();
+    return $chk2->get_result()->num_rows > 0;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1034,17 +1100,18 @@ if ($action === 'archive_daily') {
                    CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)),
                    dr.forwarded_by_name
                ) AS forwarded_by_name,
-               s1.section_name AS from_section_name,
+               COALESCE(s1.section_name, o_from.office_name) AS from_section_name,
                s2.section_name AS to_section_name,
                us1.unit_name   AS from_unit_name,
                us2.unit_name   AS to_unit_name
         FROM document_records dr
-        LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
-        LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id      = fbe.emp_id
-        LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
-        LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
-        LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
-        LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
+        LEFT JOIN document_types dt    ON dr.document_type_id         = dt.id
+        LEFT JOIN employee       fbe   ON dr.forwarded_by_emp_id      = fbe.emp_id
+        LEFT JOIN section        s1    ON dr.from_section_id          = s1.section_id
+        LEFT JOIN section        s2    ON dr.forwarded_to_section_id  = s2.section_id
+        LEFT JOIN unit_section   us1   ON dr.from_unit_id             = us1.unit_id
+        LEFT JOIN unit_section   us2   ON dr.forwarded_to_unit_id     = us2.unit_id
+        LEFT JOIN office         o_from ON fbe.office_id              = o_from.office_id
         WHERE (
             -- FIX: Use DATE(col) directly — session tz is already '+08:00'
             -- so CONVERT_TZ was double-converting and skipping valid rows.
@@ -1337,17 +1404,18 @@ if ($action === 'midnight_archive') {
                    CONCAT(TRIM(fbe.first_name),' ',TRIM(fbe.last_name)),
                    dr.forwarded_by_name
                ) AS resolved_fwd_by,
-               s1.section_name AS from_section_name,
+               COALESCE(s1.section_name, o_from.office_name) AS from_section_name,
                s2.section_name AS to_section_name,
                us1.unit_name   AS from_unit_name,
                us2.unit_name   AS to_unit_name
         FROM document_records dr
-        LEFT JOIN document_types dt  ON dr.document_type_id         = dt.id
-        LEFT JOIN employee       fbe ON dr.forwarded_by_emp_id      = fbe.emp_id
-        LEFT JOIN section        s1  ON dr.from_section_id          = s1.section_id
-        LEFT JOIN section        s2  ON dr.forwarded_to_section_id  = s2.section_id
-        LEFT JOIN unit_section   us1 ON dr.from_unit_id             = us1.unit_id
-        LEFT JOIN unit_section   us2 ON dr.forwarded_to_unit_id     = us2.unit_id
+        LEFT JOIN document_types dt    ON dr.document_type_id         = dt.id
+        LEFT JOIN employee       fbe   ON dr.forwarded_by_emp_id      = fbe.emp_id
+        LEFT JOIN section        s1    ON dr.from_section_id          = s1.section_id
+        LEFT JOIN section        s2    ON dr.forwarded_to_section_id  = s2.section_id
+        LEFT JOIN unit_section   us1   ON dr.from_unit_id             = us1.unit_id
+        LEFT JOIN unit_section   us2   ON dr.forwarded_to_unit_id     = us2.unit_id
+        LEFT JOIN office         o_from ON fbe.office_id              = o_from.office_id
         WHERE (
             -- FIX: Use DATE(col) directly. The session timezone is already SET to
             -- '+08:00' above, so MariaDB evaluates TIMESTAMP columns in PHT.
