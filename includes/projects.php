@@ -17,6 +17,7 @@ class ProjectManager {
     
     // Check if user can assign tasks
     public function canAssignTasks($emp_id) {
+        // Check if user is an Administrator, manager, or section head
         $query = "SELECT e.is_manager, s.head_emp_id, e.emp_id, ur.name as role_name 
                 FROM employee e 
                 LEFT JOIN section s ON e.section_id = s.section_id 
@@ -30,12 +31,34 @@ class ProjectManager {
         
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
-            // Administrators, managers, and section heads can assign tasks
-            return ($user['role_name'] === 'Administrator' || 
+            if ($user['role_name'] === 'Administrator' || 
                 $user['is_manager'] == 1 || 
-                $user['emp_id'] == $user['head_emp_id']);
+                $user['emp_id'] == $user['head_emp_id']) {
+                return true;
+            }
         }
-        return false;
+
+        // Also allow project creators and project owners/managers
+        $owner_query = "SELECT COUNT(*) as count 
+                        FROM project_members 
+                        WHERE emp_id = ? AND role IN ('owner', 'manager')";
+        $owner_stmt = $this->db->prepare($owner_query);
+        $owner_stmt->bind_param("i", $emp_id);
+        $owner_stmt->execute();
+        $owner_result = $owner_stmt->get_result()->fetch_assoc();
+
+        if ($owner_result['count'] > 0) {
+            return true;
+        }
+
+        // Also check if user is the creator of any project directly
+        $creator_query = "SELECT COUNT(*) as count FROM projects WHERE created_by = ?";
+        $creator_stmt = $this->db->prepare($creator_query);
+        $creator_stmt->bind_param("i", $emp_id);
+        $creator_stmt->execute();
+        $creator_result = $creator_stmt->get_result()->fetch_assoc();
+
+        return $creator_result['count'] > 0;
     }
     
     // Create new project

@@ -53,19 +53,28 @@ $kind_icon   = $kind_icons[$doc['kind']] ?? 'fa-file-alt';
 
 $fhstmt = $db->prepare("
     SELECT df.*,
+           TRIM(eb.first_name) AS fwd_by_fname, TRIM(eb.last_name) AS fwd_by_lname,
+           TRIM(et.first_name) AS fwd_to_fname, TRIM(et.last_name) AS fwd_to_lname,
+           TRIM(er.first_name) AS fwd_recv_fname, TRIM(er.last_name) AS fwd_recv_lname,
            CONCAT(TRIM(eb.first_name),' ',TRIM(eb.last_name)) AS fwd_by_name,
            CONCAT(TRIM(et.first_name),' ',TRIM(et.last_name)) AS fwd_to_name,
+           CONCAT(TRIM(er.first_name),' ',TRIM(er.last_name)) AS fwd_received_by_name,
            s.section_name  AS to_section_name,
+           s.section_code  AS to_section_code,
            us.unit_name    AS to_unit_name,
+           us.unit_code    AS to_unit_code,
            o.office_name   AS to_office_name,
-           CONCAT(TRIM(er.first_name),' ',TRIM(er.last_name)) AS fwd_received_by_name
+           sb.section_code AS from_section_code,
+           usb.unit_code   AS from_unit_code
     FROM document_forwards df
-    LEFT JOIN employee       eb ON df.fwd_by_emp_id      = eb.emp_id
-    LEFT JOIN employee       et ON df.fwd_to_emp_id      = et.emp_id
-    LEFT JOIN employee       er ON df.received_by_emp_id = er.emp_id
-    LEFT JOIN section        s  ON df.fwd_to_section_id  = s.section_id
-    LEFT JOIN unit_section   us ON df.fwd_to_unit_id     = us.unit_id
-    LEFT JOIN office         o  ON df.fwd_to_office_id   = o.office_id
+    LEFT JOIN employee       eb  ON df.fwd_by_emp_id      = eb.emp_id
+    LEFT JOIN employee       et  ON df.fwd_to_emp_id      = et.emp_id
+    LEFT JOIN employee       er  ON df.received_by_emp_id = er.emp_id
+    LEFT JOIN section        s   ON df.fwd_to_section_id  = s.section_id
+    LEFT JOIN unit_section   us  ON df.fwd_to_unit_id     = us.unit_id
+    LEFT JOIN office         o   ON df.fwd_to_office_id   = o.office_id
+    LEFT JOIN section        sb  ON eb.section_id         = sb.section_id
+    LEFT JOIN unit_section   usb ON eb.unit_section_id    = usb.unit_id
     WHERE df.document_id = ?
     ORDER BY df.id ASC
 ");
@@ -87,6 +96,21 @@ function safeDate($dateStr, $format = 'M d, Y g:i A') {
 }
 }
 
+
+// ── Initials helpers ────────────────────────────────────────────────────────
+if (!function_exists("nameInitials")) {
+function nameInitials(string $fullName): string {
+    $fullName = trim($fullName);
+    if (!$fullName) return "?";
+    $parts = preg_split("/\\s+/", $fullName);
+    $initials = "";
+    foreach ($parts as $p) { if ($p !== "") $initials .= mb_strtoupper(mb_substr($p, 0, 1)); }
+    return $initials ?: "?";
+}}
+if (!function_exists("fhInitials")) {
+function fhInitials(string $first, string $last): string {
+    return nameInitials(trim($first) . " " . trim($last));
+}}
 $view_sec_list = $db->query("SELECT section_id, section_name, section_code FROM section ORDER BY section_name");
 $view_sec_arr  = $view_sec_list ? $view_sec_list->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -409,33 +433,73 @@ if ($view_logged) {
         #receiptPrintArea {
             font-family: 'Segoe UI', Arial, sans-serif;
             color: #111;
-            padding: 36px;
-            max-width: 560px;
+            padding: 28px 32px;
+            max-width: 780px;
             margin: 0 auto;
         }
         #receiptPrintArea .rp-header {
             text-align: center;
             border-bottom: 2.5px solid #1c4d38;
-            padding-bottom: 14px;
-            margin-bottom: 18px;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
         }
         #receiptPrintArea .rp-org  { font-size: 9pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #1c4d38; }
         #receiptPrintArea .rp-title { font-size: 13pt; font-weight: 800; margin: 4px 0 2px; }
         #receiptPrintArea .rp-sub  { font-size: 8pt; color: #6b7280; }
-        #receiptPrintArea table.rp-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
-        #receiptPrintArea table.rp-table td { padding: 5px 3px; font-size: 9pt; border-bottom: 1px dashed #ddd; vertical-align: top; }
+        /* Two-column body */
+        #receiptPrintArea .rp-body-columns {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        #receiptPrintArea .rp-col-left  { flex: 1; min-width: 0; }
+        #receiptPrintArea .rp-col-right { width: 240px; flex-shrink: 0; }
+        #receiptPrintArea table.rp-table { width: 100%; border-collapse: collapse; }
+        #receiptPrintArea table.rp-table td { padding: 3px 3px; font-size: 7.5pt; border-bottom: 1px dashed #ddd; vertical-align: top; line-height: 1.3; }
         #receiptPrintArea table.rp-table td:first-child { color: #555; font-weight: 600; white-space: nowrap; width: 38%; }
         #receiptPrintArea table.rp-table td:last-child  { color: #111; font-weight: 500; word-break: break-word; }
+        /* Clamp long text fields */
+        #receiptPrintArea table.rp-table td.rp-clamp {
+            max-height: 2.6em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        /* Forwarding history panel */
+        #receiptPrintArea .rp-fh-panel { border: 1.5px solid #1c4d38; border-radius: 6px; overflow: hidden; font-size: 7.5pt; }
+        #receiptPrintArea .rp-fh-head  { background: #1c4d38; color: #fff; padding: 6px 9px; font-weight: 700; font-size: 7pt; text-transform: uppercase; letter-spacing: .07em; display: flex; justify-content: space-between; align-items: center; }
+        #receiptPrintArea .rp-fh-badge { background: rgba(255,255,255,.25); border-radius: 20px; padding: 1px 7px; font-size: 6.5pt; }
+        #receiptPrintArea table.rp-fh-table { width: 100%; border-collapse: collapse; font-size: 6.5pt; }
+        #receiptPrintArea table.rp-fh-table th { padding: 3px 5px; background: #f0faf5; color: #1c4d38; font-weight: 700; text-align: left; border-bottom: 1px solid #d1fae5; border-right: 1px solid #d1fae5; }
+        #receiptPrintArea table.rp-fh-table th:last-child { border-right: none; }
+        #receiptPrintArea table.rp-fh-table td { padding: 4px 5px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; vertical-align: top; line-height: 1.3; }
+        #receiptPrintArea table.rp-fh-table td:last-child { border-right: none; max-width: 70px; word-break: break-word; }
+        #receiptPrintArea table.rp-fh-table tr:last-child td { border-bottom: none; }
+        /* Forwarding history remarks — show full text */
+        #receiptPrintArea .rp-fh-remark {
+            word-break: break-word;
+        }
         #receiptPrintArea .rp-qr-wrap {
             display: flex;
             flex-direction: column;
             align-items: center;
             border-top: 2.5px solid #1c4d38;
-            padding-top: 16px;
+            padding-top: 14px;
             gap: 6px;
         }
         #receiptPrintArea .rp-qr-lbl { font-size: 7.5pt; color: #6b7280; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
         #receiptPrintArea .rp-footer { font-size: 7pt; color: #aaa; text-align: center; margin-top: 10px; }
+        /* ── Print media rules ── */
+        @media print {
+            body > *:not(#receiptPrintArea) { display: none !important; }
+            #receiptPrintArea { display: block !important; padding: 20px 28px; max-width: 100%; }
+            #receiptPrintArea .rp-body-columns { display: flex !important; flex-direction: row !important; gap: 18px; }
+            #receiptPrintArea .rp-col-left  { flex: 1 !important; min-width: 0; }
+            #receiptPrintArea .rp-col-right { width: 240px !important; flex-shrink: 0; }
+            #receiptPrintArea .rp-fh-panel  { page-break-inside: avoid; }
+        }
         body.dark-mode .dv-card { background:var(--card-bg, #102f22); border-color:var(--card-border, rgba(36,231,143,.10)); }
         body.dark-mode .dv-card-hd { background:rgba(36,231,143,.04); border-color:var(--card-border, rgba(36,231,143,.10)); }
         body.dark-mode .dv-card-hd .dv-card-title { color:#6aad8a; }
@@ -771,38 +835,137 @@ if ($view_logged) {
 
 <!-- ══════════════ PRINT RECEIPT MODAL ══════════════ -->
 <div class="modal fade" id="receiptPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.18);">
             <div class="modal-header" style="background:linear-gradient(135deg,#1c4d38,#2a9863);color:#fff;border:none;padding:14px 20px;">
                 <h5 class="modal-title" style="font-weight:700;font-size:.95rem;"><i class="fas fa-receipt mr-2"></i>Document Receipt Preview</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="background:#f9fafb;padding:22px;">
-                <!-- Preview receipt rendered here -->
-                <div class="receipt-paper" id="receiptPreviewBody">
-                    <div class="rcp-header">
-                            <div class="rcp-title">Document Tracking Receipt</div>
+                <!-- Preview receipt rendered here — two-column layout -->
+                <div id="receiptPreviewBody" style="font-family:'Segoe UI',Arial,sans-serif;color:#111827;max-width:900px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:26px 28px;">
+
+                    <!-- Title bar -->
+                    <div style="text-align:center;border-bottom:2px solid #1c4d38;padding-bottom:12px;margin-bottom:16px;">
+                        <div style="font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1c4d38;">NIA — ACIMO</div>
+                        <div style="font-size:1rem;font-weight:800;color:#111827;margin:3px 0 2px;">Document Tracking Receipt</div>
                     </div>
-                    <div class="rcp-row"><span class="rcp-lbl">Document ID</span><span class="rcp-val">#<?= $doc['id'] ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Document Number</span><span class="rcp-val"><?= htmlspecialchars($doc['document_number']) ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Document Name</span><span class="rcp-val"><?= htmlspecialchars($doc['document_name']) ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Type</span><span class="rcp-val"><?= htmlspecialchars($doc['type_name'] ?? '—') ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Kind</span><span class="rcp-val" style="text-transform:capitalize;"><?= htmlspecialchars($doc['kind']) ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Status</span><span class="rcp-val" style="text-transform:capitalize;"><?= htmlspecialchars($doc['status']) ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">From</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?php $from_label = !empty($doc['from_section']) ? $doc['from_section'] : (!empty($doc['from_office_name']) ? $doc['from_office_name'] : ''); echo $from_label ? ' · '.htmlspecialchars($from_label) : ''; ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">To</span><span class="rcp-val"><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Date Forwarded</span><span class="rcp-val"><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Date Received</span><span class="rcp-val"><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></span></div>
-                    <div class="rcp-row"><span class="rcp-lbl">Record Created</span><span class="rcp-val"><?= safeDate($doc['created_at']) ?? '—' ?></span></div>
-                    <?php if (!empty($doc['remarks'])): ?>
-                    <div class="rcp-row"><span class="rcp-lbl">Remarks</span><span class="rcp-val"><?= htmlspecialchars($doc['remarks']) ?></span></div>
-                    <?php endif; ?>
-                    <div class="rcp-qr-section">
-                        <div class="rcp-qr-label"><i class="fas fa-qrcode mr-1"></i>Scan to view this document</div>
+
+                    <!-- Two-column body -->
+                    <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:16px;">
+
+                        <!-- LEFT: Document details -->
+                        <div style="flex:1;min-width:0;">
+                            <?php
+                            $rcp_from_label = !empty($doc['from_section']) ? $doc['from_section'] : (!empty($doc['from_office_name']) ? $doc['from_office_name'] : '');
+                            $rcp_rows = [
+                                ['Document ID',    '#'.$doc['id']],
+                                ['Document Number', htmlspecialchars($doc['document_number'])],
+                                ['Document Name',  htmlspecialchars($doc['document_name'])],
+                                ['Type',           htmlspecialchars($doc['type_name'] ?? '—')],
+                                ['Kind',           ucfirst(htmlspecialchars($doc['kind']))],
+                                ['Status',         ucfirst(htmlspecialchars($doc['status']))],
+                                ['From',           htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) . ($rcp_from_label ? ' · '.htmlspecialchars($rcp_from_label) : '')],
+                                ['To',             htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) . (!empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '')],
+                                ['Date Forwarded', safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—'],
+                                ['Date Received',  safeDate($doc['date_received']) ?? 'Not yet received'],
+                                ['Record Created', safeDate($doc['created_at']) ?? '—'],
+                            ];
+                            if (!empty($doc['remarks'])) $rcp_rows[] = ['Remarks', htmlspecialchars($doc['remarks'])];
+                            foreach ($rcp_rows as $ri => $rr):
+                                // Only clamp Document Name, not Remarks
+                                $isLong = ($rr[0] === 'Document Name');
+                            ?>
+                            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px dashed #e5e7eb;font-size:.73rem;gap:10px;">
+                                <span style="color:#6b7280;font-weight:600;white-space:nowrap;flex-shrink:0;"><?= $rr[0] ?></span>
+                                <span style="color:#111827;font-weight:500;text-align:right;word-break:break-word;<?= $isLong ? 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-height:2.6em;' : '' ?>"><?= $rr[1] ?></span>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <!-- RIGHT: Forwarding History panel -->
+                        <?php if (!empty($fwd_history)): ?>
+                        <div style="width:300px;flex-shrink:0;border:1.5px solid #1c4d38;border-radius:8px;overflow:hidden;font-size:.72rem;">
+                            <!-- Panel header -->
+                            <div style="background:#1c4d38;color:#fff;padding:8px 12px;font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center;">
+                                <span><i class="fas fa-history" style="margin-right:5px;"></i>Forwarding History</span>
+                                <span style="background:rgba(255,255,255,.25);border-radius:20px;padding:1px 7px;font-size:.6rem;"><?= count($fwd_history) ?></span>
+                            </div>
+                            <!-- Table layout -->
+                            <table style="width:100%;border-collapse:collapse;font-size:.67rem;">
+                                <thead>
+                                    <tr style="background:#f0faf5;border-bottom:1px solid #d1fae5;">
+                                        <th style="padding:5px 8px;color:#1c4d38;font-weight:700;text-align:left;border-right:1px solid #d1fae5;white-space:nowrap;">Route</th>
+                                        <th style="padding:5px 8px;color:#1c4d38;font-weight:700;text-align:left;border-right:1px solid #d1fae5;">Date &amp; Received By</th>
+                                        <th style="padding:5px 8px;color:#1c4d38;font-weight:700;text-align:left;">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <!-- Rows -->
+                            <?php
+                            $fhLastIdx = count($fwd_history) - 1;
+                            foreach ($fwd_history as $rfi => $rfh):
+                                // Build initials
+                                $rfByInit  = fhInitials($rfh['fwd_by_fname'] ?? '', $rfh['fwd_by_lname'] ?? '');
+                                $rfToInit  = fhInitials($rfh['fwd_to_fname'] ?? '', $rfh['fwd_to_lname'] ?? '');
+                                // Section/unit code for "from" person
+                                $rfFromCode = !empty($rfh['from_unit_code']) ? $rfh['from_unit_code'] : (!empty($rfh['from_section_code']) ? $rfh['from_section_code'] : '');
+                                // Section/unit code for destination
+                                $rfToCode   = !empty($rfh['to_unit_code']) ? $rfh['to_unit_code'] : (!empty($rfh['to_section_code']) ? $rfh['to_section_code'] : (!empty($rfh['to_office_name']) ? 'IMO' : ''));
+                                // Route string: ER(ADM) -> VM(FIN)
+                                $rfRoute = $rfByInit . ($rfFromCode ? '('.$rfFromCode.')' : '') . ' → ' . $rfToInit . ($rfToCode ? '('.$rfToCode.')' : '');
+                                // Received by initials
+                                $rfRecvName = trim($rfh['fwd_received_by_name'] ?? '');
+                                $rfRecvDate = !empty($rfh['received_at']) ? safeDate($rfh['received_at']) : null;
+                                if ($rfi === $fhLastIdx && !$rfRecvName && !empty($doc['received_by_name'])) {
+                                    $rfRecvName = trim($doc['received_by_name']);
+                                    $rfRecvDate = $rfRecvDate ?? safeDate($doc['date_received']);
+                                }
+                                $rfRecvInit = $rfRecvName ? nameInitials($rfRecvName) : '';
+                                $rfDate     = safeDate($rfh['fwd_date']) ?? '—';
+                                $rfRowBg    = ($rfi % 2 === 0) ? '#fff' : '#f7fdf9';
+                                $rfIsLast   = ($rfi === $fhLastIdx);
+                            ?>
+                                <tr style="background:<?= $rfRowBg ?>;">
+                                    <!-- Route col -->
+                                    <td style="padding:7px 8px;border-right:1px solid #e5e7eb;font-weight:700;color:#1c4d38;white-space:nowrap;vertical-align:top;border-bottom:1px solid #f0f0f0;">
+                                        <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#1c4d38;color:#fff;font-size:.55rem;font-weight:700;margin-right:4px;flex-shrink:0;"><?= $rfi+1 ?></span><?= htmlspecialchars($rfRoute) ?>
+                                    </td>
+                                    <!-- Date & Received col -->
+                                    <td style="padding:7px 8px;border-right:1px solid #e5e7eb;vertical-align:top;border-bottom:1px solid #f0f0f0;">
+                                        <div style="color:#6b7280;font-size:.63rem;"><?= $rfDate ?></div>
+                                        <?php if ($rfRecvInit): ?>
+                                        <div style="margin-top:3px;">
+                                            <span style="font-weight:700;color:#065f46;" title="<?= htmlspecialchars($rfRecvName) ?>"><?= htmlspecialchars($rfRecvInit) ?></span>
+                                            <?php if ($rfRecvDate): ?>
+                                            <div style="font-size:.6rem;color:#9ca3af;"><?= $rfRecvDate ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php else: ?>
+                                        <div style="color:#d1d5db;font-style:italic;font-size:.63rem;margin-top:2px;">Pending</div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <!-- Remarks col -->
+                                    <td style="padding:6px 7px;color:#6b7280;font-style:italic;font-size:.63rem;vertical-align:top;border-bottom:1px solid #f0f0f0;max-width:70px;">
+                                        <div style="word-break:break-word;"><?= !empty($rfh['fwd_remarks']) ? htmlspecialchars($rfh['fwd_remarks']) : '<span style="color:#e5e7eb;">—</span>' ?></div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php endif; ?>
+
+                    </div><!-- /two-column -->
+
+                    <!-- QR + footer -->
+                    <div style="display:flex;flex-direction:column;align-items:center;margin-top:4px;padding-top:14px;border-top:2px solid #1c4d38;gap:6px;">
+                        <div style="font-size:.63rem;color:#6b7280;font-weight:600;letter-spacing:.06em;text-transform:uppercase;"><i class="fas fa-qrcode mr-1"></i>Scan to view this document</div>
                         <div id="receiptQrCode"></div>
-                        <div class="rcp-footer-note">This receipt was generated by the NIA-ACIMO Document Tracking System.<br>Printed on <span id="receiptPrintDate"></span></div>
+                        <div style="font-size:.6rem;color:#9ca3af;text-align:center;margin-top:8px;">This receipt was generated by the NIA-ACIMO Document Tracking System.<br>Printed on <span id="receiptPrintDate"></span></div>
                     </div>
-                </div>
+
+                </div><!-- /receiptPreviewBody -->
             </div>
             <div class="modal-footer" style="border:none;padding:12px 20px;background:#f1f5f9;">
                 <button type="button" class="btn btn-light btn-sm" data-dismiss="modal" style="font-weight:600;">Close</button>
@@ -820,22 +983,92 @@ if ($view_logged) {
         <div class="rp-org">NIA — ACIMO</div>
         <div class="rp-title">Document Tracking Receipt</div>
     </div>
-    <table class="rp-table">
-        <tr><td>Document ID</td><td>#<?= $doc['id'] ?></td></tr>
-        <tr><td>Document Number</td><td><?= htmlspecialchars($doc['document_number']) ?></td></tr>
-        <tr><td>Document Name</td><td><?= htmlspecialchars($doc['document_name']) ?></td></tr>
-        <tr><td>Type</td><td><?= htmlspecialchars($doc['type_name'] ?? '—') ?></td></tr>
-        <tr><td>Kind</td><td><?= ucfirst(htmlspecialchars($doc['kind'])) ?></td></tr>
-        <tr><td>Status</td><td><?= ucfirst(htmlspecialchars($doc['status'])) ?></td></tr>
-        <tr><td>From</td><td><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?php $from_print = !empty($doc['from_section']) ? $doc['from_section'] : (!empty($doc['from_office_name']) ? $doc['from_office_name'] : ''); echo $from_print ? ' · '.htmlspecialchars($from_print) : ''; ?></td></tr>
-        <tr><td>To</td><td><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></td></tr>
-        <tr><td>Date Forwarded</td><td><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></td></tr>
-        <tr><td>Date Received</td><td><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></td></tr>
-        <tr><td>Record Created</td><td><?= safeDate($doc['created_at']) ?? '—' ?></td></tr>
-        <?php if (!empty($doc['remarks'])): ?>
-        <tr><td>Remarks</td><td><?= htmlspecialchars($doc['remarks']) ?></td></tr>
+
+    <!-- Two-column print layout -->
+    <div class="rp-body-columns">
+
+        <!-- LEFT: Document info table -->
+         
+        <div class="rp-col-left">
+            <table class="rp-table">
+                <tr><td>Document ID</td><td>#<?= $doc['id'] ?></td></tr>
+                <tr><td>Document Number</td><td><?= htmlspecialchars($doc['document_number']) ?></td></tr>
+                <tr><td>Document Name</td><td class="rp-clamp"><?= htmlspecialchars($doc['document_name']) ?></td></tr>
+                <tr><td>Type</td><td><?= htmlspecialchars($doc['type_name'] ?? '—') ?></td></tr>
+                <tr><td>Kind</td><td><?= ucfirst(htmlspecialchars($doc['kind'])) ?></td></tr>
+                <tr><td>Status</td><td><?= ucfirst(htmlspecialchars($doc['status'])) ?></td></tr>
+                <tr><td>From</td><td><?= htmlspecialchars($doc['forwarded_by_name_emp'] ?: ($doc['forwarded_by_name'] ?: '—')) ?><?php $from_print = !empty($doc['from_section']) ? $doc['from_section'] : (!empty($doc['from_office_name']) ? $doc['from_office_name'] : ''); echo $from_print ? ' · '.htmlspecialchars($from_print) : ''; ?></td></tr>
+                <tr><td>To</td><td><?= htmlspecialchars($doc['forwarded_to_name_emp'] ?: ($doc['forwarded_to'] ?: '—')) ?><?= !empty($doc['to_section']) ? ' · '.htmlspecialchars($doc['to_section']) : '' ?></td></tr>
+                <tr><td>Date Forwarded</td><td><?= safeDate($doc['last_fwd_date'] ?? $doc['date_forwarded']) ?? '—' ?></td></tr>
+                <tr><td>Date Received</td><td><?= safeDate($doc['date_received']) ?? 'Not yet received' ?></td></tr>
+                <tr><td>Record Created</td><td><?= safeDate($doc['created_at']) ?? '—' ?></td></tr>
+                <?php if (!empty($doc['remarks'])): ?>
+                <tr><td>Remarks</td><td><?= htmlspecialchars($doc['remarks']) ?></td></tr>
+                <?php endif; ?>
+            </table>
+        </div>
+
+        <!-- RIGHT: Forwarding History panel -->
+        <?php if (!empty($fwd_history)): ?>
+        <div class="rp-col-right">
+            <div class="rp-fh-panel">
+                <div class="rp-fh-head">
+                    <span>&#10227; Forwarding History</span>
+                    <span class="rp-fh-badge"><?= count($fwd_history) ?></span>
+                </div>
+                <table class="rp-fh-table">
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Date &amp; Received By</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php
+                    $prLastIdx = count($fwd_history) - 1;
+                    foreach ($fwd_history as $pri => $prh):
+                        $prByInit   = fhInitials($prh['fwd_by_fname'] ?? '', $prh['fwd_by_lname'] ?? '');
+                        $prToInit   = fhInitials($prh['fwd_to_fname'] ?? '', $prh['fwd_to_lname'] ?? '');
+                        $prFromCode = !empty($prh['from_unit_code']) ? $prh['from_unit_code'] : (!empty($prh['from_section_code']) ? $prh['from_section_code'] : '');
+                        $prToCode   = !empty($prh['to_unit_code']) ? $prh['to_unit_code'] : (!empty($prh['to_section_code']) ? $prh['to_section_code'] : (!empty($prh['to_office_name']) ? 'IMO' : ''));
+                        $prRoute    = $prByInit . ($prFromCode ? '('.$prFromCode.')' : '') . ' → ' . $prToInit . ($prToCode ? '('.$prToCode.')' : '');
+                        $prRecvName = trim($prh['fwd_received_by_name'] ?? '');
+                        $prRecvDate = !empty($prh['received_at']) ? safeDate($prh['received_at']) : null;
+                        if ($pri === $prLastIdx && !$prRecvName && !empty($doc['received_by_name'])) {
+                            $prRecvName = trim($doc['received_by_name']);
+                            $prRecvDate = $prRecvDate ?? safeDate($doc['date_received']);
+                        }
+                        $prRecvInit = $prRecvName ? nameInitials($prRecvName) : '';
+                        $prDate     = safeDate($prh['fwd_date']) ?? '—';
+                        $prRowBg    = ($pri % 2 === 0) ? '#fff' : '#f7fdf9';
+                    ?>
+                        <tr style="background:<?= $prRowBg ?>;">
+                            <td style="font-weight:700;color:#1c4d38;white-space:nowrap;">
+                                <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1c4d38;color:#fff;font-size:5.5pt;font-weight:700;margin-right:3px;flex-shrink:0;"><?= $pri+1 ?></span><?= htmlspecialchars($prRoute) ?>
+                            </td>
+                            <td>
+                                <div style="color:#555;font-size:6.5pt;"><?= $prDate ?></div>
+                                <?php if ($prRecvInit): ?>
+                                <div style="font-weight:700;color:#065f46;margin-top:2px;" title="<?= htmlspecialchars($prRecvName) ?>"><?= htmlspecialchars($prRecvInit) ?></div>
+                                <?php if ($prRecvDate): ?><div style="color:#aaa;font-size:6pt;"><?= $prRecvDate ?></div><?php endif; ?>
+                                <?php else: ?>
+                                <div style="color:#ccc;font-style:italic;font-size:6.5pt;">Pending</div>
+                                <?php endif; ?>
+                            </td>
+                            <td style="color:#777;font-style:italic;word-break:break-word;">
+                                <div class="rp-fh-remark"><?= !empty($prh['fwd_remarks']) ? htmlspecialchars($prh['fwd_remarks']) : '<span style="color:#e5e7eb;">—</span>' ?></div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <?php endif; ?>
-    </table>
+
+    </div><!-- /rp-body-columns -->
+
     <div class="rp-qr-wrap">
         <div class="rp-qr-lbl">Scan to view this document</div>
         <div id="receiptPrintQrCode"></div>

@@ -39,12 +39,16 @@ try {
             
             $project_id = $_POST['project_id'];
             
-            // Verify user has access to this project
+            // Verify user has access to this project (member OR creator)
             $access_stmt = $db->prepare("
                 SELECT 1 FROM project_members 
                 WHERE project_id = ? AND emp_id = ?
+                UNION
+                SELECT 1 FROM projects
+                WHERE project_id = ? AND created_by = ?
+                LIMIT 1
             ");
-            $access_stmt->bind_param("ii", $project_id, $_SESSION['emp_id']);
+            $access_stmt->bind_param("iiii", $project_id, $_SESSION['emp_id'], $project_id, $_SESSION['emp_id']);
             $access_stmt->execute();
             $has_access = $access_stmt->get_result()->num_rows > 0;
             
