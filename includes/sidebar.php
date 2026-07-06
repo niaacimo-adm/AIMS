@@ -179,6 +179,12 @@ if ($employee_id) {
                   <p>Personal Locator Slip</p>
               </a>
           </li>
+          <li class="nav-item">
+              <a href="my_ict_equipment.php" class="nav-link <?= $current_page == 'my_ict_equipment.php' ? 'active' : 'text-white' ?>">
+                  <i class="fas fa-laptop nav-icon"></i>
+                  <p>My ICT Equipment</p>
+              </a>
+          </li>
           
           <?php if (hasPermission('manage_employees')): ?>
           <li class="nav-header text-light border-bottom pb-2 mt-3">HR MANAGEMENT</li>

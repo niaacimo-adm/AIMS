@@ -22,6 +22,9 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   <?php include '../includes/header.php'; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Select2 (multi-select assignee) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-theme/0.1.0-beta.10/select2-bootstrap.min.css" rel="stylesheet">
   <!-- Modern Scrumboard UI -->
   <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -486,24 +489,8 @@ body.dark-mode .modal-content { box-shadow: 0 24px 80px rgba(0,0,0,.6) !importan
 .modal-footer { border-top: 1px solid var(--s-border) !important; padding: 14px 20px !important; background: var(--s-surface2) !important; border-radius: 0 0 14px 14px !important; }
 
 /* View task modal */
-#viewTaskModal .modal-header.bg-primary {
-  background: linear-gradient(135deg, var(--s-teal), color-mix(in srgb, var(--s-teal) 80%, var(--s-violet))) !important;
-  border-bottom: 1px solid rgba(255,255,255,.2) !important;
-}
-body.dark-mode #viewTaskModal .modal-header.bg-primary {
-  background: linear-gradient(135deg, #1e2a3a, #1a2332) !important;
-  border-bottom: 1px solid var(--s-teal) !important;
-}
-#viewTaskKey { font-family: var(--s-mono) !important; font-size: .8rem !important; color: rgba(255,255,255,.8) !important; }
-#viewTaskTitle { color: #fff !important; font-family: var(--s-font) !important; }
-body.dark-mode #viewTaskKey { color: var(--s-teal) !important; }
-body.dark-mode #viewTaskTitle { color: var(--s-text) !important; }
-#viewTaskModal .modal-dialog { max-width: 50%; }
+#viewTaskKey { font-family: var(--s-mono) !important; font-size: .8rem !important; }
 #viewTaskModal .modal-body { max-height: 80vh; overflow-y: auto; }
-#viewTaskModal .border-right { border-right: 1px solid var(--s-border) !important; }
-#viewTaskModal .card { background: var(--s-surface2) !important; border-color: var(--s-border) !important; }
-#viewTaskModal .card-header.bg-light { background: var(--s-surface3) !important; color: var(--s-text) !important; border-color: var(--s-border) !important; }
-#viewTaskModal .card-body { background: var(--s-surface2) !important; }
 
 /* Status/priority badges in modal */
 .status-badge { background: var(--s-surface3) !important; color: var(--s-muted) !important; border-radius: 5px !important; padding: 2px 8px; font-size: .75rem; }
@@ -880,9 +867,8 @@ body.dark-mode #addCommentBtn { color: #0d1117 !important; }
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label for="taskAssignee">Assignee</label>
-                <select class="form-control" id="taskAssignee">
-                  <option value="">Unassigned</option>
+                <label for="taskAssignee">Assignees</label>
+                <select class="form-control" id="taskAssignee" multiple="multiple" style="width:100%">
                   <!-- Assignable employees will be loaded here -->
                 </select>
               </div>
@@ -971,9 +957,8 @@ body.dark-mode #addCommentBtn { color: #0d1117 !important; }
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label for="editTaskAssignee">Assignee</label>
-                <select class="form-control" id="editTaskAssignee">
-                  <option value="">Unassigned</option>
+                <label for="editTaskAssignee">Assignees</label>
+                <select class="form-control" id="editTaskAssignee" multiple="multiple" style="width:100%">
                   <!-- Assignable employees will be loaded here -->
                 </select>
               </div>
@@ -1121,153 +1106,116 @@ body.dark-mode #addCommentBtn { color: #0d1117 !important; }
 
 <!-- View Task Modal -->
 <div class="modal fade" id="viewTaskModal" tabindex="-1" role="dialog" aria-labelledby="viewTaskModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+  <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
+      <div class="modal-header">
         <h5 class="modal-title" id="viewTaskModalLabel">
-          <span id="viewTaskKey" class="text-light mr-2"></span>
-          <span id="viewTaskTitle" class="text-white"></span>
+          <i class="fas fa-eye mr-2" style="color:var(--s-teal)"></i>
+          <span id="viewTaskKey" class="mr-1" style="color:var(--s-muted);font-size:.85em;"></span>
+          <span id="viewTaskTitle"></span>
         </h5>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-light btn-sm mr-2" id="editTaskBtn" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--s-text);border-radius:7px;font-size:.78rem;">
-            <i class="fas fa-edit mr-1"></i> Edit
-          </button>
-          <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
-      <div class="modal-body p-0">
-        <div class="container-fluid">
-          <div class="row">
-            <!-- Left Column - Main Content -->
-            <div class="col-lg-8 border-right">
-              <div class="p-3">
-                <!-- Description -->
-                <div class="card mb-4">
-                  <div class="card-header bg-light">
-                    <h6 class="mb-0">
-                      <i class="fas fa-align-left mr-2"></i>Description
-                    </h6>
-                  </div>
-                  <div class="card-body">
-                    <div id="viewTaskDescription" class="task-description">
-                      <!-- Description content will be loaded here -->
-                    </div>
-                    <div id="noDescription" class="text-muted" style="display: none;">
-                      <em>No description provided</em>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Activity/Comments Section -->
-                <div class="card">
-                  <div class="card-header bg-light">
-                    <h6 class="mb-0">
-                      <i class="fas fa-comments mr-2"></i>Activity
-                    </h6>
-                  </div>
-                  <div class="card-body">
-                    <!-- Comment Input -->
-                    <div class="comment-input mb-4">
-                      <textarea class="form-control" id="commentText" rows="3" placeholder="Add a comment..."></textarea>
-                      <div class="mt-2 text-right">
-                        <button class="btn btn-primary btn-sm" id="addCommentBtn">
-                          <i class="fas fa-paper-plane mr-1"></i> Comment
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <!-- Activity Timeline -->
-                    <div id="activityTimeline" class="activity-timeline">
-                      <!-- Activity items will be loaded here -->
-                    </div>
-                  </div>
-                </div>
-              </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-8">
+            <div class="form-group">
+              <label class="text-muted small">Task Title</label>
+              <div class="form-control" id="viewTaskTitleField" style="background:var(--s-surface2);border-color:var(--s-border);color:var(--s-text);pointer-events:none;"></div>
             </div>
-
-            <!-- Right Column - Sidebar -->
-            <div class="col-lg-4">
-              <div class="p-3">
-                <!-- Task Details Card -->
-                <div class="card mb-4">
-                  <div class="card-header bg-light">
-                    <h6 class="mb-0">Details</h6>
-                  </div>
-                  <div class="card-body">
-                    <div class="detail-item mb-3">
-                      <label class="text-muted small mb-1">Status</label>
-                      <div id="viewTaskStatus" class="font-weight-bold"></div>
-                    </div>
-                    <div class="detail-item mb-3">
-                      <label class="text-muted small mb-1">Assignee</label>
-                      <div id="viewTaskAssignee" class="d-flex align-items-center">
-                        <!-- Assignee info will be loaded here -->
-                      </div>
-                    </div>
-                    <div class="detail-item mb-3">
-                      <label class="text-muted small mb-1">Reporter</label>
-                      <div id="viewTaskReporter" class="d-flex align-items-center">
-                        <!-- Reporter info will be loaded here -->
-                      </div>
-                    </div>
-                    <div class="detail-item mb-3">
-                      <label class="text-muted small mb-1">Priority</label>
-                      <div id="viewTaskPriority"></div>
-                    </div>
-                    <div class="detail-item mb-3">
-                      <label class="text-muted small mb-1">Due Date</label>
-                      <div id="viewTaskDueDate"></div>
-                    </div>
-                    <div class="detail-item mb-3">
-                      <label class="text-muted small mb-1">Created</label>
-                      <div id="viewTaskCreated" class="small text-muted"></div>
-                    </div>
-                    <div class="detail-item">
-                      <label class="text-muted small mb-1">Updated</label>
-                      <div id="viewTaskUpdated" class="small text-muted"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Labels Card -->
-                <div class="card mb-4">
-                  <div class="card-header bg-light">
-                    <h6 class="mb-0">Labels</h6>
-                  </div>
-                  <div class="card-body">
-                    <div id="viewTaskLabels" class="task-labels">
-                      <!-- Labels will be loaded here -->
-                    </div>
-                    <div id="noLabels" class="text-muted small" style="display: none;">
-                      <em>No labels</em>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Project Info Card -->
-                <div class="card">
-                  <div class="card-header bg-light">
-                    <h6 class="mb-0">Project</h6>
-                  </div>
-                  <div class="card-body">
-                    <div class="detail-item">
-                      <label class="text-muted small mb-1">Project</label>
-                      <div id="viewTaskProject" class="font-weight-bold"></div>
-                    </div>
-                    <div class="detail-item mt-2">
-                      <label class="text-muted small mb-1">Board</label>
-                      <div id="viewTaskBoard" class="d-flex align-items-center">
-                        <!-- Board info will be loaded here -->
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-group">
+              <label class="text-muted small">Priority</label>
+              <div class="form-control d-flex align-items-center" style="background:var(--s-surface2);border-color:var(--s-border);pointer-events:none;">
+                <span id="viewTaskPriority"></span>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="form-group">
+          <label class="text-muted small">Description</label>
+          <div class="form-control" id="viewTaskDescription"
+               style="min-height:80px;background:var(--s-surface2);border-color:var(--s-border);color:var(--s-text);pointer-events:none;white-space:pre-wrap;height:auto;"></div>
+          <div id="noDescription" class="text-muted small mt-1" style="display:none;"><em>No description provided</em></div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="text-muted small">Assignees</label>
+              <div class="form-control d-flex align-items-center" id="viewTaskAssignee" style="background:var(--s-surface2);border-color:var(--s-border);pointer-events:none;height:auto;min-height:calc(1.5em + .75rem + 2px);"></div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="text-muted small">Due Date</label>
+              <div class="form-control" id="viewTaskDueDate" style="background:var(--s-surface2);border-color:var(--s-border);color:var(--s-text);pointer-events:none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="text-muted small">Board</label>
+              <div class="form-control d-flex align-items-center" style="background:var(--s-surface2);border-color:var(--s-border);pointer-events:none;">
+                <span id="viewTaskBoard"></span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="text-muted small">Reporter</label>
+              <div class="form-control d-flex align-items-center" id="viewTaskReporter" style="background:var(--s-surface2);border-color:var(--s-border);pointer-events:none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="text-muted small">Labels</label>
+          <div class="form-control d-flex flex-wrap align-items-center" style="min-height:38px;background:var(--s-surface2);border-color:var(--s-border);pointer-events:none;height:auto;gap:4px;">
+            <span id="viewTaskLabels"></span>
+            <span id="noLabels" class="text-muted small" style="display:none;"><em>No labels</em></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="text-muted small">Created</label>
+              <div class="form-control" id="viewTaskCreated" style="background:var(--s-surface2);border-color:var(--s-border);color:var(--s-muted);font-size:.85em;pointer-events:none;"></div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="text-muted small">Last Updated</label>
+              <div class="form-control" id="viewTaskUpdated" style="background:var(--s-surface2);border-color:var(--s-border);color:var(--s-muted);font-size:.85em;pointer-events:none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border-color:var(--s-border);">
+
+        <div class="form-group">
+          <label class="text-muted small"><i class="fas fa-comments mr-1"></i>Activity &amp; Comments</label>
+          <div id="activityTimeline" class="mb-3" style="max-height:180px;overflow-y:auto;"></div>
+          <textarea class="form-control" id="commentText" rows="2" placeholder="Add a comment..." style="resize:none;"></textarea>
+          <div class="mt-2 text-right">
+            <button class="btn btn-primary btn-sm" id="addCommentBtn">
+              <i class="fas fa-paper-plane mr-1"></i> Comment
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="editTaskBtn">
+          <i class="fas fa-pen mr-1"></i> Edit Task
+        </button>
       </div>
     </div>
   </div>
@@ -1385,8 +1333,9 @@ class Scrumboard {
         $('#editTaskPriority').val(task.priority);
         $('#editTaskDueDate').val(task.due_date ? task.due_date.split(' ')[0] : '');
         
-        // Populate assignee dropdown
-        this.populateAssigneeDropdown('#editTaskAssignee', task.assigned_to);
+        // Populate assignee dropdown (multi-select)
+        const assignedIds = (task.assignees || []).map(a => a.emp_id);
+        this.populateAssigneeDropdown('#editTaskAssignee', assignedIds);
         
         // Populate boards dropdown
         this.populateBoardsDropdown('#editTaskBoard', task.board_id);
@@ -1398,20 +1347,11 @@ class Scrumboard {
         $('#editTaskModal').modal('show');
     }
 
-    // Helper method to populate assignee dropdown
-    populateAssigneeDropdown(selector, selectedValue) {
+    // Helper method to set the selected assignees on the (multi-select) dropdown
+    populateAssigneeDropdown(selector, selectedValues) {
         const select = $(selector);
-        select.empty();
-        select.append('<option value="">Unassigned</option>');
-        
-        // This should use the same employees loaded for the add task modal
-        $('#taskAssignee option').each(function() {
-            const option = $(this).clone();
-            if (option.val() === String(selectedValue)) {
-                option.prop('selected', true);
-            }
-            select.append(option);
-        });
+        const values = (selectedValues || []).map(v => String(v));
+        select.val(values).trigger('change');
     }
 
     // Helper method to populate boards dropdown
@@ -1464,7 +1404,7 @@ class Scrumboard {
             priority: $('#editTaskPriority').val(),
             labels: labels.join(','),
             due_date: $('#editTaskDueDate').val(),
-            assigned_to: $('#editTaskAssignee').val() || null
+            assigned_to: $('#editTaskAssignee').val() || []
         };
         
         // Validation
@@ -1884,7 +1824,9 @@ class Scrumboard {
     createTaskHtml(task) {
         const labels = task.labels ? task.labels.split(',') : [];
         const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set';
-        const assigneeName = task.assigned_to ? `${task.first_name} ${task.last_name}` : 'Unassigned';
+        const assigneeName = (task.assignees && task.assignees.length)
+            ? task.assignees.map(a => `${a.first_name} ${a.last_name}`).join(', ')
+            : 'Unassigned';
         const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
         
         return `
@@ -1919,14 +1861,39 @@ class Scrumboard {
             });
             
             if (response.success) {
-                const select = $('#taskAssignee');
-                select.empty();
-                select.append('<option value="">Unassigned</option>');
-                
-                response.employees.forEach(employee => {
-                    const role = employee.role_name || (employee.is_manager ? 'Manager' : 'Employee');
-                    select.append(`<option value="${employee.emp_id}">${employee.first_name} ${employee.last_name} (${role})</option>`);
+                const buildOptions = (select) => {
+                    select.empty();
+                    response.employees.forEach(employee => {
+                        const role = employee.role_name || (employee.is_manager ? 'Manager' : 'Employee');
+                        select.append(`<option value="${employee.emp_id}">${employee.first_name} ${employee.last_name} (${role})</option>`);
+                    });
+                };
+
+                buildOptions($('#taskAssignee'));
+                buildOptions($('#editTaskAssignee'));
+
+                // Initialize Select2 for multi-assignee selection
+                [$('#taskAssignee'), $('#editTaskAssignee')].forEach($el => {
+                    if ($el.hasClass('select2-hidden-accessible')) {
+                        $el.select2('destroy');
+                    }
                 });
+
+                $('#taskAssignee').select2({
+                    theme: 'bootstrap',
+                    width: '100%',
+                    placeholder: 'Unassigned',
+                    allowClear: true,
+                    dropdownParent: $('#addTaskModal')
+                }).val(null).trigger('change');
+
+                $('#editTaskAssignee').select2({
+                    theme: 'bootstrap',
+                    width: '100%',
+                    placeholder: 'Unassigned',
+                    allowClear: true,
+                    dropdownParent: $('#editTaskModal')
+                }).val(null).trigger('change');
             }
         } catch (error) {
             console.error('Error loading assignable employees:', error);
@@ -2221,7 +2188,7 @@ class Scrumboard {
             priority: $('#taskPriority').val(),
             labels: labels.join(','),
             due_date: $('#taskDueDate').val(),
-            assigned_to: $('#taskAssignee').val() || null,
+            assigned_to: $('#taskAssignee').val() || [],
             created_by: <?= $_SESSION['emp_id'] ?>
         };
         
@@ -2251,6 +2218,7 @@ class Scrumboard {
             if (response.success) {
                 $('#addTaskModal').modal('hide');
                 $('#taskForm')[0].reset();
+                $('#taskAssignee').val(null).trigger('change');
                 this.selectedBoardId = null;
                 await this.loadProjectTasks();
                 this.showSuccess('Task created successfully');
@@ -2340,14 +2308,35 @@ class Scrumboard {
         }
     }
 
+    renderAvatar(container, picturePath, name, bgColor) {
+        // container: jQuery element to prepend the avatar into (alongside existing text)
+        const initials = (name || '?').charAt(0).toUpperCase();
+        const color    = bgColor || 'var(--s-teal)';
+        const css = { width:'34px', height:'34px', borderRadius:'50%', flexShrink:'0',
+                      marginRight:'10px', display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:'.78rem', fontWeight:'700', color:'#fff',
+                      fontFamily:'var(--s-mono)', border:'2px solid var(--s-border)' };
+        const $fallback = $('<div>').css({ ...css, background: color }).text(initials);
+        if (picturePath) {
+            const $img = $('<img>')
+                .attr({ src: `../dist/img/employees/${picturePath}`, alt: name })
+                .css({ width:'34px', height:'34px', borderRadius:'50%', objectFit:'cover',
+                       flexShrink:'0', marginRight:'10px', border:'2px solid var(--s-border)' })
+                .on('error', function() { $(this).replaceWith($fallback); });
+            container.prepend($img);
+        } else {
+            container.prepend($fallback);
+        }
+    }
+
     populateTaskModal(task) {
-        // Store current task for editing
         this.currentViewingTask = task;
 
-        // Basic info
+        // Header
         $('#viewTaskKey').text(`TASK-${task.task_id}`);
         $('#viewTaskTitle').text(task.title);
-        
+        $('#viewTaskTitleField').text(task.title);
+
         // Description
         if (task.description && task.description.trim()) {
             $('#viewTaskDescription').text(task.description).show();
@@ -2357,75 +2346,61 @@ class Scrumboard {
             $('#noDescription').show();
         }
 
-        // Status
-        const statusText = this.getStatusDisplayText(task.status);
-        $('#viewTaskStatus').html(`<span class="status-badge status-${task.status}">${statusText}</span>`);
+        // Priority
+        const priorityLabel = (task.priority || 'medium');
+        $('#viewTaskPriority').html(`<span class="priority-badge priority-${priorityLabel}">${priorityLabel.charAt(0).toUpperCase() + priorityLabel.slice(1)}</span>`);
 
-        // Assignee
-        if (task.assigned_to) {
-            const assigneeName = `${task.first_name || ''} ${task.last_name || ''}`.trim();
-            $('#viewTaskAssignee').html(`
-                <div class="activity-avatar mr-2">
-                    ${assigneeName.charAt(0).toUpperCase()}
-                </div>
-                <span>${assigneeName}</span>
-            `);
+        // Assignees
+        $('#viewTaskAssignee').empty();
+        if (task.assignees && task.assignees.length) {
+            $('#viewTaskAssignee').css('flex-wrap', 'wrap');
+            task.assignees.forEach(assignee => {
+                const assigneeName = `${assignee.first_name || ''} ${assignee.last_name || ''}`.trim();
+                const $chip = $('<div>').css({ display: 'flex', alignItems: 'center', marginRight: '14px', marginBottom: '4px' });
+                $chip.append(`<span>${assigneeName}</span>`);
+                this.renderAvatar($chip, assignee.picture, assigneeName, 'var(--s-teal)');
+                $('#viewTaskAssignee').append($chip);
+            });
         } else {
             $('#viewTaskAssignee').html('<span class="text-muted">Unassigned</span>');
         }
 
-        // Reporter (creator)
-        const reporterName = `${task.creator_first || ''} ${task.creator_last || ''}`.trim();
-        $('#viewTaskReporter').html(`
-            <div class="activity-avatar mr-2" style="background: #10b981;">
-                ${reporterName.charAt(0).toUpperCase()}
-            </div>
-            <span>${reporterName}</span>
-        `);
-
-        // Priority
-        $('#viewTaskPriority').html(`<span class="priority-badge priority-${task.priority}">${task.priority}</span>`);
-
-        // Dates
+        // Due date
         $('#viewTaskDueDate').text(task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set');
-        $('#viewTaskCreated').text(new Date(task.created_at).toLocaleString());
-        $('#viewTaskUpdated').text(new Date(task.updated_at || task.created_at).toLocaleString());
+
+        // Board
+        const board = this.boards.find(b => b.board_id == task.board_id);
+        if (board) {
+            $('#viewTaskBoard').html(`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${board.board_color};margin-right:6px;flex-shrink:0;"></span><span>${board.board_name}</span>`);
+        } else {
+            $('#viewTaskBoard').text('Unknown');
+        }
+
+        // Reporter
+        const reporterName = `${task.creator_first || ''} ${task.creator_last || ''}`.trim();
+        $('#viewTaskReporter').html(`<span>${reporterName || 'Unknown'}</span>`);
+        this.renderAvatar($('#viewTaskReporter'), task.creator_picture, reporterName, '#10b981');
 
         // Labels
         const labelsContainer = $('#viewTaskLabels');
         labelsContainer.empty();
-        
         if (task.labels) {
-            const labels = task.labels.split(',');
-            if (labels.length > 0 && labels[0] !== '') {
+            const labels = task.labels.split(',').filter(l => l.trim());
+            if (labels.length > 0) {
                 labels.forEach(label => {
-                    if (label.trim()) {
-                        labelsContainer.append(`<span class="task-label label-${label} mr-1 mb-1">${label.charAt(0).toUpperCase() + label.slice(1)}</span>`);
-                    }
+                    labelsContainer.append(`<span class="task-label label-${label.trim()} mr-1">${label.trim().charAt(0).toUpperCase() + label.trim().slice(1)}</span>`);
                 });
                 $('#noLabels').hide();
             } else {
                 $('#noLabels').show();
             }
         } else {
-            $('#noLabels').show();k
+            $('#noLabels').show();
         }
 
-        // Project and Board
-        $('#viewTaskProject').text(this.currentProject?.project_name || 'Unknown');
-        
-        const board = this.boards.find(b => b.board_id == task.board_id);
-        if (board) {
-            $('#viewTaskBoard').html(`
-                <div class="board-color-badge mr-2" style="background-color: ${board.board_color}"></div>
-                <span>${board.board_name}</span>
-            `);
-        } else {
-            $('#viewTaskBoard').text('Unknown');
-        }
-
-        // Load activity/comments
-        this.loadTaskActivity(task.task_id);
+        // Timestamps
+        $('#viewTaskCreated').text(new Date(task.created_at).toLocaleString());
+        $('#viewTaskUpdated').text(new Date(task.updated_at || task.created_at).toLocaleString());
     }
 
     getStatusDisplayText(status) {
@@ -2559,5 +2534,6 @@ $(document).ready(function() {
 
 
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 </body>
 </html>

@@ -15,6 +15,11 @@ class ProjectManager {
         }
     }
     
+    // Expose the existing DB connection so callers don't need to open a new one
+    public function getConnection() {
+        return $this->db;
+    }
+
     // Check if user can assign tasks
     public function canAssignTasks($emp_id) {
         // Check if user is an Administrator, manager, or section head

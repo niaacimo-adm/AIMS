@@ -1,1495 +1,505 @@
 <?php
-session_start();
 require_once '../includes/auth.php';
 require_once '../config/database.php';
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+if (!isset($_SESSION['emp_id'])) { header('Location: ../login.php'); exit; }
+if (!hasPermission('view_ict_equipment') && !hasPermission('manage_ict_maintenance')) {
+    header('Location: dashboard.php');
+    exit;
+}
+$can_manage = hasPermission('manage_ict_maintenance');
 
 $database = new Database();
 $db = $database->getConnection();
-
-// Handle form submissions
-$message = $_GET['message'] ?? '';
-$message_type = $_GET['message_type'] ?? '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_equipment'])) {
-        $result = addEquipment($db);
-        if ($result['success']) {
-            header('Location: ict_equipment.php?message=' . urlencode($result['message']) . '&message_type=success');
-            exit;
-        } else {
-            $message = $result['message'];
-            $message_type = 'error';
-        }
-    }
-    elseif (isset($_POST['edit_equipment'])) {
-        $result = editEquipment($db);
-        if ($result['success']) {
-            header('Location: ict_equipment.php?message=' . urlencode($result['message']) . '&message_type=success');
-            exit;
-        } else {
-            $message = $result['message'];
-            $message_type = 'error';
-        }
-    }
-    elseif (isset($_POST['delete_equipment'])) {
-        $result = deleteEquipment($db);
-        if ($result['success']) {
-            header('Location: ict_equipment.php?message=' . urlencode($result['message']) . '&message_type=success');
-            exit;
-        } else {
-            $message = $result['message'];
-            $message_type = 'error';
-        }
-    }
-    elseif (isset($_POST['assign_equipment'])) {
-        $result = assignEquipment($db);
-        if ($result['success']) {
-            header('Location: ict_equipment.php?message=' . urlencode($result['message']) . '&message_type=success');
-            exit;
-        } else {
-            $message = $result['message'];
-            $message_type = 'error';
-        }
-    }
-    elseif (isset($_POST['unassign_equipment'])) {
-        $result = unassignEquipment($db);
-        if ($result['success']) {
-            header('Location: ict_equipment.php?message=' . urlencode($result['message']) . '&message_type=success');
-            exit;
-        } else {
-            $message = $result['message'];
-            $message_type = 'error';
-        }
-    }
-}
-
-function addEquipment($db) {
-    if (!hasPermission('manage_ict_equipment')) {
-        return ['success' => false, 'message' => 'Permission denied'];
-    }
-    
-    $asset_tag = $_POST['asset_tag'] ?? '';
-    $equipment_name = $_POST['equipment_name'] ?? '';
-    $category_id = $_POST['category_id'] ?? '';
-    $brand = $_POST['brand'] ?? '';
-    $model = $_POST['model'] ?? '';
-    $serial_number = $_POST['serial_number'] ?? '';
-    $specifications = $_POST['specifications'] ?? '';
-    $condition = $_POST['condition'] ?? 'Good';
-    $status = $_POST['status'] ?? 'Available';
-    $created_by = $_SESSION['emp_id'] ?? 0; // Get the logged-in user's ID
-    
-    // Validate required fields
-    if (empty($asset_tag) || empty($equipment_name) || empty($category_id) || empty($serial_number)) {
-        return ['success' => false, 'message' => 'All required fields must be filled'];
-    }
-    
-    // Check if asset tag or serial number already exists
-    $check_query = "SELECT equipment_id FROM ict_equipment WHERE asset_tag = ? OR serial_number = ?";
-    $check_stmt = $db->prepare($check_query);
-    $check_stmt->bind_param("ss", $asset_tag, $serial_number);
-    $check_stmt->execute();
-    $check_result = $check_stmt->get_result();
-    
-    if ($check_result->num_rows > 0) {
-        return ['success' => false, 'message' => 'Asset tag or serial number already exists'];
-    }
-    
-    // Check if created_by employee exists
-    $check_emp_query = "SELECT emp_id FROM employee WHERE emp_id = ?";
-    $check_emp_stmt = $db->prepare($check_emp_query);
-    $check_emp_stmt->bind_param("i", $created_by);
-    $check_emp_stmt->execute();
-    $check_emp_result = $check_emp_stmt->get_result();
-    
-    if ($check_emp_result->num_rows === 0) {
-        return ['success' => false, 'message' => 'Invalid user session. Please log in again.'];
-    }
-    
-    // Updated query without the problematic fields
-    $query = "INSERT INTO ict_equipment (asset_tag, equipment_name, category_id, brand, model, serial_number, specifications, `condition`, status, created_by) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("ssissssssi", $asset_tag, $equipment_name, $category_id, $brand, $model, $serial_number, $specifications, $condition, $status, $created_by);
-    
-    if ($stmt->execute()) {
-        return ['success' => true, 'message' => 'Equipment added successfully'];
-    } else {
-        return ['success' => false, 'message' => 'Failed to add equipment: ' . $db->error];
-    }
-}
-
-function editEquipment($db) {
-    if (!hasPermission('manage_ict_equipment')) {
-        return ['success' => false, 'message' => 'Permission denied'];
-    }
-    
-    $equipment_id = $_POST['equipment_id'] ?? '';
-    $asset_tag = $_POST['asset_tag'] ?? '';
-    $equipment_name = $_POST['equipment_name'] ?? '';
-    $category_id = $_POST['category_id'] ?? '';
-    $brand = $_POST['brand'] ?? '';
-    $model = $_POST['model'] ?? '';
-    $serial_number = $_POST['serial_number'] ?? '';
-    $specifications = $_POST['specifications'] ?? '';
-    $condition = $_POST['condition'] ?? 'Good';
-    $status = $_POST['status'] ?? 'Available';
-    
-    // Validate required fields
-    if (empty($asset_tag) || empty($equipment_name) || empty($category_id) || empty($serial_number)) {
-        return ['success' => false, 'message' => 'All required fields must be filled'];
-    }
-    
-    // Check if asset tag or serial number already exists (excluding current equipment)
-    $check_query = "SELECT equipment_id FROM ict_equipment WHERE (asset_tag = ? OR serial_number = ?) AND equipment_id != ?";
-    $check_stmt = $db->prepare($check_query);
-    $check_stmt->bind_param("ssi", $asset_tag, $serial_number, $equipment_id);
-    $check_stmt->execute();
-    $check_result = $check_stmt->get_result();
-    
-    if ($check_result->num_rows > 0) {
-        return ['success' => false, 'message' => 'Asset tag or serial number already exists'];
-    }
-    
-    // Updated query without the problematic fields
-    $query = "UPDATE ict_equipment SET asset_tag = ?, equipment_name = ?, category_id = ?, brand = ?, model = ?, serial_number = ?, specifications = ?, `condition` = ?, status = ? WHERE equipment_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("ssissssssi", $asset_tag, $equipment_name, $category_id, $brand, $model, $serial_number, $specifications, $condition, $status, $equipment_id);
-    
-    if ($stmt->execute()) {
-        return ['success' => true, 'message' => 'Equipment updated successfully'];
-    } else {
-        return ['success' => false, 'message' => 'Failed to update equipment: ' . $db->error];
-    }
-}
-
-function deleteEquipment($db) {
-    if (!hasPermission('manage_ict_equipment')) {
-        return ['success' => false, 'message' => 'Permission denied'];
-    }
-    
-    $equipment_id = $_POST['equipment_id'] ?? '';
-    
-    if (empty($equipment_id)) {
-        return ['success' => false, 'message' => 'Equipment ID is required'];
-    }
-    
-    // Check if equipment exists
-    $check_query = "SELECT equipment_name, asset_tag FROM ict_equipment WHERE equipment_id = ?";
-    $check_stmt = $db->prepare($check_query);
-    $check_stmt->bind_param("i", $equipment_id);
-    $check_stmt->execute();
-    $check_result = $check_stmt->get_result();
-    
-    if ($check_result->num_rows === 0) {
-        return ['success' => false, 'message' => 'Equipment not found'];
-    }
-    
-    $equipment = $check_result->fetch_assoc();
-    
-    // First, unassign the equipment if it's assigned
-    $unassign_query = "UPDATE ict_equipment SET assigned_to = NULL, status = 'Available', assigned_date = NULL WHERE equipment_id = ?";
-    $unassign_stmt = $db->prepare($unassign_query);
-    $unassign_stmt->bind_param("i", $equipment_id);
-    $unassign_stmt->execute();
-    
-    // Then delete the equipment
-    $query = "DELETE FROM ict_equipment WHERE equipment_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("i", $equipment_id);
-    
-    if ($stmt->execute()) {
-        return ['success' => true, 'message' => 'Equipment deleted successfully'];
-    } else {
-        return ['success' => false, 'message' => 'Failed to delete equipment: ' . $db->error];
-    }
-}
-
-// Rest of your code remains the same...
-// Handle filters and get equipment list
-$status_filter = $_GET['status'] ?? '';
-$category_filter = $_GET['category'] ?? '';
-$search = $_GET['search'] ?? '';
-
-// Build query
-$query = "SELECT e.*, c.category_name, emp.first_name, emp.last_name, emp.picture 
-          FROM ict_equipment e 
-          LEFT JOIN ict_equipment_categories c ON e.category_id = c.category_id 
-          LEFT JOIN employee emp ON e.assigned_to = emp.emp_id 
-          WHERE 1=1";
-
-$params = [];
-$types = '';
-
-if (!empty($status_filter)) {
-    $query .= " AND e.status = ?";
-    $params[] = $status_filter;
-    $types .= 's';
-}
-
-if (!empty($category_filter)) {
-    $query .= " AND e.category_id = ?";
-    $params[] = $category_filter;
-    $types .= 'i';
-}
-
-if (!empty($search)) {
-    $query .= " AND (e.asset_tag LIKE ? OR e.serial_number LIKE ? OR e.equipment_name LIKE ? OR e.brand LIKE ?)";
-    $search_term = "%$search%";
-    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term]);
-    $types .= 'ssss';
-}
-
-$query .= " ORDER BY e.created_at DESC";
-
-$stmt = $db->prepare($query);
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
-$stmt->execute();
-$result = $stmt->get_result();
-$equipment = $result->fetch_all(MYSQLI_ASSOC);
-
-// Get categories for filter and forms
-$categories_result = $db->query("SELECT * FROM ict_equipment_categories ORDER BY category_name");
-$categories = $categories_result->fetch_all(MYSQLI_ASSOC);
-
-function assignEquipment($db) {
-    if (!hasPermission('manage_ict_equipment')) {
-        return ['success' => false, 'message' => 'Permission denied'];
-    }
-    
-    $equipment_id = $_POST['equipment_id'] ?? '';
-    $assigned_to = $_POST['assigned_to'] ?? '';
-    $assignment_notes = $_POST['assignment_notes'] ?? '';
-    
-    if (empty($equipment_id) || empty($assigned_to)) {
-        return ['success' => false, 'message' => 'Equipment ID and employee are required'];
-    }
-    
-    // Check if equipment exists and get current status
-    $check_equipment_query = "SELECT equipment_id, status, asset_tag FROM ict_equipment WHERE equipment_id = ?";
-    $check_equipment_stmt = $db->prepare($check_equipment_query);
-    $check_equipment_stmt->bind_param("i", $equipment_id);
-    $check_equipment_stmt->execute();
-    $check_equipment_result = $check_equipment_stmt->get_result();
-    
-    if ($check_equipment_result->num_rows === 0) {
-        return ['success' => false, 'message' => 'Equipment not found'];
-    }
-    
-    $equipment = $check_equipment_result->fetch_assoc();
-    
-    // Allow assignment only if status is Available
-    if ($equipment['status'] !== 'Available') {
-        return ['success' => false, 'message' => "Equipment is not available for assignment. Current status: {$equipment['status']}"];
-    }
-    
-    // Check if employee exists
-    $check_emp_query = "SELECT emp_id, first_name, last_name FROM employee WHERE emp_id = ?";
-    $check_emp_stmt = $db->prepare($check_emp_query);
-    $check_emp_stmt->bind_param("i", $assigned_to);
-    $check_emp_stmt->execute();
-    $check_emp_result = $check_emp_stmt->get_result();
-    
-    if ($check_emp_result->num_rows === 0) {
-        return ['success' => false, 'message' => 'Employee not found'];
-    }
-    
-    // Update equipment assignment
-    $query = "UPDATE ict_equipment SET assigned_to = ?, status = 'Assigned', assigned_date = NOW() WHERE equipment_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("ii", $assigned_to, $equipment_id);
-    
-    if ($stmt->execute()) {
-        // Log the assignment (with error handling for missing table)
-        try {
-            $log_query = "INSERT INTO ict_equipment_logs (equipment_id, action, action_by, notes) VALUES (?, 'Assigned', ?, ?)";
-            $log_stmt = $db->prepare($log_query);
-            if ($log_stmt) {
-                $log_stmt->bind_param("iis", $equipment_id, $_SESSION['emp_id'], $assignment_notes);
-                $log_stmt->execute();
-            }
-        } catch (Exception $e) {
-            // Log table doesn't exist, but continue with the assignment
-            error_log("ICT Equipment Logs table not found: " . $e->getMessage());
-        }
-        
-        return ['success' => true, 'message' => 'Equipment assigned successfully'];
-    } else {
-        return ['success' => false, 'message' => 'Failed to assign equipment: ' . $db->error];
-    }
-}
-
-function unassignEquipment($db) {
-    if (!hasPermission('manage_ict_equipment')) {
-        return ['success' => false, 'message' => 'Permission denied'];
-    }
-    
-    $equipment_id = $_POST['equipment_id'] ?? '';
-    
-    if (empty($equipment_id)) {
-        return ['success' => false, 'message' => 'Equipment ID is required'];
-    }
-    
-    // Check if equipment exists and is assigned
-    $check_equipment_query = "SELECT equipment_id, status, assigned_to FROM ict_equipment WHERE equipment_id = ?";
-    $check_equipment_stmt = $db->prepare($check_equipment_query);
-    $check_equipment_stmt->bind_param("i", $equipment_id);
-    $check_equipment_stmt->execute();
-    $check_equipment_result = $check_equipment_stmt->get_result();
-    
-    if ($check_equipment_result->num_rows === 0) {
-        return ['success' => false, 'message' => 'Equipment not found'];
-    }
-    
-    $equipment = $check_equipment_result->fetch_assoc();
-    if ($equipment['status'] !== 'Assigned') {
-        return ['success' => false, 'message' => 'Equipment is not currently assigned'];
-    }
-    
-    // Get assigned employee info for logging
-    $emp_query = "SELECT first_name, last_name FROM employee WHERE emp_id = ?";
-    $emp_stmt = $db->prepare($emp_query);
-    $emp_stmt->bind_param("i", $equipment['assigned_to']);
-    $emp_stmt->execute();
-    $emp_result = $emp_stmt->get_result();
-    $employee = $emp_result->fetch_assoc();
-    
-    // Update equipment to unassign
-    $query = "UPDATE ict_equipment SET assigned_to = NULL, status = 'Available', assigned_date = NULL WHERE equipment_id = ?";
-    $stmt = $db->prepare($query);
-    $stmt->bind_param("i", $equipment_id);
-    
-    if ($stmt->execute()) {
-        // Log the unassignment
-try {
-    $employee_name = $employee ? $employee['first_name'] . ' ' . $employee['last_name'] : 'Unknown';
-    $log_notes = "Unassigned from " . $employee_name;
-
-    $log_query = "INSERT INTO ict_equipment_logs (equipment_id, action, action_by, notes) VALUES (?, 'Unassigned', ?, ?)";
-    $log_stmt = $db->prepare($log_query);
-    if ($log_stmt) {
-        $log_stmt->bind_param("iis", $equipment_id, $_SESSION['emp_id'], $log_notes);
-        $log_stmt->execute();
-    }
-} catch (Exception $e) {
-    // Log table doesn't exist, but continue with the unassignment
-    error_log("ICT Equipment Logs table not found: " . $e->getMessage());
-}
-        
-        return ['success' => true, 'message' => 'Equipment unassigned successfully'];
-    } else {
-        return ['success' => false, 'message' => 'Failed to unassign equipment: ' . $db->error];
-    }
-}
-
+$categories = $db->query("SELECT * FROM ict_categories ORDER BY category_name");
+$offices    = $db->query("SELECT office_id, office_name FROM office ORDER BY office_name");
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ICT Equipment - NIA ACIMO</title>
-    <?php include '../includes/header.php'; ?>
-    <style>
-        /* Ensure buttons are properly styled and clickable */
-        .btn-sm {
-            margin: 2px;
-        }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIA-ACIMO | Equipment Inventory</title>
+<?php include '../includes/header.php'; ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS — Light Mode
+═══════════════════════════════════════════════════ */
+:root {
+  --rr-bg:          #f0f4f8;
+  --rr-surface:     #ffffff;
+  --rr-surface-2:   #f8fafc;
+  --rr-border:      #e2e8f0;
+  --rr-border-sub:  #f1f5f9;
+  --rr-text:        #0f172a;
+  --rr-text-2:      #475569;
+  --rr-text-muted:  #94a3b8;
+  --rr-primary:     #2563eb;
+  --rr-primary-dk:  #1d4ed8;
+  --rr-primary-lt:  #eff6ff;
+  --rr-accent:      #06b6d4;
+  --rr-success:     #10b981;
+  --rr-warning:     #f59e0b;
+  --rr-danger:      #ef4444;
+  --rr-purple:      #7c3aed;
+  --rr-cyan:        #0891b2;
+  --rr-shadow-sm:   0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --rr-shadow:      0 4px 16px rgba(0,0,0,.08);
+  --rr-shadow-lg:   0 12px 40px rgba(0,0,0,.14);
+  --rr-radius-sm:   6px;
+  --rr-radius:      12px;
+  --rr-radius-lg:   18px;
+  --rr-font:        'DM Sans',sans-serif;
+  --rr-font-h:      'Syne',sans-serif;
+}
+body.dark-mode {
+  --rr-bg:         #0f172a;
+  --rr-surface:    #1e293b;
+  --rr-surface-2:  #162032;
+  --rr-border:     #334155;
+  --rr-border-sub: #1e293b;
+  --rr-text:       #f1f5f9;
+  --rr-text-2:     #94a3b8;
+  --rr-text-muted: #64748b;
+  --rr-primary-lt: rgba(37,99,235,.18);
+  --rr-shadow-sm:  0 1px 3px rgba(0,0,0,.3);
+  --rr-shadow:     0 4px 20px rgba(0,0,0,.4);
+  --rr-shadow-lg:  0 12px 40px rgba(0,0,0,.5);
+}
+body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-font)!important; }
+.content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
 
-        .edit-equipment, 
-        .assign-equipment, 
-        .unassign-equipment {
-            cursor: pointer;
-        }
+/* ═══ HERO ═══ */
+@keyframes meshDrift  { 0%{transform:translate(0,0) rotate(0)} 100%{transform:translate(3%,2%) rotate(2deg)} }
+@keyframes orbFloat   { 0%,100%{opacity:.4;transform:translate(0,0) scale(1)} 33%{opacity:.7;transform:translate(18px,-26px) scale(1.05)} 66%{opacity:.5;transform:translate(-12px,16px) scale(.95)} }
+.pg-hero { background:#0b1f17;padding:36px 28px 66px;position:relative;overflow:hidden; }
+.pg-hero-mesh { position:absolute;inset:-50%;width:200%;height:200%;z-index:0;
+  background:radial-gradient(ellipse 60% 55% at 18% 28%,rgba(36,231,143,.16) 0%,transparent 58%),
+             radial-gradient(ellipse 55% 60% at 82% 72%,rgba(42,152,99,.13) 0%,transparent 58%),
+             linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+  animation:meshDrift 22s ease-in-out infinite alternate; }
+.pg-hero-orbs { position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden; }
+.pg-orb { position:absolute;border-radius:50%;filter:blur(60px);animation:orbFloat 18s ease-in-out infinite; }
+.pg-orb-1 { width:280px;height:280px;background:rgba(36,231,143,.11);top:-80px;left:-60px;animation-duration:21s; }
+.pg-orb-2 { width:220px;height:220px;background:rgba(42,152,99,.10);bottom:-50px;right:-40px;animation-delay:-7s;animation-duration:17s; }
+.pg-hero-dots { position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(36,231,143,.06) 1px,transparent 1px);background-size:36px 36px; }
+.pg-hero::after { content:'';position:absolute;bottom:-32px;left:0;right:0;height:64px;
+  background:var(--rr-bg);clip-path:ellipse(58% 100% at 50% 100%);z-index:1; }
+.pg-hero-inner { position:relative;z-index:2; }
+.pg-hero-title { color:#fff;font-size:1.75rem;font-weight:800;margin:0 0 6px;letter-spacing:-.3px;
+  text-shadow:0 2px 14px rgba(0,0,0,.45);display:flex;align-items:center;gap:10px; }
+.pg-hero-sub   { color:rgba(212,245,229,.75);margin:0 0 14px;font-size:.9rem; }
+.pg-hero-divider { width:48px;height:2px;border-radius:2px;margin:0 0 12px;
+  background:linear-gradient(90deg,transparent,#24e78f,transparent); }
+.pg-hero-actions { position:relative;z-index:2;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:4px; }
+.pg-hero-btn {
+  background:rgba(36,231,143,.1);backdrop-filter:blur(8px);
+  border:1px solid rgba(36,231,143,.3);color:#d4f5e5;
+  border-radius:10px;padding:8px 18px;font-size:.84rem;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:all .2s;text-decoration:none;
+}
+.pg-hero-btn:hover { background:rgba(36,231,143,.22);border-color:rgba(36,231,143,.55);
+  transform:translateY(-2px);box-shadow:0 4px 16px rgba(36,231,143,.2);color:#d4f5e5;text-decoration:none; }
 
-        /* Ensure modals are properly positioned */
-        .modal {
-            z-index: 1050;
-        }
+/* ═══ CARDS ═══ */
+.card {
+  background:var(--rr-surface)!important;border:1px solid var(--rr-border)!important;
+  border-radius:var(--rr-radius-lg)!important;box-shadow:var(--rr-shadow-sm)!important;
+  transition:box-shadow .2s;
+}
+.card:hover { box-shadow:var(--rr-shadow)!important; }
+.card-header {
+  background:var(--rr-surface)!important;border-bottom:1px solid var(--rr-border-sub)!important;
+  padding:1rem 1.25rem!important;display:flex;align-items:center;gap:.6rem;
+}
+.card-header::before { content:'';display:inline-block;width:4px;height:18px;border-radius:4px;
+  background:linear-gradient(160deg,var(--rr-primary),var(--rr-accent));flex-shrink:0; }
+.card-header .card-title,.card-header h3 {
+  font-family:var(--rr-font-h);font-size:.95rem!important;font-weight:700!important;
+  color:var(--rr-text)!important;letter-spacing:-.01em;margin:0!important;
+}
+.card-body { background:var(--rr-surface)!important; }
 
-        .modal-backdrop {
-            z-index: 1040;
-        }
-        .specifications-content {
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            border: 1px solid #dee2e6;
-        }
+/* ═══ BADGES ═══ */
+.badge { border-radius:20px!important;font-size:.7rem!important;font-weight:700!important;padding:.3em .75em!important; }
 
-        .table-borderless td {
-            border: none !important;
-            padding: 4px 8px;
-        }
+/* ═══ FORMS ═══ */
+.form-group label { font-size:.76rem;font-weight:700;color:var(--rr-text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;display:block; }
+.form-control {
+  background:var(--rr-surface-2)!important;border:1.5px solid var(--rr-border)!important;
+  border-radius:var(--rr-radius-sm)!important;color:var(--rr-text)!important;
+  font-family:var(--rr-font)!important;font-size:.875rem!important;padding:.5rem .75rem!important;
+  transition:border-color .15s,box-shadow .15s;
+}
+.form-control:focus { border-color:var(--rr-primary)!important;box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;background:var(--rr-surface)!important; }
+textarea.form-control { resize:vertical;min-height:80px; }
+select.form-control option { background:var(--rr-surface);color:var(--rr-text); }
 
-        .table-borderless td:first-child {
-            width: 40%;
-            font-weight: 500;
-        }
-    </style>
+/* ═══ BUTTONS ═══ */
+.btn { font-family:var(--rr-font)!important;font-weight:600!important;font-size:.84rem!important;border-radius:var(--rr-radius-sm)!important;transition:all .18s!important; }
+.btn-primary   { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;color:#fff!important;box-shadow:0 2px 8px rgba(37,99,235,.3)!important; }
+.btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,.4)!important; }
+.btn-success   { background:linear-gradient(135deg,var(--rr-success),#059669)!important;border:none!important;color:#fff!important; }
+.btn-danger    { background:linear-gradient(135deg,var(--rr-danger),#dc2626)!important;border:none!important;color:#fff!important; }
+.btn-warning   { background:linear-gradient(135deg,var(--rr-warning),#d97706)!important;border:none!important;color:#fff!important; }
+.btn-info      { background:linear-gradient(135deg,var(--rr-cyan),#0e7490)!important;border:none!important;color:#fff!important; }
+.btn-secondary { background:var(--rr-surface-2)!important;border:1.5px solid var(--rr-border)!important;color:var(--rr-text-2)!important; }
+.btn-secondary:hover { background:var(--rr-border)!important;color:var(--rr-text)!important; }
+.btn-xs { font-size:.72rem!important;padding:.25rem .55rem!important; }
+
+/* ═══ MODALS ═══ */
+.modal-content { border:none!important;border-radius:var(--rr-radius-lg)!important;box-shadow:var(--rr-shadow-lg)!important;overflow:hidden;background:var(--rr-surface)!important; }
+.modal-header { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;padding:1.1rem 1.5rem!important; }
+.modal-title  { font-family:var(--rr-font-h)!important;font-weight:700!important;font-size:1rem!important;color:#fff!important; }
+.modal-header .close { color:rgba(255,255,255,.8)!important;text-shadow:none!important;font-size:1.4rem; }
+.modal-body  { padding:1.5rem!important;background:var(--rr-surface)!important; }
+.modal-footer { padding:1rem 1.5rem!important;border-top:1px solid var(--rr-border-sub)!important;background:var(--rr-surface-2)!important;display:flex;gap:.5rem;flex-wrap:wrap; }
+#qrLabelArea { padding:8px 0; }
+#qrCodeCanvas canvas, #qrCodeCanvas img { border-radius:var(--rr-radius-sm); }
+
+/* ═══ TABLES ═══ */
+.table { font-size:.85rem;color:var(--rr-text); }
+.table thead th { background:var(--rr-surface-2)!important;border-bottom:2px solid var(--rr-border)!important;font-weight:700;font-size:.73rem;text-transform:uppercase;letter-spacing:.07em;color:var(--rr-text-muted)!important;padding:.75rem 1rem;white-space:nowrap; }
+.table tbody td { padding:.65rem 1rem;border-color:var(--rr-border-sub)!important;vertical-align:middle;color:var(--rr-text); }
+.table-hover tbody tr:hover td { background:var(--rr-primary-lt)!important; }
+body.dark-mode .table-hover tbody tr:hover td { background:rgba(37,99,235,.1)!important; }
+div.dataTables_wrapper div.dataTables_length select,
+div.dataTables_wrapper div.dataTables_filter input {
+  border:1.5px solid var(--rr-border)!important;border-radius:var(--rr-radius-sm)!important;
+  padding:.3rem .6rem;font-size:.82rem;font-family:var(--rr-font);
+  background:var(--rr-surface-2)!important;color:var(--rr-text)!important;
+}
+div.dataTables_wrapper div.dataTables_info,
+div.dataTables_wrapper .dataTables_length label,
+div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr-text-muted);font-family:var(--rr-font); }
+.paginate_button { border-radius:var(--rr-radius-sm)!important;font-size:.8rem!important; }
+.paginate_button.current { background:var(--rr-primary)!important;border-color:var(--rr-primary)!important;color:#fff!important; }
+</style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
-    <?php include '../includes/mainheader.php'; ?>
-    <?php include '../includes/sidebar_ict.php'; ?>
+<?php include '../includes/mainheader.php'; ?>
+<?php include '../includes/sidebar_ict.php'; ?>
 
-    <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>ICT Equipment</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="ict_inventory.php">ICT Inventory</a></li>
-                            <li class="breadcrumb-item active">Equipment</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-        </section>
+<div class="content-wrapper">
 
-        <section class="content">
-            <div class="container-fluid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Filters</h3>
-                    </div>
-                    <div class="card-body">
-                        <form method="GET" class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Status</label>
-                                    <select name="status" class="form-control">
-                                        <option value="">All Status</option>
-                                        <option value="Available" <?= $status_filter == 'Available' ? 'selected' : '' ?>>Available</option>
-                                        <option value="Assigned" <?= $status_filter == 'Assigned' ? 'selected' : '' ?>>Assigned</option>
-                                        <option value="Under Maintenance" <?= $status_filter == 'Under Maintenance' ? 'selected' : '' ?>>Under Maintenance</option>
-                                        <option value="Retired" <?= $status_filter == 'Retired' ? 'selected' : '' ?>>Retired</option>
-                                        <option value="Lost" <?= $status_filter == 'Lost' ? 'selected' : '' ?>>Lost</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Category</label>
-                                    <select name="category" class="form-control">
-                                        <option value="">All Categories</option>
-                                        <?php foreach ($categories as $category): ?>
-                                            <option value="<?= $category['category_id'] ?>" <?= $category_filter == $category['category_id'] ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($category['category_name']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>Search</label>
-                                    <input type="text" name="search" class="form-control" placeholder="Search by asset tag, serial, name..." value="<?= htmlspecialchars($search) ?>">
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <button type="submit" class="btn btn-primary btn-block">Filter</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Equipment List -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Equipment List</h3>
-                        <?php if (hasPermission('manage_ict_equipment')): ?>
-                        <div class="card-tools">
-                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addEquipmentModal">
-                                <i class="fas fa-plus"></i> Add Equipment
-                            </button>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Asset Tag</th>
-                                        <th>Equipment</th>
-                                        <th>Category</th>
-                                        <th>Serial Number</th>
-                                        <th>Assigned To</th>
-                                        <th>Status</th>
-                                        <th>Condition</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($equipment)): ?>
-                                        <tr>
-                                            <td colspan="8" class="text-center">No equipment found</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($equipment as $item): ?>
-                                            <tr>
-                                                <td><?= htmlspecialchars($item['asset_tag']) ?></td>
-                                                <td>
-                                                    <strong><?= htmlspecialchars($item['equipment_name']) ?></strong><br>
-                                                    <small class="text-muted"><?= htmlspecialchars($item['brand'] . ' ' . $item['model']) ?></small>
-                                                </td>
-                                                <td><?= htmlspecialchars($item['category_name']) ?></td>
-                                                <td><?= htmlspecialchars($item['serial_number']) ?></td>
-                                                <td>
-                                                    <?php if ($item['assigned_to']): ?>
-                                                        <div class="d-flex align-items-center">
-                                                            <?php if (!empty($item['picture'])): ?>
-                                                                <img src="../dist/img/employees/<?= $item['picture'] ?>" class="img-circle elevation-2" width="30" height="30" style="margin-right: 10px;">
-                                                            <?php else: ?>
-                                                                <img src="../dist/img/nialogo.png" class="img-circle elevation-2" width="30" height="30" style="margin-right: 10px;">
-                                                            <?php endif; ?>
-                                                            <?= htmlspecialchars($item['first_name'] . ' ' . $item['last_name']) ?>
-                                                        </div>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">Not assigned</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <span class="badge badge-<?= 
-                                                        $item['status'] == 'Available' ? 'success' : 
-                                                        ($item['status'] == 'Assigned' ? 'primary' : 
-                                                        ($item['status'] == 'Under Maintenance' ? 'warning' : 
-                                                        ($item['status'] == 'Retired' ? 'secondary' : 'danger'))) ?>">
-                                                        <?= $item['status'] ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge badge-<?= 
-                                                        $item['condition'] == 'Excellent' ? 'success' : 
-                                                        ($item['condition'] == 'Good' ? 'primary' : 
-                                                        ($item['condition'] == 'Fair' ? 'warning' : 'danger')) ?>">
-                                                        <?= $item['condition'] ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <button type="button" class="btn btn-info btn-sm view-equipment" 
-                                                            data-id="<?= $item['equipment_id'] ?>">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    
-                                                    <!-- Assignment buttons based on current status -->
-                                                    <?php if ($item['status'] == 'Available'): ?>
-                                                        <button type="button" class="btn btn-success btn-sm assign-equipment" 
-                                                                data-id="<?= $item['equipment_id'] ?>"
-                                                                data-equipment-name="<?= htmlspecialchars($item['equipment_name']) ?>"
-                                                                data-asset-tag="<?= htmlspecialchars($item['asset_tag']) ?>">
-                                                            <i class="fas fa-user-check"></i> Assign
-                                                        </button>
-                                                    <?php elseif ($item['status'] == 'Assigned'): ?>
-                                                        <button type="button" class="btn btn-warning btn-sm unassign-equipment" 
-                                                                data-id="<?= $item['equipment_id'] ?>"
-                                                                data-equipment-name="<?= htmlspecialchars($item['equipment_name']) ?>"
-                                                                data-asset-tag="<?= htmlspecialchars($item['asset_tag']) ?>"
-                                                                data-assigned-to="<?= htmlspecialchars($item['first_name'] . ' ' . $item['last_name']) ?>">
-                                                            <i class="fas fa-user-times"></i> Unassign
-                                                        </button>
-                                                    <?php endif; ?>
-                                                    
-                                                    <button type="button" class="btn btn-danger btn-sm delete-equipment" 
-                                                            data-id="<?= $item['equipment_id'] ?>"
-                                                            data-name="<?= htmlspecialchars($item['equipment_name']) ?>"
-                                                            data-asset-tag="<?= htmlspecialchars($item['asset_tag']) ?>">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- ── Hero ──────────────────────────────────────────────── -->
+  <div class="pg-hero">
+    <div class="pg-hero-mesh"></div>
+    <div class="pg-hero-orbs">
+      <div class="pg-orb pg-orb-1"></div>
+      <div class="pg-orb pg-orb-2"></div>
     </div>
+    <div class="pg-hero-dots"></div>
+    <div class="pg-hero-inner">
+      <h1 class="pg-hero-title"><i class="fas fa-boxes-stacked"></i> Equipment Inventory</h1>
+      <p class="pg-hero-sub">Track every asset — specs, custodianship, condition, and QR labels — in one place.</p>
+      <div class="pg-hero-divider"></div>
+      <?php if ($can_manage): ?>
+      <div class="pg-hero-actions">
+        <button class="pg-hero-btn" id="btnAddEquipment"><i class="fas fa-plus"></i> Add Equipment</button>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
 
-    <?php include '../includes/mainfooter.php'; ?>
+  <!-- ── Content ───────────────────────────────────────────── -->
+  <section class="content">
+    <div class="card mt-4">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-list mr-1"></i> Inventory List</h3></div>
+      <div class="card-body">
+        <table id="equipmentTable" class="table table-bordered table-striped" style="width:100%">
+          <thead>
+            <tr>
+              <th>Asset Tag</th>
+              <th>Equipment</th>
+              <th>Category</th>
+              <th>Brand / Model</th>
+              <th>Serial No.</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<?php include '../includes/footer.php'; ?>
+</div>
+<?php include '../includes/mainfooter.php'; ?>
+
+<!-- Add / Edit Equipment Modal -->
+<div class="modal fade" id="equipmentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="equipmentForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="equipmentModalTitle"><i class="fas fa-desktop mr-2"></i>Add Equipment</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="eq_id">
+          <div class="row">
+            <div class="col-md-6 form-group">
+              <label>Equipment Name *</label>
+              <input type="text" class="form-control" name="equipment_name" id="eq_name" required>
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Category</label>
+              <select class="form-control" name="category_id" id="eq_category">
+                <option value="">-- Select Category --</option>
+                <?php foreach ($categories as $c): ?>
+                  <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['category_name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Brand</label>
+              <input type="text" class="form-control" name="brand" id="eq_brand">
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Model</label>
+              <input type="text" class="form-control" name="model" id="eq_model">
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Serial Number</label>
+              <input type="text" class="form-control" name="serial_number" id="eq_serial">
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Custodian Office</label>
+              <select class="form-control" name="office_id" id="eq_office">
+                <option value="">-- Select Office --</option>
+                <?php foreach ($offices as $o): ?>
+                  <option value="<?= $o['office_id'] ?>"><?= htmlspecialchars($o['office_name']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Date Acquired</label>
+              <input type="date" class="form-control" name="date_acquired" id="eq_date_acquired">
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Acquisition Cost</label>
+              <input type="number" step="0.01" class="form-control" name="acquisition_cost" id="eq_cost">
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Supplier</label>
+              <input type="text" class="form-control" name="supplier" id="eq_supplier">
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Condition</label>
+              <select class="form-control" name="condition_status" id="eq_condition">
+                <option>New</option><option selected>Good</option><option>Fair</option><option>Poor</option><option>Defective</option>
+              </select>
+            </div>
+            <div class="col-md-6 form-group">
+              <label>Status</label>
+              <select class="form-control" name="status" id="eq_status">
+                <option selected>Available</option><option>Assigned</option><option>Under Repair</option><option>Retired</option><option>Lost</option>
+              </select>
+            </div>
+            <div class="col-md-12 form-group">
+              <label>Specifications</label>
+              <textarea class="form-control" name="specifications" id="eq_specs" rows="2"></textarea>
+            </div>
+            <div class="col-md-12 form-group">
+              <label>Remarks</label>
+              <textarea class="form-control" name="remarks" id="eq_remarks" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Save Equipment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-qrcode mr-2"></i>Equipment QR Label</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body text-center" id="qrLabelArea">
+        <div id="qrCodeCanvas" class="d-flex justify-content-center mb-2"></div>
+        <h5 id="qrAssetTag" class="mb-0"></h5>
+        <p id="qrEquipmentName" class="text-muted"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-success" id="btnDownloadQr"><i class="fas fa-download"></i> Download QR</button>
+        <button type="button" class="btn btn-primary" id="btnPrintQr"><i class="fas fa-print"></i> Print Label</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-    $(document).ready(function() {
-        // View Equipment - Populate modal
-        $(document).on('click', '.view-equipment', function() {
-            const id = $(this).data('id');
-            
-            // Show loading state
-            // $('#viewEquipmentModal .modal-body').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading equipment details...</div>');
-            $('#viewEquipmentModal').modal('show');
-            
-            // AJAX call to get equipment details
-            $.ajax({
-                url: 'get_equipment_details.php',
-                type: 'GET',
-                data: { equipment_id: id },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        const equipment = response.data;
-                        
-                        // Populate basic information
-                        $('#view_asset_tag').text(equipment.asset_tag);
-                        $('#view_equipment_name').text(equipment.equipment_name);
-                        $('#view_category').text(equipment.category_name);
-                        $('#view_brand').text(equipment.brand || 'N/A');
-                        $('#view_model').text(equipment.model || 'N/A');
-                        $('#view_serial_number').text(equipment.serial_number);
-                        
-                        // Populate status and condition with badges
-                        $('#view_status').text(equipment.status).removeClass().addClass('badge badge-' + 
-                            (equipment.status == 'Available' ? 'success' : 
-                            equipment.status == 'Assigned' ? 'primary' : 
-                            equipment.status == 'Under Maintenance' ? 'warning' : 
-                            equipment.status == 'Retired' ? 'secondary' : 'danger'));
-                        
-                        $('#view_condition').text(equipment.condition).removeClass().addClass('badge badge-' + 
-                            (equipment.condition == 'Excellent' ? 'success' : 
-                            equipment.condition == 'Good' ? 'primary' : 
-                            equipment.condition == 'Fair' ? 'warning' : 'danger'));
-                        
-                        // Populate assignment info
-                        if (equipment.assigned_to) {
-                            $('#view_assigned_to').html(
-                                '<div class="d-flex align-items-center">' +
-                                (equipment.picture ? '<img src="../dist/img/employees/' + equipment.picture + '" class="img-circle elevation-2" width="30" height="30" style="margin-right: 10px;">' : '') +
-                                equipment.first_name + ' ' + equipment.last_name +
-                                '</div>'
-                            );
-                            $('#view_assigned_date').text(equipment.assigned_date ? new Date(equipment.assigned_date).toLocaleDateString() : 'N/A');
-                        } else {
-                            $('#view_assigned_to').html('<span class="text-muted">Not assigned</span>');
-                            $('#view_assigned_date').text('N/A');
-                        }
-                        
-                        // Populate creation info
-                        $('#view_created_by').text(equipment.creator_name || 'System');
-                        $('#view_created_date').text(new Date(equipment.created_at).toLocaleDateString());
-                        
-                        // Populate specifications
-                        if (equipment.specifications) {
-                            $('#view_specifications').html(equipment.specifications.replace(/\n/g, '<br>'));
-                        } else {
-                            $('#view_specifications').html('<span class="text-muted">No specifications provided</span>');
-                        }
-                        
-                        // Load equipment history
-                        loadEquipmentHistory(id);
-                        
-                        // Set up edit button
-                        $('#editFromViewBtn').off('click').on('click', function() {
-                            $('#viewEquipmentModal').modal('hide');
-                            
-                            // Populate edit modal with current data
-                            $('#edit_equipment_id').val(equipment.equipment_id);
-                            $('#edit_asset_tag').val(equipment.asset_tag);
-                            $('#edit_equipment_name').val(equipment.equipment_name);
-                            $('#edit_category_id').val(equipment.category_id);
-                            $('#edit_brand').val(equipment.brand || '');
-                            $('#edit_model').val(equipment.model || '');
-                            $('#edit_serial_number').val(equipment.serial_number);
-                            $('#edit_specifications').val(equipment.specifications || '');
-                            $('#edit_condition').val(equipment.condition);
-                            $('#edit_status').val(equipment.status);
-                            
-                            $('#editEquipmentModal').modal('show');
-                        });
-                        
-                    } else {
-                        $('#viewEquipmentModal .modal-body').html(
-                            '<div class="alert alert-danger">Error loading equipment details: ' + response.message + '</div>'
-                        );
-                    }
-                },
-                error: function(xhr, status, error) {
-                    $('#viewEquipmentModal .modal-body').html(
-                        '<div class="alert alert-danger">Error loading equipment details. Please try again.</div>'
-                    );
-                    console.error('Error loading equipment details:', error);
+const CAN_MANAGE = <?= $can_manage ? 'true' : 'false' ?>;
+// Full URL scanned devices will decode — points back to the scanner lookup
+const SCAN_BASE_URL = window.location.origin + window.location.pathname.replace('ict_equipment.php', 'ict_scanner.php');
+
+let equipmentTable;
+
+$(function() {
+    equipmentTable = $('#equipmentTable').DataTable({
+        ajax: {
+            url: 'ict_ajax.php',
+            type: 'POST',
+            data: { action: 'list_equipment' },
+            dataSrc: 'data'
+        },
+        columns: [
+            { data: 'asset_tag', render: d => `<span class="badge badge-secondary">${d}</span>` },
+            { data: 'equipment_name' },
+            { data: 'category_name', defaultContent: '-' },
+            { data: null, render: r => `${r.brand || ''} ${r.model || ''}`.trim() || '-' },
+            { data: 'serial_number', defaultContent: '-' },
+            {
+                data: 'status',
+                render: function(status) {
+                    const map = { Available: 'success', Assigned: 'warning', 'Under Repair': 'danger', Retired: 'secondary', Lost: 'dark' };
+                    return `<span class="badge badge-${map[status] || 'secondary'}">${status}</span>`;
                 }
-            });
-        });
-        
-        // Function to load equipment history
-        function loadEquipmentHistory(equipmentId) {
-            $.ajax({
-                url: 'get_equipment_history.php',
-                type: 'GET',
-                data: { equipment_id: equipmentId },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success && response.data.length > 0) {
-                        let historyHtml = '<table class="table table-sm">' +
-                            '<thead><tr><th>Date</th><th>Action</th><th>By</th><th>Notes</th></tr></thead>' +
-                            '<tbody>';
-                        
-                        response.data.forEach(function(log) {
-                            historyHtml += '<tr>' +
-                                '<td>' + new Date(log.action_date).toLocaleString() + '</td>' +
-                                '<td><span class="badge badge-' + 
-                                    (log.action === 'Assigned' ? 'primary' : 
-                                    log.action === 'Unassigned' ? 'warning' : 
-                                    log.action === 'Created' ? 'success' : 
-                                    log.action === 'Updated' ? 'info' : 'secondary') + '">' +
-                                    log.action + '</span></td>' +
-                                '<td>' + (log.action_by_name || 'System') + '</td>' +
-                                '<td>' + (log.notes || 'N/A') + '</td>' +
-                                '</tr>';
-                        });
-                        
-                        historyHtml += '</tbody></table>';
-                        $('#equipment_history').html(historyHtml);
-                    } else {
-                        $('#equipment_history').html('<p class="text-muted">No history available for this equipment.</p>');
+            },
+            { data: 'assigned_to', defaultContent: '-' },
+            {
+                data: null,
+                orderable: false,
+                render: function(row) {
+                    let btns = `<button class="btn btn-xs btn-info btnQr" data-id="${row.id}" data-tag="${row.asset_tag}" data-name="${row.equipment_name}"><i class="fas fa-qrcode"></i></button> `;
+                    if (CAN_MANAGE) {
+                        btns += `<button class="btn btn-xs btn-warning btnEdit" data-id="${row.id}"><i class="fas fa-edit"></i></button> `;
+                        btns += `<button class="btn btn-xs btn-danger btnDelete" data-id="${row.id}"><i class="fas fa-trash"></i></button>`;
                     }
-                },
-                error: function() {
-                    $('#equipment_history').html('<p class="text-muted">Error loading history.</p>');
+                    return btns;
                 }
-            });
-        }
-        
-        // Reset modal content when hidden
-        $('#viewEquipmentModal').on('hidden.bs.modal', function() {
-            $('#equipment_history').html('');
+            }
+        ]
+    });
+
+    $('#btnAddEquipment').on('click', function() {
+        $('#equipmentForm')[0].reset();
+        $('#eq_id').val('');
+        $('#equipmentModalTitle').html('<i class="fas fa-desktop mr-2"></i>Add Equipment');
+        $('#equipmentModal').modal('show');
+    });
+
+    $('#equipmentTable').on('click', '.btnEdit', function() {
+        const id = $(this).data('id');
+        $.post('ict_ajax.php', { action: 'get_equipment', id }, function(res) {
+            if (!res.success) { toastr.error('Equipment not found.'); return; }
+            const d = res.data;
+            $('#eq_id').val(d.id);
+            $('#eq_name').val(d.equipment_name);
+            $('#eq_category').val(d.category_id);
+            $('#eq_brand').val(d.brand);
+            $('#eq_model').val(d.model);
+            $('#eq_serial').val(d.serial_number);
+            $('#eq_office').val(d.office_id);
+            $('#eq_date_acquired').val(d.date_acquired);
+            $('#eq_cost').val(d.acquisition_cost);
+            $('#eq_supplier').val(d.supplier);
+            $('#eq_condition').val(d.condition_status);
+            $('#eq_status').val(d.status);
+            $('#eq_specs').val(d.specifications);
+            $('#eq_remarks').val(d.remarks);
+            $('#equipmentModalTitle').html('<i class="fas fa-edit mr-2"></i>Edit Equipment — ' + d.asset_tag);
+            $('#equipmentModal').modal('show');
+        }, 'json');
+    });
+
+    $('#equipmentForm').on('submit', function(e) {
+        e.preventDefault();
+        const data = $(this).serialize() + '&action=save_equipment';
+        $.post('ict_ajax.php', data, function(res) {
+            if (res.success) {
+                toastr.success(res.message);
+                $('#equipmentModal').modal('hide');
+                equipmentTable.ajax.reload(null, false);
+            } else {
+                toastr.error(res.message);
+            }
+        }, 'json');
+    });
+
+    $('#equipmentTable').on('click', '.btnDelete', function() {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'Delete this equipment?',
+            text: 'This cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('ict_ajax.php', { action: 'delete_equipment', id }, function(res) {
+                    if (res.success) {
+                        toastr.success(res.message);
+                        equipmentTable.ajax.reload(null, false);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                }, 'json');
+            }
         });
     });
 
-    $(document).ready(function() {
-        // SweetAlert for messages
-        const urlParams = new URLSearchParams(window.location.search);
-        const message = urlParams.get('message');
-        const messageType = urlParams.get('message_type');
-        
-        if (message) {
-            if (messageType === 'success') {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success',
-                    text: message,
-                    confirmButtonColor: '#28a745',
-                    timer: 3000,
-                    timerProgressBar: true
-                }).then(() => {
-                    // Remove message parameters from URL without reloading
-                    removeMessageParamsFromURL();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: message,
-                    confirmButtonColor: '#dc3545'
-                }).then(() => {
-                    // Remove message parameters from URL without reloading
-                    removeMessageParamsFromURL();
-                });
-            }
-        }
-
-        // Function to remove message parameters from URL
-        function removeMessageParamsFromURL() {
-            const url = new URL(window.location);
-            url.searchParams.delete('message');
-            url.searchParams.delete('message_type');
-            window.history.replaceState({}, '', url.toString());
-        }
-
-        
-
-        // View Equipment - Populate modal
-        $(document).on('click', '.view-equipment', function() {
-            const id = $(this).data('id');
-            
-            // Show loading state
-            // $('#viewEquipmentModal .modal-body').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading equipment details...</div>');
-            $('#viewEquipmentModal').modal('show');
-            
-            // AJAX call to get equipment details - Handle both JSON and HTML responses
-            $.ajax({
-                url: 'get_equipment_details.php',
-                type: 'GET',
-                data: { equipment_id: id },
-                dataType: 'text', // Change to text to handle both JSON and HTML
-                success: function(response) {
-                    try {
-                        // Try to parse as JSON first
-                        const jsonResponse = JSON.parse(response);
-                        if (jsonResponse.success) {
-                            const equipment = jsonResponse.data;
-                            populateEquipmentDetails(equipment);
-                            loadEquipmentHistory(id);
-                        } else {
-                            $('#viewEquipmentModal .modal-body').html(
-                                '<div class="alert alert-danger">Error loading equipment details: ' + jsonResponse.message + '</div>'
-                            );
-                        }
-                    } catch (e) {
-                        // If parsing fails, assume it's HTML and display directly
-                        $('#viewEquipmentModal .modal-body').html(response);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    $('#viewEquipmentModal .modal-body').html(
-                        '<div class="alert alert-danger">Error loading equipment details. Please try again.</div>'
-                    );
-                    console.error('Error loading equipment details:', error);
-                }
-            });
+    // QR code generation — encodes a scannable URL back to the scanner page
+    $('#equipmentTable').on('click', '.btnQr', function() {
+        const tag = $(this).data('tag');
+        const name = $(this).data('name');
+        $('#qrCodeCanvas').empty();
+        $('#qrAssetTag').text(tag);
+        $('#qrEquipmentName').text(name);
+        new QRCode(document.getElementById('qrCodeCanvas'), {
+            text: SCAN_BASE_URL + '?tag=' + encodeURIComponent(tag),
+            width: 180,
+            height: 180
         });
-
-        // Function to populate equipment details from JSON data
-        function populateEquipmentDetails(equipment) {
-            // Populate basic information
-            $('#view_asset_tag').text(equipment.asset_tag);
-            $('#view_equipment_name').text(equipment.equipment_name);
-            $('#view_category').text(equipment.category_name);
-            $('#view_brand').text(equipment.brand || 'N/A');
-            $('#view_model').text(equipment.model || 'N/A');
-            $('#view_serial_number').text(equipment.serial_number);
-            
-            // Populate status and condition with badges
-            $('#view_status').text(equipment.status).removeClass().addClass('badge badge-' + 
-                (equipment.status == 'Available' ? 'success' : 
-                equipment.status == 'Assigned' ? 'primary' : 
-                equipment.status == 'Under Maintenance' ? 'warning' : 
-                equipment.status == 'Retired' ? 'secondary' : 'danger'));
-            
-            $('#view_condition').text(equipment.condition).removeClass().addClass('badge badge-' + 
-                (equipment.condition == 'Excellent' ? 'success' : 
-                equipment.condition == 'Good' ? 'primary' : 
-                equipment.condition == 'Fair' ? 'warning' : 'danger'));
-            
-            // Populate assignment info
-            if (equipment.assigned_to) {
-                $('#view_assigned_to').html(
-                    '<div class="d-flex align-items-center">' +
-                    (equipment.picture ? '<img src="../dist/img/employees/' + equipment.picture + '" class="img-circle elevation-2" width="30" height="30" style="margin-right: 10px;">' : '') +
-                    equipment.first_name + ' ' + equipment.last_name +
-                    '</div>'
-                );
-                $('#view_assigned_date').text(equipment.assigned_date ? new Date(equipment.assigned_date).toLocaleDateString() : 'N/A');
-            } else {
-                $('#view_assigned_to').html('<span class="text-muted">Not assigned</span>');
-                $('#view_assigned_date').text('N/A');
-            }
-            
-            // Populate creation info
-            $('#view_created_by').text(equipment.creator_name || 'System');
-            $('#view_created_date').text(new Date(equipment.created_at).toLocaleDateString());
-            
-            // Populate specifications
-            if (equipment.specifications) {
-                $('#view_specifications').html(equipment.specifications.replace(/\n/g, '<br>'));
-            } else {
-                $('#view_specifications').html('<span class="text-muted">No specifications provided</span>');
-            }
-            
-            // Set up edit button
-            $('#editFromViewBtn').off('click').on('click', function() {
-                $('#viewEquipmentModal').modal('hide');
-                
-                // Populate edit modal with current data
-                $('#edit_equipment_id').val(equipment.equipment_id);
-                $('#edit_asset_tag').val(equipment.asset_tag);
-                $('#edit_equipment_name').val(equipment.equipment_name);
-                $('#edit_category_id').val(equipment.category_id);
-                $('#edit_brand').val(equipment.brand || '');
-                $('#edit_model').val(equipment.model || '');
-                $('#edit_serial_number').val(equipment.serial_number);
-                $('#edit_specifications').val(equipment.specifications || '');
-                $('#edit_condition').val(equipment.condition);
-                $('#edit_status').val(equipment.status);
-                
-                $('#editEquipmentModal').modal('show');
-            });
-        }
-
-        // Function to load equipment history
-        function loadEquipmentHistory(equipmentId) {
-            $.ajax({
-                url: 'get_equipment_history.php',
-                type: 'GET',
-                data: { equipment_id: equipmentId },
-                dataType: 'text', // Change to text to handle both JSON and HTML
-                success: function(response) {
-                    try {
-                        // Try to parse as JSON first
-                        const jsonResponse = JSON.parse(response);
-                        if (jsonResponse.success && jsonResponse.data.length > 0) {
-                            let historyHtml = '<table class="table table-sm">' +
-                                '<thead><tr><th>Date</th><th>Action</th><th>By</th><th>Notes</th></tr></thead>' +
-                                '<tbody>';
-                            
-                            jsonResponse.data.forEach(function(log) {
-                                historyHtml += '<tr>' +
-                                    '<td>' + new Date(log.action_date).toLocaleString() + '</td>' +
-                                    '<td><span class="badge badge-' + 
-                                        (log.action === 'Assigned' ? 'primary' : 
-                                        log.action === 'Unassigned' ? 'warning' : 
-                                        log.action === 'Created' ? 'success' : 
-                                        log.action === 'Updated' ? 'info' : 'secondary') + '">' +
-                                        log.action + '</span></td>' +
-                                    '<td>' + (log.action_by_name || 'System') + '</td>' +
-                                    '<td>' + (log.notes || 'N/A') + '</td>' +
-                                    '</tr>';
-                            });
-                            
-                            historyHtml += '</tbody></table>';
-                            $('#equipment_history').html(historyHtml);
-                        } else {
-                            $('#equipment_history').html('<p class="text-muted">No history available for this equipment.</p>');
-                        }
-                    } catch (e) {
-                        // If parsing fails, assume it's HTML and display directly
-                        $('#equipment_history').html(response);
-                    }
-                },
-                error: function() {
-                    $('#equipment_history').html('<p class="text-muted">Error loading history.</p>');
-                }
-            });
-        }
-        
-        // Reset modal content when hidden
-        $('#viewEquipmentModal').on('hidden.bs.modal', function() {
-            $('#equipment_history').html('');
-        });
-
-        // Assign Equipment - Populate modal
-        $(document).on('click', '.assign-equipment', function() {
-            console.log('Assign button clicked');
-            
-            const id = $(this).data('id');
-            const equipmentName = $(this).data('equipment-name');
-            const assetTag = $(this).data('asset-tag');
-            
-            console.log('Assigning equipment ID:', id);
-            
-            $('#assign_equipment_id').val(id);
-            $('#assign_employee').val('');
-            $('#assignEquipmentModal .modal-title').text('Assign Equipment: ' + equipmentName + ' (' + assetTag + ')');
-            
-            $('#assignEquipmentModal').modal('show');
-        });
-
-        // Unassign Equipment - Populate modal
-        $(document).on('click', '.unassign-equipment', function() {
-            console.log('Unassign button clicked');
-            
-            const id = $(this).data('id');
-            const equipmentName = $(this).data('equipment-name');
-            const assetTag = $(this).data('asset-tag');
-            const assignedTo = $(this).data('assigned-to');
-            
-            console.log('Unassigning equipment ID:', id);
-            
-            $('#unassign_equipment_id').val(id);
-            $('#unassignEquipmentModal .modal-title').text('Unassign Equipment: ' + equipmentName + ' (' + assetTag + ')');
-            $('#unassign_equipment_info').html(
-                '<strong>Equipment:</strong> ' + equipmentName + ' (' + assetTag + ')<br>' +
-                '<strong>Currently assigned to:</strong> ' + assignedTo
-            );
-            
-            $('#unassignEquipmentModal').modal('show');
-        });
-
-        // Delete equipment with SweetAlert confirmation
-        $(document).on('click', '.delete-equipment', function() {
-            const equipmentId = $(this).data('id');
-            const equipmentName = $(this).data('name');
-            const assetTag = $(this).data('asset-tag');
-            
-            Swal.fire({
-                title: 'Delete Equipment?',
-                html: `<div class="text-left">
-                    <p>You are about to delete <strong>${equipmentName}</strong> (${assetTag}).</p>
-                    <div class="alert alert-warning text-sm">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>Note:</strong> Equipment can only be deleted if it has no maintenance records or history logs. 
-                        Consider retiring the equipment instead.
-                    </div>
-                    <p>This action cannot be undone!</p>
-                </div>`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel',
-                showLoaderOnConfirm: true,
-                preConfirm: () => {
-                    return new Promise((resolve) => {
-                        // Create and submit delete form
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.style.display = 'none';
-                        
-                        const equipmentIdInput = document.createElement('input');
-                        equipmentIdInput.type = 'hidden';
-                        equipmentIdInput.name = 'equipment_id';
-                        equipmentIdInput.value = equipmentId;
-                        
-                        const deleteInput = document.createElement('input');
-                        deleteInput.type = 'hidden';
-                        deleteInput.name = 'delete_equipment';
-                        deleteInput.value = '1';
-                        
-                        form.appendChild(equipmentIdInput);
-                        form.appendChild(deleteInput);
-                        document.body.appendChild(form);
-                        form.submit();
-                        
-                        resolve();
-                    });
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // The form submission will handle the redirect
-                }
-            });
-        });
-
-        // Auto-refresh page after successful form submissions
-        $('form').not('.no-refresh').on('submit', function(e) {
-            const form = this;
-            
-            // Use setTimeout to allow the form to submit first
-            setTimeout(function() {
-                // Only refresh if we're still on the same page
-                if (window.location.href.indexOf('ict_equipment.php') > -1) {
-                    window.location.reload();
-                }
-            }, 1000);
-        });
+        $('#qrModal').modal('show');
     });
+
+    // Download QR — exports the on-screen QR canvas as a PNG file
+    $('#btnDownloadQr').on('click', function() {
+        const canvas = document.querySelector('#qrCodeCanvas canvas');
+        if (!canvas) {
+            toastr.error('QR code is not ready yet. Please try again.');
+            return;
+        }
+        const tag = ($('#qrAssetTag').text().trim() || 'equipment-qr').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const link = document.createElement('a');
+        link.download = tag + '.png';
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    $('#btnPrintQr').on('click', function() {
+        const printContents = document.getElementById('qrLabelArea').innerHTML;
+        const w = window.open('', '', 'width=400,height=500');
+        w.document.write(`<html><head><title>Print Label</title>
+            <style>body{font-family:sans-serif;text-align:center;padding-top:30px;} img,canvas{margin:auto;}</style>
+            </head><body>${printContents}</body></html>`);
+        w.document.close();
+        w.focus();
+        setTimeout(() => { w.print(); w.close(); }, 300);
+    });
+});
 </script>
-<?php include '../includes/footer.php'; ?>
-
-<!-- View Equipment Modal -->
-<div class="modal fade" id="viewEquipmentModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Equipment Details</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-info">
-                                <h6 class="card-title">Basic Information</h6>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-sm table-borderless">
-                                    <tr>
-                                        <td><strong>Asset Tag:</strong></td>
-                                        <td id="view_asset_tag"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Equipment Name:</strong></td>
-                                        <td id="view_equipment_name"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Category:</strong></td>
-                                        <td id="view_category"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Brand:</strong></td>
-                                        <td id="view_brand"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Model:</strong></td>
-                                        <td id="view_model"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Serial Number:</strong></td>
-                                        <td id="view_serial_number"></td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-info">
-                                <h6 class="card-title">Status & Assignment</h6>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-sm table-borderless">
-                                    <tr>
-                                        <td><strong>Status:</strong></td>
-                                        <td><span id="view_status" class="badge"></span></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Condition:</strong></td>
-                                        <td><span id="view_condition" class="badge"></span></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Assigned To:</strong></td>
-                                        <td id="view_assigned_to"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Assigned Date:</strong></td>
-                                        <td id="view_assigned_date"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Created By:</strong></td>
-                                        <td id="view_created_by"></td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Created Date:</strong></td>
-                                        <td id="view_created_date"></td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title">Specifications</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="view_specifications" class="specifications-content"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Equipment History -->
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title">Equipment History</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="equipment_history" class="table-responsive">
-                                    <!-- History will be loaded here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <?php if (hasPermission('manage_ict_equipment')): ?>
-                <button type="button" class="btn btn-primary" id="editFromViewBtn">
-                    <i class="fas fa-edit"></i> Edit Equipment
-                </button>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Equipment Modal -->
-<div class="modal fade" id="addEquipmentModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New Equipment</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form method="POST">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Asset Tag *</label>
-                                <input type="text" name="asset_tag" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Equipment Name *</label>
-                                <input type="text" name="equipment_name" class="form-control" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Category *</label>
-                                <select name="category_id" class="form-control" required>
-                                    <option value="">Select Category</option>
-                                    <?php foreach ($categories as $category): ?>
-                                        <option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Brand</label>
-                                <input type="text" name="brand" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Model</label>
-                                <input type="text" name="model" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Serial Number *</label>
-                                <input type="text" name="serial_number" class="form-control" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Condition</label>
-                                <select name="condition" class="form-control">
-                                    <option value="Excellent">Excellent</option>
-                                    <option value="Good" selected>Good</option>
-                                    <option value="Fair">Fair</option>
-                                    <option value="Poor">Poor</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select name="status" class="form-control">
-                                    <option value="Available" selected>Available</option>
-                                    <option value="Assigned">Assigned</option>
-                                    <option value="Under Maintenance">Under Maintenance</option>
-                                    <option value="Retired">Retired</option>
-                                    <option value="Lost">Lost</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Specifications</label>
-                        <textarea name="specifications" class="form-control" rows="4" placeholder="Enter technical specifications..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="add_equipment" class="btn btn-primary">Add Equipment</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Equipment Modal -->
-<div class="modal fade" id="editEquipmentModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Equipment</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form method="POST">
-                <input type="hidden" name="equipment_id" id="edit_equipment_id">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Asset Tag *</label>
-                                <input type="text" name="asset_tag" id="edit_asset_tag" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Equipment Name *</label>
-                                <input type="text" name="equipment_name" id="edit_equipment_name" class="form-control" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Category *</label>
-                                <select name="category_id" id="edit_category_id" class="form-control" required>
-                                    <option value="">Select Category</option>
-                                    <?php foreach ($categories as $category): ?>
-                                        <option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Brand</label>
-                                <input type="text" name="brand" id="edit_brand" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Model</label>
-                                <input type="text" name="model" id="edit_model" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Serial Number *</label>
-                                <input type="text" name="serial_number" id="edit_serial_number" class="form-control" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Condition</label>
-                                <select name="condition" id="edit_condition" class="form-control">
-                                    <option value="Excellent">Excellent</option>
-                                    <option value="Good">Good</option>
-                                    <option value="Fair">Fair</option>
-                                    <option value="Poor">Poor</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select name="status" id="edit_status" class="form-control">
-                                    <option value="Available">Available</option>
-                                    <option value="Assigned">Assigned</option>
-                                    <option value="Under Maintenance">Under Maintenance</option>
-                                    <option value="Retired">Retired</option>
-                                    <option value="Lost">Lost</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Specifications</label>
-                        <textarea name="specifications" id="edit_specifications" class="form-control" rows="4" placeholder="Enter technical specifications..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="edit_equipment" class="btn btn-primary">Update Equipment</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Assign Equipment Modal - Simplified Version -->
-<div class="modal fade" id="assignEquipmentModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Assign Equipment</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form method="POST">
-                <input type="hidden" name="equipment_id" id="assign_equipment_id">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Employee *</label>
-                        <select name="assigned_to" id="assign_employee" class="form-control" required>
-                            <option value="">Select Employee</option>
-                            <?php
-                            // Simple query to get active employees
-                            $employees_query = "SELECT emp_id, first_name, last_name 
-                                               FROM employee 
-                                               WHERE employment_status_id = 1 
-                                               ORDER BY first_name, last_name";
-                            $employees_result = $db->query($employees_query);
-                            
-                            if ($employees_result && $employees_result->num_rows > 0) {
-                                while ($emp = $employees_result->fetch_assoc()): ?>
-                                    <option value="<?= $emp['emp_id'] ?>">
-                                        <?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?>
-                                    </option>
-                                <?php endwhile;
-                            } else {
-                                echo '<option value="">No active employees found</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Assignment Notes</label>
-                        <textarea name="assignment_notes" class="form-control" rows="3" placeholder="Optional notes about this assignment..."></textarea>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="icon fas fa-info"></i> 
-                        This will change the equipment status to "Assigned" and record the assignment in the equipment history.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="assign_equipment" class="btn btn-primary">Assign Equipment</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Unassign Equipment Modal -->
-<div class="modal fade" id="unassignEquipmentModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Unassign Equipment</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form method="POST">
-                <input type="hidden" name="equipment_id" id="unassign_equipment_id">
-                <div class="modal-body">
-                    <p>Are you sure you want to unassign this equipment?</p>
-                    <div id="unassign_equipment_info" class="alert alert-warning">
-                        <!-- Equipment info will be populated here -->
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="icon fas fa-info"></i> 
-                        This will change the equipment status to "Available" and record the unassignment in the equipment history.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" name="unassign_equipment" class="btn btn-warning">Unassign Equipment</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 </body>
 </html>

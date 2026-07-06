@@ -74,7 +74,7 @@ if ($type === 'archive') {
                    date_forwarded AS created_at, archived_at AS updated_at
             FROM document_archive
             WHERE archive_date = ?" . ($kind ? " AND kind = ?" : "") . "
-            ORDER BY kind ASC, document_number ASC";
+            ORDER BY document_number ASC";
 
     $stmt = $db->prepare($sql);
     $kind ? $stmt->bind_param("ss", $arcDate, $kind)
@@ -95,7 +95,7 @@ if ($type === 'archive') {
             FROM document_records dr
             LEFT JOIN document_types dt ON dr.document_type_id = dt.id
             $where
-            ORDER BY dr.kind ASC, dr.date_forwarded DESC";
+            ORDER BY dr.document_number ASC";
 
     $stmt = $db->prepare($sql);
     if ($params) { $stmt->bind_param($types, ...$params); }

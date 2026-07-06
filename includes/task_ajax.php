@@ -25,8 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $project_id = $_POST['project_id'];
             $stmt = $db->prepare("
                 SELECT t.*, 
-                    e.first_name, e.last_name,
-                    creator.first_name as creator_first, creator.last_name as creator_last,
+                    e.first_name, e.last_name, e.picture as assignee_picture,
+                    creator.first_name as creator_first, creator.last_name as creator_last, creator.picture as creator_picture,
                     pb.board_name, pb.board_color
                 FROM tasks t
                 LEFT JOIN employee e ON t.assigned_to = e.emp_id
@@ -39,7 +39,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $result = $stmt->get_result();
             $tasks = $result->fetch_all(MYSQLI_ASSOC);
-            
+
+            // Fetch all assignees (multiple per task) for this project's tasks
+            $assignees_stmt = $db->prepare("
+                SELECT ta.task_id, e.emp_id, e.first_name, e.last_name, e.picture
+                FROM task_assignees ta
+                JOIN employee e ON ta.emp_id = e.emp_id
+                JOIN tasks t ON ta.task_id = t.task_id
+                WHERE t.project_id = ?
+            ");
+            $assignees_stmt->bind_param("i", $project_id);
+            $assignees_stmt->execute();
+            $assignees_result = $assignees_stmt->get_result();
+            $assigneesByTask = [];
+            while ($row = $assignees_result->fetch_assoc()) {
+                $assigneesByTask[$row['task_id']][] = $row;
+            }
+
+            foreach ($tasks as &$task) {
+                $task['assignees'] = $assigneesByTask[$task['task_id']] ?? [];
+            }
+            unset($task);
+
             echo json_encode(['success' => true, 'tasks' => $tasks]);
             break;
             
@@ -56,7 +77,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $priority = $_POST['priority'] ?? 'medium';
             $labels = isset($_POST['labels']) ? $_POST['labels'] : '';
             $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
-            $assigned_to = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+            // Support multiple assignees (sent as assigned_to[] from Select2 multi-select)
+            $assigned_to_input = $_POST['assigned_to'] ?? [];
+            if (!is_array($assigned_to_input)) {
+                $assigned_to_input = $assigned_to_input === '' ? [] : [$assigned_to_input];
+            }
+            $assignee_ids = array_values(array_unique(array_filter(array_map('intval', $assigned_to_input), function($v) {
+                return $v > 0;
+            })));
+            // Keep legacy single-value column in sync (first selected assignee, or null)
+            $assigned_to = !empty($assignee_ids) ? $assignee_ids[0] : null;
             $created_by = (int)$_POST['created_by'];
             
             // Get board details to determine status
@@ -80,7 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("isssssssii", $project_id, $title, $description, $board_id, $status, $priority, $labels, $due_date, $assigned_to, $created_by);
                 
                 if ($stmt->execute()) {
-                    echo json_encode(['success' => true, 'task_id' => $db->insert_id]);
+                    $new_task_id = $db->insert_id;
+
+                    // Save the (possibly multiple) assignees
+                    if (!empty($assignee_ids)) {
+                        $assignee_stmt = $db->prepare("INSERT INTO task_assignees (task_id, emp_id) VALUES (?, ?)");
+                        foreach ($assignee_ids as $emp_id) {
+                            $assignee_stmt->bind_param("ii", $new_task_id, $emp_id);
+                            $assignee_stmt->execute();
+                        }
+                    }
+
+                    echo json_encode(['success' => true, 'task_id' => $new_task_id]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Database error: ' . $stmt->error]);
                 }
@@ -170,7 +211,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $priority = $_POST['priority'] ?? 'medium';
             $labels = isset($_POST['labels']) ? $_POST['labels'] : '';
             $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
-            $assigned_to = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+            // Support multiple assignees (sent as assigned_to[] from Select2 multi-select)
+            $assigned_to_input = $_POST['assigned_to'] ?? [];
+            if (!is_array($assigned_to_input)) {
+                $assigned_to_input = $assigned_to_input === '' ? [] : [$assigned_to_input];
+            }
+            $assignee_ids = array_values(array_unique(array_filter(array_map('intval', $assigned_to_input), function($v) {
+                return $v > 0;
+            })));
+            // Keep legacy single-value column in sync (first selected assignee, or null)
+            $assigned_to = !empty($assignee_ids) ? $assignee_ids[0] : null;
             
             // Get board details
             $board_stmt = $db->prepare("SELECT board_name FROM project_boards WHERE board_id = ?");
@@ -193,6 +243,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("sssssssii", $title, $description, $board_id, $status, $priority, $labels, $due_date, $assigned_to, $task_id);
                 
                 if ($stmt->execute()) {
+                    // Sync the task_assignees table to match the new selection
+                    $del_stmt = $db->prepare("DELETE FROM task_assignees WHERE task_id = ?");
+                    $del_stmt->bind_param("i", $task_id);
+                    $del_stmt->execute();
+
+                    if (!empty($assignee_ids)) {
+                        $assignee_stmt = $db->prepare("INSERT INTO task_assignees (task_id, emp_id) VALUES (?, ?)");
+                        foreach ($assignee_ids as $emp_id) {
+                            $assignee_stmt->bind_param("ii", $task_id, $emp_id);
+                            $assignee_stmt->execute();
+                        }
+                    }
+
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Database error: ' . $stmt->error]);
@@ -204,7 +267,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         case 'delete_task':
             $task_id = (int)$_POST['task_id'];
-            
+
+            $del_assignees = $db->prepare("DELETE FROM task_assignees WHERE task_id = ?");
+            $del_assignees->bind_param("i", $task_id);
+            $del_assignees->execute();
+
             $stmt = $db->prepare("DELETE FROM tasks WHERE task_id = ?");
             $stmt->bind_param("i", $task_id);
             
@@ -220,4 +287,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else {
     echo json_encode(['success' => false, 'error' => 'Invalid request method']);
 }
-?>
+?> 

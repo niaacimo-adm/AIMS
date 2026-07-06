@@ -87,7 +87,7 @@ if ($employee_id) {
                         </a>
                     </div>
                     <div class="col-6">
-                        <a href="ict_inventory.php" class="app-item" data-theme="ict">
+                        <a href="ict_dashboard.php" class="app-item" data-theme="ict">
                             <div class="app-icon">
                                 <i class="fas fa-desktop"></i>
                             </div>

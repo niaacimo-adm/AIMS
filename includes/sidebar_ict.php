@@ -12,23 +12,26 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 // Get employee data if user is logged in
 $employee_name = '';
-$employee_picture = '../dist/img/user2-160x160.jpg';
+$employee_picture = '../dist/img/user2-160x160.jpg'; // Default image
 $employee_id = $_SESSION['emp_id'] ?? null;
 
 if ($employee_id) {
+    // Database connection
     $database = new Database();
     $db = $database->getConnection();
-    
+
+    // Query to get employee name and picture
     $query = "SELECT first_name, last_name, picture FROM employee WHERE emp_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("i", $employee_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows > 0) {
         $employee_data = $result->fetch_assoc();
         $employee_name = htmlspecialchars($employee_data['first_name'] . ' ' . $employee_data['last_name']);
-        
+
+        // Check if picture exists
         if (!empty($employee_data['picture'])) {
             $picture_path = '../dist/img/employees/' . $employee_data['picture'];
             if (file_exists($picture_path)) {
@@ -37,19 +40,97 @@ if ($employee_id) {
         }
     }
 }
-?>
 
+// Quick badge: how many equipment items currently need attention (Under Repair)
+$repair_count = 0;
+if ($employee_id) {
+    $rq = $db->query("SELECT COUNT(*) AS c FROM ict_equipment WHERE status = 'Under Repair'");
+    if ($rq) { $repair_count = (int) $rq->fetch_assoc()['c']; }
+}
+?>
+<style>
+/* Make sidebar a flex column with fixed height */
+.main-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 250px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* Brand logo stays at top */
+.brand-link {
+    flex-shrink: 0 !important;
+}
+
+/* Sidebar content becomes scrollable */
+.sidebar {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 20px !important;
+}
+
+/* Keep existing styles */
+.sidebar-dark-primary {
+    background-color: var(--sidebar-bg) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
+    color: var(--sidebar-text) !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-active-text) !important;
+    border-left: 4px solid rgba(255,255,255,0.5);
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: var(--sidebar-hover-bg) !important;
+    color: white !important;
+}
+.brand-link.bg-gradient-primary {
+    background: var(--sidebar-brand-bg) !important;
+}
+.nav-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1rem;
+}
+
+/* Custom scrollbar for better appearance */
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: var(--sidebar-bg);
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #4aad7a;
+    border-radius: 5px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #24e78f;
+}
+</style>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="ict_inventory.php" class="brand-link bg-gradient-primary">
+    <a href="ict_dashboard.php" class="brand-link bg-gradient-primary">
       <img src="../dist/img/employees/2020-nia-logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text font-weight-light"><b>NIA-ACIMO</b> </span>
+      <span class="brand-text font-weight-light"><b>ICT</b> Equipment</span>
     </a>
 
     <!-- Sidebar -->
     <div class="sidebar" style="background-color: var(--sidebar-bg) !important;">
-        <!-- Sidebar user panel (optional) -->
-        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+      <!-- Sidebar user panel -->
+      <div class="user-panel mt-3 pb-3 mb-3 d-flex">
         <div class="image">
           <img src="<?= $employee_picture ?>" class="img-circle elevation-2" alt="User Image">
         </div>
@@ -65,150 +146,68 @@ if ($employee_id) {
         </div>
       </div>
 
-        <!-- Sidebar Menu -->
-        <nav class="mt-2">
-            <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
-                <li class="nav-item">
-                    <a href="ict_inventory.php" class="nav-link <?= $current_page == 'ict_inventory.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-tachometer-alt"></i>
-                        <p>Dashboard</p>
-                    </a>
-                </li>
-                
-                <?php if (hasPermission('manage_ict_equipment')): ?>
-                <li class="nav-header text-light border-bottom pb-2 mt-3">EQUIPMENT MANAGEMENT</li>
-                <li class="nav-item">
-                    <a href="ict_equipment.php" class="nav-link <?= $current_page == 'ict_equipment.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-laptop"></i>
-                        <p>All Equipment</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="ict_categories.php" class="nav-link <?= $current_page == 'ict_categories.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-tags"></i>
-                        <p>Categories</p>
-                    </a>
-                </li>
+      <!-- Sidebar Menu -->
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
+
+          <li class="nav-header text-light border-bottom pb-2 mt-3">ICT EQUIPMENT</li>
+
+          <?php if (hasPermission('view_ict_equipment') || hasPermission('manage_ict_maintenance')): ?>
+          <li class="nav-item">
+            <a href="ict_dashboard.php" class="nav-link <?= $current_page == 'ict_dashboard.php' ? 'active' : 'text-white' ?>">
+              <i class="nav-icon fas fa-tachometer-alt"></i>
+              <p>ICT Dashboard</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="ict_equipment.php" class="nav-link <?= $current_page == 'ict_equipment.php' ? 'active' : 'text-white' ?>">
+              <i class="nav-icon fas fa-desktop"></i>
+              <p>Equipment Inventory</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="ict_assignments.php" class="nav-link <?= $current_page == 'ict_assignments.php' ? 'active' : 'text-white' ?>">
+              <i class="nav-icon fas fa-user-tag"></i>
+              <p>Assign / Return</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="ict_scanner.php" class="nav-link <?= $current_page == 'ict_scanner.php' ? 'active' : 'text-white' ?>">
+              <i class="nav-icon fas fa-qrcode"></i>
+              <p>QR Scanner</p>
+            </a>
+          </li>
+          <?php endif; ?>
+
+          <?php if (hasPermission('manage_ict_maintenance')): ?>
+          <li class="nav-item">
+            <a href="ict_maintenance.php" class="nav-link <?= $current_page == 'ict_maintenance.php' ? 'active' : 'text-white' ?>">
+              <i class="nav-icon fas fa-tools"></i>
+              <p>
+                Maintenance Logs
+                <?php if ($repair_count > 0): ?>
+                  <span class="badge badge-warning right"><?= $repair_count ?></span>
                 <?php endif; ?>
+              </p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="ict_categories.php" class="nav-link <?= $current_page == 'ict_categories.php' ? 'active' : 'text-white' ?>">
+              <i class="nav-icon fas fa-sitemap"></i>
+              <p>Categories</p>
+            </a>
+          </li>
+          <?php endif; ?>
 
-                <!-- MAINTENANCE MANAGEMENT SECTION -->
-                <li class="nav-header text-light border-bottom pb-2 mt-3">MAINTENANCE</li>
-                
-                <!-- Employee Maintenance (Visible to all employees) -->
-                <li class="nav-item">
-                    <a href="ict_maintenance.php" class="nav-link <?= $current_page == 'ict_maintenance.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-tools"></i>
-                        <p>My Maintenance Requests</p>
-                    </a>
-                </li>
-
-                <!-- Maintenance Management (Visible to ICT staff) -->
-                <?php if (hasPermission('manage_ict_maintenance')): ?>
-                <li class="nav-item">
-                    <a href="ict_maintenance_management.php" class="nav-link <?= $current_page == 'ict_maintenance_management.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-cogs"></i>
-                        <p>Maintenance Management</p>
-                    </a>
-                </li>
-                <?php endif; ?>
-
-                <li class="nav-header text-light border-bottom pb-2 mt-3">MY EQUIPMENT</li>
-                <li class="nav-item">
-                    <a href="ict_my_equipment.php" class="nav-link <?= $current_page == 'ict_my_equipment.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-desktop"></i>
-                        <p>Assigned Equipment</p>
-                    </a>
-                </li>
-
-                <?php if (hasPermission('view_ict_reports')): ?>
-                <li class="nav-header text-light border-bottom pb-2 mt-3">REPORTS</li>
-                <li class="nav-item">
-                    <a href="ict_reports.php" class="nav-link <?= $current_page == 'ict_reports.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-chart-bar"></i>
-                        <p>Reports & Analytics</p>
-                    </a>
-                </li>
-                <?php endif; ?>
-            </ul>
-        </nav>
+        </ul>
+      </nav>
     </div>
 </aside>
-<style>
-/*
- * Sidebar styles are driven by CSS variables defined in mainheader.php.
- * Light / dark mode is toggled globally — no per-module colours.
- */
-
-/* =========================================================
-   DARK MODE OVERRIDES — applied via body.dark-mode
-   ========================================================= */
-body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; border-color: var(--card-border) !important; }
-body.dark-mode .card-body { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-footer { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .modal-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
-body.dark-mode .modal-body { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .modal-footer { background: var(--modal-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .table { background: var(--table-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
-body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
-body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
-body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
-body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #24e78f !important; box-shadow: 0 0 0 0.2rem rgba(36,231,143,.20) !important; }
-body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
-body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
-body.dark-mode .text-muted { color: var(--text-muted) !important; }
-body.dark-mode .text-dark { color: var(--text-primary) !important; }
-body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 { color: var(--text-primary) !important; }
-body.dark-mode p, body.dark-mode span:not(.badge) { color: var(--text-primary); }
-body.dark-mode .breadcrumb { background: var(--card-bg) !important; }
-body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
-body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
-body.dark-mode .nav-tabs .nav-link { color: var(--text-muted) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs .nav-link.active { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs { border-color: var(--card-border) !important; }
-body.dark-mode .tab-content, body.dark-mode .tab-pane { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .accordion .card { background: var(--card-bg) !important; }
-body.dark-mode .accordion .card-header { background: var(--table-stripe) !important; }
-body.dark-mode .list-group-item { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
-body.dark-mode .dropdown-item { color: var(--dropdown-color) !important; }
-body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
-body.dark-mode .alert { border-color: var(--card-border) !important; }
-body.dark-mode .alert-info { background: #1e2f3e !important; color: #93c5fd !important; }
-body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
-body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
-body.dark-mode .alert-danger { background: #2e1515 !important; color: #fca5a5 !important; }
-body.dark-mode .page-item .page-link { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .page-item.active .page-link { background: var(--sidebar-active-bg) !important; border-color: var(--sidebar-active-bg) !important; }
-body.dark-mode hr { border-color: var(--card-border) !important; }
-body.dark-mode .dataTables_wrapper { color: var(--text-primary) !important; }
-body.dark-mode .dataTables_filter input, body.dark-mode .dataTables_length select { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .dataTables_info { color: var(--text-muted) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection__rendered { color: var(--input-color) !important; }
-body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
-body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
-
-body.dark-mode .sidebar { background-color: var(--sidebar-bg) !important; }
-body.dark-mode aside.main-sidebar { background-color: var(--sidebar-bg) !important; }
-.brand-link.bg-gradient-primary {
-    background: #1a5c38 !important;
-}
-</style>
 <script>
 $(document).ready(function() {
-    // Sidebar loads — dark mode already applied by mainheader CSS variables.
-    // Re-apply dark mode class in case this page loaded fresh.
-    if (localStorage.getItem('darkMode') === '1') {
-        $('body').addClass('dark-mode');
+    localStorage.setItem('currentTheme', 'ict');
+    if (window.parent && window.parent.setTheme) {
+        window.parent.setTheme('ict');
     }
 });
 </script>

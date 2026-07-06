@@ -4,17 +4,18 @@ require_once '../config/database.php';
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 if (!isset($_SESSION['emp_id'])) { header('Location: ../login.php'); exit; }
-if (!hasPermission('manage_ict_maintenance')) {
+if (!hasPermission('view_ict_equipment') && !hasPermission('manage_ict_maintenance')) {
     header('Location: dashboard.php');
     exit;
 }
+$can_manage = hasPermission('manage_ict_maintenance');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NIA-ACIMO | Equipment Categories</title>
+<title>NIA-ACIMO | Assign / Return Equipment</title>
 <?php include '../includes/header.php'; ?>
 <style>
 /* ═══════════════════════════════════════════════════
@@ -44,7 +45,6 @@ if (!hasPermission('manage_ict_maintenance')) {
   --rr-radius-lg:   18px;
   --rr-font:        'DM Sans',sans-serif;
   --rr-font-h:      'Syne',sans-serif;
-  --ic-blue-bg:#dbeafe; --ic-blue-fg:var(--rr-primary);
 }
 body.dark-mode {
   --rr-bg:         #0f172a;
@@ -59,7 +59,6 @@ body.dark-mode {
   --rr-shadow-sm:  0 1px 3px rgba(0,0,0,.3);
   --rr-shadow:     0 4px 20px rgba(0,0,0,.4);
   --rr-shadow-lg:  0 12px 40px rgba(0,0,0,.5);
-  --ic-blue-bg:rgba(37,99,235,.18); --ic-blue-fg:#93c5fd;
 }
 body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-font)!important; }
 .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
@@ -116,9 +115,8 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
 }
 .card-body { background:var(--rr-surface)!important; }
 
-/* ═══ CATEGORY ICON CHIP ═══ */
-.cat-icon-chip { width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
-  background:var(--ic-blue-bg);color:var(--ic-blue-fg);font-size:1rem; }
+/* ═══ BADGES ═══ */
+.badge { border-radius:20px!important;font-size:.7rem!important;font-weight:700!important;padding:.3em .75em!important; }
 
 /* ═══ FORMS ═══ */
 .form-group label { font-size:.76rem;font-weight:700;color:var(--rr-text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;display:block; }
@@ -129,13 +127,14 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
   transition:border-color .15s,box-shadow .15s;
 }
 .form-control:focus { border-color:var(--rr-primary)!important;box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;background:var(--rr-surface)!important; }
+textarea.form-control { resize:vertical;min-height:80px; }
+select.form-control option { background:var(--rr-surface);color:var(--rr-text); }
 
 /* ═══ BUTTONS ═══ */
 .btn { font-family:var(--rr-font)!important;font-weight:600!important;font-size:.84rem!important;border-radius:var(--rr-radius-sm)!important;transition:all .18s!important; }
 .btn-primary   { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;color:#fff!important;box-shadow:0 2px 8px rgba(37,99,235,.3)!important; }
 .btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,.4)!important; }
-.btn-danger    { background:linear-gradient(135deg,var(--rr-danger),#dc2626)!important;border:none!important;color:#fff!important; }
-.btn-warning   { background:linear-gradient(135deg,var(--rr-warning),#d97706)!important;border:none!important;color:#fff!important; }
+.btn-success   { background:linear-gradient(135deg,var(--rr-success),#059669)!important;border:none!important;color:#fff!important; }
 .btn-secondary { background:var(--rr-surface-2)!important;border:1.5px solid var(--rr-border)!important;color:var(--rr-text-2)!important; }
 .btn-secondary:hover { background:var(--rr-border)!important;color:var(--rr-text)!important; }
 .btn-xs { font-size:.72rem!important;padding:.25rem .55rem!important; }
@@ -184,22 +183,35 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
     </div>
     <div class="pg-hero-dots"></div>
     <div class="pg-hero-inner">
-      <h1 class="pg-hero-title"><i class="fas fa-tags"></i> Equipment Categories</h1>
-      <p class="pg-hero-sub">Organize inventory into categories for easier tracking and reporting.</p>
+      <h1 class="pg-hero-title"><i class="fas fa-user-tag"></i> Assign / Return Equipment</h1>
+      <p class="pg-hero-sub">Issue equipment to employees and process returns with condition tracking.</p>
       <div class="pg-hero-divider"></div>
+      <?php if ($can_manage): ?>
       <div class="pg-hero-actions">
-        <button class="pg-hero-btn" id="btnAddCategory"><i class="fas fa-plus"></i> Add Category</button>
+        <button class="pg-hero-btn" id="btnAssign"><i class="fas fa-user-tag"></i> Assign Equipment</button>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 
   <!-- ── Content ───────────────────────────────────────────── -->
   <section class="content">
     <div class="card mt-4">
-      <div class="card-header"><h3 class="card-title"><i class="fas fa-list mr-1"></i> Category List</h3></div>
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-clipboard-list mr-1"></i> Assignment Records</h3></div>
       <div class="card-body">
-        <table id="categoryTable" class="table table-bordered table-striped" style="width:100%">
-          <thead><tr><th width="60">Icon</th><th>Category Name</th><th width="150">Actions</th></tr></thead>
+        <table id="assignmentsTable" class="table table-bordered table-striped" style="width:100%">
+          <thead>
+            <tr>
+              <th>Asset Tag</th>
+              <th>Equipment</th>
+              <th>Employee</th>
+              <th>Assigned Date</th>
+              <th>Expected Return</th>
+              <th>Returned Date</th>
+              <th>Status</th>
+              <?php if ($can_manage): ?><th>Actions</th><?php endif; ?>
+            </tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -211,29 +223,85 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 </div>
 <?php include '../includes/mainfooter.php'; ?>
 
-<div class="modal fade" id="categoryModal" tabindex="-1">
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form id="categoryForm">
-        <input type="hidden" name="id" id="cat_id">
+      <form id="assignForm">
         <div class="modal-header">
-          <h5 class="modal-title" id="categoryModalTitle"><i class="fas fa-tag mr-2"></i>Add Category</h5>
+          <h5 class="modal-title"><i class="fas fa-user-tag mr-2"></i>Assign Equipment</h5>
           <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label>Category Name *</label>
-            <input type="text" class="form-control" name="category_name" id="cat_name" required>
+            <label>Equipment (Available only) *</label>
+            <select class="form-control" name="equipment_id" id="assign_equipment" required>
+              <option value="">-- Select Equipment --</option>
+            </select>
           </div>
           <div class="form-group">
-            <label>Font Awesome Icon Class</label>
-            <input type="text" class="form-control" name="icon" id="cat_icon" placeholder="e.g. fa-laptop">
-            <small class="text-muted">See fontawesome.com/icons — enter the class without "fas".</small>
+            <label>Employee *</label>
+            <select class="form-control" name="employee_id" id="assign_employee" required>
+              <option value="">-- Select Employee --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Expected Return Date (optional)</label>
+            <input type="date" class="form-control" name="expected_return_date">
+          </div>
+          <div class="form-group">
+            <label>Condition Upon Assignment</label>
+            <select class="form-control" name="condition_on_assign">
+              <option selected>Good</option><option>New</option><option>Fair</option><option>Poor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Remarks</label>
+            <textarea class="form-control" name="remarks" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Save</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check mr-1"></i>Assign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Return Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="returnForm">
+        <input type="hidden" name="assignment_id" id="return_assignment_id">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-undo mr-2"></i>Return Equipment</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Condition Upon Return</label>
+            <select class="form-control" name="condition_on_return">
+              <option selected>Good</option><option>Fair</option><option>Poor</option><option>Defective</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Set Equipment Status To</label>
+            <select class="form-control" name="new_status">
+              <option selected>Available</option>
+              <option value="Under Repair">Under Repair</option>
+              <option value="Retired">Retired</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Remarks</label>
+            <textarea class="form-control" name="remarks" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="fas fa-check mr-1"></i>Confirm Return</button>
         </div>
       </form>
     </div>
@@ -241,69 +309,89 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 </div>
 
 <script>
-let categoryTable;
+const CAN_MANAGE = <?= $can_manage ? 'true' : 'false' ?>;
+let assignmentsTable;
+
+function buildColumns() {
+    const cols = [
+        { data: 'asset_tag', render: d => `<span class="badge badge-secondary">${d}</span>` },
+        { data: 'equipment_name' },
+        { data: 'employee_name' },
+        { data: 'assigned_date' },
+        { data: 'expected_return_date', defaultContent: '-' },
+        { data: 'returned_date', defaultContent: '-' },
+        {
+            data: 'status',
+            render: s => `<span class="badge badge-${s === 'Assigned' ? 'warning' : 'success'}">${s}</span>`
+        }
+    ];
+    if (CAN_MANAGE) {
+        cols.push({
+            data: null,
+            orderable: false,
+            render: function(row) {
+                if (row.status === 'Assigned') {
+                    return `<button class="btn btn-xs btn-success btnReturn" data-id="${row.id}"><i class="fas fa-undo"></i> Return</button>`;
+                }
+                return '-';
+            }
+        });
+    }
+    return cols;
+}
 
 $(function() {
-    categoryTable = $('#categoryTable').DataTable({
-        ajax: { url: 'ict_ajax.php', type: 'POST', data: { action: 'get_categories' }, dataSrc: 'data' },
-        columns: [
-            { data: 'icon', render: i => `<div class="cat-icon-chip"><i class="fas ${i}"></i></div>` },
-            { data: 'category_name' },
-            {
-                data: null,
-                orderable: false,
-                render: row => `
-                    <button class="btn btn-xs btn-warning btnEditCat" data-id="${row.id}" data-name="${row.category_name}" data-icon="${row.icon}"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-xs btn-danger btnDeleteCat" data-id="${row.id}"><i class="fas fa-trash"></i></button>`
-            }
-        ]
+    assignmentsTable = $('#assignmentsTable').DataTable({
+        ajax: { url: 'ict_ajax.php', type: 'POST', data: { action: 'list_assignments' }, dataSrc: 'data' },
+        columns: buildColumns()
     });
 
-    $('#btnAddCategory').on('click', function() {
-        $('#categoryForm')[0].reset();
-        $('#cat_id').val('');
-        $('#categoryModalTitle').html('<i class="fas fa-tag mr-2"></i>Add Category');
-        $('#categoryModal').modal('show');
+    $('#btnAssign').on('click', function() {
+        $('#assignForm')[0].reset();
+        $.post('ict_ajax.php', { action: 'get_available_equipment' }, function(res) {
+            let opts = '<option value="">-- Select Equipment --</option>';
+            res.data.forEach(e => {
+                opts += `<option value="${e.id}">${e.asset_tag} — ${e.equipment_name} ${e.brand || ''} ${e.model || ''}</option>`;
+            });
+            $('#assign_equipment').html(opts);
+        }, 'json');
+        $.post('ict_ajax.php', { action: 'get_employees' }, function(res) {
+            let opts = '<option value="">-- Select Employee --</option>';
+            res.data.forEach(e => { opts += `<option value="${e.emp_id}">${e.full_name}</option>`; });
+            $('#assign_employee').html(opts);
+        }, 'json');
+        $('#assignModal').modal('show');
     });
 
-    $('#categoryTable').on('click', '.btnEditCat', function() {
-        $('#cat_id').val($(this).data('id'));
-        $('#cat_name').val($(this).data('name'));
-        $('#cat_icon').val($(this).data('icon'));
-        $('#categoryModalTitle').html('<i class="fas fa-edit mr-2"></i>Edit Category');
-        $('#categoryModal').modal('show');
-    });
-
-    $('#categoryForm').on('submit', function(e) {
+    $('#assignForm').on('submit', function(e) {
         e.preventDefault();
-        $.post('ict_ajax.php', $(this).serialize() + '&action=save_category', function(res) {
+        $.post('ict_ajax.php', $(this).serialize() + '&action=assign_equipment', function(res) {
             if (res.success) {
                 toastr.success(res.message);
-                $('#categoryModal').modal('hide');
-                categoryTable.ajax.reload(null, false);
+                $('#assignModal').modal('hide');
+                assignmentsTable.ajax.reload(null, false);
             } else {
                 toastr.error(res.message);
             }
         }, 'json');
     });
 
-    $('#categoryTable').on('click', '.btnDeleteCat', function() {
-        const id = $(this).data('id');
-        Swal.fire({
-            title: 'Delete this category?', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Yes, delete it'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.post('ict_ajax.php', { action: 'delete_category', id }, function(res) {
-                    if (res.success) {
-                        toastr.success(res.message);
-                        categoryTable.ajax.reload(null, false);
-                    } else {
-                        toastr.error(res.message);
-                    }
-                }, 'json');
+    $('#assignmentsTable').on('click', '.btnReturn', function() {
+        $('#return_assignment_id').val($(this).data('id'));
+        $('#returnModal').modal('show');
+    });
+
+    $('#returnForm').on('submit', function(e) {
+        e.preventDefault();
+        $.post('ict_ajax.php', $(this).serialize() + '&action=return_equipment', function(res) {
+            if (res.success) {
+                toastr.success(res.message);
+                $('#returnModal').modal('hide');
+                assignmentsTable.ajax.reload(null, false);
+            } else {
+                toastr.error(res.message);
             }
-        });
+        }, 'json');
     });
 });
 </script>

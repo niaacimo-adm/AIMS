@@ -3,19 +3,18 @@ require_once '../includes/auth.php';
 require_once '../config/database.php';
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
+// Any logged-in employee can view this page — no special ICT permission needed.
 if (!isset($_SESSION['emp_id'])) { header('Location: ../login.php'); exit; }
-if (!hasPermission('manage_ict_maintenance')) {
-    header('Location: dashboard.php');
-    exit;
-}
+$emp_id = $_SESSION['emp_id'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NIA-ACIMO | Equipment Categories</title>
+<title>NIA-ACIMO | My ICT Equipment</title>
 <?php include '../includes/header.php'; ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════
    DESIGN TOKENS — Light Mode
@@ -44,7 +43,6 @@ if (!hasPermission('manage_ict_maintenance')) {
   --rr-radius-lg:   18px;
   --rr-font:        'DM Sans',sans-serif;
   --rr-font-h:      'Syne',sans-serif;
-  --ic-blue-bg:#dbeafe; --ic-blue-fg:var(--rr-primary);
 }
 body.dark-mode {
   --rr-bg:         #0f172a;
@@ -59,7 +57,6 @@ body.dark-mode {
   --rr-shadow-sm:  0 1px 3px rgba(0,0,0,.3);
   --rr-shadow:     0 4px 20px rgba(0,0,0,.4);
   --rr-shadow-lg:  0 12px 40px rgba(0,0,0,.5);
-  --ic-blue-bg:rgba(37,99,235,.18); --ic-blue-fg:#93c5fd;
 }
 body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-font)!important; }
 .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
@@ -87,15 +84,6 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
 .pg-hero-sub   { color:rgba(212,245,229,.75);margin:0 0 14px;font-size:.9rem; }
 .pg-hero-divider { width:48px;height:2px;border-radius:2px;margin:0 0 12px;
   background:linear-gradient(90deg,transparent,#24e78f,transparent); }
-.pg-hero-actions { position:relative;z-index:2;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:4px; }
-.pg-hero-btn {
-  background:rgba(36,231,143,.1);backdrop-filter:blur(8px);
-  border:1px solid rgba(36,231,143,.3);color:#d4f5e5;
-  border-radius:10px;padding:8px 18px;font-size:.84rem;font-weight:700;cursor:pointer;
-  display:inline-flex;align-items:center;gap:7px;transition:all .2s;text-decoration:none;
-}
-.pg-hero-btn:hover { background:rgba(36,231,143,.22);border-color:rgba(36,231,143,.55);
-  transform:translateY(-2px);box-shadow:0 4px 16px rgba(36,231,143,.2);color:#d4f5e5;text-decoration:none; }
 
 /* ═══ CARDS ═══ */
 .card {
@@ -116,29 +104,28 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
 }
 .card-body { background:var(--rr-surface)!important; }
 
-/* ═══ CATEGORY ICON CHIP ═══ */
-.cat-icon-chip { width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
-  background:var(--ic-blue-bg);color:var(--ic-blue-fg);font-size:1rem; }
-
-/* ═══ FORMS ═══ */
-.form-group label { font-size:.76rem;font-weight:700;color:var(--rr-text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem;display:block; }
-.form-control {
-  background:var(--rr-surface-2)!important;border:1.5px solid var(--rr-border)!important;
-  border-radius:var(--rr-radius-sm)!important;color:var(--rr-text)!important;
-  font-family:var(--rr-font)!important;font-size:.875rem!important;padding:.5rem .75rem!important;
-  transition:border-color .15s,box-shadow .15s;
+/* ═══ EQUIPMENT CARD (currently assigned) ═══ */
+.eq-card {
+  background:var(--rr-surface-2);border:2px solid var(--rr-border);border-radius:var(--rr-radius);
+  transition:all .2s;height:100%;
 }
-.form-control:focus { border-color:var(--rr-primary)!important;box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;background:var(--rr-surface)!important; }
+.eq-card:hover { border-color:var(--rr-primary);box-shadow:var(--rr-shadow);transform:translateY(-2px);background:var(--rr-surface); }
+.eq-card .card-body { background:transparent!important; }
+.eq-card-icon { width:38px;height:38px;border-radius:9px;background:var(--rr-primary-lt);color:var(--rr-primary);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:8px; }
+.eq-card .card-title { font-family:var(--rr-font-h);font-weight:700;font-size:1rem;color:var(--rr-text); }
+.eq-card table th { color:var(--rr-text-muted);font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em; }
+.eq-card table td { color:var(--rr-text);font-size:.84rem; }
+.eq-card .card-footer { background:var(--rr-surface)!important;border-top:1px solid var(--rr-border-sub)!important; }
+
+/* ═══ BADGES ═══ */
+.badge { border-radius:20px!important;font-size:.7rem!important;font-weight:700!important;padding:.3em .75em!important; }
 
 /* ═══ BUTTONS ═══ */
 .btn { font-family:var(--rr-font)!important;font-weight:600!important;font-size:.84rem!important;border-radius:var(--rr-radius-sm)!important;transition:all .18s!important; }
-.btn-primary   { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;color:#fff!important;box-shadow:0 2px 8px rgba(37,99,235,.3)!important; }
-.btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,.4)!important; }
-.btn-danger    { background:linear-gradient(135deg,var(--rr-danger),#dc2626)!important;border:none!important;color:#fff!important; }
-.btn-warning   { background:linear-gradient(135deg,var(--rr-warning),#d97706)!important;border:none!important;color:#fff!important; }
+.btn-outline-primary { border:1.5px solid var(--rr-primary)!important;color:var(--rr-primary)!important;background:transparent!important; }
+.btn-outline-primary:hover { background:var(--rr-primary)!important;color:#fff!important; }
 .btn-secondary { background:var(--rr-surface-2)!important;border:1.5px solid var(--rr-border)!important;color:var(--rr-text-2)!important; }
-.btn-secondary:hover { background:var(--rr-border)!important;color:var(--rr-text)!important; }
-.btn-xs { font-size:.72rem!important;padding:.25rem .55rem!important; }
 
 /* ═══ MODALS ═══ */
 .modal-content { border:none!important;border-radius:var(--rr-radius-lg)!important;box-shadow:var(--rr-shadow-lg)!important;overflow:hidden;background:var(--rr-surface)!important; }
@@ -146,7 +133,6 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
 .modal-title  { font-family:var(--rr-font-h)!important;font-weight:700!important;font-size:1rem!important;color:#fff!important; }
 .modal-header .close { color:rgba(255,255,255,.8)!important;text-shadow:none!important;font-size:1.4rem; }
 .modal-body  { padding:1.5rem!important;background:var(--rr-surface)!important; }
-.modal-footer { padding:1rem 1.5rem!important;border-top:1px solid var(--rr-border-sub)!important;background:var(--rr-surface-2)!important;display:flex;gap:.5rem;flex-wrap:wrap; }
 
 /* ═══ TABLES ═══ */
 .table { font-size:.85rem;color:var(--rr-text); }
@@ -165,13 +151,17 @@ div.dataTables_wrapper .dataTables_length label,
 div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr-text-muted);font-family:var(--rr-font); }
 .paginate_button { border-radius:var(--rr-radius-sm)!important;font-size:.8rem!important; }
 .paginate_button.current { background:var(--rr-primary)!important;border-color:var(--rr-primary)!important;color:#fff!important; }
+
+/* ═══ MISC ═══ */
+.empty-state { text-align:center;padding:36px 20px;color:var(--rr-text-muted); }
+.empty-state i { font-size:2.2rem;margin-bottom:10px;opacity:.35; }
 </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
 <?php include '../includes/mainheader.php'; ?>
-<?php include '../includes/sidebar_ict.php'; ?>
+<?php include '../includes/sidebar.php'; ?>
 
 <div class="content-wrapper">
 
@@ -184,26 +174,36 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
     </div>
     <div class="pg-hero-dots"></div>
     <div class="pg-hero-inner">
-      <h1 class="pg-hero-title"><i class="fas fa-tags"></i> Equipment Categories</h1>
-      <p class="pg-hero-sub">Organize inventory into categories for easier tracking and reporting.</p>
+      <h1 class="pg-hero-title"><i class="fas fa-laptop"></i> My ICT Equipment</h1>
+      <p class="pg-hero-sub">Equipment currently issued to you, and your full assignment history.</p>
       <div class="pg-hero-divider"></div>
-      <div class="pg-hero-actions">
-        <button class="pg-hero-btn" id="btnAddCategory"><i class="fas fa-plus"></i> Add Category</button>
-      </div>
     </div>
   </div>
 
   <!-- ── Content ───────────────────────────────────────────── -->
   <section class="content">
+
+    <div class="row" id="myEquipmentCards">
+      <div class="col-12"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading...</p></div></div>
+    </div>
+
     <div class="card mt-4">
-      <div class="card-header"><h3 class="card-title"><i class="fas fa-list mr-1"></i> Category List</h3></div>
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-history mr-1"></i> My Assignment History</h3>
+      </div>
       <div class="card-body">
-        <table id="categoryTable" class="table table-bordered table-striped" style="width:100%">
-          <thead><tr><th width="60">Icon</th><th>Category Name</th><th width="150">Actions</th></tr></thead>
+        <table id="historyTable" class="table table-bordered table-striped" style="width:100%">
+          <thead>
+            <tr>
+              <th>Asset Tag</th><th>Equipment</th><th>Assigned Date</th>
+              <th>Returned Date</th><th>Status</th>
+            </tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
+
   </section>
 </div>
 
@@ -211,99 +211,89 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 </div>
 <?php include '../includes/mainfooter.php'; ?>
 
-<div class="modal fade" id="categoryModal" tabindex="-1">
-  <div class="modal-dialog">
+<!-- QR Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
     <div class="modal-content">
-      <form id="categoryForm">
-        <input type="hidden" name="id" id="cat_id">
-        <div class="modal-header">
-          <h5 class="modal-title" id="categoryModalTitle"><i class="fas fa-tag mr-2"></i>Add Category</h5>
-          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Category Name *</label>
-            <input type="text" class="form-control" name="category_name" id="cat_name" required>
-          </div>
-          <div class="form-group">
-            <label>Font Awesome Icon Class</label>
-            <input type="text" class="form-control" name="icon" id="cat_icon" placeholder="e.g. fa-laptop">
-            <small class="text-muted">See fontawesome.com/icons — enter the class without "fas".</small>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Save</button>
-        </div>
-      </form>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-qrcode mr-2"></i>Equipment QR Label</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="qrCodeCanvas" class="d-flex justify-content-center mb-2"></div>
+        <h5 id="qrAssetTag" class="mb-0"></h5>
+        <p id="qrEquipmentName" class="text-muted"></p>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-let categoryTable;
-
 $(function() {
-    categoryTable = $('#categoryTable').DataTable({
-        ajax: { url: 'ict_ajax.php', type: 'POST', data: { action: 'get_categories' }, dataSrc: 'data' },
+    // Currently assigned equipment — shown as cards
+    $.post('ict_ajax.php', { action: 'get_my_equipment' }, function(res) {
+        if (!res.success) return;
+        if (res.data.length === 0) {
+            $('#myEquipmentCards').html('<div class="col-12"><div class="empty-state alert alert-light border"><i class="fas fa-laptop"></i><p>You currently have no ICT equipment assigned to you.</p></div></div>');
+            return;
+        }
+        let html = '';
+        res.data.forEach(function(item) {
+            html += `
+            <div class="col-md-4 mb-3">
+              <div class="card eq-card">
+                <div class="card-body">
+                  <div class="eq-card-icon"><i class="fas fa-desktop"></i></div>
+                  <h5 class="card-title mb-1">${item.equipment_name}</h5>
+                  <span class="badge badge-secondary mb-2">${item.asset_tag}</span>
+                  <table class="table table-sm table-borderless mb-2">
+                    <tr><th width="110">Category</th><td>${item.category_name || '-'}</td></tr>
+                    <tr><th>Brand/Model</th><td>${(item.brand||'')} ${(item.model||'')}</td></tr>
+                    <tr><th>Serial No.</th><td>${item.serial_number || '-'}</td></tr>
+                    <tr><th>Condition</th><td>${item.condition_on_assign || item.condition_status}</td></tr>
+                    <tr><th>Assigned</th><td>${item.assigned_date}</td></tr>
+                    <tr><th>Expected Return</th><td>${item.expected_return_date || 'No fixed date'}</td></tr>
+                  </table>
+                </div>
+                <div class="card-footer">
+                  <button class="btn btn-sm btn-outline-primary btnViewQr" data-tag="${item.asset_tag}" data-name="${item.equipment_name}">
+                    <i class="fas fa-qrcode"></i> View QR
+                  </button>
+                </div>
+              </div>
+            </div>`;
+        });
+        $('#myEquipmentCards').html(html);
+    }, 'json');
+
+    // Full personal history table
+    $('#historyTable').DataTable({
+        ajax: { url: 'ict_ajax.php', type: 'POST', data: { action: 'get_my_equipment_history' }, dataSrc: 'data' },
         columns: [
-            { data: 'icon', render: i => `<div class="cat-icon-chip"><i class="fas ${i}"></i></div>` },
-            { data: 'category_name' },
+            { data: 'asset_tag', render: d => `<span class="badge badge-secondary">${d}</span>` },
+            { data: 'equipment_name' },
+            { data: 'assigned_date' },
+            { data: 'returned_date', defaultContent: '-' },
             {
-                data: null,
-                orderable: false,
-                render: row => `
-                    <button class="btn btn-xs btn-warning btnEditCat" data-id="${row.id}" data-name="${row.category_name}" data-icon="${row.icon}"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-xs btn-danger btnDeleteCat" data-id="${row.id}"><i class="fas fa-trash"></i></button>`
+                data: 'status',
+                render: s => `<span class="badge badge-${s === 'Assigned' ? 'warning' : 'success'}">${s}</span>`
             }
         ]
     });
 
-    $('#btnAddCategory').on('click', function() {
-        $('#categoryForm')[0].reset();
-        $('#cat_id').val('');
-        $('#categoryModalTitle').html('<i class="fas fa-tag mr-2"></i>Add Category');
-        $('#categoryModal').modal('show');
-    });
-
-    $('#categoryTable').on('click', '.btnEditCat', function() {
-        $('#cat_id').val($(this).data('id'));
-        $('#cat_name').val($(this).data('name'));
-        $('#cat_icon').val($(this).data('icon'));
-        $('#categoryModalTitle').html('<i class="fas fa-edit mr-2"></i>Edit Category');
-        $('#categoryModal').modal('show');
-    });
-
-    $('#categoryForm').on('submit', function(e) {
-        e.preventDefault();
-        $.post('ict_ajax.php', $(this).serialize() + '&action=save_category', function(res) {
-            if (res.success) {
-                toastr.success(res.message);
-                $('#categoryModal').modal('hide');
-                categoryTable.ajax.reload(null, false);
-            } else {
-                toastr.error(res.message);
-            }
-        }, 'json');
-    });
-
-    $('#categoryTable').on('click', '.btnDeleteCat', function() {
-        const id = $(this).data('id');
-        Swal.fire({
-            title: 'Delete this category?', icon: 'warning',
-            showCancelButton: true, confirmButtonText: 'Yes, delete it'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.post('ict_ajax.php', { action: 'delete_category', id }, function(res) {
-                    if (res.success) {
-                        toastr.success(res.message);
-                        categoryTable.ajax.reload(null, false);
-                    } else {
-                        toastr.error(res.message);
-                    }
-                }, 'json');
-            }
+    $(document).on('click', '.btnViewQr', function() {
+        const tag = $(this).data('tag');
+        const name = $(this).data('name');
+        $('#qrCodeCanvas').empty();
+        $('#qrAssetTag').text(tag);
+        $('#qrEquipmentName').text(name);
+        const scanUrl = window.location.origin + window.location.pathname.replace('my_ict_equipment.php', 'ict_scanner.php');
+        new QRCode(document.getElementById('qrCodeCanvas'), {
+            text: scanUrl + '?tag=' + encodeURIComponent(tag),
+            width: 160,
+            height: 160
         });
+        $('#qrModal').modal('show');
     });
 });
 </script>

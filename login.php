@@ -172,6 +172,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
+                    <div class="remember-row">
+                        <label class="remember-label" for="rememberMe">
+                            <input type="checkbox" id="rememberMe">
+                            <span class="remember-box">
+                                <i class="fas fa-check remember-check"></i>
+                            </span>
+                            <span class="remember-text">Remember me</span>
+                        </label>
+                    </div>
                     <button type="submit" class="btn-login" id="loginButton">
                         <i class="fas fa-sign-in-alt"></i> Sign In
                     </button>
@@ -325,12 +334,30 @@ $(function () {
             : inp.attr('type','password').end() && ic.removeClass('fa-eye-slash').addClass('fa-eye');
     });
 
+    /* ── Remember Me — restore on load ────────────────── */
+    var RKEY = 'nia-remember-user';
+    var savedUser = localStorage.getItem(RKEY);
+    if (savedUser) {
+        $('#username').val(savedUser);
+        $('#rememberMe').prop('checked', true);
+        /* trigger float-label so it stays raised */
+        $('#username').trigger('input');
+    }
+
     /* ── Login submit ──────────────────── */
     $('#loginForm').on('submit', function (e) {
         e.preventDefault();
         var u = $('#username').val().trim(), p = $('#password').val();
         if (!u) { shake('#wrap-username'); sWarn('Please enter your username.'); return; }
         if (!p) { shake('#wrap-password'); sWarn('Please enter your password.'); return; }
+
+        /* Save or clear remembered username */
+        if ($('#rememberMe').is(':checked')) {
+            localStorage.setItem(RKEY, u);
+        } else {
+            localStorage.removeItem(RKEY);
+        }
+
         $('#loaderOverlay').addClass('active');
         $('#progressFill').css('width','100%');
         var f = this;

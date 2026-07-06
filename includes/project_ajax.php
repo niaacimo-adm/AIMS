@@ -62,8 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (count($projects) === 0) {
                 error_log("No projects found via getUserProjects, trying direct query...");
                 try {
-                    $database = new Database();
-                    $db = $database->getConnection();
+                    $db = $projectManager->getConnection();
                     
                     // Get project IDs from project_members
                     $stmt = $db->prepare("SELECT project_id FROM project_members WHERE emp_id = ?");
@@ -100,8 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         case 'test_connection':
             try {
-                $database = new Database();
-                $db = $database->getConnection();
+                $db = $projectManager->getConnection();
                 
                 // Test projects table
                 $result = $db->query("SELECT COUNT(*) as count FROM projects");
@@ -136,8 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // In your project_ajax.php file, in the create_project action
         case 'create_project':
             try {
-                $database = new Database();
-                $db = $database->getConnection();
+                $db = $projectManager->getConnection();
                 
                 // Extract variables from POST
                 $project_name = $_POST['project_name'] ?? '';
@@ -191,7 +188,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $member_stmt = $db->prepare("INSERT INTO project_members (project_id, emp_id, role, added_by) VALUES (?, ?, 'owner', ?)");
                     $member_stmt->bind_param("iii", $project_id, $created_by, $created_by);
                     $member_stmt->execute();
-                    
+
+                    // Add any additional selected members (e.g. from a multi-select)
+                    $member_ids = isset($_POST['members']) ? (array)$_POST['members'] : [];
+                    $member_ids = array_unique(array_filter(array_map('intval', $member_ids), function($v) use ($created_by) {
+                        return $v > 0 && $v != $created_by;
+                    }));
+
+                    if (!empty($member_ids)) {
+                        $extra_member_stmt = $db->prepare("INSERT INTO project_members (project_id, emp_id, role, added_by) VALUES (?, ?, 'member', ?)");
+                        foreach ($member_ids as $member_id) {
+                            $extra_member_stmt->bind_param("iii", $project_id, $member_id, $created_by);
+                            $extra_member_stmt->execute();
+                        }
+                    }
+
                     echo json_encode(['success' => true, 'project_id' => $project_id]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Failed to create project: ' . $db->error]);
@@ -236,7 +247,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'error' => 'Project not found']);
             }
             break;
-            
+
+        case 'delete_project':
+            try {
+                $db = $projectManager->getConnection();
+
+                $project_id = (int)($_POST['project_id'] ?? 0);
+                if ($project_id <= 0) {
+                    echo json_encode(['success' => false, 'error' => 'Invalid project']);
+                    break;
+                }
+
+                // Clean up dependent records first (in case FK constraints aren't set to CASCADE)
+                $db->query("DELETE ta FROM task_assignees ta INNER JOIN tasks t ON ta.task_id = t.task_id WHERE t.project_id = $project_id");
+                $db->query("DELETE FROM tasks WHERE project_id = $project_id");
+                $db->query("DELETE FROM project_boards WHERE project_id = $project_id");
+                $db->query("DELETE FROM project_members WHERE project_id = $project_id");
+
+                $stmt = $db->prepare("DELETE FROM projects WHERE project_id = ?");
+                $stmt->bind_param("i", $project_id);
+
+                if ($stmt->execute()) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to delete project: ' . $stmt->error]);
+                }
+            } catch (Exception $e) {
+                error_log("Project deletion error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+
         case 'update_project_status':
             $project_id = $_POST['project_id'];
             $status = $_POST['status'];

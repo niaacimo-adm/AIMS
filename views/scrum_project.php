@@ -20,6 +20,8 @@ $projectManager = new ProjectManager();
   <?php include '../includes/header.php'; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-theme/0.1.0-beta.10/select2-bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="hold-transition sidebar-mini theme-scrum">
 <div class="wrapper">
@@ -600,6 +602,12 @@ input[type="color"] { background: var(--s-surface2) !important; border: 1px soli
               </div>
             </div>
           </div>
+          <div class="form-group">
+            <label>Members</label>
+            <select class="form-control" id="projectMembers" multiple="multiple" style="width:100%">
+              <!-- Employees will be loaded here -->
+            </select>
+          </div>
         </form>
       </div>
       <div class="modal-footer">
@@ -615,7 +623,10 @@ $(document).ready(function() {
     localStorage.setItem('currentTheme', 'scrum');
     loadProjects();
     
-    $('#newProjectBtn').click(() => $('#newProjectModal').modal('show'));
+    $('#newProjectBtn').click(() => {
+        loadAssignableEmployeesForProject();
+        $('#newProjectModal').modal('show');
+    });
     $('#saveProjectBtn').click(createProject);
     $('#projectSearch').on('input', filterProjects);
 });
@@ -676,6 +687,9 @@ function renderProjectsTable(projects) {
                     <button class="btn btn-sm btn-primary select-project" data-project-id="${project.project_id}">
                         <i class="fas fa-play"></i>
                     </button>
+                    <button class="btn btn-sm btn-danger delete-project" data-project-id="${project.project_id}" data-project-name="${project.project_name}">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>
         `);
@@ -700,6 +714,38 @@ function renderProjectsTable(projects) {
         // Optional: Implement edit functionality
         editProject(projectId);
     });
+
+    $('.delete-project').click(function() {
+        const projectId = $(this).data('project-id');
+        const projectName = $(this).data('project-name');
+        deleteProject(projectId, projectName);
+    });
+}
+
+function deleteProject(projectId, projectName) {
+    Swal.fire({
+        title: 'Delete Project?',
+        text: `This will permanently delete "${projectName}" and all its boards and tasks. This cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete',
+        confirmButtonColor: '#dc3545',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post('../includes/project_ajax.php', {
+                action: 'delete_project',
+                project_id: projectId
+            }, function(response) {
+                if (response.success) {
+                    loadProjects();
+                    Swal.fire('Deleted', 'Project deleted successfully', 'success');
+                } else {
+                    Swal.fire('Error', response.error || 'Failed to delete project', 'error');
+                }
+            }, 'json');
+        }
+    });
 }
 
 function calculateProgress(project) {
@@ -718,13 +764,41 @@ function getStatusBadgeClass(status) {
     return classes[status] || 'secondary';
 }
 
+function loadAssignableEmployeesForProject() {
+    $.post('../includes/project_ajax.php', {
+        action: 'get_assignable_employees'
+    }, function(response) {
+        if (response.success) {
+            const select = $('#projectMembers');
+            select.empty();
+
+            response.employees.forEach(employee => {
+                const role = employee.role_name || (employee.is_manager ? 'Manager' : 'Employee');
+                select.append(`<option value="${employee.emp_id}">${employee.first_name} ${employee.last_name} (${role})</option>`);
+            });
+
+            if (select.hasClass('select2-hidden-accessible')) {
+                select.select2('destroy');
+            }
+            select.select2({
+                theme: 'bootstrap',
+                width: '100%',
+                placeholder: 'Select team members',
+                allowClear: true,
+                dropdownParent: $('#newProjectModal')
+            }).val(null).trigger('change');
+        }
+    }, 'json');
+}
+
 function createProject() {
     const formData = {
         project_name: $('#projectName').val(),
         project_code: $('#projectCode').val(),
         project_description: $('#projectDescription').val(),
         start_date: $('#projectStartDate').val(),
-        end_date: $('#projectEndDate').val()
+        end_date: $('#projectEndDate').val(),
+        members: $('#projectMembers').val() || []
     };
     
     if (!formData.project_name || !formData.project_code) {
@@ -739,6 +813,7 @@ function createProject() {
         if (response.success) {
             $('#newProjectModal').modal('hide');
             $('#projectForm')[0].reset();
+            $('#projectMembers').val(null).trigger('change');
             loadProjects();
             Swal.fire('Success', 'Project created successfully', 'success');
         } else {
@@ -760,5 +835,6 @@ function viewProjectDetails(projectId) {
     window.location.href = `project_details.php?project_id=${projectId}`;
 }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 </body>
 </html>
