@@ -302,6 +302,7 @@ function updateIaProfile($db) {
         $new_data = [
             'ia_name'                   => $_POST['ia_name'] ?? '',
             'ia_code'                   => $_POST['ia_code'] ?? '',
+            'cis_name'                  => $_POST['cis_name'] ?? '',
             'mailing_address'           => $_POST['mailing_address'] ?? '',
             'president_name'            => $_POST['president_name'] ?? '',
             'contact_number'            => $_POST['contact_number'] ?? '',
@@ -792,6 +793,7 @@ function addIaProfile($db) {
         $data = [
             'ia_name'                   => $_POST['ia_name'] ?? '',
             'ia_code'                   => $_POST['ia_code'] ?? '',
+            'cis_name'                  => $_POST['cis_name'] ?? '',
             'mailing_address'           => $_POST['mailing_address'] ?? '',
             'president_name'            => $_POST['president_name'] ?? '',
             'contact_number'            => $_POST['contact_number'] ?? '',
@@ -916,6 +918,15 @@ function get_ia_profiles($db) {
             $countQuery .= " AND ip.province LIKE ?";
             $params[] = '%' . $_POST['filter_province'] . '%';
             $countParams[] = '%' . $_POST['filter_province'] . '%';
+            $types .= 's';
+            $countTypes .= 's';
+        }
+        
+        if (!empty($_POST['filter_district'])) {
+            $query .= " AND ip.congressional_district = ?";
+            $countQuery .= " AND ip.congressional_district = ?";
+            $params[] = $_POST['filter_district'];
+            $countParams[] = $_POST['filter_district'];
             $types .= 's';
             $countTypes .= 's';
         }

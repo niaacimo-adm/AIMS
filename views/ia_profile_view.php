@@ -351,6 +351,9 @@ $page_title = "IA Profile – " . htmlspecialchars($profile['ia_name']);
                     <a href="ia_profile_history.php?id=<?= $id ?>" class="ia-hero-btn">
                         <i class="fas fa-history"></i> View History
                     </a>
+                    <a href="ia_lipa.php?id=<?= $id ?>" class="ia-hero-btn">
+                        <i class="fas fa-seedling"></i> LIPA Records
+                    </a>
                     <?php if (hasPermission('delete_ia_profile')): ?>
                     <button class="ia-hero-btn danger" id="btnDeleteProfile" data-id="<?= $id ?>" data-name="<?= htmlspecialchars($profile['ia_name']) ?>">
                         <i class="fas fa-trash"></i> Delete
@@ -406,11 +409,15 @@ $page_title = "IA Profile – " . htmlspecialchars($profile['ia_name']);
                                     <div class="ir-value"><?= htmlspecialchars($profile['ia_name']) ?></div>
                                 </div>
                                 <div class="info-row">
-                                    <div class="ir-label"><i class="fas fa-barcode"></i>IA Code</div>
-                                    <div class="ir-value"><?= htmlspecialchars($profile['ia_code']) ?: '<span class="text-muted">—</span>' ?></div>
+                                    <div class="ir-label"><i class="fas fa-water"></i>Name of CIS</div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['cis_name'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
                                 </div>
                                 <div class="info-row">
-                                    <div class="ir-label"><i class="fas fa-circle-dot"></i>Status</div>
+                                    <div class="ir-label"><i class="fas fa-barcode"></i>IA Code</div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['ia_code'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
+                                </div>
+                                <div class="info-row">
+                                    <div class="ir-label"><i class="fas fa-dot-circle"></i>Status</div>
                                     <div class="ir-value">
                                         <span class="badge badge-<?= $isOperational ? 'success' : 'danger' ?>">
                                             <?= ucfirst($profile['status']) ?>
@@ -425,15 +432,15 @@ $page_title = "IA Profile – " . htmlspecialchars($profile['ia_name']);
                                 <?php endif; ?>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-user-tie"></i>President</div>
-                                    <div class="ir-value"><?= htmlspecialchars($profile['president_name']) ?: '<span class="text-muted">—</span>' ?></div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['president_name'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
                                 </div>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-phone"></i>Contact Number</div>
-                                    <div class="ir-value"><?= htmlspecialchars($profile['contact_number']) ?: '<span class="text-muted">—</span>' ?></div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['contact_number'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
                                 </div>
                                 <?php if (!empty($profile['imo'])): ?>
                                 <div class="info-row">
-                                    <div class="ir-label"><i class="fas fa-person"></i>IMO</div>
+                                    <div class="ir-label"><i class="fas fa-building"></i>IMO</div>
                                     <div class="ir-value"><?= htmlspecialchars($profile['imo']) ?></div>
                                 </div>
                                 <?php endif; ?>
@@ -465,15 +472,15 @@ $page_title = "IA Profile – " . htmlspecialchars($profile['ia_name']);
                             <div class="ic-body">
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-ruler-combined"></i>Service Area</div>
-                                    <div class="ir-value"><strong><?= number_format($profile['service_area_ha'], 2) ?></strong> ha</div>
+                                    <div class="ir-value"><strong><?= number_format($profile['service_area_ha'] ?? 0, 2) ?></strong> ha</div>
                                 </div>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-tint"></i>FUSA</div>
-                                    <div class="ir-value"><strong><?= number_format($profile['fusa_ha'], 2) ?></strong> ha</div>
+                                    <div class="ir-value"><strong><?= number_format($profile['fusa_ha'] ?? 0, 2) ?></strong> ha</div>
                                 </div>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-road"></i>Canal Length</div>
-                                    <div class="ir-value"><strong><?= number_format($profile['canal_length_km'], 3) ?></strong> km</div>
+                                    <div class="ir-value"><strong><?= number_format($profile['canal_length_km'] ?? 0, 3) ?></strong> km</div>
                                 </div>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-users"></i>Farmer Beneficiaries</div>
@@ -510,15 +517,15 @@ $page_title = "IA Profile – " . htmlspecialchars($profile['ia_name']);
                             <div class="ic-body">
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-globe-asia"></i>Region</div>
-                                    <div class="ir-value"><?= htmlspecialchars($profile['region']) ?: '<span class="text-muted">—</span>' ?></div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['region'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
                                 </div>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-map"></i>Province</div>
-                                    <div class="ir-value"><?= htmlspecialchars($profile['province']) ?: '<span class="text-muted">—</span>' ?></div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['province'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
                                 </div>
                                 <div class="info-row">
                                     <div class="ir-label"><i class="fas fa-landmark"></i>Congressional District</div>
-                                    <div class="ir-value"><?= htmlspecialchars($profile['congressional_district']) ?: '<span class="text-muted">—</span>' ?></div>
+                                    <div class="ir-value"><?= htmlspecialchars($profile['congressional_district'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
                                 </div>
                                 <?php if (!empty($profile['sec_registration_number'])): ?>
                                 <div class="info-row">

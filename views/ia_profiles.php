@@ -490,13 +490,21 @@ $page_title = "IA Profiles";
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Congressional District</label>
+                                    <select class="form-control" id="filter_district">
+                                        <option value="">All Districts</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label>IA Name</label>
                                     <input type="text" class="form-control" id="filter_ia_name" placeholder="Search by IA name…">
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label>IA Code</label>
                                     <input type="text" class="form-control" id="filter_ia_code" placeholder="Search by IA code…">
@@ -536,6 +544,7 @@ $page_title = "IA Profiles";
                                 <thead>
                                     <tr>
                                         <th>IA Name</th>
+                                        <th>Name of CIS</th>
                                         <th>President</th>
                                         <th>Contact</th>
                                         <th>Service Area (ha)</th>
@@ -557,6 +566,7 @@ $page_title = "IA Profiles";
                                     ?>
                                     <tr>
                                         <td><strong><?= htmlspecialchars($row['ia_name']) ?></strong></td>
+                                        <td><?= htmlspecialchars($row['cis_name'] ?? '') ?: '<span class="text-muted">N/A</span>' ?></td>
                                         <td><?= htmlspecialchars($row['president_name'] ?? '') ?: '<span class="text-muted">N/A</span>' ?></td>
                                         <td><?= htmlspecialchars($row['contact_number'] ?? '') ?: '<span class="text-muted">N/A</span>' ?></td>
                                         <td><strong><?= number_format($row['service_area_ha'] ?? 0, 2) ?></strong></td>
@@ -596,7 +606,7 @@ $page_title = "IA Profiles";
                                     </tr>
                                     <?php endwhile; else: ?>
                                     <tr>
-                                        <td colspan="9" class="text-center py-5">
+                                        <td colspan="10" class="text-center py-5">
                                             <i class="fas fa-inbox fa-3x text-muted mb-3 d-block"></i>
                                             <span class="text-muted">No IA Profiles found</span>
                                         </td>
@@ -653,6 +663,16 @@ $page_title = "IA Profiles";
                                 <label>IA Code</label>
                                 <input type="text" class="form-control" id="modal_ia_code" name="ia_code"
                                        placeholder="e.g. NIA-001">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label>Name of CIS</label>
+                                <input type="text" class="form-control" id="modal_cis_name" name="cis_name"
+                                       placeholder="e.g. Balading-Awang Communal Irrigation System">
                             </div>
                         </div>
                     </div>
@@ -961,13 +981,25 @@ $(document).ready(function () {
         ajax: {
             url: '../includes/ia_profiles_ajax.php',
             type: 'POST',
-            data: { action: 'get_ia_profiles' },
+            data: function (d) {
+                return {
+                    action: 'get_ia_profiles',
+                    filter_assigned_employee: $('#filter_assigned_employee').val(),
+                    filter_status: $('#filter_status').val(),
+                    filter_region: $('#filter_region').val(),
+                    filter_province: $('#filter_province').val(),
+                    filter_district: $('#filter_district').val(),
+                    filter_ia_name: $('#filter_ia_name').val(),
+                    filter_ia_code: $('#filter_ia_code').val()
+                };
+            },
             dataSrc: function (res) {
                 return res.success ? res.data : [];
             }
         },
         columns: [
             { data: 'ia_name',  render: d => `<strong>${d}</strong>` },
+            { data: 'cis_name', render: d => d || '<span class="text-muted">N/A</span>' },
             { data: 'president_name',   render: d => d || '<span class="text-muted">N/A</span>' },
             { data: 'contact_number',   render: d => d || '<span class="text-muted">N/A</span>' },
             { data: 'service_area_ha',  render: d => d ? `<strong>${parseFloat(d).toFixed(2)}</strong>` : '<span class="text-muted">0.00</span>' },
@@ -1174,6 +1206,59 @@ $(document).ready(function () {
         });
     });
 
+    /* ================================================================
+       FILTER BAR — cascading selects + server-side filtering
+       ================================================================ */
+    function loadFilterProvinces(regionCode, callback) {
+        $('#filter_province').html('<option value="">All Provinces</option>');
+        $('#filter_district').html('<option value="">All Districts</option>');
+        if (!regionCode) { if (callback) callback(); return; }
+        $.post('../includes/ia_profiles_ajax.php',
+            { action: 'get_provinces', region_code: regionCode },
+            function (res) {
+                if (res.success) res.data.forEach(p => $('#filter_province').append(new Option(p.province_name, p.province_code)));
+                if (callback) callback();
+            }, 'json');
+    }
+
+    function loadFilterDistricts(provinceCode, callback) {
+        $('#filter_district').html('<option value="">All Districts</option>');
+        if (!provinceCode) { if (callback) callback(); return; }
+        $.post('../includes/ia_profiles_ajax.php',
+            { action: 'get_districts', province_code: provinceCode },
+            function (res) {
+                if (res.success) res.data.forEach(d => $('#filter_district').append(new Option(d.district_name, d.district_code)));
+                if (callback) callback();
+            }, 'json');
+    }
+
+    function loadFilterAssignedEmployees() {
+        $.post('../includes/ia_profiles_ajax.php', { action: 'get_idu_employees' }, function (res) {
+            if (res.success) res.data.forEach(e => $('#filter_assigned_employee').append(new Option(e.full_name, e.emp_id)));
+        }, 'json');
+    }
+    loadFilterAssignedEmployees();
+
+    $(document).on('change', '#filter_region',   function () { loadFilterProvinces($(this).val()); });
+    $(document).on('change', '#filter_province', function () { loadFilterDistricts($(this).val()); });
+
+    /* Filters are sent to the server on every ajax.reload() (see the
+       DataTable's ajax.data function above) — the server does the actual
+       filtering (get_ia_profiles in ia_profiles_ajax.php), so results stay
+       correct even when codes/names don't match exactly client-side. */
+    $('#applyFilters').on('click', function () { table.ajax.reload(); });
+
+    $('#resetFilters').on('click', function () {
+        $('#filter_assigned_employee').val('');
+        $('#filter_status').val('');
+        $('#filter_region').val('');
+        $('#filter_province').html('<option value="">All Provinces</option>');
+        $('#filter_district').html('<option value="">All Districts</option>');
+        $('#filter_ia_name').val('');
+        $('#filter_ia_code').val('');
+        table.ajax.reload();
+    });
+
 }); /* end $(document).ready */
 
 
@@ -1209,6 +1294,7 @@ function openModal(mode, id) {
                         $('#modal_ia_id').val(d.id);
                         $('#modal_ia_name').val(d.ia_name || '');
                         $('#modal_ia_code').val(d.ia_code || '');
+                        $('#modal_cis_name').val(d.cis_name || '');
                         $('#modal_status').val(d.status || 'operational');
                         $('#modal_date_organized').val(d.date_organized || '');
                         $('#modal_mailing_address').val(d.mailing_address || '');
