@@ -102,15 +102,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!-- Loader -->
 <div class="loader-overlay" id="loaderOverlay">
-    <div class="loader-content">
+    <div class="nia-loader-wrap">
         <div class="nia-loader">
-            <div class="nia-loader-ring"></div>
-            <div class="nia-loader-ring"></div>
-            <div class="nia-loader-ring"></div>
-            <div class="nia-loader-logo"><img src="dist/img/nialogo.png" alt="NIA"></div>
+            <img class="nia-logo" src="dist/img/nialogo.png" alt="Loading"
+                 style="width:74px;height:74px;max-width:74px;max-height:74px;border-radius:50%;object-fit:contain;display:block;">
         </div>
-        <div class="loader-text">Authenticating&hellip;</div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="nia-loader-label" id="loaderLabel">Authenticating</div>
     </div>
 </div>
 
@@ -358,8 +355,8 @@ $(function () {
             localStorage.removeItem(RKEY);
         }
 
+        $('#loaderLabel').text('Authenticating');
         $('#loaderOverlay').addClass('active');
-        $('#progressFill').css('width','100%');
         var f = this;
         setTimeout(function () { f.submit(); }, 3000);
     });
@@ -377,8 +374,8 @@ $(function () {
         e.preventDefault();
         var id = $('#id_number').val().trim();
         if (!id) { sWarn('Please enter your ID number.'); return; }
+        $('#loaderLabel').text('Sending request');
         $('#loaderOverlay').addClass('active');
-        $('#progressFill').css('width','100%');
         $.ajax({
             url:'ajax_forgot_password.php', type:'POST', data:{ id_number:id },
             success: function (r) {

@@ -15,8 +15,8 @@ if ($_POST && isset($_POST['id'])) {
     $database = new Database();
     $db = $database->getConnection();
 
-    // FIX: table is `notifications`, PK is `notification_id`, owner column is `emp_id`
-    $query = "UPDATE notifications SET is_read = 1, read_at = NOW() WHERE notification_id = ? AND emp_id = ?";
+    // Table is `admin_notifications`, PK is `id`, owner column is `admin_emp_id`
+    $query = "UPDATE admin_notifications SET is_read = 1 WHERE id = ? AND admin_emp_id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param("ii", $notification_id, $_SESSION['emp_id']);
 

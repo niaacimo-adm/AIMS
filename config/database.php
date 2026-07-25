@@ -1,4 +1,11 @@
 <?php
+// Base URL used when generating QR codes so they resolve on other LAN devices
+// (phones, tablets) instead of baking in "localhost", which only means
+// "this device" and fails on anything else scanning it.
+if (!defined('SCAN_BASE_URL')) {
+    define('SCAN_BASE_URL', 'http://192.168.0.230/AIMS');
+}
+
 class Database {
     private $host = 'localhost';
     private $db_name = 'sahur';

@@ -334,9 +334,21 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
         <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <div class="modal-body text-center" id="qrLabelArea">
-        <div id="qrCodeCanvas" class="d-flex justify-content-center mb-2"></div>
+        <p class="text-muted mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Live Lookup</p>
+        <div id="qrCodeCanvas" class="d-flex justify-content-center mb-1"></div>
+        <p class="text-muted mb-2" style="font-size:.68rem;">Needs same network as server</p>
+
+        <hr class="my-2">
+
+        <p class="text-muted mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Offline Snapshot</p>
+        <div id="qrCodeCanvasOffline" class="d-flex justify-content-center mb-1"></div>
+        <p class="text-muted mb-2" style="font-size:.68rem;">Any phone, no network — shows as plain text after scanning</p>
+
         <h5 id="qrAssetTag" class="mb-0"></h5>
-        <p id="qrEquipmentName" class="text-muted"></p>
+        <p id="qrEquipmentName" class="text-muted mb-2"></p>
+        <table class="table table-sm table-borderless text-left mb-0" id="qrSpecsTable" style="font-size:.8rem;">
+          <tbody id="qrSpecsBody"></tbody>
+        </table>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -349,8 +361,7 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 
 <script>
 const CAN_MANAGE = <?= $can_manage ? 'true' : 'false' ?>;
-// Full URL scanned devices will decode — points back to the scanner lookup
-const SCAN_BASE_URL = window.location.origin + window.location.pathname.replace('ict_equipment.php', 'ict_scanner.php');
+const SCAN_BASE_URL = <?= json_encode(rtrim(SCAN_BASE_URL, '/')) ?> + '/views/ict_scanner.php';
 
 let equipmentTable;
 
@@ -380,7 +391,7 @@ $(function() {
                 data: null,
                 orderable: false,
                 render: function(row) {
-                    let btns = `<button class="btn btn-xs btn-info btnQr" data-id="${row.id}" data-tag="${row.asset_tag}" data-name="${row.equipment_name}"><i class="fas fa-qrcode"></i></button> `;
+                    let btns = `<button class="btn btn-xs btn-info btnQr" data-id="${row.id}" data-tag="${row.asset_tag}" data-name="${row.equipment_name}" data-category="${row.category_name || ''}" data-brand="${row.brand || ''}" data-model="${row.model || ''}" data-serial="${row.serial_number || ''}" data-condition="${row.condition_status || ''}" data-status="${row.status || ''}" data-office="${row.office_name || ''}" data-assigned="${row.assigned_to || ''}"><i class="fas fa-qrcode"></i></button> `;
                     if (CAN_MANAGE) {
                         btns += `<button class="btn btn-xs btn-warning btnEdit" data-id="${row.id}"><i class="fas fa-edit"></i></button> `;
                         btns += `<button class="btn btn-xs btn-danger btnDelete" data-id="${row.id}"><i class="fas fa-trash"></i></button>`;
@@ -459,17 +470,66 @@ $(function() {
     });
 
     // QR code generation — encodes a scannable URL back to the scanner page
+    function specRow(label, value) {
+        return value ? `<tr><th style="width:110px;color:var(--rr-text-muted);">${label}</th><td>${value}</td></tr>` : '';
+    }
+
+    const STATUS_COLORS = { Available: '#10b981', Assigned: '#f59e0b', 'Under Repair': '#ef4444', Retired: '#94a3b8', Lost: '#334155' };
+
+    function toPlainAscii(str) {
+        return String(str || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents (é→e, ñ→n)
+            .replace(/[^\x20-\x7E]/g, '');                      // drop anything else non-ASCII
+    }
+
+    function buildOfflineSnapshotText(d) {
+        const lines = [
+            `ASSET TAG: ${toPlainAscii(d.tag)}`,
+            `EQUIPMENT: ${toPlainAscii(d.name)}`,
+            `CATEGORY: ${toPlainAscii(d.category) || '-'}`,
+            `BRAND/MODEL: ${toPlainAscii((d.brand || '') + ' ' + (d.model || ''))}`.trim(),
+            `SERIAL: ${toPlainAscii(d.serial) || '-'}`,
+            `CONDITION: ${toPlainAscii(d.condition) || '-'}`,
+            `STATUS: ${toPlainAscii(d.status) || '-'}`,
+            `OFFICE: ${toPlainAscii(d.office) || '-'}`
+        ];
+        if (d.status === 'Assigned' && d.assigned) lines.push(`ASSIGNED TO: ${toPlainAscii(d.assigned)}`);
+        lines.push(`(Offline snapshot - may be outdated. Scan Live QR on office network for current status.)`);
+        return lines.join('\n');
+    }
+
     $('#equipmentTable').on('click', '.btnQr', function() {
+        const d = $(this).data();
+        let specsHtml = '';
+        specsHtml += specRow('Category', d.category);
+        specsHtml += specRow('Brand / Model', `${d.brand || ''} ${d.model || ''}`.trim());
+        specsHtml += specRow('Serial No.', d.serial);
+        specsHtml += specRow('Condition', d.condition);
+        $('#qrSpecsBody').html(specsHtml);
         const tag = $(this).data('tag');
         const name = $(this).data('name');
         $('#qrCodeCanvas').empty();
+        $('#qrCodeCanvasOffline').empty();
         $('#qrAssetTag').text(tag);
         $('#qrEquipmentName').text(name);
+
+        // QR #1 — live lookup, needs the scanning phone on the server's network
         new QRCode(document.getElementById('qrCodeCanvas'), {
             text: SCAN_BASE_URL + '?tag=' + encodeURIComponent(tag),
-            width: 180,
-            height: 180
+            width: 160,
+            height: 160
         });
+
+        // QR #2 — offline snapshot, compact plain text baked directly into the
+        // QR (not a URL), so it needs no network and stays small enough to scan
+        const snapshotText = buildOfflineSnapshotText(d);
+        new QRCode(document.getElementById('qrCodeCanvasOffline'), {
+            text: snapshotText,
+            width: 160,
+            height: 160,
+            correctLevel: QRCode.CorrectLevel.M
+        });
+
         $('#qrModal').modal('show');
     });
 

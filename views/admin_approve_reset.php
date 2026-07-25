@@ -7,9 +7,18 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is administrator
+// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.php");
+    exit();
+}
+
+// Only Administrators (and Focal users, if that's a role in user_roles) may
+// approve/reject password resets. Adjust the role name(s) below to match
+// what's actually in your `user_roles` table.
+if (!hasRole('Administrator') && !hasRole('Focal')) {
+    $_SESSION['error'] = 'You do not have permission to access this page.';
+    header("Location: ../unauthorized.php");
     exit();
 }
 
@@ -61,14 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_request'])) {
             
             // Send notification to the requester with new login credentials
             $notification_message = "Your password reset has been approved. You can now login using your ID Number: <strong>{$employee_number}</strong> as both your username and temporary password. Please change your password after logging in for security.";
-            $notification_type = "password_reset_approved";
-            $is_read = 0;
+            $notification_link    = null;
+            $notification_type    = "password_reset_approved";
             
             // Insert notification for the requester
-            $insert_query = "INSERT INTO admin_notifications (admin_emp_id, message, type, is_read, created_at) 
-                             VALUES (?, ?, ?, ?, NOW())";
+            $insert_query = "INSERT INTO admin_notifications (admin_emp_id, message, link, type, is_read, created_at) 
+                             VALUES (?, ?, ?, ?, 0, NOW())";
             $insert_stmt = $db->prepare($insert_query);
-            $insert_stmt->bind_param("issi", $request['emp_id'], $notification_message, $notification_type, $is_read);
+            $insert_stmt->bind_param("isss", $request['emp_id'], $notification_message, $notification_link, $notification_type);
             $insert_stmt->execute();
             
             // Update the reset request status
@@ -93,13 +102,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_request'])) {
         if ($request) {
             // Create rejection notification for the requester
             $notification_message = "Your password reset request has been rejected. Please contact administrators for assistance.";
-            $notification_type = "password_reset_rejected";
-            $is_read = 0;
+            $notification_link    = null;
+            $notification_type    = "password_reset_rejected";
             
-            $insert_query = "INSERT INTO admin_notifications (admin_emp_id, message, type, is_read, created_at) 
-                             VALUES (?, ?, ?, ?, NOW())";
+            $insert_query = "INSERT INTO admin_notifications (admin_emp_id, message, link, type, is_read, created_at) 
+                             VALUES (?, ?, ?, ?, 0, NOW())";
             $insert_stmt = $db->prepare($insert_query);
-            $insert_stmt->bind_param("issi", $request['emp_id'], $notification_message, $notification_type, $is_read);
+            $insert_stmt->bind_param("isss", $request['emp_id'], $notification_message, $notification_link, $notification_type);
             $insert_stmt->execute();
         }
         
@@ -197,12 +206,4 @@ $requests = $result->fetch_all(MYSQLI_ASSOC);
 </div>
 <?php include '../includes/footer.php'; ?>
 </body>
-<script>
-    $(document).ready(function() {
-        console.log('Notification links found:', $('.notification-text a').length);
-        $('.notification-text a').each(function() {
-            console.log('Link:', $(this).attr('href'), 'Text:', $(this).text());
-        });
-    });
-</script>
 </html>

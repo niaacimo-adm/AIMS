@@ -129,118 +129,165 @@ if (isset($_SESSION['emp_id'])) {
             z-index: 9999;
         }
         
+        .loader-content,
+        .nia-loader-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+        }
+
+        /* ── NIA CSS Loader ── */
         .nia-loader {
-            width: 200px;
-            height: 200px;
             position: relative;
+            width: 120px;
+            height: 120px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        
-        .nia-loader-logo {
-            width: 120px;
-            height: 120px;
-            background: white;
+
+        /* rotating dashed ring */
+        .nia-loader::before {
+            content: "";
+            position: absolute;
+            inset: 0;
             border-radius: 50%;
-            display: flex;
+            border: 4px solid transparent;
+            border-top-color: var(--nia-gold);
+            border-right-color: var(--nia-gold);
+            animation: nia-spin 1.1s linear infinite;
+        }
+
+        /* soft pulsing halo */
+        .nia-loader::after {
+            content: "";
+            position: absolute;
+            inset: -10px;
+            border-radius: 50%;
+            border: 2px solid var(--nia-gold);
+            opacity: 0;
+            animation: nia-pulse 1.8s ease-out infinite;
+        }
+
+        /* Logo — bare <img class="nia-logo"> inside .nia-loader (no wrapper div) */
+        .nia-loader .nia-logo,
+        img.nia-logo {
+            display: block !important;
+            width: 74px !important;
+            height: 74px !important;
+            max-width: 74px !important;
+            max-height: 74px !important;
+            min-width: 74px !important;
+            min-height: 74px !important;
+            border-radius: 50% !important;
+            object-fit: contain;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 2;
+            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+            animation: nia-breathe 1.8s ease-in-out infinite;
+        }
+
+        /* Optional wrapper-div variant kept for compatibility */
+        .nia-loader-logo {
+            width: 94px !important;
+            height: 94px !important;
+            max-width: 94px !important;
+            max-height: 94px !important;
+            background: white;
+            border-radius: 50% !important;
+            display: flex !important;
             justify-content: center;
             align-items: center;
-            box-shadow: 
+            box-shadow:
                 0 15px 35px rgba(0, 0, 0, 0.3),
                 inset 0 -5px 15px rgba(0, 0, 0, 0.1),
                 inset 0 5px 15px rgba(255, 255, 255, 0.8);
             position: relative;
             z-index: 2;
             overflow: hidden;
+            box-sizing: border-box;
+            animation: nia-breathe 1.8s ease-in-out infinite;
         }
-        
+
         .nia-loader-logo img {
-            width: 100px;
-            height: auto;
+            width: 74px !important;
+            height: 74px !important;
+            max-width: 74px !important;
+            max-height: 74px !important;
             object-fit: contain;
             filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+            animation: none;
         }
-        
-        .nia-loader-ring {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 3px solid transparent;
-            border-top: 3px solid var(--nia-gold);
-            border-radius: 50%;
-            animation: spin 1.5s linear infinite;
-        }
-        
-        .nia-loader-ring:nth-child(2) {
-            width: 120%;
-            height: 120%;
-            border-top: 3px solid var(--nia-light-blue);
-            animation: spin 2s linear infinite;
-        }
-        
-        .nia-loader-ring:nth-child(3) {
-            width: 140%;
-            height: 140%;
-            border-top: 3px solid white;
-            animation: spin 2.5s linear infinite;
-        }
-        
-        .nia-loader-text {
+
+        .nia-loader-text,
+        .nia-loader-label {
             color: white;
-            margin-top: 20px;
             font-size: 16px;
             font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
             text-align: center;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
-        
-        .progress-bar {
-            width: 200px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            margin-top: 15px;
-            overflow: hidden;
+
+        .nia-loader-label::after {
+            content: "";
+            display: inline-block;
+            width: 1em;
+            text-align: left;
+            animation: nia-dots 1.4s steps(4, end) infinite;
         }
-        
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--nia-gold);
-            border-radius: 2px;
-            box-shadow: 0 0 10px var(--nia-gold);
+
+        @keyframes nia-spin {
+            to { transform: rotate(360deg); }
         }
-        
-        .loader-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+
+        @keyframes nia-breathe {
+            0%, 100% { transform: scale(.94); }
+            50%      { transform: scale(1.02); }
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        @keyframes nia-pulse {
+            0%   { transform: scale(.85); opacity: .6; }
+            100% { transform: scale(1.25); opacity: 0; }
         }
-        
-        @keyframes progressFill {
-            0% { width: 0%; }
-            100% { width: 100%; }
+
+        @keyframes nia-dots {
+            0%   { content: ""; }
+            25%  { content: "."; }
+            50%  { content: ".."; }
+            75%  { content: "..."; }
+            100% { content: ""; }
         }
-        
+
         @media (max-width: 576px) {
             .nia-loader {
-                width: 150px;
-                height: 150px;
+                width: 96px;
+                height: 96px;
             }
-            
+
+            .nia-loader .nia-logo,
+            img.nia-logo {
+                width: 58px !important;
+                height: 58px !important;
+                max-width: 58px !important;
+                max-height: 58px !important;
+            }
+
             .nia-loader-logo {
-                width: 90px;
-                height: 90px;
+                width: 76px !important;
+                height: 76px !important;
+                max-width: 76px !important;
+                max-height: 76px !important;
             }
-            
+
             .nia-loader-logo img {
-                width: 75px;
+                width: 58px !important;
+                height: 58px !important;
+                max-width: 58px !important;
+                max-height: 58px !important;
             }
         }
     </style>
@@ -255,19 +302,12 @@ if (isset($_SESSION['emp_id'])) {
     
     <!-- Loader Overlay -->
     <div class="loader-overlay" id="loaderOverlay">
-        <div class="loader-content">
+        <div class="nia-loader-wrap">
             <div class="nia-loader">
-                <div class="nia-loader-ring"></div>
-                <div class="nia-loader-ring"></div>
-                <div class="nia-loader-ring"></div>
-                <div class="nia-loader-logo">
-                    <img src="dist/img/nialogo.png" alt="NIA Logo">
-                </div>
+                <img class="nia-logo" src="dist/img/nialogo.png" alt="Loading"
+                     style="width:74px;height:74px;max-width:74px;max-height:74px;border-radius:50%;object-fit:contain;display:block;">
             </div>
-            <div class="nia-loader-text">Logging out...</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
+            <div class="nia-loader-label">Logging out</div>
         </div>
     </div>
 
@@ -276,18 +316,7 @@ if (isset($_SESSION['emp_id'])) {
     
     <script>
         $(document).ready(function() {
-            // Start the progress bar animation
-            $('#progressFill').css({
-                'width': '0%',
-                'transition': 'width 3s ease-in-out'
-            });
-            
-            // Trigger the animation
-            setTimeout(function() {
-                $('#progressFill').css('width', '100%');
-            }, 100);
-            
-            // Wait for 3 seconds to show the loader and complete progress bar
+            // Show the loader for a few seconds before logging out
             setTimeout(function() {
                 // Perform the actual logout via AJAX
                 $.ajax({

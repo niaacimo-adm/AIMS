@@ -33,6 +33,22 @@ if ($employee_id) {
         }
     }
 }
+
+// Fetch notifications for the bell dropdown — from the real admin_notifications
+// table (confirmed to already hold live data across the app).
+$notifications = [];
+$unread_count = 0;
+if ($employee_id && isset($db)) {
+    $notif_stmt = $db->prepare("SELECT id, message, link, type, is_read, created_at FROM admin_notifications WHERE admin_emp_id = ? ORDER BY created_at DESC LIMIT 15");
+    $notif_stmt->bind_param("i", $employee_id);
+    $notif_stmt->execute();
+    $notifications = $notif_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $count_stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM admin_notifications WHERE admin_emp_id = ? AND is_read = 0");
+    $count_stmt->bind_param("i", $employee_id);
+    $count_stmt->execute();
+    $unread_count = (int)($count_stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+}
 ?>
 <nav class="main-header navbar navbar-expand">
     <ul class="navbar-nav me-auto">
@@ -125,28 +141,52 @@ if ($employee_id) {
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
-        <!-- Notifications Dropdown - Temporarily disabled -->
+        <!-- Notifications Dropdown -->
         <li class="nav-item dropdown notification-dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown" aria-expanded="false" id="notificationDropdown">
                 <i class="far fa-bell"></i>
+                <?php if ($unread_count > 0): ?>
+                    <span class="notification-badge" id="notificationCount"><?= $unread_count ?></span>
+                <?php endif; ?>
             </a>
             <div class="dropdown-menu">
                 <div class="notification-header">
                     <span>Notifications</span>
-                    <span class="notification-count" id="notificationHeader">Coming Soon</span>
+                    <span class="notification-count" id="notificationHeader"><?= $unread_count > 0 ? $unread_count . ' Notification' . ($unread_count > 1 ? 's' : '') : 'No Notifications' ?></span>
                 </div>
                 <div class="notification-list" id="notificationList">
-                    <div class="text-center py-4 text-muted">Notification system is being updated</div>
+                    <?php if (empty($notifications)): ?>
+                        <div class="text-center py-4 text-muted">No notifications</div>
+                    <?php else: ?>
+                        <?php foreach ($notifications as $n): ?>
+                            <div class="notification-item-row" data-notification-id="<?= (int)$n['id'] ?>">
+                                <?php if (!empty($n['link'])): ?>
+                                    <a href="<?= htmlspecialchars($n['link']) ?>" class="dropdown-item notification-item<?= $n['is_read'] ? '' : ' unread font-weight-bold' ?>" data-notification-id="<?= (int)$n['id'] ?>">
+                                        <div class="notification-text"><?= $n['message'] /* built server-side, not user input */ ?></div>
+                                        <div class="notification-time"><?= date('M j, g:i A', strtotime($n['created_at'])) ?></div>
+                                    </a>
+                                <?php else: ?>
+                                    <div class="dropdown-item notification-item<?= $n['is_read'] ? '' : ' unread font-weight-bold' ?>" data-notification-id="<?= (int)$n['id'] ?>">
+                                        <div class="notification-text"><?= $n['message'] ?></div>
+                                        <div class="notification-time"><?= date('M j, g:i A', strtotime($n['created_at'])) ?></div>
+                                    </div>
+                                <?php endif; ?>
+                                <button type="button" class="notif-delete-btn" data-id="<?= (int)$n['id'] ?>" title="Delete notification">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
                 <div class="notification-actions">
-                    <button class="btn btn-sm btn-outline-primary btn-notification mark-all-read-btn" disabled>
+                    <button type="button" id="markAllReadBtn" class="btn btn-sm btn-outline-primary btn-notification"<?= empty($notifications) ? ' disabled' : '' ?>>
                         <i class="fas fa-check-double me-1"></i> Mark All Read
                     </button>
-                    <button class="btn btn-sm btn-outline-danger btn-notification delete-all-btn" disabled>
+                    <button type="button" id="deleteAllBtn" class="btn btn-sm btn-outline-danger btn-notification"<?= empty($notifications) ? ' disabled' : '' ?>>
                         <i class="fas fa-trash me-1"></i> Delete All
                     </button>
                 </div>
-                <a href="#" class="dropdown-item text-center py-2" data-toggle="modal" data-target="#allNotificationsModal">
+                <a href="#" id="seeAllNotificationsBtn" class="dropdown-item text-center py-2">
                     See All Notifications
                 </a>
             </div>
@@ -198,24 +238,42 @@ if ($employee_id) {
     </ul>
 </nav>
 
-<!-- All Notifications Modal - Temporarily disabled -->
-<div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- All Notifications Modal -->
+<div class="modal fade" id="notificationsModal" tabindex="-1" role="dialog" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="allNotificationsModalLabel">All Notifications</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                <h5 class="modal-title" id="notificationsModalLabel"><i class="far fa-bell mr-2"></i>All Notifications</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <div class="text-center py-4 text-muted">
-                    <i class="fas fa-info-circle fa-2x mb-3"></i>
-                    <p>Notification system is currently being updated.</p>
-                    <p class="small">Please check back later.</p>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Message</th>
+                                <th width="110">Status</th>
+                                <th width="140">Date</th>
+                                <th width="90">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notificationsModalBody">
+                            <tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <button type="button" id="modalMarkAllReadBtn" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-check-double me-1"></i> Mark All Read
+                    </button>
+                    <button type="button" id="modalDeleteAllBtn" class="btn btn-sm btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> Delete All
+                    </button>
+                </div>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -370,6 +428,25 @@ body {
 .notification-item.unread { background: var(--notification-unread-bg) !important; }
 .notification-item { color: var(--dropdown-color) !important; }
 .notification-time { color: var(--text-muted) !important; }
+
+/* Per-item delete button in the notification dropdown */
+.notification-item-row { position: relative; }
+.notification-item-row .dropdown-item { padding-right: 34px; }
+.notif-delete-btn {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 4px 6px;
+    line-height: 1;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 2;
+}
+.notif-delete-btn:hover { color: #dc3545; background: rgba(220,53,69,0.1); }
 
 /* APP LAUNCHER */
 .app-item {
@@ -791,7 +868,7 @@ $(document).ready(function() {
             cancelButtonText: 'Cancel',
             showLoaderOnConfirm: true,
             preConfirm: () => {
-                return fetch('backup_database.php')
+                return fetch('../includes/backup_database.php')
                     .then(response => {
                         if (!response.ok) {
                             throw new Error('Network response was not ok: ' + response.status);
@@ -903,7 +980,7 @@ $(document).ready(function() {
                 }, 500);
 
                 // Start actual backup
-                fetch('../views/backup_database.php')
+                fetch('../includes/backup_database.php')
                     .then(response => response.json())
                     .then(data => {
                         clearInterval(timerInterval);
@@ -951,4 +1028,183 @@ $(document).ready(function() {
             }
         });
     }
+</script>
+
+<script>
+// ===== NOTIFICATIONS: Mark All Read / Delete All / Individual Delete / All-Notifications Modal =====
+$(document).ready(function() {
+
+    function updateNotificationBadge() {
+        const unread = $('#notificationList .notification-item.unread').length;
+        if (unread > 0) {
+            if ($('#notificationCount').length) {
+                $('#notificationCount').text(unread);
+            } else {
+                $('#notificationDropdown').append('<span class="notification-badge" id="notificationCount">' + unread + '</span>');
+            }
+            $('#notificationHeader').text(unread + ' Notification' + (unread > 1 ? 's' : ''));
+        } else {
+            $('#notificationCount').remove();
+            $('#notificationHeader').text('No Notifications');
+        }
+    }
+
+    function updateEmptyState() {
+        const remaining = $('#notificationList .notification-item-row').length;
+        if (remaining === 0) {
+            $('#notificationList').html('<div class="text-center py-4 text-muted">No notifications</div>');
+            $('#markAllReadBtn, #deleteAllBtn').prop('disabled', true);
+        }
+        updateNotificationBadge();
+    }
+
+    function refreshModalIfOpen() {
+        if ($('#notificationsModal').hasClass('show')) {
+            loadNotificationsModal();
+        }
+    }
+
+    function loadNotificationsModal() {
+        $('#notificationsModalBody').html('<tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+        $.get('get_all_notifications.php', function(html) {
+            $('#notificationsModalBody').html(html);
+        }).fail(function() {
+            $('#notificationsModalBody').html('<tr><td colspan="4" class="text-center py-4 text-danger">Failed to load notifications.</td></tr>');
+        });
+    }
+
+    // ----- Mark All Read (dropdown + modal) -----
+    function markAllRead() {
+        Swal.fire({
+            title: 'Mark all as read?',
+            text: 'Every notification will be marked as read.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, mark all read',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            $.post('mark_all_notifications_read.php', {}, function(res) {
+                if (res.success) {
+                    $('#notificationList .notification-item').removeClass('unread font-weight-bold');
+                    updateNotificationBadge();
+                    $('#notificationsModalBody .badge-warning').removeClass('badge-warning').addClass('badge-success').text('Read');
+                    Swal.fire({ icon: 'success', title: 'Done!', text: 'All notifications marked as read.', timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire('Error', res.message || 'Something went wrong.', 'error');
+                }
+            }, 'json').fail(function() {
+                Swal.fire('Error', 'Could not reach the server.', 'error');
+            });
+        });
+    }
+    $('#markAllReadBtn, #modalMarkAllReadBtn').on('click', function(e) {
+        e.preventDefault();
+        if ($(this).is(':disabled')) return;
+        markAllRead();
+    });
+
+    // ----- Delete All (dropdown + modal) -----
+    function deleteAllNotifications() {
+        Swal.fire({
+            title: 'Delete all notifications?',
+            text: 'This cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete all',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            $.post('delete_all_notifications.php', {}, function(res) {
+                if (res.success) {
+                    $('#notificationList').html('<div class="text-center py-4 text-muted">No notifications</div>');
+                    $('#markAllReadBtn, #deleteAllBtn').prop('disabled', true);
+                    updateNotificationBadge();
+                    $('#notificationsModalBody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
+                    Swal.fire({ icon: 'success', title: 'Deleted!', text: 'All notifications removed.', timer: 1500, showConfirmButton: false });
+                } else {
+                    Swal.fire('Error', res.message || 'Something went wrong.', 'error');
+                }
+            }, 'json').fail(function() {
+                Swal.fire('Error', 'Could not reach the server.', 'error');
+            });
+        });
+    }
+    $('#deleteAllBtn, #modalDeleteAllBtn').on('click', function(e) {
+        e.preventDefault();
+        if ($(this).is(':disabled')) return;
+        deleteAllNotifications();
+    });
+
+    // ----- Individual delete (dropdown + modal, same button class) -----
+    $(document).on('click', '.notif-delete-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = $(this).data('id');
+        const $dropdownRow = $('#notificationList .notification-item-row[data-notification-id="' + id + '"]');
+        const $modalRow = $('#notificationsModalBody tr[data-notification-id="' + id + '"]');
+
+        Swal.fire({
+            title: 'Delete this notification?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            $.post('delete_notification.php', { id: id }, function(res) {
+                if (res.success) {
+                    $dropdownRow.fadeOut(200, function() { $(this).remove(); updateEmptyState(); });
+                    if ($modalRow.length) {
+                        $modalRow.fadeOut(200, function() {
+                            $(this).remove();
+                            if ($('#notificationsModalBody tr').length === 0) {
+                                $('#notificationsModalBody').html('<tr><td colspan="4" class="text-center py-4 text-muted">No notifications found</td></tr>');
+                            }
+                        });
+                    }
+                    Swal.fire({ icon: 'success', title: 'Deleted', timer: 1200, showConfirmButton: false });
+                } else {
+                    Swal.fire('Error', res.message || 'Something went wrong.', 'error');
+                }
+            }, 'json').fail(function() {
+                Swal.fire('Error', 'Could not reach the server.', 'error');
+            });
+        });
+    });
+
+    // ----- View a notification from the modal: show full text and mark as read -----
+    $(document).on('click', '.view-notification', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        const $row = $(this).closest('tr');
+        const message = $row.find('td').eq(0).text().trim();
+
+        $.post('mark_notification_read.php', { id: id }, function(res) {
+            if (res.success) {
+                $row.find('.badge').removeClass('badge-warning').addClass('badge-success').text('Read');
+                $('#notificationList .notification-item[data-notification-id="' + id + '"]').removeClass('unread font-weight-bold');
+                updateNotificationBadge();
+            }
+        }, 'json');
+
+        Swal.fire({ title: 'Notification', text: message, icon: 'info', confirmButtonText: 'Close' });
+    });
+
+    // ----- Open "See All Notifications" modal -----
+    $(document).on('click', '#seeAllNotificationsBtn', function(e) {
+        e.preventDefault();
+        $('#notificationsModal').modal('show');
+        loadNotificationsModal();
+    });
+});
 </script>

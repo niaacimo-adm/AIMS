@@ -390,3 +390,15 @@
 [2026-07-10 09:28:57] mem=2MB peak=2MB Request ended normally (or connection closed by client).
 [2026-07-10 09:28:57] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=89&crop_year=&season=&sector=
 [2026-07-10 09:28:57] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-07-18 05:23:17] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=89
+[2026-07-18 05:23:17] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-07-18 05:23:17] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=89&crop_year=&season=&sector=
+[2026-07-18 05:23:17] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-07-20 10:09:06] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=89&crop_year=&season=&sector=
+[2026-07-20 10:09:06] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-07-20 10:09:06] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=89
+[2026-07-20 10:09:06] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-07-20 10:09:27] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=89&crop_year=&season=&sector=
+[2026-07-20 10:09:27] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-07-20 10:09:27] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=89
+[2026-07-20 10:09:27] mem=2MB peak=2MB Request ended normally (or connection closed by client).
