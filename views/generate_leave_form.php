@@ -408,7 +408,7 @@ if ($download) {
    PREVIEW MODE
 ══════════════════════════════════════════════════════ */
 $status_color = match ($status) {
-    'approved'                      => '#099268',
+    'approved'                      => '#2a9863',
     'rejected','disapproved'        => '#c92a2a',
     'cancelled'                     => '#64748b',
     default                         => '#b45309',
@@ -450,22 +450,22 @@ if (str_contains($section_lc, 'admin')) {
     <?php include '../includes/header.php'; ?>
     <style>
         :root {
-            --lf-bg:#f0f4ff; --lf-card:#fff; --lf-border:#e2e8f0;
-            --lf-text:#1e293b; --lf-muted:#64748b;
-            --lf-primary:#3b5bdb; --lf-accent:#228be6;
-            --lf-success:#099268; --lf-danger:#c92a2a;
+            --lf-bg:#eef7f2; --lf-card:#fff; --lf-border:rgba(42,152,99,0.18);
+            --lf-text:#0f2d1e; --lf-muted:#4a7a5e;
+            --lf-primary:#2a9863; --lf-accent:#1a5c38;
+            --lf-success:#2a9863; --lf-danger:#c92a2a;
         }
         body.dark-mode {
-            --lf-bg:#0f1117; --lf-card:#1a1d2e; --lf-border:#2a2d3e;
-            --lf-text:#e2e8f0; --lf-muted:#8892a4;
+            --lf-bg:#0b1f17; --lf-card:#102f22; --lf-border:rgba(36,231,143,0.12);
+            --lf-text:#d4f5e5; --lf-muted:#6aad8a;
         }
         /* ── Toolbar ── */
         .lf-bar {
-            background:linear-gradient(135deg,#1e2d78 0%,#3b5bdb 60%,#228be6 100%);
+            background:linear-gradient(135deg,#0f2d1e 0%,#1c4d38 55%,#2a9863 100%);
             padding:13px 22px; display:flex; align-items:center;
             justify-content:space-between; flex-wrap:wrap; gap:10px;
             position:sticky; top:57px; z-index:200;
-            box-shadow:0 2px 12px rgba(30,45,120,.25);
+            box-shadow:0 2px 12px rgba(15,45,30,.3);
         }
         .lf-bar-info h2 { color:#fff; font-size:.97rem; font-weight:800; margin:0 0 1px; }
         .lf-bar-info p  { color:rgba(255,255,255,.72); font-size:.76rem; margin:0; }
@@ -482,16 +482,16 @@ if (str_contains($section_lc, 'admin')) {
         }
         .btn-back  { background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.25); }
         .btn-back:hover { background:rgba(255,255,255,.25); color:#fff; }
-        .btn-print { background:linear-gradient(135deg,#099268,#20c997); color:#fff; }
+        .btn-print { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; }
         .btn-print:hover { opacity:.87; }
-        .btn-dl    { background:#fff; color:#1e2d78; }
-        .btn-dl:hover { background:#dbe4ff; color:#1e2d78; }
+        .btn-dl    { background:#fff; color:#1a5c38; }
+        .btn-dl:hover { background:#e6f7ef; color:#1a5c38; }
         /* ── Wrap ── */
         .lf-wrap { max-width:820px; margin:22px auto; padding:0 16px 48px; }
         .lf-card {
             background:var(--lf-card); border:1px solid var(--lf-border);
             border-radius:14px; overflow:hidden;
-            box-shadow:0 4px 24px rgba(59,91,219,.09);
+            box-shadow:0 4px 24px rgba(42,152,99,.09);
         }
         /* ── Form header ── */
         .form-head {
@@ -500,7 +500,7 @@ if (str_contains($section_lc, 'admin')) {
         }
         .form-head::before {
             content:''; position:absolute; inset:0;
-            background:linear-gradient(135deg,rgba(59,91,219,.04),transparent);
+            background:linear-gradient(135deg,rgba(42,152,99,.04),transparent);
         }
         .form-head-top {
             display:flex; justify-content:space-between; align-items:flex-start;
@@ -522,11 +522,11 @@ if (str_contains($section_lc, 'admin')) {
         /* ── Section blocks ── */
         .fsec { border:1px solid var(--lf-border); border-radius:10px; margin-bottom:14px; overflow:hidden; }
         .fsec-head {
-            background:#f0f4ff; padding:7px 14px;
+            background:#e6f7ef; padding:7px 14px;
             font-size:.68rem; font-weight:800; text-transform:uppercase;
             letter-spacing:.5px; color:var(--lf-primary); border-bottom:1px solid var(--lf-border);
         }
-        body.dark-mode .fsec-head { background:#151827; }
+        body.dark-mode .fsec-head { background:#0e2619; }
         .fsec-body { padding:14px 16px; }
         /* ── Field items ── */
         .pf-grid  { display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; }
@@ -540,23 +540,23 @@ if (str_contains($section_lc, 'admin')) {
         .lt-txt  { line-height:1.35; color:var(--lf-text); }
         /* ── Action blocks ── */
         .act-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        .act-block { background:#f8faff; border:1px solid var(--lf-border); border-radius:8px; padding:12px 14px; }
-        body.dark-mode .act-block { background:#151827; }
+        .act-block { background:#f0faf5; border:1px solid var(--lf-border); border-radius:8px; padding:12px 14px; }
+        body.dark-mode .act-block { background:#0e2619; }
         .act-block h6 { font-size:.65rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--lf-muted); margin:0 0 8px; }
         .sig-line { border-bottom:1px solid var(--lf-text); margin:22px 10px 3px; }
         .sig-name  { font-size:.79rem; font-weight:800; text-align:center; color:var(--lf-text); }
         .sig-title { font-size:.7rem; font-style:italic; color:var(--lf-muted); text-align:center; }
         .leave-credits-tbl { width:100%; border-collapse:collapse; font-size:.73rem; margin:6px 0 10px; }
         .leave-credits-tbl td { border:1px solid var(--lf-border); padding:3px 7px; color:var(--lf-text); }
-        .leave-credits-tbl .th { font-weight:700; background:#f0f4ff; text-align:center; }
-        body.dark-mode .leave-credits-tbl .th { background:#1a1d2e; }
+        .leave-credits-tbl .th { font-weight:700; background:#e6f7ef; text-align:center; }
+        body.dark-mode .leave-credits-tbl .th { background:#102f22; }
         /* ── Reason box ── */
         .reason-box {
-            background:#f8faff; border:1px solid var(--lf-border); border-radius:7px;
+            background:#f0faf5; border:1px solid var(--lf-border); border-radius:7px;
             padding:9px 13px; font-size:.84rem; color:var(--lf-text);
             line-height:1.6; white-space:pre-wrap;
         }
-        body.dark-mode .reason-box { background:#151827; }
+        body.dark-mode .reason-box { background:#0e2619; }
         /* ── Warning notice ── */
         .lf-warn {
             background:#fff8e1; border:1px solid #ffd43b; border-radius:8px;

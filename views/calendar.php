@@ -15,31 +15,27 @@ checkPermission('view_calendar');
   <title>AdminLTE 3 | Calendar</title>
   <?php include '../includes/header.php'; ?>
   <link rel="stylesheet" href="../plugins/fullcalendar/main.css">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     /* ── Design Tokens ─────────────────────────────────────────── */
     :root {
-        --primary:        #2563eb;
-        --primary-dark:   #1d4ed8;
-        --primary-light:  #eff6ff;
-        --accent:         #06b6d4;
+        /* Brand + radius/shadow/font tokens only — these don't change
+           between light/dark mode. Surface, border and text colors are
+           read directly from mainheader.php's site-wide variables
+           (--body-bg, --card-bg, --card-border, --text-primary, etc.)
+           at each point of use below, so they react live to body.dark-mode
+           instead of being frozen to a single mode here at :root. */
+        --primary:        var(--green, #24e78f);
+        --primary-dark:   var(--green-dark, #2a9863);
+        --accent:         #c9a227;   /* muted gold — echoes the hero's gold accents */
+        --accent-dark:    #a9861c;
         --success:        #10b981;
         --warning:        #f59e0b;
         --danger:         #ef4444;
         --birthday:       #8b5cf6;
-        --meeting:        #1d4ed8;
+        --meeting:        #3b5bdb;
         --holiday:        #f59e0b;
-        --event:          #2563eb;
+        --event:          var(--green-dark, #2a9863);
         --leave:          #e03131;   /* approved leave */
-
-        --bg:             #f0f4f8;
-        --surface:        #ffffff;
-        --surface-2:      #f8fafc;
-        --border:         #e2e8f0;
-        --border-subtle:  #f1f5f9;
-        --text-primary:   #0f172a;
-        --text-secondary: #475569;
-        --text-muted:     #94a3b8;
 
         --radius-sm:  6px;
         --radius:     12px;
@@ -53,7 +49,7 @@ checkPermission('view_calendar');
     }
 
     /* ── Base overrides ─────────────────────────────────────────── */
-    body, .content-wrapper { background: var(--bg) !important; font-family: var(--font-ui) !important; }
+    body, .content-wrapper { background: var(--body-bg) !important; font-family: var(--font-ui) !important; }
 
     .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
     
@@ -67,20 +63,18 @@ checkPermission('view_calendar');
 
     /* ── Cards ──────────────────────────────────────────────────── */
     .card {
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-lg) !important;
-        box-shadow: var(--shadow-sm) !important;
+        border: 1px solid var(--card-border) !important;
+        border-radius: var(--radius) !important;
+        box-shadow: none !important;
         overflow: hidden;
-        background: var(--surface) !important;
-        transition: box-shadow .2s ease;
+        background: var(--card-bg) !important;
     }
-    .card:hover { box-shadow: var(--shadow) !important; }
 
-    .card-primary { border-color: var(--border) !important; }
+    .card-primary { border-color: var(--card-border) !important; }
 
     .card-header {
-        background: var(--surface) !important;
-        border-bottom: 1px solid var(--border-subtle) !important;
+        background: var(--card-bg) !important;
+        border-bottom: 1px solid var(--table-border) !important;
         padding: 1rem 1.25rem !important;
         display: flex;
         align-items: center;
@@ -89,47 +83,37 @@ checkPermission('view_calendar');
     .card-header h3,
     .card-header h4,
     .card-header .card-title {
-        font-family: var(--font-head);
+        font-family: var(--font-ui);
         font-size: .95rem !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         color: var(--text-primary) !important;
-        letter-spacing: -.01em;
+        letter-spacing: 0;
         margin: 0 !important;
-    }
-    /* Coloured left accent bar on card headers */
-    .card-header::before {
-        content: '';
-        display: inline-block;
-        width: 4px;
-        height: 18px;
-        border-radius: 4px;
-        background: linear-gradient(160deg, var(--primary), var(--accent));
-        flex-shrink: 0;
     }
 
     /* ── Sidebar form ───────────────────────────────────────────── */
     .form-group label {
         font-size: .78rem;
         font-weight: 600;
-        color: var(--text-secondary);
+        color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: .06em;
         margin-bottom: .3rem;
     }
     .form-control {
-        border: 1.5px solid var(--border) !important;
+        border: 1px solid var(--card-border) !important;
         border-radius: var(--radius-sm) !important;
         font-family: var(--font-ui) !important;
         font-size: .875rem !important;
         color: var(--text-primary) !important;
         padding: .5rem .75rem !important;
-        background: var(--surface-2) !important;
+        background: var(--table-stripe) !important;
         transition: border-color .15s, box-shadow .15s;
     }
     .form-control:focus {
         border-color: var(--primary) !important;
-        box-shadow: 0 0 0 3px rgba(37,99,235,.12) !important;
-        background: var(--surface) !important;
+        box-shadow: 0 0 0 3px rgba(36,231,143,.18) !important;
+        background: var(--card-bg) !important;
     }
     textarea.form-control { resize: vertical; min-height: 80px; }
 
@@ -139,43 +123,44 @@ checkPermission('view_calendar');
         font-weight: 600 !important;
         font-size: .85rem !important;
         border-radius: var(--radius-sm) !important;
-        transition: all .18s ease !important;
-        letter-spacing: .01em;
+        transition: background .15s ease, border-color .15s ease !important;
+        letter-spacing: 0;
     }
     .btn-primary, .btn-primary.btn-block {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
-        border: none !important;
+        background: var(--primary) !important;
+        border: 1px solid var(--primary) !important;
         color: #fff !important;
-        box-shadow: 0 2px 8px rgba(37,99,235,.3) !important;
+        box-shadow: none !important;
     }
     .btn-primary:hover {
-        background: linear-gradient(135deg, var(--primary-dark), #1e3a8a) !important;
-        box-shadow: 0 4px 16px rgba(37,99,235,.4) !important;
-        transform: translateY(-1px);
+        background: var(--primary-dark) !important;
+        border-color: var(--primary-dark) !important;
+        box-shadow: none !important;
+        transform: none;
     }
     .btn-danger {
-        background: linear-gradient(135deg, var(--danger), #dc2626) !important;
-        border: none !important;
-        box-shadow: 0 2px 8px rgba(239,68,68,.3) !important;
+        background: var(--danger) !important;
+        border: 1px solid var(--danger) !important;
+        box-shadow: none !important;
     }
     .btn-secondary {
-        background: var(--surface-2) !important;
-        border: 1.5px solid var(--border) !important;
-        color: var(--text-secondary) !important;
+        background: var(--table-stripe) !important;
+        border: 1px solid var(--card-border) !important;
+        color: var(--text-muted) !important;
     }
     .btn-secondary:hover {
-        background: var(--border-subtle) !important;
+        background: var(--table-border) !important;
         color: var(--text-primary) !important;
     }
 
     /* ── FullCalendar toolbar ───────────────────────────────────── */
     .fc .fc-toolbar { padding: 1rem 1.25rem .5rem; }
     .fc .fc-toolbar-title {
-        font-family: var(--font-head) !important;
-        font-size: 1.15rem !important;
-        font-weight: 800 !important;
+        font-family: var(--font-ui) !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
         color: var(--text-primary) !important;
-        letter-spacing: -.02em;
+        letter-spacing: 0;
     }
     .fc .fc-button {
         border-radius: var(--radius-sm) !important;
@@ -183,12 +168,12 @@ checkPermission('view_calendar');
         font-size: .8rem !important;
         font-weight: 600 !important;
         padding: .35rem .75rem !important;
-        transition: all .15s !important;
+        transition: background .15s, color .15s, border-color .15s !important;
     }
     .fc .fc-button-primary {
-        background: var(--surface-2) !important;
-        border: 1.5px solid var(--border) !important;
-        color: var(--text-secondary) !important;
+        background: var(--card-bg) !important;
+        border: 1px solid var(--card-border) !important;
+        color: var(--text-muted) !important;
         box-shadow: none !important;
     }
     .fc .fc-button-primary:hover,
@@ -197,20 +182,20 @@ checkPermission('view_calendar');
         background: var(--primary) !important;
         border-color: var(--primary) !important;
         color: #fff !important;
-        box-shadow: 0 2px 8px rgba(37,99,235,.3) !important;
+        box-shadow: none !important;
     }
     .fc .fc-today-button {
-        background: linear-gradient(135deg, var(--accent), #0891b2) !important;
-        border-color: transparent !important;
-        color: #fff !important;
-        box-shadow: 0 2px 8px rgba(6,182,212,.3) !important;
+        background: transparent !important;
+        border: 1px solid var(--accent) !important;
+        color: var(--accent-dark) !important;
+        box-shadow: none !important;
     }
     .fc .fc-today-button:hover {
-        background: linear-gradient(135deg, #0891b2, #0e7490) !important;
+        background: var(--notification-unread-bg) !important;
     }
 
     /* ── Calendar grid ──────────────────────────────────────────── */
-    .fc-day-today { background: var(--primary-light) !important; }
+    .fc-day-today { background: var(--notification-unread-bg) !important; }
     .fc-day-today .fc-daygrid-day-number {
         background: var(--primary);
         color: #fff !important;
@@ -220,26 +205,26 @@ checkPermission('view_calendar');
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
+        font-weight: 600;
         font-size: .82rem;
     }
     .fc-col-header-cell {
-        background: var(--surface-2) !important;
+        background: var(--table-stripe) !important;
         font-family: var(--font-ui) !important;
         font-size: .78rem !important;
         font-weight: 700 !important;
         color: var(--text-muted) !important;
         text-transform: uppercase;
         letter-spacing: .07em;
-        border-color: var(--border) !important;
+        border-color: var(--card-border) !important;
     }
     .fc-daygrid-day-number {
         font-size: .82rem;
         font-weight: 500;
-        color: var(--text-secondary) !important;
+        color: var(--text-muted) !important;
         padding: 6px 8px !important;
     }
-    .fc td, .fc th { border-color: var(--border-subtle) !important; }
+    .fc td, .fc th { border-color: var(--table-border) !important; }
 
     /* ── Event pills ────────────────────────────────────────────── */
     .fc-event {
@@ -260,19 +245,150 @@ checkPermission('view_calendar');
     .cal-legend {
         display: flex; flex-wrap: wrap; gap: 10px 18px;
         padding: 10px 14px;
-        border-top: 1px solid var(--border-subtle);
-        font-size: .78rem; color: var(--text-secondary);
+        border-top: 1px solid var(--table-border);
+        font-size: .78rem; color: var(--text-muted);
     }
     .cal-legend-item { display: flex; align-items: center; gap: 5px; }
     .cal-legend-dot  {
         width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
     }
 
+    /* ── Calendar + side panel layout ─────────────────────────────── */
+    .calendar-layout {
+        display: flex;
+        align-items: stretch;
+    }
+    .calendar-main {
+        flex: 0 0 66.6667%;   /* 8 of 12 columns */
+        max-width: 66.6667%;
+        min-width: 0;
+        border-right: 1px solid var(--table-border);
+    }
+    .calendar-main #calendar { padding: .5rem; }
+
+    /* Shrink the grid itself so it doesn't dominate the page */
+    .fc-daygrid-day-frame {
+        aspect-ratio: 1 / 1;
+        max-width: 108px;
+        max-height: 108px;
+        margin: 0 auto;
+        min-height: 0 !important;
+        display: flex;
+        flex-direction: column;
+    }
+    .fc-daygrid-day-events { overflow: hidden; }
+    .fc .fc-daygrid-body-natural .fc-daygrid-day-events { margin-bottom: 0 !important; }
+    .fc-daygrid-event {
+        font-size: .68rem !important;
+        line-height: 1.15 !important;
+        padding: 1px 4px !important;
+    }
+    .fc-daygrid-event .fc-event-title,
+    .fc-daygrid-event .fc-event-time {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .fc-daygrid-event .fc-event-title {
+        white-space: normal !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+    .fc-daygrid-day-bottom {
+        font-size: .68rem;
+        padding: 0 4px !important;
+    }
+
+    .calendar-side {
+        flex: 0 0 33.3333%;   /* 4 of 12 columns */
+        max-width: 33.3333%;
+        display: flex;
+        flex-direction: column;
+        background: var(--table-stripe);
+        max-height: 640px;
+        overflow-y: auto;
+    }
+    .side-panel-header {
+        padding: 1rem 1.1rem .75rem;
+        border-bottom: 1px solid var(--table-border);
+    }
+    .side-panel-header h4 {
+        margin: 0;
+        font-family: var(--font-ui);
+        font-size: .92rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .side-panel-header span {
+        font-size: .74rem;
+        color: var(--text-muted);
+    }
+    .side-panel-body { padding: .85rem 1.1rem; flex: 1 1 auto; }
+    .side-empty {
+        font-size: .82rem;
+        color: var(--text-muted);
+        margin: .5rem 0 0;
+    }
+    .side-event-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: .6rem .65rem;
+        margin-bottom: .5rem;
+        border-radius: var(--radius-sm);
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+    }
+    .side-event-dot {
+        width: 9px; height: 9px; border-radius: 50%;
+        margin-top: 5px; flex-shrink: 0;
+    }
+    .side-event-info { flex: 1 1 auto; min-width: 0; }
+    .side-event-title {
+        font-size: .82rem; font-weight: 600;
+        color: var(--text-primary);
+        overflow-wrap: anywhere;
+    }
+    .side-event-time {
+        font-size: .72rem; color: var(--text-muted); margin-top: 1px;
+    }
+    .side-event-edit {
+        border: none; background: transparent; color: var(--text-muted);
+        cursor: pointer; font-size: .78rem; padding: 2px 4px;
+    }
+    .side-event-edit:hover { color: var(--primary); }
+    .side-panel-add {
+        padding: .85rem 1.1rem 1.1rem;
+        border-top: 1px solid var(--table-border);
+    }
+    .side-panel-add label {
+        font-size: .7rem; font-weight: 600; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: .05em; margin-bottom: .2rem;
+    }
+    .side-panel-add .form-control-sm {
+        border: 1px solid var(--card-border) !important;
+        border-radius: var(--radius-sm) !important;
+        background: var(--card-bg) !important;
+        color: var(--text-primary) !important;
+        font-size: .8rem !important;
+    }
+
+    .fc-daygrid-day.selected-day {
+        background: rgba(36,231,143,.12) !important;
+        box-shadow: inset 0 0 0 1.5px var(--primary);
+    }
+
+    @media (max-width: 991px) {
+        .calendar-layout { flex-direction: column; }
+        .calendar-main { border-right: none; border-bottom: 1px solid var(--table-border); }
+        .calendar-side { flex: 1 1 auto; max-width: 100%; max-height: 360px; }
+    }
+
     /* ── Tables ─────────────────────────────────────────────────── */
     .table { font-size: .86rem; color: var(--text-primary); }
     .table thead th {
-        background: var(--surface-2) !important;
-        border-bottom: 2px solid var(--border) !important;
+        background: var(--table-stripe) !important;
+        border-bottom: 2px solid var(--card-border) !important;
         font-weight: 700;
         font-size: .75rem;
         text-transform: uppercase;
@@ -281,11 +397,10 @@ checkPermission('view_calendar');
         padding: .75rem 1rem;
         white-space: nowrap;
     }
-    .table tbody td { padding: .7rem 1rem; border-color: var(--border-subtle) !important; vertical-align: middle; }
+    .table tbody td { padding: .7rem 1rem; border-color: var(--table-border) !important; vertical-align: middle; }
     .table-hover tbody tr { transition: background .15s; }
-    .table-hover tbody tr:hover td { background: var(--primary-light) !important; }
-    #events-table tr.table-info td { background: rgba(37,99,235,.06) !important; }
-    #birthdays-table tr:hover td   { background: var(--primary-light) !important; }
+    .table-hover tbody tr:hover td { background: var(--notification-unread-bg) !important; }
+    #events-table tr.table-info td { background: rgba(36,231,143,.1) !important; }
 
     /* ── Badges ─────────────────────────────────────────────────── */
     .badge {
@@ -309,7 +424,7 @@ checkPermission('view_calendar');
         top: 50%; left: 50%;
         transform: translate(-50%, -50%);
         width: 36px; height: 36px;
-        border: 3px solid var(--border);
+        border: 3px solid var(--card-border);
         border-top-color: var(--primary);
         border-radius: 50%;
         animation: spin 1s linear infinite;
@@ -335,29 +450,29 @@ checkPermission('view_calendar');
     /* ── Modals ─────────────────────────────────────────────────── */
     .modal-content {
         border: none !important;
-        border-radius: var(--radius-lg) !important;
-        box-shadow: var(--shadow-lg) !important;
+        border-radius: var(--radius) !important;
+        box-shadow: var(--shadow) !important;
         overflow: hidden;
     }
     .modal-header {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+        background: var(--primary) !important;
         border: none !important;
         padding: 1.1rem 1.5rem !important;
     }
     .modal-title {
-        font-family: var(--font-head) !important;
-        font-weight: 700 !important;
+        font-family: var(--font-ui) !important;
+        font-weight: 600 !important;
         font-size: 1rem !important;
         color: #fff !important;
-        letter-spacing: -.01em;
+        letter-spacing: 0;
     }
     .modal-header .close { color: rgba(255,255,255,.8) !important; text-shadow: none !important; font-size: 1.4rem; }
     .modal-header .close:hover { color: #fff !important; }
-    .modal-body  { padding: 1.5rem !important; background: var(--surface); }
+    .modal-body  { padding: 1.5rem !important; background: var(--card-bg); }
     .modal-footer {
         padding: 1rem 1.5rem !important;
-        border-top: 1px solid var(--border-subtle) !important;
-        background: var(--surface-2);
+        border-top: 1px solid var(--table-border) !important;
+        background: var(--table-stripe);
         gap: .5rem;
         display: flex;
     }
@@ -365,13 +480,13 @@ checkPermission('view_calendar');
     /* ── DataTables tweaks ──────────────────────────────────────── */
     div.dataTables_wrapper div.dataTables_length select,
     div.dataTables_wrapper div.dataTables_filter input {
-        border: 1.5px solid var(--border);
+        border: 1.5px solid var(--card-border);
         border-radius: var(--radius-sm);
         padding: .3rem .6rem;
         font-size: .82rem;
         font-family: var(--font-ui);
         color: var(--text-primary);
-        background: var(--surface-2);
+        background: var(--table-stripe);
     }
     div.dataTables_wrapper div.dataTables_info,
     div.dataTables_wrapper div.dataTables_length label,
@@ -546,82 +661,74 @@ checkPermission('view_calendar');
     <section class="content">
       <div class="container-fluid">
         <div class="row">
-          <div class="col-md-3">
-            <div class="sticky-top mb-3">
-              <div class="card card-primary">
-                <div class="card-header">
-                  <h3 class="card-title">Employee Birthdays</h3>
-                </div>
-                <div class="card-body">
-                  <div class="table-responsive">
-                    <table id="birthdays-table" class="table table-hover table-striped" style="width:100%">
-                      <thead>
-                        <tr>
-                          <th>Employee</th>
-                          <th>Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <!-- AJAX DATA -->
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-                              
-              <div class="card card-primary">
-                <div class="card-header">
-                  <h3 class="card-title">Create Event</h3>
-                </div>
-                <div class="card-body">
-                  <div class="form-group">
-                    <label>Event Title</label>
-                    <input id="event-title" type="text" class="form-control" placeholder="Event Title">
-                  </div>
-                  <div class="form-group">
-                    <label>Event Type</label>
-                    <select id="event-type" class="form-control">
-                      <option value="event">General Event</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="holiday">Holiday</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Start Date/Time</label>
-                    <input id="event-start" type="datetime-local" class="form-control">
-                  </div>
-                  <div class="form-group">
-                    <label>End Date/Time</label>
-                    <input id="event-end" type="datetime-local" class="form-control">
-                  </div>
-                  <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="event-description" class="form-control" rows="3" placeholder="Enter description"></textarea>
-                  </div>
-                  <button id="add-event" class="btn btn-primary btn-block">Add Event</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-9">
+          <div class="col-12">
             <div class="card card-primary">
+              <div class="card-header">
+                <h3 class="card-title">Calendar</h3>
+                <div class="card-tools ml-auto">
+                  <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#create-event-modal">
+                    <i class="fas fa-plus mr-1"></i>New event
+                  </button>
+                </div>
+              </div>
               <div class="card-body p-0">
-                <div id="calendar"></div>
-                <!-- Legend -->
-                <div class="cal-legend">
-                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--event)"></span>General Event</span>
-                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--meeting)"></span>Meeting</span>
-                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--holiday)"></span>Holiday</span>
-                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--birthday)"></span>Birthday</span>
-                  <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave)"></span>Approved Leave</span>
+                <div class="calendar-layout">
+                  <div class="calendar-main">
+                    <div id="calendar"></div>
+                    <!-- Legend -->
+                    <div class="cal-legend">
+                      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--event)"></span>General Event</span>
+                      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--meeting)"></span>Meeting</span>
+                      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--holiday)"></span>Holiday</span>
+                      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--birthday)"></span>Birthday</span>
+                      <span class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave)"></span>Approved Leave</span>
+                    </div>
+                  </div>
+                  <div class="calendar-side" id="calendar-side">
+                    <div class="side-panel-header">
+                      <h4 id="side-panel-date">Select a day</h4>
+                      <span id="side-panel-sub">Click any date to view or add events</span>
+                    </div>
+                    <div class="side-panel-body" id="side-panel-events">
+                      <p class="side-empty">Click a date on the calendar to see what's happening that day.</p>
+                    </div>
+                    <div class="side-panel-add" id="side-panel-add" style="display:none;">
+                      <div class="form-group mb-2">
+                        <label>Add event</label>
+                        <input id="side-event-title" type="text" class="form-control form-control-sm" placeholder="Event title">
+                      </div>
+                      <div class="form-group mb-2">
+                        <label>Type</label>
+                        <select id="side-event-type" class="form-control form-control-sm">
+                          <option value="event">General Event</option>
+                          <option value="meeting">Meeting</option>
+                          <option value="holiday">Holiday</option>
+                        </select>
+                      </div>
+                      <div class="form-row">
+                        <div class="col form-group mb-2">
+                          <label>Start</label>
+                          <input id="side-event-start-time" type="time" class="form-control form-control-sm" value="09:00">
+                        </div>
+                        <div class="col form-group mb-2">
+                          <label>End</label>
+                          <input id="side-event-end-time" type="time" class="form-control form-control-sm" value="17:00">
+                        </div>
+                      </div>
+                      <div class="form-group mb-2">
+                        <label>Description</label>
+                        <textarea id="side-event-description" class="form-control form-control-sm" rows="2" placeholder="Optional"></textarea>
+                      </div>
+                      <button type="button" class="btn btn-primary btn-sm btn-block" id="side-save-event">Add event</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
+
             <div class="card card-primary mt-3">
                 <div class="card-header">
-                    <h4 class="card-title">Upcoming Events</h4>
+                    <h4 class="card-title">Upcoming events</h4>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -648,12 +755,56 @@ checkPermission('view_calendar');
     </section>
   </div>
 
+  <!-- Create Event Modal -->
+  <div class="modal fade" id="create-event-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create event</h5>
+          <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Event Title</label>
+            <input id="event-title" type="text" class="form-control" placeholder="Event Title">
+          </div>
+          <div class="form-group">
+            <label>Event Type</label>
+            <select id="event-type" class="form-control">
+              <option value="event">General Event</option>
+              <option value="meeting">Meeting</option>
+              <option value="holiday">Holiday</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Start Date/Time</label>
+            <input id="event-start" type="datetime-local" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>End Date/Time</label>
+            <input id="event-end" type="datetime-local" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="event-description" class="form-control" rows="3" placeholder="Enter description"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="button" id="add-event" class="btn btn-primary">Add event</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Event Modal -->
   <div class="modal fade" id="event-modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="modal-title">Event Details</h5>
+          <h5 class="modal-title" id="modal-title">Event details</h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
@@ -693,50 +844,6 @@ checkPermission('view_calendar');
     </div>
   </div>
 
-  <!-- Day Click Modal -->
-  <div class="modal fade" id="day-click-modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Add Event for <span id="modal-date-title"></span></h5>
-          <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Event Title</label>
-            <input id="quick-event-title" type="text" class="form-control" placeholder="Event Title">
-          </div>
-          <div class="form-group">
-            <label>Event Type</label>
-            <select id="quick-event-type" class="form-control">
-              <option value="event">General Event</option>
-              <option value="meeting">Meeting</option>
-              <option value="holiday">Holiday</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Start Time</label>
-            <input id="quick-event-start-time" type="time" class="form-control">
-          </div>
-          <div class="form-group">
-            <label>End Time</label>
-            <input id="quick-event-end-time" type="time" class="form-control">
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea id="quick-event-description" class="form-control" rows="3" placeholder="Enter description"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary" id="save-quick-event">Save Event</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <?php include '../includes/mainfooter.php'; ?>
 </div>
 
@@ -753,6 +860,8 @@ checkPermission('view_calendar');
       // Initialize calendar with loading state
       $('#calendar').addClass('calendar-loading');
       
+      var selectedDateStr = null;
+
       var calendarEl = document.getElementById('calendar');
       var calendar = new FullCalendar.Calendar(calendarEl, {
           headerToolbar: {
@@ -762,10 +871,20 @@ checkPermission('view_calendar');
           },
           themeSystem: 'bootstrap',
           initialView: 'dayGridMonth',
+          height: 'auto',
+          dayMaxEventRows: 2,
           navLinks: true,
           editable: true,
           selectable: true,
           eventLimit: true,
+
+          // Fires whenever the calendar's event set changes (initial load,
+          // refetch, etc.) — keeps the side panel in sync automatically.
+          eventsSet: function() {
+              if (selectedDateStr) {
+                  renderSidePanel(selectedDateStr);
+              }
+          },
           
           // Event styling based on type
           eventDidMount: function(info) {
@@ -860,24 +979,10 @@ checkPermission('view_calendar');
           },
           
           dateClick: function(info) {
-              // Format the date for display
-              var dateStr = moment(info.date).format('MMMM D, YYYY');
-              $('#modal-date-title').text(dateStr);
-              
-              // Set default times (9am-5pm)
-              $('#quick-event-start-time').val('09:00');
-              $('#quick-event-end-time').val('17:00');
-              
-              // Clear other fields
-              $('#quick-event-title').val('');
-              $('#quick-event-type').val('event');
-              $('#quick-event-description').val('');
-              
-              // Store the clicked date in the modal for later use
-              $('#day-click-modal').data('date', info.date);
-              
-              // Show the modal
-              $('#day-click-modal').modal('show');
+              selectedDateStr = info.dateStr; // YYYY-MM-DD
+              $('.fc-daygrid-day').removeClass('selected-day');
+              $('.fc-daygrid-day[data-date="' + info.dateStr + '"]').addClass('selected-day');
+              renderSidePanel(info.dateStr, info.date);
           },
       });
       
@@ -889,24 +994,147 @@ checkPermission('view_calendar');
           $('body').addClass('theme-admin');
       }
       
-      // Quick event save handler
-      $('#save-quick-event').click(function() {
-          var title = $('#quick-event-title').val().trim();
-          var type = $('#quick-event-type').val();
-          var startTime = $('#quick-event-start-time').val();
-          var endTime = $('#quick-event-end-time').val();
-          var description = $('#quick-event-description').val().trim();
-          var date = $('#day-click-modal').data('date');
-          
+      // ── Side panel: render events for a clicked day ─────────────
+      var typeColorVar = {
+          birthday: 'var(--birthday)',
+          holiday:  'var(--holiday)',
+          meeting:  'var(--meeting)',
+          leave:    'var(--leave)',
+          event:    'var(--event)'
+      };
+
+      function eventFallsOnDate(ev, dateStr) {
+          if (!ev.start) return false;
+          var day = moment(dateStr, 'YYYY-MM-DD');
+          var start = moment(ev.start).startOf('day');
+          var end;
+
+          if (ev.end) {
+              var endMoment = moment(ev.end);
+              end = endMoment.clone().startOf('day');
+              // FullCalendar end dates are exclusive at midnight (this is how
+              // all-day events express their range). But for a *timed* event
+              // whose end time isn't exactly midnight, the event still runs
+              // into that calendar day, so push the exclusive boundary out
+              // by one more day — otherwise a same-day timed event (e.g.
+              // 7:00am–8:00am) collapses to a zero-length range and vanishes.
+              var isExactMidnight = endMoment.hours() === 0 && endMoment.minutes() === 0 && endMoment.seconds() === 0;
+              if (!isExactMidnight) {
+                  end.add(1, 'day');
+              }
+          } else {
+              end = start.clone().add(1, 'day');
+          }
+
+          return day.isSameOrAfter(start) && day.isBefore(end);
+      }
+
+      function renderSidePanel(dateStr, dateObj) {
+          var dateMoment = dateObj ? moment(dateObj) : moment(dateStr, 'YYYY-MM-DD');
+          $('#side-panel-date').text(dateMoment.format('MMMM D, YYYY'));
+          $('#side-panel-sub').text(dateMoment.format('dddd'));
+
+          // Pull from FullCalendar's own event store — same normalized
+          // objects eventClick already relies on (extendedProps etc.),
+          // so it doesn't matter how each source endpoint shapes its JSON.
+          var dayEvents = calendar.getEvents().filter(function(ev) {
+              return eventFallsOnDate(ev, dateStr);
+          });
+
+          var $list = $('#side-panel-events');
+          $list.empty();
+
+          if (dayEvents.length === 0) {
+              $list.append('<p class="side-empty">No events for this day yet.</p>');
+          } else {
+              dayEvents.forEach(function(ev) {
+                  var type = ev.extendedProps.type || 'event';
+                  var color = typeColorVar[type] || typeColorVar.event;
+                  var timeLabel;
+                  if (type === 'birthday') {
+                      timeLabel = 'Birthday';
+                  } else if (ev.allDay) {
+                      timeLabel = 'All day';
+                  } else {
+                      timeLabel = moment(ev.start).format('h:mm A') + (ev.end ? ' – ' + moment(ev.end).format('h:mm A') : '');
+                  }
+
+                  var $item = $(
+                      '<div class="side-event-item">' +
+                          '<span class="side-event-dot" style="background:' + color + '"></span>' +
+                          '<div class="side-event-info">' +
+                              '<div class="side-event-title"></div>' +
+                              '<div class="side-event-time"></div>' +
+                          '</div>' +
+                      '</div>'
+                  );
+                  $item.find('.side-event-title').text(ev.title || '(untitled)');
+                  $item.find('.side-event-time').text(timeLabel);
+
+                  // Editable events (not birthdays/leaves) get an edit button
+                  if (type !== 'birthday' && type !== 'leave') {
+                      var $editBtn = $('<button type="button" class="side-event-edit" title="Edit"><i class="fas fa-pen"></i></button>');
+                      $editBtn.on('click', function() {
+                          $('#event-id').val(ev.id);
+                          $('#modal-title-input').val(ev.title);
+                          $('#modal-type').val(type);
+                          $('#modal-start').val(moment(ev.start).format('YYYY-MM-DDTHH:mm'));
+                          $('#modal-end').val(ev.end ? moment(ev.end).format('YYYY-MM-DDTHH:mm') : '');
+                          $('#modal-description').val(ev.extendedProps.description || '');
+                          $('#event-modal').modal('show');
+                      });
+                      $item.append($editBtn);
+                  } else if (type === 'leave') {
+                      var $viewBtn = $('<button type="button" class="side-event-edit" title="View"><i class="fas fa-eye"></i></button>');
+                      $viewBtn.on('click', function() {
+                          Swal.fire({
+                              title: ev.extendedProps.emp_name || 'Approved Leave',
+                              html: '<div style="text-align:left;font-size:.88rem;line-height:1.8">'
+                                  + '<p><strong>Leave Type:</strong> ' + (ev.extendedProps.leave_type || 'N/A') + '</p>'
+                                  + '<p><strong>Days:</strong> ' + (ev.extendedProps.number_of_days || '—') + ' day(s)</p>'
+                                  + '</div>',
+                              icon: 'info',
+                              confirmButtonColor: '#e03131',
+                              confirmButtonText: 'Close'
+                          });
+                      });
+                      $item.append($viewBtn);
+                  }
+
+                  $list.append($item);
+              });
+          }
+
+          // Reset and reveal the quick-add form for this date
+          $('#side-event-title').val('');
+          $('#side-event-type').val('event');
+          $('#side-event-start-time').val('09:00');
+          $('#side-event-end-time').val('17:00');
+          $('#side-event-description').val('');
+          $('#side-panel-add').data('date', dateStr).show();
+      }
+
+      // Add-event handler for the side panel
+      $('#side-save-event').click(function() {
+          var date = $('#side-panel-add').data('date');
+          var title = $('#side-event-title').val().trim();
+          var type = $('#side-event-type').val();
+          var startTime = $('#side-event-start-time').val();
+          var endTime = $('#side-event-end-time').val();
+          var description = $('#side-event-description').val().trim();
+
           if (!title) {
               alert('Title is required');
               return;
           }
-          
-          // Combine date with time
-          var startDateTime = moment(date).format('YYYY-MM-DD') + 'T' + startTime;
-          var endDateTime = moment(date).format('YYYY-MM-DD') + 'T' + endTime;
-          
+          if (!date) {
+              alert('Please select a date on the calendar first');
+              return;
+          }
+
+          var startDateTime = date + 'T' + startTime;
+          var endDateTime = date + 'T' + endTime;
+
           $.ajax({
               url: 'add_event.php',
               type: 'POST',
@@ -921,8 +1149,7 @@ checkPermission('view_calendar');
                   if (response.status === 'success') {
                       calendar.refetchEvents();
                       loadEventsTable();
-                      $('#day-click-modal').modal('hide');
-                      
+
                       Swal.fire(
                           'Success!',
                           'Event added successfully',
@@ -998,6 +1225,8 @@ checkPermission('view_calendar');
                       loadEventsTable();
                       $('#event-title, #event-description').val('');
                       $('#event-type').val('event');
+                      $('#event-start, #event-end').val('');
+                      $('#create-event-modal').modal('hide');
                       
                       Swal.fire(
                           'Success!',
@@ -1202,104 +1431,8 @@ checkPermission('view_calendar');
           });
       }
 
-      // Initialize Birthdays DataTable
-      var birthdaysTable = $('#birthdays-table').DataTable({
-          responsive: true,
-          lengthChange: true,
-          autoWidth: false,
-          pageLength: 5,
-          lengthMenu: [[5, 10, 15, 20, 100], [5, 10, 15, 20, 100]],
-          columns: [
-              { 
-                  data: 'name',
-                  render: function(data, type, row) {
-                      return '<strong>' + data + '</strong>';
-                  }
-              },
-              { 
-                  data: 'date',
-                  render: function(data) {
-                      return '<span class="badge badge-primary">' + moment(data).format('MMMM D') + '</span>';
-                  }
-              }
-          ],
-          dom: '<"top"lf>rt<"bottom"ip>',
-          language: {
-              lengthMenu: "Show _MENU_ entries per page",
-              paginate: {
-                  previous: "&laquo;",
-                  next: "&raquo;"
-              }
-          }
-      });
-
-// Function to load birthdays into the DataTable (current month only)
-function loadBirthdaysTable() {
-    $.ajax({
-        url: 'get_birthdays.php?t=' + new Date().getTime(),
-        type: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                birthdaysTable.clear();
-                
-                if (response.data && response.data.length > 0) {
-                    var currentMonth = new Date().getMonth(); // Get current month (0-11)
-                    var currentYear = new Date().getFullYear();
-                    
-                    var processedData = response.data.map(function(birthday) {
-                        var date = new Date(birthday.start);
-                        var today = new Date();
-                        var nextBirthday = new Date(today.getFullYear(), date.getMonth(), date.getDate());
-                        
-                        if (nextBirthday < today) {
-                            nextBirthday.setFullYear(nextBirthday.getFullYear() + 1);
-                        }
-                        
-                        var daysUntil = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
-                        var age = (today.getFullYear() - date.getFullYear());
-                        
-                        if (today < new Date(today.getFullYear(), date.getMonth(), date.getDate())) {
-                            age--;
-                        }
-                        
-                        return {
-                            name: birthday.title.replace("'s Birthday", ""),
-                            date: birthday.start,
-                            age: age,
-                            days_until: daysUntil,
-                            birthMonth: date.getMonth() // Store the birth month for filtering
-                        };
-                    });
-                    
-                    // Filter birthdays to only show current month
-                    var currentMonthBirthdays = processedData.filter(function(birthday) {
-                        return birthday.birthMonth === currentMonth;
-                    });
-                    
-                    // Sort by day of month
-                    currentMonthBirthdays.sort(function(a, b) {
-                        var dateA = new Date(a.date);
-                        var dateB = new Date(b.date);
-                        return dateA.getDate() - dateB.getDate();
-                    });
-                    
-                    birthdaysTable.rows.add(currentMonthBirthdays).draw();
-                }
-            } else {
-                console.error('Error loading birthdays:', response.message);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('AJAX error loading birthdays:', error);
-            birthdaysTable.clear().draw();
-        }
-    });
-}
-
       // Load initial data
       loadEventsTable();
-      loadBirthdaysTable();
   });
 </script>
 </body>

@@ -797,6 +797,81 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
         }
         body.dark-mode .perm-note { background:#2e2000; border-color:#c07000; color:#ffd43b; }
 
+        /* ══ Leave Request Details modal (styled to match employee-side leave_request.php) ══ */
+        #detailModal .modal-dialog { max-width:560px; }
+        #detailModal .modal-content { border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.25); background:var(--h-card); }
+        .hdm-header {
+            display:flex; align-items:center; gap:12px;
+            padding:20px 24px 16px; border-bottom:1.5px solid var(--h-border);
+        }
+        .hdm-header-icon {
+            width:40px; height:40px; border-radius:10px;
+            background:rgba(42,152,99,.14); color:var(--h-primary);
+            display:flex; align-items:center; justify-content:center;
+            font-size:1rem; flex-shrink:0;
+        }
+        .hdm-header h5 { margin:0; font-size:1rem; font-weight:700; color:var(--h-text); }
+        .hdm-header p  { margin:0; font-size:.78rem; color:var(--h-muted); }
+        .hdm-body { padding:20px 24px; max-height:65vh; overflow-y:auto; }
+        .hdm-status-bar {
+            display:flex; align-items:center; gap:10px;
+            border-radius:10px; padding:12px 16px; margin-bottom:20px;
+        }
+        .hdm-status-bar.bar-pend { background:#fff8e1; }
+        .hdm-status-bar.bar-appr { background:#e6fbf4; }
+        .hdm-status-bar.bar-rejt { background:#fff0f0; }
+        .hdm-status-bar.bar-canc { background:#f1f5f9; }
+        body.dark-mode .hdm-status-bar.bar-pend { background:#3d2e00; }
+        body.dark-mode .hdm-status-bar.bar-appr { background:#0d3d2c; }
+        body.dark-mode .hdm-status-bar.bar-rejt { background:#3d0f0f; }
+        body.dark-mode .hdm-status-bar.bar-canc { background:#1e2030; }
+        .hdm-status-bar .hdm-status-label {
+            font-size:.7rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:.06em; color:var(--h-muted); margin-right:4px;
+        }
+        .hdm-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; margin-bottom:16px; }
+        @media(max-width:520px){ .hdm-grid{ grid-template-columns:1fr; } }
+        .hdm-field label {
+            display:block; font-size:.68rem; font-weight:700;
+            text-transform:uppercase; letter-spacing:.06em;
+            color:var(--h-muted); margin-bottom:3px;
+        }
+        .hdm-field span { font-size:.88rem; color:var(--h-text); font-weight:500; }
+        .hdm-field.full { grid-column:1 / -1; }
+        .hdm-infobox {
+            background:var(--h-card-alt); border-radius:8px;
+            padding:10px 14px; font-size:.87rem; color:var(--h-text);
+            line-height:1.6; border-left:3px solid var(--h-border);
+        }
+        .hdm-infobox.hdm-remark { border-left-color:var(--h-warning); background:#fff9f0; }
+        body.dark-mode .hdm-infobox.hdm-remark { background:#2e2000; }
+        .hdm-dates-wrap { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+        .hdm-date-chip {
+            background:rgba(42,152,99,.14); color:var(--h-primary);
+            border-radius:20px; padding:2px 10px; font-size:.74rem; font-weight:700;
+        }
+        .hdm-footer {
+            display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap;
+            gap:8px; padding:14px 24px; border-top:1.5px solid var(--h-border);
+            background:var(--h-card-alt);
+        }
+        .hdm-btn-close {
+            background:var(--h-card); color:var(--h-text);
+            border:1.5px solid var(--h-border); border-radius:8px;
+            padding:8px 20px; font-size:.87rem; font-weight:600;
+            cursor:pointer; transition:background .12s;
+        }
+        .hdm-btn-close:hover { background:var(--h-card-alt); }
+        .hdm-btn-form {
+            display:inline-flex; align-items:center; gap:6px;
+            background:linear-gradient(135deg,#0f2d1e,#2a9863);
+            color:#fff; border:none; border-radius:8px;
+            padding:8px 20px; font-size:.87rem; font-weight:600;
+            text-decoration:none; cursor:pointer; transition:opacity .15s;
+        }
+        .hdm-btn-form:hover { opacity:.88; color:#fff; text-decoration:none; }
+        .hdm-spinner { text-align:center; padding:48px 0; color:var(--h-primary); font-size:1.8rem; }
+
         /* Apply Leave Modal form */
         .al-label {
             font-size:.72rem; font-weight:700; color:var(--h-muted);
@@ -1134,17 +1209,12 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
     </div>
 
     <!-- ══ Detail Modal ══ -->
-    <div class="modal fade hm-modal" id="detailModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal fade" id="detailModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file-alt mr-2"></i>Leave Request Details</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <div id="detailModalInner">
+                    <div class="hdm-spinner"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
-                <div class="modal-body" id="detailModalBody">
-                    <div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#2a9863;"></i></div>
-                </div>
-                <div class="modal-footer" id="detailModalFooter" style="display:none;"></div>
             </div>
         </div>
     </div>
@@ -1430,60 +1500,93 @@ $(document).ready(function(){
     };
 
     /* ── View Detail ── */
+    function hdmFormatDate(str){
+        if(!str) return '—';
+        var d=new Date(String(str).replace(' ','T'));
+        return isNaN(d)?str:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    }
+    function hdmUcFirst(s){ return s?s.charAt(0).toUpperCase()+s.slice(1):s; }
+
     $(document).on('click','.btn-view-detail',function(){
         var id=$(this).data('id');
-        $('#detailModalBody').html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x" style="color:#2a9863;"></i></div>');
-        $('#detailModalFooter').hide().html('');
+        $('#detailModalInner').html('<div class="hdm-spinner"><i class="fas fa-spinner fa-spin"></i></div>');
         $('#detailModal').modal('show');
 
         $.post('hr_leave_monitoring.php',{ajax:1,action:'get_details',leave_request_id:id},function(d){
-            if(!d){$('#detailModalBody').html('<p class="text-center py-4" style="color:var(--h-danger)">Could not load details.</p>');return;}
-            var s=(d.status||'').toLowerCase();
-            var bc=s==='approved'?'hb-appr':s==='rejected'?'hb-rejt':s==='cancelled'?'hb-canc':'hb-pend';
-            $('#detailModalBody').html(
-                '<div class="detail-grid mb-4">'+
-                '<div class="detail-item"><label>Employee</label><span>'+(d.emp_name||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>ID Number</label><span>'+(d.id_number||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Section</label><span>'+(d.section_name||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Position</label><span>'+(d.position_name||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Appointment</label><span class="appt-badge" style="background:'+(d.color||'#4a7a5e')+'">'+(d.appointment_status||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Leave Type</label><span>'+(d.leave_type_name||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Date From</label><span>'+(d.date_from||'')+'</span></div>'+
-                '<div class="detail-item"><label>Date To</label><span>'+(d.date_to||'')+'</span></div>'+
-                '<div class="detail-item"><label>Inclusive Dates</label><span>'+(d.inclusive_dates||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Working Days</label><span>'+(d.number_of_days||0)+'</span></div>'+
-                '<div class="detail-item"><label>Status</label><span class="h-badge '+bc+'">'+(d.status||'N/A')+'</span></div>'+
-                '<div class="detail-item"><label>Filed On</label><span>'+(d.created_at||'')+'</span></div>'+
-                (d.approved_by_name?'<div class="detail-item"><label>Processed By</label><span>'+d.approved_by_name+'</span></div>':'')+
-                (d.approved_at     ?'<div class="detail-item"><label>Processed On</label><span>'+d.approved_at+'</span></div>':'')+
-                '</div>'+
-                '<div class="mb-3"><label style="font-size:.68rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;letter-spacing:.4px;">Reason / Details</label>'+
-                '<div class="info-box">'+(d.reason||'N/A')+'</div></div>'+
-                (d.hr_remarks?'<div><label style="font-size:.68rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;letter-spacing:.4px;">HR Remarks</label><div class="info-box">'+d.hr_remarks+'</div></div>':'')
-            );
+            if(!d){ $('#detailModalInner').html('<p style="padding:32px;text-align:center;color:var(--h-danger)">Could not load details.</p>'); return; }
 
+            var s = (d.status||'').toLowerCase();
+            var badgeClass = s==='approved'?'hb-appr': (s==='rejected'||s==='disapproved')?'hb-rejt': s==='cancelled'?'hb-canc':'hb-pend';
+            var barClass   = s==='approved'?'bar-appr': (s==='rejected'||s==='disapproved')?'bar-rejt': s==='cancelled'?'bar-canc':'bar-pend';
+
+            // Inclusive date chips
+            var dateChips = '';
+            if(d.inclusive_dates){
+                d.inclusive_dates.split(',').forEach(function(dt){
+                    dateChips += '<span class="hdm-date-chip">'+dt.trim()+'</span>';
+                });
+            }
+
+            // HR remarks block
+            var remarksHtml = d.hr_remarks
+                ? '<div class="hdm-field full" style="margin-top:4px;"><label>HR Remarks</label>'+
+                  '<div class="hdm-infobox hdm-remark">'+d.hr_remarks+'</div></div>'
+                : '';
+
+            // Processed by block
+            var processedHtml = d.approved_by_name
+                ? '<div class="hdm-field"><label>Processed By</label><span>'+d.approved_by_name+'</span></div>'+
+                  '<div class="hdm-field"><label>Processed On</label><span>'+(d.approved_at||'—')+'</span></div>'
+                : '';
+
+            // Footer buttons
+            var footerBtns = '<button class="hdm-btn-close" data-dismiss="modal">Close</button>';
             if(s==='pending'){
                 if(CAN_APPROVE){
-                    $('#detailModalFooter').show().html(
-                        '<button class="btn btn-success btn-sm btn-approve" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-check mr-1"></i>Approve</button>'+
-                        '<button class="btn btn-danger btn-sm btn-reject" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-times mr-1"></i>Reject</button>'
-                    );
+                    footerBtns = '<button class="btn btn-success btn-sm btn-approve" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-check mr-1"></i>Approve</button>'+
+                        '<button class="btn btn-danger btn-sm btn-reject" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-times mr-1"></i>Reject</button>'+
+                        footerBtns;
                 } else {
-                    $('#detailModalFooter').show().html(
-                        '<div class="perm-note"><i class="fas fa-lock"></i>Approval requires <strong>Administrator</strong>, <strong>Heads</strong>, or <strong>Unit Head</strong> role.</div>'
-                    );
+                    footerBtns = '<div class="perm-note"><i class="fas fa-lock"></i>Approval requires <strong>Administrator</strong>, <strong>Heads</strong>, or <strong>Unit Head</strong> role.</div>'+footerBtns;
                 }
             } else if(s==='approved'){
-                $('#detailModalFooter').show().html(
-                    '<a class="btn btn-primary btn-sm" href="generate_leave_form.php?leave_request_id='+d.leave_request_id+'&hr=1" target="_blank"><i class="fas fa-file-download mr-1"></i>Generate Form</a>'
-                );
+                footerBtns = '<a class="hdm-btn-form" href="generate_leave_form.php?leave_request_id='+d.leave_request_id+'&hr=1" target="_blank"><i class="fas fa-file-download"></i> Generate Form</a>'+footerBtns;
             } else if((s==='cancelled'||s==='rejected'||s==='disapproved') && CAN_APPROVE){
-                $('#detailModalFooter').show().html(
-                    '<button class="btn btn-danger btn-sm btn-hr-delete" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-trash-alt mr-1"></i>Delete Record</button>'
-                );
-            } else {
-                $('#detailModalFooter').hide();
+                footerBtns = '<button class="btn btn-danger btn-sm btn-hr-delete" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-trash-alt mr-1"></i>Delete Record</button>'+footerBtns;
             }
+
+            $('#detailModalInner').html(
+                '<div class="hdm-header">'+
+                    '<div class="hdm-header-icon"><i class="fas fa-calendar-check"></i></div>'+
+                    '<div>'+
+                        '<h5>Leave Request Details</h5>'+
+                        '<p>Reference #'+d.leave_request_id+' &bull; Filed '+hdmFormatDate(d.created_at)+'</p>'+
+                    '</div>'+
+                    '<button type="button" class="close ml-auto" data-dismiss="modal" style="font-size:1.3rem;line-height:1;opacity:.5;background:none;border:none;color:var(--h-text);">&times;</button>'+
+                '</div>'+
+                '<div class="hdm-body">'+
+                    '<div class="hdm-status-bar '+barClass+'">'+
+                        '<span class="hdm-status-label">Status</span>'+
+                        '<span class="h-badge '+badgeClass+'">'+hdmUcFirst(d.status)+'</span>'+
+                    '</div>'+
+                    '<div class="hdm-grid">'+
+                        '<div class="hdm-field"><label>Employee</label><span>'+(d.emp_name||'N/A')+'</span></div>'+
+                        '<div class="hdm-field"><label>ID Number</label><span>'+(d.id_number||'N/A')+'</span></div>'+
+                        '<div class="hdm-field"><label>Section</label><span>'+(d.section_name||'N/A')+'</span></div>'+
+                        '<div class="hdm-field"><label>Position</label><span>'+(d.position_name||'N/A')+'</span></div>'+
+                        '<div class="hdm-field"><label>Appointment</label><span class="appt-badge" style="background:'+(d.color||'#4a7a5e')+'">'+(d.appointment_status||'N/A')+'</span></div>'+
+                        '<div class="hdm-field"><label>Leave Type</label><span>'+(d.leave_type_name||'N/A')+'</span></div>'+
+                        '<div class="hdm-field"><label>Working Days</label><span>'+(d.number_of_days||0)+' day(s)</span></div>'+
+                        '<div class="hdm-field"><label>Date From</label><span>'+hdmFormatDate(d.date_from)+'</span></div>'+
+                        '<div class="hdm-field"><label>Date To</label><span>'+hdmFormatDate(d.date_to)+'</span></div>'+
+                        (dateChips ? '<div class="hdm-field full"><label>Inclusive Dates</label><div class="hdm-dates-wrap">'+dateChips+'</div></div>' : '')+
+                        '<div class="hdm-field full"><label>Reason / Details</label><div class="hdm-infobox">'+(d.reason||'N/A')+'</div></div>'+
+                        remarksHtml+
+                        processedHtml+
+                    '</div>'+
+                '</div>'+
+                '<div class="hdm-footer">'+footerBtns+'</div>'
+            );
         },'json');
     });
 
