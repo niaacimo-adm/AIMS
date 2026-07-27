@@ -10,12 +10,60 @@ $database = new Database();
 $db = $database->getConnection();
 
 $user_role_id = intval($_SESSION['role_id'] ?? 0);
-$can_view     = in_array($user_role_id, [1, 2, 12, 14]);
-$can_approve  = in_array($user_role_id, [1, 12, 14]);
+$can_view     = in_array($user_role_id, [1, 2, 12, 14, 25]);
+$can_approve  = in_array($user_role_id, [1, 12, 14, 25]);
+$can_delete   = in_array($user_role_id, [1, 25]);
 
 if (!$can_view) {
     header('Location: dashboard.php');
     exit;
+}
+
+/**
+ * Re-verify the currently logged-in user's account password before a
+ * destructive action (single delete / delete all).
+ */
+function verifyCurrentUserPassword(mysqli $db, string $password): bool {
+    if ($password === '') return false;
+    $emp_id = intval($_SESSION['emp_id'] ?? 0);
+    if (!$emp_id) return false;
+
+    $stmt = $db->prepare("SELECT password FROM users WHERE employee_id = ? LIMIT 1");
+    $stmt->bind_param("i", $emp_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    if (!$row) return false;
+
+    return password_verify($password, $row['password']);
+}
+
+/**
+ * Record an entry in leave_request_history. Pass $snapshot (assoc array of
+ * the full leave_request row) whenever the action destroys or could destroy
+ * the underlying record (delete/delete_all), so the data survives the row
+ * being gone. performed_by_name is a point-in-time snapshot too, so it stays
+ * correct even if the employee record later changes.
+ */
+function logLeaveHistory(mysqli $db, int $leave_request_id, string $action, ?array $snapshot = null, ?string $remarks = null): void {
+    $emp_id = intval($_SESSION['emp_id'] ?? 0);
+
+    $name_row = null;
+    if ($emp_id) {
+        $ns = $db->prepare("SELECT CONCAT(first_name,' ',last_name) AS full_name FROM employee WHERE emp_id = ?");
+        $ns->bind_param("i", $emp_id);
+        $ns->execute();
+        $name_row = $ns->get_result()->fetch_assoc();
+    }
+    $performed_by_name = $name_row['full_name'] ?? ($_SESSION['username'] ?? null);
+    $snapshot_json      = $snapshot !== null ? json_encode($snapshot) : null;
+
+    $stmt = $db->prepare("
+        INSERT INTO leave_request_history
+            (leave_request_id, action, performed_by_emp_id, performed_by_name, remarks, snapshot_json)
+        VALUES (?,?,?,?,?,?)
+    ");
+    $stmt->bind_param("isisss", $leave_request_id, $action, $emp_id, $performed_by_name, $remarks, $snapshot_json);
+    $stmt->execute();
 }
 
 /* ── AJAX ── */
@@ -26,6 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
 
     if (in_array($action, ['approve','reject','cancel']) && !$can_approve) {
         echo json_encode(['success'=>false,'message'=>'Permission denied.']); exit;
+    }
+
+    if (in_array($action, ['delete','delete_all']) && !$can_delete) {
+        echo json_encode(['success'=>false,'message'=>'Permission denied. Only Administrator or HR Unit Focal Person can delete leave records.']); exit;
     }
 
     if ($action === 'approve') {
@@ -62,6 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $upd->bind_param("diii", $ndays, $emp_id_lr, $lt_id, $current_year);
         $upd->execute();
 
+        logLeaveHistory($db, $leave_request_id, 'approved', null, $hr_remarks ?: null);
+
         echo json_encode(['success'=>true]);
 
     } elseif ($action === 'reject') {
@@ -93,6 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
             $upd->execute();
         }
 
+        logLeaveHistory($db, $leave_request_id, 'rejected', null, $hr_remarks ?: null);
+
         echo json_encode(['success'=>true]);
 
     } elseif ($action === 'cancel') {
@@ -121,13 +177,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
             $upd->execute();
         }
 
+        logLeaveHistory($db, $leave_request_id, 'cancelled');
+
         echo json_encode(['success'=>true]);
 
     } elseif ($action === 'delete') {
-        if (!$can_approve) {
-            echo json_encode(['success'=>false,'message'=>'Permission denied.']); exit;
+        $confirm_password = (string)($_POST['confirm_password'] ?? '');
+        if (!verifyCurrentUserPassword($db, $confirm_password)) {
+            echo json_encode(['success'=>false,'message'=>'Incorrect password. Deletion cancelled.']); exit;
         }
-        $lr_row = $db->query("SELECT status FROM leave_request WHERE leave_request_id = $leave_request_id")->fetch_assoc();
+
+        $lr_row = $db->query("SELECT * FROM leave_request WHERE leave_request_id = $leave_request_id")->fetch_assoc();
         if (!$lr_row) {
             echo json_encode(['success'=>false,'message'=>'Record not found.']); exit;
         }
@@ -137,7 +197,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $del = $db->prepare("DELETE FROM leave_request WHERE leave_request_id = ?");
         $del->bind_param("i", $leave_request_id);
         if ($del->execute()) {
+            logLeaveHistory($db, $leave_request_id, 'deleted', $lr_row);
             echo json_encode(['success'=>true]);
+        } else {
+            echo json_encode(['success'=>false,'message'=>$db->error]);
+        }
+        exit;
+
+    } elseif ($action === 'delete_all') {
+        $confirm_password = (string)($_POST['confirm_password'] ?? '');
+        if (!verifyCurrentUserPassword($db, $confirm_password)) {
+            echo json_encode(['success'=>false,'message'=>'Incorrect password. Deletion cancelled.']); exit;
+        }
+
+        // Only Cancelled / Rejected / Disapproved records are ever eligible —
+        // Pending and Approved records are never touched by bulk delete.
+        // Snapshot every eligible row first so each gets its own history entry
+        // (the rows won't exist anymore once the DELETE below runs).
+        $rows_to_delete = $db->query("
+            SELECT * FROM leave_request WHERE status IN ('Cancelled','Rejected','Disapproved')
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        $del = $db->query("DELETE FROM leave_request WHERE status IN ('Cancelled','Rejected','Disapproved')");
+        if ($del) {
+            foreach ($rows_to_delete as $row) {
+                logLeaveHistory($db, (int)$row['leave_request_id'], 'deleted_all', $row);
+            }
+            echo json_encode(['success'=>true, 'deleted'=>$db->affected_rows]);
         } else {
             echo json_encode(['success'=>false,'message'=>$db->error]);
         }
@@ -165,6 +251,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $s->bind_param("i",$leave_request_id);
         $s->execute();
         echo json_encode($s->get_result()->fetch_assoc());
+    } elseif ($action === 'get_history') {
+        $h = $db->prepare("
+            SELECT action, performed_by_name, remarks, created_at
+            FROM leave_request_history
+            WHERE leave_request_id = ?
+            ORDER BY created_at ASC, id ASC
+        ");
+        $h->bind_param("i", $leave_request_id);
+        $h->execute();
+        echo json_encode($h->get_result()->fetch_all(MYSQLI_ASSOC));
     } elseif ($action === 'validate_leave') {
         $emp_id         = intval($_POST['emp_id'] ?? 0);
         $leave_type_id_raw = $_POST['leave_type_id'] ?? '';
@@ -414,6 +510,10 @@ $stats = $db->query("
     LEFT JOIN appointment_status ap ON e.appointment_status_id = ap.appointment_id
     WHERE (ap.status_name IS NULL OR ap.status_name != 'Job Order')
 ")->fetch_assoc();
+
+$deletable_count = (int) ($db->query("
+    SELECT COUNT(*) AS c FROM leave_request WHERE status IN ('Cancelled','Rejected','Disapproved')
+")->fetch_assoc()['c'] ?? 0);
 
 $sections      = $db->query("SELECT * FROM section ORDER BY section_name")->fetch_all(MYSQLI_ASSOC);
 $appt_statuses = $db->query("SELECT * FROM appointment_status WHERE status_name!='Job Order' ORDER BY status_name")->fetch_all(MYSQLI_ASSOC);
@@ -1105,6 +1205,15 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                         <span class="acc-ind ai-view"><i class="fas fa-lock"></i> View Only</span>
                         <?php endif; ?>
                         <span class="h-rec-count"><?= count($requests) ?> record(s)</span>
+                        <button type="button" id="btnGenReport" class="btn btn-success btn-sm" title="Generate a monthly Excel report">
+                            <i class="fas fa-file-excel mr-1"></i>Generate Report
+                        </button>
+                        <?php if($can_delete): ?>
+                        <button type="button" id="btnDeleteAll" class="btn btn-danger btn-sm" <?= $deletable_count===0?'disabled':'' ?>
+                                title="Permanently delete all Cancelled/Rejected/Disapproved leave records">
+                            <i class="fas fa-trash-alt mr-1"></i>Delete All (<?= $deletable_count ?>)
+                        </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -1163,7 +1272,7 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                             <td style="color:var(--h-muted);font-size:.77rem;"><?= date('M d, Y', strtotime($req['created_at'])) ?></td>
                             <td>
                                 <div class="action-btns">
-                                    <?php if($s==='approved'): ?>
+                                    <?php if($s==='approved'||$s==='rejected'||$s==='disapproved'): ?>
                                     <a class="btn-act ba-form"
                                        href="generate_leave_form.php?leave_request_id=<?= $req['leave_request_id'] ?>&hr=1"
                                        target="_blank"
@@ -1187,11 +1296,15 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
                                         <?php else: ?>
                                         <span class="lock-ico" title="Requires elevated role"><i class="fas fa-lock"></i></span>
                                         <?php endif; ?>
-                                    <?php elseif(in_array($s,['cancelled','rejected','disapproved']) && $can_approve): ?>
+                                    <?php elseif(in_array($s,['cancelled','rejected','disapproved'])): ?>
+                                        <?php if($can_delete): ?>
                                         <button class="btn-act ba-del btn-hr-delete"
                                                 data-id="<?= $req['leave_request_id'] ?>"
                                                 data-name="<?= htmlspecialchars($req['emp_name']) ?>"
                                                 title="Delete Record"><i class="fas fa-trash-alt"></i></button>
+                                        <?php else: ?>
+                                        <span class="lock-ico" title="Requires Administrator or HR Unit Focal Person role"><i class="fas fa-lock"></i></span>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -1334,12 +1447,50 @@ $current_role_label = $role_labels[$user_role_id] ?? 'Viewer';
     </div>
     <?php endif; ?>
 
+    <!-- Generate Report Modal -->
+    <div class="modal fade" id="genReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-file-excel mr-1"></i> Generate Monthly Report</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Report Type</label>
+                        <select id="genReportType" class="form-control">
+                            <option value="balance">Leave Credits Balance (VL/SL, monetary value)</option>
+                            <option value="activity">Leave Request Activity Log</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Month</label>
+                        <input type="month" id="genReportMonth" class="form-control" value="<?= htmlspecialchars($filter_month ?: date('Y-m')) ?>">
+                    </div>
+                    <p class="text-muted" style="font-size:.8rem;margin-bottom:0;">
+                        The Balance report reflects each employee's <strong>current</strong> leave balance,
+                        labeled as of the last day of the selected month. The Activity report lists leave
+                        requests whose start date falls within the selected month.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="btnGenReportSubmit">
+                        <i class="fas fa-download mr-1"></i> Generate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /wrapper -->
+
 
 <?php include '../includes/footer.php'; ?>
 
 <script>
 var CAN_APPROVE = <?= $can_approve?'true':'false' ?>;
+var CAN_DELETE  = <?= $can_delete?'true':'false' ?>;
 
 /* ════════════════════════════════════════════════════════
    MINI CALENDAR (for Apply Leave modal)
@@ -1549,11 +1700,16 @@ $(document).ready(function(){
                 } else {
                     footerBtns = '<div class="perm-note"><i class="fas fa-lock"></i>Approval requires <strong>Administrator</strong>, <strong>Heads</strong>, or <strong>Unit Head</strong> role.</div>'+footerBtns;
                 }
-            } else if(s==='approved'){
-                footerBtns = '<a class="hdm-btn-form" href="generate_leave_form.php?leave_request_id='+d.leave_request_id+'&hr=1" target="_blank"><i class="fas fa-file-download"></i> Generate Form</a>'+footerBtns;
-            } else if((s==='cancelled'||s==='rejected'||s==='disapproved') && CAN_APPROVE){
-                footerBtns = '<button class="btn btn-danger btn-sm btn-hr-delete" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-trash-alt mr-1"></i>Delete Record</button>'+footerBtns;
+            } else {
+                if(s==='approved'||s==='rejected'||s==='disapproved'){
+                    footerBtns = '<a class="hdm-btn-form" href="generate_leave_form.php?leave_request_id='+d.leave_request_id+'&hr=1" target="_blank"><i class="fas fa-file-download"></i> Generate Form</a>'+footerBtns;
+                }
+                if((s==='cancelled'||s==='rejected'||s==='disapproved') && CAN_DELETE){
+                    footerBtns = '<button class="btn btn-danger btn-sm btn-hr-delete" data-id="'+d.leave_request_id+'" data-name="'+d.emp_name+'" data-dismiss="modal"><i class="fas fa-trash-alt mr-1"></i>Delete Record</button>'+footerBtns;
+                }
             }
+
+            footerBtns = '<button class="btn btn-outline-secondary btn-sm btn-view-history" data-id="'+d.leave_request_id+'" data-dismiss="modal"><i class="fas fa-history mr-1"></i>History</button>'+footerBtns;
 
             $('#detailModalInner').html(
                 '<div class="hdm-header">'+
@@ -1588,6 +1744,37 @@ $(document).ready(function(){
                 '<div class="hdm-footer">'+footerBtns+'</div>'
             );
         },'json');
+    });
+
+    /* ── View History ── */
+    $(document).on('click','.btn-view-history',function(){
+        var id=$(this).data('id');
+        Swal.fire({title:'Loading history…', allowOutsideClick:false, didOpen:()=>Swal.showLoading()});
+        $.post('hr_leave_monitoring.php',{ajax:1,action:'get_history',leave_request_id:id},function(rows){
+            if(!rows || !rows.length){
+                Swal.fire({icon:'info',title:'No History Yet',text:'No recorded actions for this leave request.',confirmButtonColor:'#2a9863'});
+                return;
+            }
+            var actionLabels = {
+                filed:'Filed', approved:'Approved', rejected:'Rejected', cancelled:'Cancelled',
+                deleted:'Deleted', deleted_all:'Deleted (bulk)'
+            };
+            var html = '<div style="text-align:left;max-height:360px;overflow-y:auto;">';
+            rows.forEach(function(r){
+                var label = actionLabels[r.action] || r.action;
+                var dt = new Date((r.created_at||'').replace(' ','T'));
+                var dtStr = isNaN(dt) ? r.created_at : dt.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+                html += '<div style="padding:8px 0;border-bottom:1px solid #eee;">'+
+                        '<div style="font-weight:700;font-size:.85rem;">'+label+'</div>'+
+                        '<div style="font-size:.78rem;color:#666;">by '+(r.performed_by_name||'Unknown')+' &bull; '+dtStr+'</div>'+
+                        (r.remarks ? '<div style="font-size:.78rem;color:#495057;margin-top:2px;font-style:italic;">&ldquo;'+r.remarks+'&rdquo;</div>' : '')+
+                        '</div>';
+            });
+            html += '</div>';
+            Swal.fire({title:'Leave Request History',html:html,confirmButtonColor:'#2a9863',width:480});
+        },'json').fail(function(){
+            Swal.fire({icon:'error',title:'Error',text:'Could not load history.',confirmButtonColor:'#c92a2a'});
+        });
     });
 
     /* ── Approve ── */
@@ -1648,22 +1835,34 @@ $(document).ready(function(){
         });
     });
 
-    /* ── HR Delete ── */
+    /* ── HR Delete (individual) ── */
     $(document).on('click','.btn-hr-delete',function(){
+        if(!CAN_DELETE){
+            Swal.fire({icon:'error',title:'Permission Denied',text:'Only Administrator or HR Unit Focal Person can delete leave records.',confirmButtonColor:'#c92a2a'});
+            return;
+        }
         var id=$(this).data('id'), name=$(this).data('name');
         var $row=$(this).closest('tr');
         Swal.fire({
             title:'Delete Leave Record?',
-            html:'<p style="font-size:.9rem;color:#495057;">You are about to permanently delete the cancelled/rejected leave record of <strong>'+name+'</strong>.<br><br><strong>This cannot be undone.</strong></p>',
+            html:'<p style="font-size:.9rem;color:#495057;text-align:left;">You are about to permanently delete the cancelled/rejected leave record of <strong>'+name+'</strong>.<br><br><strong>This cannot be undone.</strong></p>'+
+                 '<p style="font-size:.85rem;color:#495057;text-align:left;margin-top:10px;">Enter your account password to confirm:</p>',
+            input:'password',
+            inputPlaceholder:'Your account password',
+            inputAttributes:{autocapitalize:'off', autocomplete:'current-password'},
             icon:'warning',
             showCancelButton:true,
             confirmButtonColor:'#9b1c1c',
             cancelButtonColor:'#4a7a5e',
             confirmButtonText:'<i class="fas fa-trash-alt"></i>&nbsp;Yes, Delete It',
-            cancelButtonText:'Keep It'
+            cancelButtonText:'Keep It',
+            preConfirm:function(pw){
+                if(!pw){ Swal.showValidationMessage('Please enter your password to confirm.'); return false; }
+                return pw;
+            }
         }).then(function(r){
             if(!r.isConfirmed) return;
-            $.post('hr_leave_monitoring.php',{ajax:1,action:'delete',leave_request_id:id},function(res){
+            $.post('hr_leave_monitoring.php',{ajax:1,action:'delete',leave_request_id:id,confirm_password:r.value},function(res){
                 if(res.success){
                     if($.fn.DataTable.isDataTable('#hrLeaveTable')){
                         $('#hrLeaveTable').DataTable().row($row).remove().draw();
@@ -1673,6 +1872,62 @@ $(document).ready(function(){
                     Swal.fire({icon:'success',title:'Deleted',text:'Record permanently deleted.',confirmButtonColor:'#2a9863',timer:2000,showConfirmButton:false});
                 } else {
                     Swal.fire({icon:'error',title:'Error',text:res.message||'Could not delete.',confirmButtonColor:'#c92a2a'});
+                }
+            },'json');
+        });
+    });
+
+    /* ── Generate Report ── */
+    $(document).on('click','#btnGenReport',function(){
+        $('#genReportModal').modal('show');
+    });
+    $(document).on('click','#btnGenReportSubmit',function(){
+        var type  = $('#genReportType').val();
+        var month = $('#genReportMonth').val();
+        if(!month){
+            Swal.fire({icon:'warning',title:'Select a month',text:'Please choose a month before generating the report.'});
+            return;
+        }
+        var url = 'generate_leave_report.php?report='+encodeURIComponent(type)+'&month='+encodeURIComponent(month);
+        window.open(url, '_blank');
+        $('#genReportModal').modal('hide');
+    });
+
+    /* ── HR Delete All ── */
+    $(document).on('click','#btnDeleteAll',function(){
+        if(!CAN_DELETE){
+            Swal.fire({icon:'error',title:'Permission Denied',text:'Only Administrator or HR Unit Focal Person can delete leave records.',confirmButtonColor:'#c92a2a'});
+            return;
+        }
+        Swal.fire({
+            title:'Delete ALL Cancelled/Rejected Records?',
+            html:'<p style="font-size:.9rem;color:#495057;text-align:left;">This will permanently delete <strong>every</strong> Cancelled, Rejected, or Disapproved leave record in the system (not just what\'s currently shown/filtered). Pending and Approved records are never affected.<br><br><strong>This cannot be undone.</strong></p>'+
+                 '<p style="font-size:.85rem;color:#495057;text-align:left;margin-top:10px;">Type <strong>DELETE ALL</strong> to confirm, and enter your account password:</p>'+
+                 '<input id="swal-delall-confirm" class="swal2-input" placeholder="Type DELETE ALL" style="margin-bottom:6px;">',
+            input:'password',
+            inputPlaceholder:'Your account password',
+            inputAttributes:{autocapitalize:'off', autocomplete:'current-password'},
+            icon:'warning',
+            showCancelButton:true,
+            confirmButtonColor:'#9b1c1c',
+            cancelButtonColor:'#4a7a5e',
+            confirmButtonText:'<i class="fas fa-trash-alt"></i>&nbsp;Yes, Delete All',
+            cancelButtonText:'Cancel',
+            preConfirm:function(pw){
+                var typed = document.getElementById('swal-delall-confirm').value.trim();
+                if(typed !== 'DELETE ALL'){ Swal.showValidationMessage('Please type DELETE ALL exactly to confirm.'); return false; }
+                if(!pw){ Swal.showValidationMessage('Please enter your password to confirm.'); return false; }
+                return pw;
+            }
+        }).then(function(r){
+            if(!r.isConfirmed) return;
+            $('#btnDeleteAll').prop('disabled',true).html('<i class="fas fa-spinner fa-spin"></i> Deleting…');
+            $.post('hr_leave_monitoring.php',{ajax:1,action:'delete_all',confirm_password:r.value},function(res){
+                if(res.success){
+                    Swal.fire({icon:'success',title:'Deleted',text:(res.deleted!==undefined?res.deleted+' record(s) permanently deleted.':'Records permanently deleted.'),confirmButtonColor:'#2a9863'}).then(()=>location.reload());
+                } else {
+                    $('#btnDeleteAll').prop('disabled',false).html('<i class="fas fa-trash-alt mr-1"></i>Delete All');
+                    Swal.fire({icon:'error',title:'Error',text:res.message||'Could not delete records.',confirmButtonColor:'#c92a2a'});
                 }
             },'json');
         });

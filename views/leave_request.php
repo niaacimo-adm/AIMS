@@ -1315,7 +1315,6 @@ if ($emp_id) {
                         <i class="fas fa-ban"></i>
                     </div>
                     <h2>Access Restricted</h2>
-                    <p>Leave Request Module</p>
                 </div>
 
                 <!-- Body -->
@@ -1349,9 +1348,6 @@ if ($emp_id) {
                     <div class="jo-actions">
                         <a href="dashboard.php" class="jo-btn-home">
                             <i class="fas fa-home"></i> Back to Dashboard
-                        </a>
-                        <a href="mailto:hr@nia-acimo.gov.ph" class="jo-btn-contact">
-                            <i class="fas fa-envelope"></i> Contact HR Office
                         </a>
                     </div>
 

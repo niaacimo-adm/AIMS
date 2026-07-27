@@ -266,7 +266,7 @@ $stmt->close();
     .emp-card-accent {
       height: 5px;
       width: 100%;
-      background: linear-gradient(90deg, #4f46e5, #7c73e6);
+      background: linear-gradient(90deg, #1a5c38, #1a5c38);
     }
 
     .emp-card-photo-wrap {

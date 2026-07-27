@@ -128,31 +128,31 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
   <title>HR System | Edit Employee</title>
   <?php include '../includes/header.php'; ?>
   <style>
+    .content { padding:0 20px; margin-top:-30px; position:relative; z-index:3; }
     .modern-card {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e5ece8;
+      border-radius: 18px;
+      box-shadow: 0 1px 2px rgba(16,40,30,.04), 0 10px 28px -10px rgba(16,40,30,.12);
       transition: all 0.3s ease;
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
+      background: #ffffff;
     }
 
     .modern-card:hover {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 10px -2px rgba(16,40,30,.10), 0 18px 34px -12px rgba(16,40,30,.16);
     }
 
     .form-control-modern {
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      padding: 12px 15px;
+      border-radius: 10px;
+      border: 1.5px solid #e2e8f0;
+      padding: 11px 14px;
       font-size: 14px;
       transition: all 0.3s ease;
       background: #ffffff;
     }
 
     .form-control-modern:focus {
-      border-color: #4f46e5;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      border-color: #1a5c38;
+      box-shadow: 0 0 0 3px rgba(26, 92, 56, 0.1);
       background: #ffffff;
     }
 
@@ -164,30 +164,36 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
     }
 
     .btn-modern {
-      background: linear-gradient(135deg, #4f46e5 0%, #7c73e6 100%);
+      background: linear-gradient(135deg, #1a5c38 0%, #2a9863 100%);
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 12px 30px;
       font-weight: 600;
       color: white;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+      box-shadow: 0 4px 14px -3px rgba(26, 92, 56, 0.45);
     }
 
     .btn-modern:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
-      background: linear-gradient(135deg, #4338ca 0%, #6d63e0 100%);
+      box-shadow: 0 6px 18px -3px rgba(26, 92, 56, 0.55);
+      background: linear-gradient(135deg, #123b2a 0%, #1f7a4d 100%);
       color: white;
     }
 
     .section-title {
-      color: #4f46e5;
+      color: #1a5c38;
       font-weight: 700;
       font-size: 18px;
       margin-bottom: 20px;
       padding-bottom: 10px;
-      border-bottom: 2px solid #eef2ff;
+      border-bottom: 2px solid #eef8f2;
+      position: relative;
+    }
+    .section-title1 {
+      color: #1a5c38;
+      font-weight: 700;
+      font-size: 18px;
       position: relative;
     }
 
@@ -198,13 +204,13 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
       left: 0;
       width: 50px;
       height: 2px;
-      background: #4f46e5;
+      background: #1a5c38;
       border-radius: 2px;
     }
 
     .image-upload-area {
       border: 2px dashed #d1d5db;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 30px;
       text-align: center;
       transition: all 0.3s ease;
@@ -213,12 +219,12 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
     }
 
     .image-upload-area:hover {
-      border-color: #4f46e5;
-      background: #f0f4ff;
+      border-color: #1a5c38;
+      background: #eef8f2;
     }
 
     .image-preview-container {
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       transition: all 0.3s ease;
@@ -245,14 +251,39 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
     }
 
     .modern-select:focus {
-      border-color: #4f46e5;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      border-color: #1a5c38;
+      box-shadow: 0 0 0 3px rgba(26, 92, 56, 0.1);
     }
 
     .modern-select:disabled {
       background-color: #e9ecef;
       opacity: 1;
       cursor: not-allowed;
+    }
+
+    .btn-default-image {
+      background: linear-gradient(135deg, #b8952f 0%, #d4af37 100%);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-weight: 600;
+      color: white;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .btn-default-image:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+      background: linear-gradient(135deg, #9c7f28 0%, #b8952f 100%);
+      color: white;
+    }
+
+    .default-image-active {
+      border: 3px solid #d4af37 !important;
+      background: #fdf9ee !important;
     }
 
     .validation-error {
@@ -269,7 +300,7 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
 
     /* Tab styling */
     .nav-tabs-modern {
-      border-bottom: 2px solid #eef2ff;
+      border-bottom: 2px solid #eef8f2;
       margin-bottom: 25px;
     }
 
@@ -285,15 +316,15 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
     }
 
     .nav-tabs-modern .nav-link:hover {
-      color: #4f46e5;
+      color: #1a5c38;
       background: none;
-      border-bottom-color: #c7d2fe;
+      border-bottom-color: #bfe3cd;
     }
 
     .nav-tabs-modern .nav-link.active {
-      color: #4f46e5;
+      color: #1a5c38;
       background: none;
-      border-bottom: 3px solid #4f46e5;
+      border-bottom: 3px solid #1a5c38;
     }
 
     .nav-tabs-modern .nav-link i {
@@ -330,7 +361,139 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
     body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
     body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
     body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
-  </style>
+          .pg-hero-breadcrumb {
+            background:transparent; padding:0; margin:0 0 14px;
+            display:flex; flex-wrap:wrap; gap:2px; list-style:none;
+        }
+        .pg-hero-bc-item { display:flex; align-items:center; }
+        .pg-hero-bc-item + .pg-hero-bc-item::before { content:'/'; color:rgba(212,245,229,.45); padding:0 8px; }
+        .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
+        .pg-hero-bc-link:hover { color:#24e78f; }
+        .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
+
+        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
+        @keyframes pgHeroMeshDrift {
+            0%   { transform:translate(0,0)   rotate(0deg); }
+            100% { transform:translate(3%,2%) rotate(2deg); }
+        }
+        @keyframes pgHeroOrbFloat {
+            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+        }
+        @keyframes pgHeroRingPulse {
+            0%,100% { opacity:.45; transform:scale(1);    }
+            50%      { opacity:.85; transform:scale(1.04); }
+        }
+        .pg-hero {
+            background:#0b1f17;
+            padding:26px 28px 50px; position:relative; overflow:hidden;
+        }
+        .pg-hero-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0;
+        }
+        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
+        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
+        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
+        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
+        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
+        .pg-hero-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
+        }
+        .pg-hero-hex {
+            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+            background-size:56px 100px;
+        }
+        .pg-hero-rings {
+            position:absolute; top:50%; right:6%;
+            transform:translateY(-50%);
+            width:240px; height:240px; pointer-events:none; z-index:0;
+        }
+        .pg-ring {
+            position:absolute; inset:0; border-radius:50%;
+            border:1px solid rgba(36,231,143,.10);
+            animation:pgHeroRingPulse 4s ease-in-out infinite;
+        }
+        .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
+        .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
+        .pg-hero-arc {
+            position:absolute; top:-50px; right:-50px;
+            width:200px; height:200px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .pg-hero::after {
+            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
+            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
+        }
+        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
+        .pg-hero-inner { position:relative; z-index:2; }
+        .pg-hero-title {
+            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
+            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
+            display:flex; align-items:center; gap:10px;
+        }
+        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
+        .pg-hero-divider {
+            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
+            background:linear-gradient(90deg,transparent,#24e78f,transparent);
+        }
+        .pg-hero-actions {
+            position:relative; z-index:2;
+            display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
+        }
+        .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
+        .pg-hero-btn {
+            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
+            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
+            border-radius:10px; padding:8px 16px;
+            font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
+            display:inline-flex; align-items:center; gap:7px;
+            transition:background .2s, transform .18s, box-shadow .2s;
+        }
+        .pg-hero-btn:hover {
+            background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
+            transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
+            color:#d4f5e5; text-decoration:none;
+        }
+        .pg-hero-layout {
+            display:flex; align-items:flex-start; justify-content:space-between;
+            flex-wrap:wrap; gap:14px; position:relative; z-index:2;
+        }
+        .mh-logo-watermark {
+            position:absolute; top:50%; right:3%;
+            transform:translateY(-50%);
+            width:180px; height:auto; pointer-events:none; z-index:0;
+            opacity:0.50;
+        }
+    
+    /* ── Compact layout overrides ── */
+    .card-body { padding: 22px 26px !important; }
+    .section-title { margin-bottom: 12px !important; padding-bottom: 6px !important; font-size: 16px !important; }
+    .card-body .row.mb-4 { margin-bottom: 10px !important; }
+    .card-body .row.mt-4 { margin-top: 14px !important; }
+    .card-body .row.mt-5 { margin-top: 18px !important; }
+    .card-body .mb-3 { margin-bottom: 10px !important; }
+    .card-body .mb-4 { margin-bottom: 12px !important; }
+    .form-label { margin-bottom: 4px !important; font-size: 13px !important; }
+    .form-control-modern { padding: 8px 12px !important; }
+    .modern-select { padding: 0 15px !important; height: calc(1.5em + 0.9rem + 2px); }
+    .image-upload-area { padding: 18px !important; }
+    .image-upload-area i.fa-3x { font-size: 2rem !important; }
+    .nav-tabs-modern { margin-bottom: 16px !important; }
+    .nav-tabs-modern .nav-link { padding: 9px 20px !important; }
+</style>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -338,26 +501,34 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
   <?php include '../includes/sidebar.php'; ?>
 
   <div class="content-wrapper">
-    <!-- Page Header -->
-    <section class="content-header">
-      <div class="container-fluid">
-        <div class="row mb-2">
-          <div class="col-sm-6">
-            <h1 style="color: #4f46e5; font-weight: 700;">Edit Employee</h1>
-            <p class="text-muted">
-              Editing: <strong><?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></strong>
-            </p>
-          </div>
-          <div class="col-sm-6">
-            <ol class="breadcrumb float-sm-right">
-              <li class="breadcrumb-item"><a href="#" style="color: #6b7280;">HR</a></li>
-              <li class="breadcrumb-item"><a href="emp.list.php" style="color: #6b7280;">Employees</a></li>
-              <li class="breadcrumb-item active" style="color: #4f46e5; font-weight: 600;">Edit</li>
-            </ol>
-          </div>
+    <!-- Page Hero -->
+    <div class="pg-hero">
+        <div class="pg-hero-mesh"></div>
+        <div class="pg-hero-dots"></div>
+        <div class="pg-hero-hex"></div>
+        <div class="pg-hero-orbs">
+            <div class="pg-orb pg-orb-1"></div>
+            <div class="pg-orb pg-orb-2"></div>
+            <div class="pg-orb pg-orb-3"></div>
+            <div class="pg-orb pg-orb-4"></div>
         </div>
-      </div>
-    </section>
+        <div class="pg-hero-rings">
+            <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+        </div>
+        <div class="pg-hero-arc"></div>
+        <div class="pg-hero-layout">
+            <div class="pg-hero-inner">
+                <ol class="pg-hero-breadcrumb">
+                    <li class="pg-hero-bc-item"><a href="dashboard.php" class="pg-hero-bc-link">HR</a></li>
+                    <li class="pg-hero-bc-item"><a href="emp.list.php" class="pg-hero-bc-link">Employees</a></li>
+                    <li class="pg-hero-bc-item pg-hero-bc-active">Edit</li>
+                </ol>
+                <div class="pg-hero-title"><i class="fas fa-user-edit"></i>Edit Employee</div>
+                <div class="pg-hero-divider"></div>
+                <p class="pg-hero-sub">Editing: <?= htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']) ?></p>
+            </div>
+        </div>
+    </div>
 
     <!-- Main content -->
     <section class="content">
@@ -366,7 +537,7 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
           <div class="col-12">
             <div class="card modern-card">
               <!-- Card Header -->
-              <div class="card-header" style="background: linear-gradient(135deg, #4f46e5 0%, #7c73e6 100%); border-radius: 12px 12px 0 0;">
+              <div class="card-header" style="background: linear-gradient(135deg, #1a5c38 0%, #2a9863 100%); border-radius: 12px 12px 0 0;">
                 <h3 class="card-title" style="font-weight: 600;">
                   <i class="fas fa-user-edit mr-2"></i>Employee Information
                 </h3>
@@ -378,12 +549,12 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
                 <ul class="nav nav-tabs-modern" id="editTabs" role="tablist">
                   <li class="nav-item">
                     <a class="nav-link active" id="personal-tab" data-toggle="tab" href="#personal" role="tab">
-                      <i class="fas fa-user"></i> Personal Information
+                      <h4 class="section-title1">Personal Information</h4>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" id="assignment-tab" data-toggle="tab" href="#assignment" role="tab">
-                      <i class="fas fa-briefcase"></i> Assignment Details
+                      <h4 class="section-title1">Assignment Details</h4>
                     </a>
                   </li>
                 </ul>
@@ -396,17 +567,11 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
                     <form action="emp.update.php" method="POST" enctype="multipart/form-data" id="employeeForm">
                       <input type="hidden" name="emp_id" value="<?= $emp_id ?>">
                       <input type="hidden" name="old_picture" value="<?= htmlspecialchars($employee['picture'] ?? '') ?>">
-
-                      <!-- Personal Information Section -->
-                      <div class="row mb-4">
-                        <div class="col-12">
-                          <h4 class="section-title">Personal Information</h4>
-                        </div>
-                      </div>
+                       
 
                       <div class="row">
                         <!-- Profile Picture -->
-                        <div class="col-md-4 mb-4">
+                        <div class="col-md-2 mb-2">
                           <label class="form-label required-field">Profile Picture</label>
                           <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('picture').click()">
                             <input type="file" class="d-none" id="picture" name="picture" onchange="previewImage(this)" accept="image/*">
@@ -446,30 +611,32 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
                           </div>
                         </div>
 
-                        <!-- Personal Details -->
-                        <div class="col-md-8">
+                          <!-- Personal Details -->
+                          <div class="col-md-10">
+                            <div class="col-12">
+                            <h4 class="section-title">Personal Information</h4>
+                          </div>
                           <div class="row">
-                            <div class="col-12 mb-3">
+                            <div class="col-2 mb-3">
                               <label for="id_number" class="form-label">Employee ID</label>
                               <input type="text" id="id_number" name="id_number" class="form-control form-control-modern"
                                 placeholder="Enter employee ID"
                                 value="<?= htmlspecialchars($employee['id_number'] ?? '') ?>">
                             </div>
-                          </div>
-                          <div class="row">
-                            <div class="col-md-4 mb-3">
+                            
+                            <div class="col-md-2 mb-3">
                               <label for="first_name" class="form-label required-field">First Name</label>
                               <input type="text" id="first_name" name="first_name" class="form-control form-control-modern"
                                 placeholder="First name" required
                                 value="<?= htmlspecialchars($employee['first_name']) ?>">
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-2 mb-3">
                               <label for="middle_name" class="form-label required-field">Middle Name</label>
                               <input type="text" id="middle_name" name="middle_name" class="form-control form-control-modern"
                                 placeholder="Middle name"
                                 value="<?= htmlspecialchars($employee['middle_name']) ?>">
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-2 mb-3">
                               <label for="last_name" class="form-label required-field">Last Name</label>
                               <input type="text" id="last_name" name="last_name" class="form-control form-control-modern"
                                 placeholder="Last name" required
@@ -481,9 +648,7 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
                                 placeholder="Jr."
                                 value="<?= htmlspecialchars($employee['ext_name'] ?? '') ?>">
                             </div>
-                          </div>
-                          <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-1 mb-3">
                               <label for="gender" class="form-label required-field">Gender</label>
                               <select id="gender" name="gender" class="form-control modern-select" required>
                                 <option value="">Select Gender</option>
@@ -492,47 +657,36 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
                                 <option value="Other"  <?= $employee['gender'] === 'Other'  ? 'selected' : '' ?>>Other</option>
                               </select>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-2 mb-3">
                               <label for="bday" class="form-label required-field">Birthday</label>
                               <input type="date" id="bday" name="bday" class="form-control form-control-modern" required
                                 value="<?= htmlspecialchars($employee['bday']) ?>">
                             </div>
                           </div>
-                        </div>
-                      </div>
-
-                      <!-- Contact Information Section -->
-                      <div class="row mb-4 mt-4">
-                        <div class="col-12">
-                          <h4 class="section-title">Contact Information</h4>
-                        </div>
-                      </div>
-
+                          <div class="row">
+                            <div class="col-12 mb-4 mt-4">
+                              <h4 class="section-title">Contact Information</h4>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                              <label for="email" class="form-label required-field">Email Address</label>
+                              <input type="email" id="email" name="email" class="form-control form-control-modern"
+                                placeholder="employee@company.com" required
+                                value="<?= htmlspecialchars($employee['email']) ?>">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                              <label for="phone_number" class="form-label required-field">Phone Number</label>
+                              <input type="tel" id="phone_number" name="phone_number" class="form-control form-control-modern"
+                                placeholder="+63 912 345 6789" required
+                                value="<?= htmlspecialchars($employee['phone_number']) ?>">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                              <label for="address" class="form-label required-field">Address</label>
+                              <textarea id="address" name="address" class="form-control form-control-modern" rows="3"
+                                placeholder="Enter complete address" required><?= htmlspecialchars($employee['address']) ?></textarea>
+                            </div>
+                          </div>
+                          <!-- Manager's Office Toggle -->
                       <div class="row">
-                        <div class="col-md-6 mb-3">
-                          <label for="email" class="form-label required-field">Email Address</label>
-                          <input type="email" id="email" name="email" class="form-control form-control-modern"
-                            placeholder="employee@company.com" required
-                            value="<?= htmlspecialchars($employee['email']) ?>">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                          <label for="phone_number" class="form-label required-field">Phone Number</label>
-                          <input type="tel" id="phone_number" name="phone_number" class="form-control form-control-modern"
-                            placeholder="+63 912 345 6789" required
-                            value="<?= htmlspecialchars($employee['phone_number']) ?>">
-                        </div>
-                      </div>
-
-                      <div class="row">
-                        <div class="col-12 mb-3">
-                          <label for="address" class="form-label required-field">Address</label>
-                          <textarea id="address" name="address" class="form-control form-control-modern" rows="3"
-                            placeholder="Enter complete address" required><?= htmlspecialchars($employee['address']) ?></textarea>
-                        </div>
-                      </div>
-
-                      <!-- Manager's Office Toggle -->
-                      <div class="row mb-4">
                         <div class="col-12">
                           <h4 class="section-title">Office Settings</h4>
                         </div>
@@ -544,6 +698,10 @@ $disableStatuses = ['Inactive', 'Separated - Death', 'Non-renewal', 'Resigned', 
                           </div>
                         </div>
                       </div>
+                        </div>
+                      </div>
+
+                      
 
                       <!-- Submit -->
                       <div class="row mt-4">
@@ -822,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 icon: 'warning',
                 title: 'Missing Information',
                 text: 'Please fill in all required fields.',
-                confirmButtonColor: '#4f46e5'
+                confirmButtonColor: '#1a5c38'
             });
         }
     });
@@ -939,7 +1097,7 @@ $(document).ready(function () {
         text: '<?= $_SESSION['alert']['message'] ?>',
         showConfirmButton: false,
         timer: 3000,
-        confirmButtonColor: '#4f46e5'
+        confirmButtonColor: '#1a5c38'
     });
     <?php unset($_SESSION['alert']); ?>
     <?php endif; ?>

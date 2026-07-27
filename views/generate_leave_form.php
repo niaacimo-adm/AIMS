@@ -26,7 +26,7 @@ $db       = $database->getConnection();
 
 $emp_id       = intval($_SESSION['emp_id']  ?? 0);
 $user_role_id = intval($_SESSION['role_id'] ?? 0);
-$is_hr        = in_array($user_role_id, [1, 2, 12, 14]);
+$is_hr        = in_array($user_role_id, [1, 2, 12, 14, 25]);
 $download     = isset($_GET['download']);
 
 $leave_request_id = intval($_GET['leave_request_id'] ?? 0);
@@ -332,10 +332,17 @@ function fill_docx(string $tpl, array $o): string
             '$1☑$3$4$5', $xml, 1
         );
         if ($o['hr_remarks']) {
-            $xml = str_replace(
-                'For disapproval due to   _______________',
-                'For disapproval: ' . htmlspecialchars($o['hr_remarks'], ENT_XML1, 'UTF-8'),
-                $xml
+            // "For disapproval due to" and the following "___" line live in TWO separate
+            // <w:t> runs (split across sibling <w:r> elements), so a plain string match
+            // across both never hits. Match run-by-run instead, allowing any run markup
+            // in between (but not crossing the row boundary).
+            $remark_xml = htmlspecialchars($o['hr_remarks'], ENT_XML1, 'UTF-8');
+            $xml = preg_replace_callback(
+                '/(<w:t[^>]*>)For disapproval due to(<\/w:t>)((?:(?!<\/w:tr>).){0,300}?<w:t[^>]*>)\s*_+\s*(<\/w:t>)/s',
+                function ($m) use ($remark_xml) {
+                    return $m[1] . 'For disapproval:' . $m[2] . $m[3] . ' ' . $remark_xml . $m[4];
+                },
+                $xml, 1
             );
         }
     }
@@ -347,14 +354,30 @@ function fill_docx(string $tpl, array $o): string
         $xml = preg_replace('/<w:t>_____<\/w:t>/', '<w:t>' . $days_val . '</w:t>', $xml, 1);
     }
 
-    /* 9 ── Section 7D: disapproval reason line ── */
+    /* 9 ── Section 7D: disapproval reason line ──
+       The first blank line after "DUE TO:" is ALSO split into two runs: a
+       whitespace run (xml:space="preserve") followed by a plain underscore run.
+       Locate it via the "DUE TO:" label so only the first blank line (not the
+       later, identical-looking blank lines below it) gets filled.             */
     if ($o['is_rejected'] && $o['hr_remarks']) {
-        $xml = preg_replace(
-            '/<w:t xml:space="preserve">       _________________________________<\/w:t>/',
-            '<w:t xml:space="preserve">' . htmlspecialchars($o['hr_remarks'], ENT_XML1, 'UTF-8') . '</w:t>',
-            $xml, 1
-        );
+        $due_pos = strpos($xml, 'DUE TO:');
+        if ($due_pos !== false) {
+            $before = substr($xml, 0, $due_pos);
+            $after  = substr($xml, $due_pos);
+            $remark_xml = htmlspecialchars($o['hr_remarks'], ENT_XML1, 'UTF-8');
+            $after = preg_replace_callback(
+                '/<w:t[^>]*>\s*<\/w:t><\/w:r><w:r[^>]*><w:rPr>(?:(?!<\/w:rPr>).)*<\/w:rPr><w:t[^>]*>_+<\/w:t><\/w:r>/s',
+                function ($m) use ($remark_xml) {
+                    // Collapse both runs' text into the first run, empty out the second
+                    $collapsed = preg_replace('/<w:t[^>]*>_+<\/w:t>(<\/w:r>)$/', '<w:t xml:space="preserve"></w:t>$1', $m[0]);
+                    return preg_replace('/<w:t[^>]*>\s*<\/w:t>/', '<w:t xml:space="preserve"> ' . $remark_xml . '</w:t>', $collapsed, 1);
+                },
+                $after, 1
+            );
+            $xml = $before . $after;
+        }
     }
+
 
     /* ── Save ── */
     $zip->deleteName('word/document.xml');

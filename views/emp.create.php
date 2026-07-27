@@ -64,32 +64,31 @@ if (session_status() === PHP_SESSION_NONE) {
 
   <?php include '../includes/header.php'; ?>
   <style>
-    .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
+    .content { padding:0 20px; margin-top:-30px; position:relative; z-index:3; }
     .modern-card {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e5ece8;
+      border-radius: 18px;
+      box-shadow: 0 1px 2px rgba(16,40,30,.04), 0 10px 28px -10px rgba(16,40,30,.12);
       transition: all 0.3s ease;
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
+      background: #ffffff;
     }
 
     .modern-card:hover {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 10px -2px rgba(16,40,30,.10), 0 18px 34px -12px rgba(16,40,30,.16);
     }
 
     .form-control-modern {
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      padding: 12px 15px;
+      border-radius: 10px;
+      border: 1.5px solid #e2e8f0;
+      padding: 11px 14px;
       font-size: 14px;
       transition: all 0.3s ease;
       background: #ffffff;
     }
 
     .form-control-modern:focus {
-      border-color: #4f46e5;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      border-color: #1a5c38;
+      box-shadow: 0 0 0 3px rgba(26, 92, 56, 0.1);
       background: #ffffff;
     }
 
@@ -101,33 +100,38 @@ if (session_status() === PHP_SESSION_NONE) {
     }
 
     .btn-modern {
-      background: linear-gradient(135deg, #4f46e5 0%, #7c73e6 100%);
+      background: linear-gradient(135deg, #1a5c38 0%, #2a9863 100%);
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 12px 30px;
       font-weight: 600;
       color: white;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+      box-shadow: 0 4px 14px -3px rgba(26, 92, 56, 0.45);
     }
 
     .btn-modern:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4);
-      background: linear-gradient(135deg, #4338ca 0%, #6d63e0 100%);
+      box-shadow: 0 6px 18px -3px rgba(26, 92, 56, 0.55);
+      background: linear-gradient(135deg, #123b2a 0%, #1f7a4d 100%);
       color: white;
     }
 
     .section-title {
-      color: #4f46e5;
+      color: #1a5c38;
       font-weight: 700;
       font-size: 18px;
       margin-bottom: 20px;
       padding-bottom: 10px;
-      border-bottom: 2px solid #eef2ff;
+      border-bottom: 2px solid #eef8f2;
       position: relative;
     }
-
+    .section-title1 {
+      color: #1a5c38;
+      font-weight: 700;
+      font-size: 18px;
+      position: relative;
+    }
     .section-title:after {
       content: '';
       position: absolute;
@@ -135,13 +139,13 @@ if (session_status() === PHP_SESSION_NONE) {
       left: 0;
       width: 50px;
       height: 2px;
-      background: #4f46e5;
+      background: #1a5c38;
       border-radius: 2px;
     }
 
     .image-upload-area {
       border: 2px dashed #d1d5db;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 30px;
       text-align: center;
       transition: all 0.3s ease;
@@ -150,12 +154,12 @@ if (session_status() === PHP_SESSION_NONE) {
     }
 
     .image-upload-area:hover {
-      border-color: #4f46e5;
-      background: #f0f4ff;
+      border-color: #1a5c38;
+      background: #eef8f2;
     }
 
     .image-preview-container {
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       transition: all 0.3s ease;
@@ -182,33 +186,33 @@ if (session_status() === PHP_SESSION_NONE) {
     }
 
     .modern-select:focus {
-      border-color: #4f46e5;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      border-color: #1a5c38;
+      box-shadow: 0 0 0 3px rgba(26, 92, 56, 0.1);
     }
 
     .btn-default-image {
-      background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+      background: linear-gradient(135deg, #b8952f 0%, #d4af37 100%);
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 10px 20px;
       font-weight: 600;
       color: white;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
       margin-top: 10px;
       width: 100%;
     }
 
     .btn-default-image:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
-      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+      background: linear-gradient(135deg, #9c7f28 0%, #b8952f 100%);
       color: white;
     }
 
     .default-image-active {
-      border: 3px solid #10b981 !important;
-      background: #f0fdf4 !important;
+      border: 3px solid #d4af37 !important;
+      background: #fdf9ee !important;
     }
 
     .validation-error {
@@ -318,7 +322,7 @@ body.dark-mode .default-image-active { background: var(--notification-unread-bg)
         }
         .pg-hero {
             background:#0b1f17;
-            padding:36px 28px 66px; position:relative; overflow:hidden;
+            padding:26px 28px 50px; position:relative; overflow:hidden;
         }
         .pg-hero-mesh {
             position:absolute; inset:-50%; width:200%; height:200%;
@@ -408,6 +412,22 @@ body.dark-mode .default-image-active { background: var(--notification-unread-bg)
             width:180px; height:auto; pointer-events:none; z-index:0;
             opacity:0.50;
         }
+
+    /* ── Compact layout overrides ── */
+    .card-body { padding: 22px 26px !important; }
+    .section-title { margin-bottom: 12px !important; padding-bottom: 6px !important; font-size: 16px !important; }
+    .card-body .row.mb-4 { margin-bottom: 10px !important; }
+    .card-body .row.mt-4 { margin-top: 14px !important; }
+    .card-body .row.mt-5 { margin-top: 18px !important; }
+    .card-body .mb-3 { margin-bottom: 10px !important; }
+    .card-body .mb-4 { margin-bottom: 12px !important; }
+    .form-label { margin-bottom: 4px !important; font-size: 13px !important; }
+    .form-control-modern { padding: 8px 12px !important; }
+    .modern-select { padding: 0 15px !important; height: calc(1.5em + 0.9rem + 2px); }
+    .image-upload-area { padding: 18px !important; }
+    .image-upload-area i.fa-3x { font-size: 2rem !important; }
+    .nav-tabs-modern { margin-bottom: 16px !important; }
+    .nav-tabs-modern .nav-link { padding: 9px 20px !important; }
 </style>
 </head>
 
@@ -450,9 +470,9 @@ body.dark-mode .default-image-active { background: var(--notification-unread-bg)
           <div class="row">
             <div class="col-12">
               <div class="card modern-card">
-                <div class="card-header" style="background: linear-gradient(135deg, #4f46e5 0%, #7c73e6 100%); border-radius: 12px 12px 0 0;">
+                <div class="card-header" style="background: linear-gradient(135deg, #1a5c38 0%, #2a9863 100%); border-radius: 12px 12px 0 0;">
                   <h3 class="card-title" style=" font-weight: 600;">
-                    <i class="fas fa-user-plus mr-2"></i>Employee Information
+                    <h4 class="section-title1"><i class="fas fa-user-plus mr-2"></i>Employee Information</h4>
                   </h3>
                 </div>
                 <div class="card-body" style="padding: 30px;">
@@ -865,7 +885,7 @@ body.dark-mode .default-image-active { background: var(--notification-unread-bg)
           icon: 'warning',
           title: 'Missing Information',
           text: 'Please fill in all required fields including profile picture',
-          confirmButtonColor: '#4f46e5'
+          confirmButtonColor: '#1a5c38'
         });
       }
     });
@@ -911,7 +931,7 @@ body.dark-mode .default-image-active { background: var(--notification-unread-bg)
         showConfirmButton: false,
         timer: 3000,
         background: '#ffffff',
-        confirmButtonColor: '#4f46e5'
+        confirmButtonColor: '#1a5c38'
       });
       <?php unset($_SESSION['alert']); ?>
     <?php endif; ?>
