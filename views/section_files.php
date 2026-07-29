@@ -638,13 +638,22 @@
                     case 'revoke_access':
                         $share_id = $_POST['share_id'];
                         
+                        $folder_id = null;
+                        $share_folder_stmt = $db->prepare("SELECT folder_id FROM folder_shares WHERE share_id = ?");
+                        $share_folder_stmt->bind_param("i", $share_id);
+                        $share_folder_stmt->execute();
+                        $share_folder_result = $share_folder_stmt->get_result();
+                        if ($share_folder_row = $share_folder_result->fetch_assoc()) {
+                            $folder_id = $share_folder_row['folder_id'];
+                        }
+                        
                         $stmt = $db->prepare("UPDATE folder_shares SET is_active = FALSE WHERE share_id = ?");
                         $stmt->bind_param("i", $share_id);
                         
                         if ($stmt->execute()) {
-                            // Log revoke activity if table exists
+                            // Log revoke activity if table exists and folder_id is available
                             $check_table = $db->query("SHOW TABLES LIKE 'folder_share_logs'");
-                            if ($check_table->num_rows > 0) {
+                            if ($check_table->num_rows > 0 && $folder_id !== null) {
                                 $log_stmt = $db->prepare("INSERT INTO folder_share_logs (folder_id, emp_id, activity_type, description, ip_address) VALUES (?, ?, 'access_revoked', ?, ?)");
                                 $log_description = "Folder access revoked";
                                 $ip = $_SERVER['REMOTE_ADDR'];
@@ -1387,13 +1396,14 @@
                                             onclick="event.stopPropagation(); toggleFileMenu(this, event, <?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>')">
                                         <i class="fas fa-ellipsis-v"></i>
                                     </button>
+                                     <button class="gd-action-btn gd-menu-danger" onclick="deleteFile(<?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>')"><i class="fas fa-trash"></i> </button>
                                     <div class="gd-file-menu">
                                         <button class="gd-menu-item" onclick="viewFileModal(<?= $file['file_id'] ?>)"><i class="fas fa-eye"></i> Preview</button>
                                         <button class="gd-menu-item" onclick="openFileEdit(<?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>', '<?= htmlspecialchars(addslashes($file['description'] ?? '')) ?>')"><i class="fas fa-pencil-alt"></i> Rename</button>
                                         <a class="gd-menu-item" href="download_file.php?id=<?= $file['file_id'] ?>"><i class="fas fa-download"></i> Download</a>
                                         <button class="gd-menu-item"><i class="fas fa-share-alt"></i> Share</button>
                                         <hr style="margin:4px 0; border-color: var(--border-color);">
-                                        <button class="gd-menu-item gd-menu-danger" onclick="deleteFile(<?= $file['file_id'] ?>, '<?= htmlspecialchars(addslashes($file['file_name'])) ?>')"><i class="fas fa-trash"></i> Move to Trash</button>
+                                       
                                     </div>
                                 </div>
                             </div>

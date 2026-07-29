@@ -4,6 +4,11 @@ session_start();
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>
+        if (localStorage.getItem('darkMode') === '1') {
+            document.documentElement.classList.add('dark-mode-preload');
+        }
+    </script>
     <title>Access Denied - NIA Albay-Catanduanes IMO</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,26 +25,58 @@ session_start();
     <link rel="stylesheet" href="plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
 
     <style>
+        /* ===== Shared theme variables — mirrors includes/mainheader.php ===== */
         :root {
-            --primary: #4361ee;
-            --secondary: #3f37c9;
-            --success: #4cc9f0;
-            --info: #4895ef;
-            --warning: #f72585;
-            --danger: #e63946;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --gray: #6c757d;
-            --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            --hover-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
+            --green:              #24e78f;
+            --green-dark:         #2a9863;
+            --green-mid:          #1a5c38;
+
+            --body-bg:            #eef7f2;
+            --card-bg:            #ffffff;
+            --card-border:        rgba(42,152,99,0.15);
+
+            --text-primary:       #0f2d1e;
+            --text-muted:         #4a7a5e;
+
+            --footer-bg:          #ffffff;
+            --footer-border:      rgba(42,152,99,0.15);
+
+            /* Kept distinct from the green brand color for the error accent */
+            --danger:  #e63946;
+            --warning: #f0a500;
+
+            --card-shadow: 0 20px 60px rgba(15, 45, 30, 0.12);
+            --hover-shadow: 0 30px 80px rgba(15, 45, 30, 0.18);
         }
-        
+
+        body.dark-mode {
+            --body-bg:            #0b1f17;
+            --card-bg:            #102f22;
+            --card-border:        rgba(36,231,143,0.10);
+
+            --text-primary:       #d4f5e5;
+            --text-muted:         #6aad8a;
+
+            --footer-bg:          #0f2d1e;
+            --footer-border:      rgba(36,231,143,0.12);
+
+            --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            --hover-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+        }
+
+        html.dark-mode-preload body { background: #0b1f17 !important; }
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-dark) 100%);
+            font-family: 'Source Sans Pro', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
             margin: 0;
             padding: 0;
+            transition: background 0.2s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #071410 0%, #0b1f17 100%);
         }
         
         .unauthorized-container {
@@ -47,7 +84,7 @@ session_start();
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 10px 10px;
             position: relative;
             overflow: hidden;
         }
@@ -71,10 +108,9 @@ session_start();
         }
         
         .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
+            background: var(--card-bg);
             border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--card-border);
             box-shadow: var(--card-shadow);
             padding: 0;
             position: relative;
@@ -82,6 +118,7 @@ session_start();
             overflow: hidden;
             max-width: 500px;
             width: 100%;
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
         
         .glass-card::before {
@@ -155,19 +192,19 @@ session_start();
         .error-title {
             font-size: 1.8rem;
             font-weight: 700;
-            color: var(--dark);
+            color: var(--text-primary);
             margin-bottom: 20px;
         }
         
         .error-message {
-            color: var(--gray);
+            color: var(--text-muted);
             font-size: 1.1rem;
             line-height: 1.6;
             margin-bottom: 30px;
         }
         
         .error-details {
-            background: linear-gradient(135deg, #fff5f5, #ffe6e6);
+            background: linear-gradient(135deg, rgba(230,57,70,0.08), rgba(240,165,0,0.08));
             border-radius: 16px;
             padding: 25px;
             margin-bottom: 30px;
@@ -177,7 +214,7 @@ session_start();
         .error-details p {
             margin-bottom: 15px;
             font-weight: 500;
-            color: var(--dark);
+            color: var(--text-primary);
         }
         
         .reason-list {
@@ -189,7 +226,7 @@ session_start();
         
         .reason-list li {
             padding: 8px 0;
-            color: var(--gray);
+            color: var(--text-muted);
             display: flex;
             align-items: flex-start;
             font-size: 0.95rem;
@@ -210,7 +247,7 @@ session_start();
         }
         
         .btn-modern {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
             border: none;
             border-radius: 12px;
             padding: 14px 30px;
@@ -218,7 +255,7 @@ session_start();
             font-weight: 600;
             font-size: 1rem;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
+            box-shadow: 0 8px 25px rgba(26, 92, 56, 0.3);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
@@ -228,7 +265,7 @@ session_start();
         
         .btn-modern:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(67, 97, 238, 0.4);
+            box-shadow: 0 12px 35px rgba(26, 92, 56, 0.4);
             color: white;
             text-decoration: none;
         }
@@ -296,13 +333,13 @@ session_start();
         }
         
         .footer-modern {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            background: var(--footer-bg);
+            border-top: 1px solid var(--footer-border);
             padding: 25px 0;
             margin-top: 40px;
             position: relative;
             z-index: 1;
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
         
         .footer-content {
@@ -317,15 +354,24 @@ session_start();
             height: 45px;
             filter: brightness(0.8);
         }
+
+        body.dark-mode .footer-logo img {
+            filter: brightness(1.1);
+        }
         
         .footer-text {
-            color: var(--gray);
+            color: var(--text-muted);
             margin-bottom: 5px;
             font-size: 0.9rem;
         }
         
         .pulse {
             animation: pulse 2s infinite;
+        }
+
+        body.dark-mode .swal2-popup {
+            background: var(--card-bg) !important;
+            color: var(--text-primary) !important;
         }
         
         @keyframes pulse {
@@ -398,11 +444,12 @@ session_start();
         <div class="floating-element"></div>
         <div class="floating-element"></div>
         <div class="floating-element"></div>
+        <div class="floating-element"></div>
     </div>
 
     <!-- Unauthorized Section -->
     <div class="unauthorized-container">
-        <div class="glass-card pulse">
+        <div class="glass-card">
             <div class="error-header">
                 <i class="fas fa-ban error-icon"></i>
                 <h2>Access Restricted</h2>
@@ -481,6 +528,11 @@ session_start();
 
     <script>
     $(document).ready(function() {
+        // Match the app's saved dark-mode preference (no toggle here — this is a standalone page)
+        if (localStorage.getItem('darkMode') === '1') {
+            $('body').addClass('dark-mode');
+        }
+
         // Add subtle hover effects
         $('.glass-card').hover(
             function() {

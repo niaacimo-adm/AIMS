@@ -8,7 +8,19 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $database = new Database();
 $db = $database->getConnection();
-
+$module_name = 'sa';
+$check_stmt = $db->prepare("SELECT is_under_maintenance FROM system_modules WHERE module_name = ?");
+$check_stmt->bind_param("s", $module_name);
+$check_stmt->execute();
+$result = $check_stmt->get_result();
+if ($result->num_rows > 0) {
+    $module = $result->fetch_assoc();
+    if ($module['is_under_maintenance'] && !hasPermission('manage_settings')) {
+        $_SESSION['error'] = "The $module_name module is currently under maintenance.";
+        header("Location: ../unauthorized.php");
+        exit();
+    }
+}
 $emp_id = $_SESSION['emp_id'] ?? null;
 
 $employee = null;
@@ -1332,10 +1344,6 @@ if ($emp_id) {
 
                     <!-- Meta row -->
                     <div class="jo-meta-row">
-                        <div class="jo-meta-item">
-                            <span class="jo-meta-label">Logged in as</span>
-                            <span class="jo-meta-val"><?= htmlspecialchars($_SESSION['username'] ?? 'Employee') ?></span>
-                        </div>
                         <div class="jo-meta-item">
                             <span class="jo-meta-label">Appointment Type</span>
                             <span class="jo-meta-val jo-status-badge"><i class="fas fa-briefcase" style="font-size:.7rem;margin-right:4px"></i>Job Order</span>

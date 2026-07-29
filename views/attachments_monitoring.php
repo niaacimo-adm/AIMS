@@ -3,9 +3,11 @@ session_start();
 require_once '../config/database.php';
 require_once '../includes/auth.php';
 
-// Create database instance and get connection
 $database = new Database();
 $db = $database->getConnection();
+
+require_once '../includes/module_guard.php';
+checkModuleMaintenance($db);
 
 if (!isset($_SESSION['role'])) {
     $_SESSION['role'] = ''; // Default empty role

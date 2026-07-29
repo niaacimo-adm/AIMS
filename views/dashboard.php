@@ -11,19 +11,8 @@ if (!isset($_SESSION['user_id'])) {
 $database = new Database();
 $db = $database->getConnection();
 
-$module_name = 'Admin Dashboard';
-$check_stmt = $db->prepare("SELECT is_under_maintenance FROM system_modules WHERE module_name = ?");
-$check_stmt->bind_param("s", $module_name);
-$check_stmt->execute();
-$result = $check_stmt->get_result();
-if ($result->num_rows > 0) {
-    $module = $result->fetch_assoc();
-    if ($module['is_under_maintenance'] && !hasPermission('manage_settings')) {
-        $_SESSION['error'] = "The $module_name module is currently under maintenance.";
-        header("Location: ../unauthorized.php");
-        exit();
-    }
-}
+require_once '../includes/module_guard.php';
+checkModuleMaintenance($db);
 
 $stmt = $db->prepare("SELECT u.id, u.user, r.name as role_name, r.id as role_id FROM users u LEFT JOIN user_roles r ON u.role_id = r.id WHERE u.id = ?");
 $stmt->bind_param("i", $_SESSION['user_id']);

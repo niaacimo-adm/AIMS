@@ -88,9 +88,9 @@ while ($row = $recent_result->fetch_assoc()) {
 
         /* ── Token colours ────────────────────────────────────── */
         :root {
-            --brand:       #800020;
-            --brand-dark:  #5a0a1d;
-            --brand-light: rgba(128,0,32,.08);
+            --brand:       var(--green-dark, #2a9863);
+            --brand-dark:  var(--green-mid, #1a5c38);
+            --brand-light: rgba(36,231,143,.10);
             --radius:      14px;
             --radius-sm:   8px;
             --shadow:      0 2px 12px rgba(0,0,0,.07);
@@ -137,7 +137,7 @@ while ($row = $recent_result->fetch_assoc()) {
             position: relative;
             overflow: hidden;
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(128,0,32,.15); }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: rgba(36,231,143,.25); }
         .stat-card .stat-icon {
             width: 52px; height: 52px;
             border-radius: 12px;
@@ -188,7 +188,7 @@ while ($row = $recent_result->fetch_assoc()) {
             font-size: .875rem; background: #f8fafc; color: #1e293b;
             transition: var(--transition);
         }
-        .section-search-wrap input:focus { outline: none; border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(128,0,32,.1); }
+        .section-search-wrap input:focus { outline: none; border-color: var(--brand); background: #fff; box-shadow: 0 0 0 3px rgba(36,231,143,.18); }
         .section-search-wrap i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
 
         /* Section cards grid */
@@ -324,7 +324,7 @@ while ($row = $recent_result->fetch_assoc()) {
         body.dark-mode .fm-card-header h5 { color: var(--text-primary, #f1f5f9) !important; }
         body.dark-mode .section-search-wrap input { background: var(--input-bg, #1e293b) !important; color: var(--input-color, #f1f5f9) !important; border-color: var(--input-border, #334155) !important; }
         body.dark-mode .qa-btn { background: var(--card-bg, #1e293b) !important; border-color: var(--card-border, #334155) !important; color: var(--text-secondary, #cbd5e1) !important; }
-        body.dark-mode .qa-btn:hover { background: rgba(128,0,32,.2) !important; border-color: var(--brand) !important; color: #f87171 !important; }
+        body.dark-mode .qa-btn:hover { background: rgba(36,231,143,.14) !important; border-color: var(--brand) !important; color: var(--green, #24e78f) !important; }
         body.dark-mode .activity-item { border-color: var(--card-border, #334155) !important; }
         body.dark-mode .activity-name { color: var(--text-primary, #f1f5f9) !important; }
         body.dark-mode .sc-badge { background: var(--card-border, #334155) !important; color: var(--text-secondary, #cbd5e1) !important; }
@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded', function() {
         title: <?= json_encode($_SESSION['swal_error']['title']) ?>,
         text:  <?= json_encode($_SESSION['swal_error']['text']) ?>,
         icon:  <?= json_encode($_SESSION['swal_error']['icon']) ?>,
-        confirmButtonColor: '#800020',
+        confirmButtonColor: '#2a9863',
         confirmButtonText: 'OK'
     });
 });

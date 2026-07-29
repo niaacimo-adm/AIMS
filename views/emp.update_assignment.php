@@ -74,10 +74,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
     }
     
-    header("Location: emp.list.php?success=1");
+    header("Location: emp.profile.php?emp_id=" . urlencode($emp_id) . "&success=1");
     exit();
 }
 
-header("Location: emp.list.php?error=1");
-exit();
+if (isset($emp_id)) {
+    header("Location: emp.profile.php?emp_id=" . urlencode($emp_id) . "&error=1");
+    exit();
+}
 ?>

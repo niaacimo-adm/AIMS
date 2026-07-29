@@ -38,8 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Handle "use default image" selection - clears any existing picture
+        $useDefaultImage = ($_POST['use_default_image'] ?? '0') === '1';
+
+        if ($useDefaultImage) {
+            // Delete the old picture file if it exists
+            if (!empty($_POST['old_picture'])) {
+                $oldPicture = "../dist/img/employees/" . $_POST['old_picture'];
+                if (file_exists($oldPicture)) {
+                    unlink($oldPicture);
+                }
+            }
+
+            // Clear the picture column so the app falls back to the default image
+            // (empty string, not NULL, in case the column is defined NOT NULL)
+            $fields[] = 'picture';
+            $types .= 's';
+            $values[] = '';
+        }
         // Handle file upload if a new picture is provided
-        if (!empty($_FILES['picture']['name'])) {
+        elseif (!empty($_FILES['picture']['name'])) {
             $targetDir = "../dist/img/employees/";
             if (!is_dir($targetDir)) {
                 mkdir($targetDir, 0777, true);
@@ -74,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Build the UPDATE query
         $setParts = array_map(function($field) { return "$field = ?"; }, $fields);
-        $setClause = implode(', ', $setParts);
+        $setClause = implode(', ', $setParts); 
 
         $query = "UPDATE employee SET $setClause WHERE emp_id = ?";
         $stmt = $db->prepare($query);
@@ -92,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'type' => 'success',
                 'message' => 'Employee updated successfully!'
             ];
-            header("Location: emp.list.php");
+            header("Location: emp.profile.php?emp_id=" . urlencode($emp_id));
             exit();
         } else {
             throw new Exception("Failed to update employee: " . $stmt->error);
