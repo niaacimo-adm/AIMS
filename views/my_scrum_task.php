@@ -25,7 +25,7 @@ $project_id = $_GET['project_id'] ?? null;
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body class="hold-transition sidebar-mini theme-scrum">
+<body class="hold-transition sidebar-mini">
 <div class="wrapper">
   <?php include '../includes/mainheader.php'; ?>
   <?php include '../includes/sidebar_scrum.php'; ?>
@@ -38,7 +38,15 @@ $project_id = $_GET['project_id'] ?? null;
             <h1><i class="fas fa-tasks mr-2" style="color:var(--s-teal)"></i>My Tasks</h1>
           </div>
           <div class="col-sm-6">
-            <div class="float-right">
+            <div class="float-right d-flex align-items-center">
+              <div class="btn-group btn-group-sm view-toggle-group mr-2" role="group" aria-label="View toggle">
+                <button type="button" class="btn btn-outline-secondary view-toggle-btn active" data-view="list">
+                  <i class="fas fa-list"></i> List
+                </button>
+                <button type="button" class="btn btn-outline-secondary view-toggle-btn" data-view="board">
+                  <i class="fas fa-columns"></i> Board
+                </button>
+              </div>
               <select class="form-control form-control-sm" id="projectFilter" style="width: 200px; display: inline-block;">
                 <option value="">All Projects</option>
                 <!-- Projects will be loaded here -->
@@ -69,23 +77,35 @@ $project_id = $_GET['project_id'] ?? null;
             </div>
           </div>
           <div class="card-body">
-            <div class="table-responsive">
-              <table class="table table-bordered table-hover" id="myTasksTable">
-                <thead>
-                  <tr>
-                    <th>Task Title</th>
-                    <th>Project</th>
-                    <th>Status</th>
-                    <th>Priority</th>
-                    <th>Due Date</th>
-                    <th>Created By</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="myTasksTableBody">
-                  <!-- Tasks will be loaded here -->
-                </tbody>
-              </table>
+            <div id="listViewContainer">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="myTasksTable">
+                  <thead>
+                    <tr>
+                      <th>Task Title</th>
+                      <th>Project</th>
+                      <th>Status</th>
+                      <th>Priority</th>
+                      <th>Due Date</th>
+                      <th>Created By</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="myTasksTableBody">
+                    <!-- Tasks will be loaded here -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div id="boardViewContainer" style="display:none;">
+              <div class="grid-search-bar">
+                <input type="text" id="taskGridSearch" class="grid-search-input" placeholder="Search tasks by title, project…">
+                <span class="grid-count-badge" id="taskGridCountBadge">0 tasks</span>
+              </div>
+              <div class="task-grid" id="myTasksGrid">
+                <!-- Task cards will be rendered here -->
+              </div>
+              <div class="grid-pagination-bar" id="taskGridPaginationBar"></div>
             </div>
           </div>
         </div>
@@ -97,14 +117,49 @@ $project_id = $_GET['project_id'] ?? null;
 <?php include '../includes/footer.php'; ?>
 
 <script>
+let currentView = localStorage.getItem('myTasksView') || 'list';
+let currentTasks = [];
+
 $(document).ready(function() {
-    localStorage.setItem('currentTheme', 'scrum');
+    setView(currentView, false);
     loadMyTasks();
     loadProjectFilter();
     
     $('#projectFilter, #statusFilter').change(loadMyTasks);
     $('#refreshTasks').click(loadMyTasks);
+
+    $('.view-toggle-btn').click(function() {
+        setView($(this).data('view'));
+    });
 });
+
+function setView(view, rerender = true) {
+    currentView = view;
+    localStorage.setItem('myTasksView', view);
+
+    $('.view-toggle-btn').removeClass('active');
+    $(`.view-toggle-btn[data-view="${view}"]`).addClass('active');
+
+    if (view === 'board') {
+        $('#listViewContainer').hide();
+        $('#boardViewContainer').show();
+    } else {
+        $('#boardViewContainer').hide();
+        $('#listViewContainer').show();
+    }
+
+    if (rerender && currentTasks.length >= 0) {
+        renderCurrentView();
+    }
+}
+
+function renderCurrentView() {
+    if (currentView === 'board') {
+        renderMyTasksBoard(currentTasks);
+    } else {
+        renderMyTasks(currentTasks);
+    }
+}
 
 function loadMyTasks() {
     const projectId = $('#projectFilter').val();
@@ -116,7 +171,8 @@ function loadMyTasks() {
         status: status
     }, function(response) {
         if (response.success) {
-            renderMyTasks(response.tasks);
+            currentTasks = response.tasks;
+            renderCurrentView();
         }
     }, 'json');
 }
@@ -169,7 +225,7 @@ function renderMyTasks(tasks) {
                 </td>
                 <td>
                     <span class="badge badge-${getTaskStatusBadgeClass(task.status)}">
-                        ${task.status.replace('_', ' ').toUpperCase()}
+                        ${getStatusDisplayText(task.status).toUpperCase()}
                     </span>
                 </td>
                 <td>
@@ -216,6 +272,119 @@ function renderMyTasks(tasks) {
     });
 }
 
+let taskGridPage = 1;
+const TASK_GRID_PAGE_SIZE = 12;
+
+function renderMyTasksBoard(tasks) {
+    const searchTerm = ($('#taskGridSearch').val() || '').toLowerCase();
+    const filtered = searchTerm
+        ? tasks.filter(t => (`${t.title} ${t.project_name} ${t.priority} ${t.status}`).toLowerCase().includes(searchTerm))
+        : tasks;
+
+    $('#taskGridCountBadge').text(`${filtered.length} task${filtered.length !== 1 ? 's' : ''}`);
+
+    const grid = $('#myTasksGrid');
+    grid.empty();
+
+    if (filtered.length === 0) {
+        grid.html('<div class="no-results-card"><i class="fas fa-inbox fa-2x mb-2"></i><p>No tasks found</p></div>');
+        $('#taskGridPaginationBar').empty();
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / TASK_GRID_PAGE_SIZE));
+    if (taskGridPage > totalPages) taskGridPage = totalPages;
+    const start = (taskGridPage - 1) * TASK_GRID_PAGE_SIZE;
+    const pageTasks = filtered.slice(start, start + TASK_GRID_PAGE_SIZE);
+
+    pageTasks.forEach(task => {
+        const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : null;
+        const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done';
+        const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
+        const initials = (task.project_name || '?').substring(0, 2).toUpperCase();
+
+        const card = $(`
+            <div class="task-grid-card">
+                <div class="task-grid-card-accent" style="background: ${task.color || 'var(--s-teal)'}"></div>
+                <div class="task-grid-card-icon-wrap">
+                    <div class="task-grid-card-icon-placeholder" style="background: ${task.color ? task.color + '22' : 'var(--s-teal-dim)'}; color:${task.color || 'var(--s-teal)'}">
+                        ${initials}
+                    </div>
+                </div>
+                <div class="task-grid-card-body">
+                    <h5 class="task-grid-card-title">${escapeHtml(task.title)}</h5>
+                    <p class="task-grid-card-subtitle">${escapeHtml(task.project_name)}</p>
+
+                    <div class="task-grid-card-badges">
+                        <span class="task-grid-card-badge badge-${getTaskStatusBadgeClass(task.status)}">${getStatusDisplayText(task.status).toUpperCase()}</span>
+                        <span class="task-grid-card-badge priority-${task.priority}">${task.priority.toUpperCase()}</span>
+                    </div>
+
+                    <div class="task-grid-card-meta">
+                        <div class="task-grid-card-meta-row">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span class="${isOverdue ? 'text-danger' : ''}">${dueDate ? dueDate : 'No due date'}${isOverdue ? ' (Overdue)' : ''}</span>
+                        </div>
+                        <div class="task-grid-card-meta-row">
+                            <i class="fas fa-user"></i>
+                            <span>${escapeHtml(creatorName)}</span>
+                        </div>
+                        ${task.project_code ? `
+                        <div class="task-grid-card-meta-row">
+                            <i class="fas fa-hashtag"></i>
+                            <span>${escapeHtml(task.project_code)}</span>
+                        </div>` : ''}
+                    </div>
+                </div>
+                <div class="task-grid-card-actions">
+                    <button type="button" class="task-grid-card-action-btn view grid-view-task" data-task-id="${task.task_id}" title="View">
+                        <i class="fas fa-eye"></i><span class="d-none d-md-inline">View</span>
+                    </button>
+                    <button type="button" class="task-grid-card-action-btn edit grid-update-status" data-task-id="${task.task_id}" title="Update Status">
+                        <i class="fas fa-edit"></i><span class="d-none d-md-inline">Status</span>
+                    </button>
+                    <button type="button" class="task-grid-card-action-btn go grid-open-project" data-project-id="${task.project_id}" title="Open Project">
+                        <i class="fas fa-external-link-alt"></i><span class="d-none d-md-inline">Project</span>
+                    </button>
+                </div>
+            </div>
+        `);
+
+        grid.append(card);
+    });
+
+    $('.grid-view-task').click(function() { viewTaskDetails($(this).data('task-id')); });
+    $('.grid-update-status').click(function() { updateTaskStatus($(this).data('task-id')); });
+    $('.grid-open-project').click(function() { window.location.href = `scrum.php?project_id=${$(this).data('project-id')}`; });
+
+    renderTaskGridPagination(totalPages, filtered.length);
+}
+
+function renderTaskGridPagination(totalPages, totalCount) {
+    const bar = $('#taskGridPaginationBar').empty();
+    if (totalCount === 0) return;
+
+    bar.append(`<span class="grid-pagination-info">Page ${taskGridPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} task${totalCount !== 1 ? 's' : ''}</span>`);
+
+    const btns = $('<div class="grid-pagination-btns"></div>');
+    btns.append(`<button class="grid-page-btn" id="taskPrevPage" ${taskGridPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i> Prev</button>`);
+    for (let p = 1; p <= totalPages; p++) {
+        btns.append(`<button class="grid-page-btn${p === taskGridPage ? ' active' : ''}" data-page="${p}">${p}</button>`);
+    }
+    btns.append(`<button class="grid-page-btn" id="taskNextPage" ${taskGridPage === totalPages ? 'disabled' : ''}>Next <i class="fas fa-chevron-right"></i></button>`);
+
+    btns.find('#taskPrevPage').click(function() { if (taskGridPage > 1) { taskGridPage--; renderMyTasksBoard(currentTasks); } });
+    btns.find('#taskNextPage').click(function() { if (taskGridPage < totalPages) { taskGridPage++; renderMyTasksBoard(currentTasks); } });
+    btns.find('[data-page]').click(function() { taskGridPage = parseInt($(this).data('page')); renderMyTasksBoard(currentTasks); });
+
+    bar.append(btns);
+}
+
+$('#taskGridSearch').on('input', function() {
+    taskGridPage = 1;
+    renderMyTasksBoard(currentTasks);
+});
+
 function getTaskStatusBadgeClass(status) {
     const classes = {
         'backlog': 'secondary',
@@ -227,6 +396,32 @@ function getTaskStatusBadgeClass(status) {
     return classes[status] || 'secondary';
 }
 
+// Turns a raw status string into something readable. Handles the normal
+// 'backlog'/'todo'/'inprogress'/'review'/'done' values, but also falls back
+// gracefully for empty values or leftover 'board_<id>' strings from custom
+// boards / older data, instead of rendering a blank badge.
+function getStatusDisplayText(status) {
+    if (!status || status === '') return 'Unknown';
+
+    const statusMap = {
+        'backlog': 'Backlog',
+        'todo': 'To Do',
+        'inprogress': 'In Progress',
+        'review': 'Review',
+        'done': 'Done'
+    };
+    const normalized = status.toLowerCase();
+    if (statusMap[normalized]) return statusMap[normalized];
+
+    let text = status
+        .replace(/^board_/i, 'Board ')
+        .replace(/_/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .trim();
+    text = text.replace(/\b\w/g, l => l.toUpperCase());
+    return text || 'Unknown';
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -234,42 +429,87 @@ function escapeHtml(text) {
 }
 
 function viewTaskDetails(taskId) {
+    // currentTasks (already loaded by loadMyTasks) has everything the old
+    // 'get_task_details' AJAX call was trying to fetch — that action doesn't
+    // exist in task_ajax.php, so this avoids relying on it.
+    const task = currentTasks.find(t => t.task_id == taskId);
+    if (!task) return;
+
+    const labels = task.labels ? task.labels.split(',') : [];
+    const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set';
+    const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
+
+    Swal.fire({
+        title: task.title,
+        html: `
+            <div class="text-left">
+                <p><strong>Description:</strong> ${task.description || 'No description'}</p>
+                <p><strong>Project:</strong> ${task.project_name} (${task.project_code})</p>
+                <p><strong>Status:</strong> <span class="badge badge-${getTaskStatusBadgeClass(task.status)}">${getStatusDisplayText(task.status).toUpperCase()}</span></p>
+                <p><strong>Priority:</strong> <span class="badge priority-${task.priority}">${task.priority.toUpperCase()}</span></p>
+                <p><strong>Due Date:</strong> ${dueDate}</p>
+                <p><strong>Created By:</strong> ${creatorName}</p>
+                ${labels.length > 0 ? `
+                    <p><strong>Labels:</strong> 
+                        ${labels.map(label => `<span class="badge label-${label}">${label.toUpperCase()}</span>`).join(' ')}
+                    </p>
+                ` : ''}
+                <hr>
+                <p class="mb-2"><strong><i class="fas fa-history mr-1"></i>Activity</strong></p>
+                <div id="taskActivityLog" class="task-activity-log">
+                    <div class="text-muted small">Loading activity&hellip;</div>
+                </div>
+            </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'OK',
+        width: '600px',
+        didOpen: () => loadTaskActivity(taskId)
+    });
+}
+
+function loadTaskActivity(taskId) {
     $.post('../includes/task_ajax.php', {
-        action: 'get_task_details',
+        action: 'get_task_activity',
         task_id: taskId
     }, function(response) {
-        if (response.success) {
-            const task = response.task;
-            const labels = task.labels ? task.labels.split(',') : [];
-            const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set';
-            const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
-            
-            Swal.fire({
-                title: task.title,
-                html: `
-                    <div class="text-left">
-                        <p><strong>Description:</strong> ${task.description || 'No description'}</p>
-                        <p><strong>Project:</strong> ${task.project_name} (${task.project_code})</p>
-                        <p><strong>Status:</strong> <span class="badge badge-${getTaskStatusBadgeClass(task.status)}">${task.status.toUpperCase()}</span></p>
-                        <p><strong>Priority:</strong> <span class="badge priority-${task.priority}">${task.priority.toUpperCase()}</span></p>
-                        <p><strong>Due Date:</strong> ${dueDate}</p>
-                        <p><strong>Created By:</strong> ${creatorName}</p>
-                        ${labels.length > 0 ? `
-                            <p><strong>Labels:</strong> 
-                                ${labels.map(label => `<span class="badge label-${label}">${label.toUpperCase()}</span>`).join(' ')}
-                            </p>
-                        ` : ''}
-                    </div>
-                `,
-                icon: 'info',
-                confirmButtonText: 'OK',
-                width: '600px'
-            });
+        const container = $('#taskActivityLog');
+        if (!container.length) return; // modal already closed
+
+        if (!response.success || !response.activity || response.activity.length === 0) {
+            container.html('<div class="text-muted small">No activity yet.</div>');
+            return;
         }
-    }, 'json');
+
+        const items = response.activity.map(entry => {
+            const who = entry.first_name ? `${entry.first_name} ${entry.last_name}` : 'Someone';
+            const when = new Date(entry.created_at).toLocaleString();
+            const initial = (entry.first_name || '?').charAt(0).toUpperCase();
+            return `
+                <div class="activity-item">
+                    <div class="activity-avatar">${initial}</div>
+                    <div class="activity-content">
+                        <div class="activity-desc"><strong>${escapeHtml(who)}</strong> ${escapeHtml(entry.description)}</div>
+                        <div class="activity-meta">${when}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.html(items);
+    }, 'json').fail(function() {
+        $('#taskActivityLog').html('<div class="text-muted small">Couldn\'t load activity.</div>');
+    });
 }
 
 function updateTaskStatus(taskId) {
+    // Look up the task's current status so the select opens pre-filled
+    // instead of always showing the blank placeholder — this is what
+    // was missing compared to scrum.php, where the status is obvious
+    // from which column the task card sits in.
+    const currentTask = currentTasks.find(t => t.task_id == taskId);
+    const currentStatus = currentTask ? currentTask.status : '';
+
     Swal.fire({
         title: 'Update Task Status',
         input: 'select',
@@ -280,6 +520,7 @@ function updateTaskStatus(taskId) {
             'review': 'Review',
             'done': 'Done'
         },
+        inputValue: currentStatus,
         inputPlaceholder: 'Select status',
         showCancelButton: true,
         confirmButtonText: 'Update Status'
@@ -306,25 +547,45 @@ function updateTaskStatus(taskId) {
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --s-bg: #0d1117;
-  --s-surface: #161b22;
-  --s-surface2: #21262d;
-  --s-surface3: #30363d;
-  --s-border: #30363d;
-  --s-teal: #2dd4bf;
-  --s-teal-dim: rgba(45,212,191,.12);
-  --s-teal-glow: 0 0 20px rgba(45,212,191,.2);
-  --s-violet: #a78bfa;
-  --s-text: #e6edf3;
-  --s-muted: #7d8590;
-  --s-danger: #f85149;
-  --s-warning: #d29922;
-  --s-green: #3fb950;
-  --s-blue: #58a6ff;
-  --s-radius: 10px;
-  --s-shadow: 0 8px 32px rgba(0,0,0,.4);
-  --s-font: 'Plus Jakarta Sans', sans-serif;
-  --s-mono: 'JetBrains Mono', monospace;
+  /* Aliased to mainheader.php's site-wide green theme (light/dark mode aware)
+     instead of this page's own hardcoded dark/teal palette. */
+  --s-bg:         var(--body-bg);
+  --s-surface:    var(--card-bg);
+  --s-surface2:   var(--table-stripe);
+  --s-surface3:   var(--notification-unread-bg);
+  --s-border:     var(--card-border);
+  --s-teal:       var(--green);
+  --s-teal-dim:   rgba(36,231,143,.12);
+  --s-teal-glow:  0 0 20px rgba(36,231,143,.25);
+  --s-teal-text:  var(--sidebar-active-text);
+  --s-violet:     #a78bfa;
+  --s-text:       var(--text-primary);
+  --s-muted:      var(--text-muted);
+  --s-danger:     #f85149;
+  --s-warning:    #d29922;
+  --s-green:      #3fb950;
+  --s-blue:       #58a6ff;
+  --s-radius:     10px;
+  --s-shadow:     0 8px 32px rgba(15,45,30,.12);
+  --s-font:       'Plus Jakarta Sans', sans-serif;
+  --s-mono:       'JetBrains Mono', monospace;
+}
+
+/* Re-resolve the theme-dependent aliases when dark mode is active.
+   A custom property that references var(--card-bg) etc. only re-substitutes
+   at the point it's declared — declaring it once at :root freezes it to the
+   light value forever, even after body.dark-mode redefines --card-bg. Mirror
+   mainheader.php's own pattern here so these aliases pick up the dark values. */
+body.dark-mode {
+  --s-bg:         var(--body-bg);
+  --s-surface:    var(--card-bg);
+  --s-surface2:   var(--table-stripe);
+  --s-surface3:   var(--notification-unread-bg);
+  --s-border:     var(--card-border);
+  --s-teal-text:  var(--sidebar-active-text);
+  --s-text:       var(--text-primary);
+  --s-muted:      var(--text-muted);
+  --s-shadow:     0 8px 32px rgba(0,0,0,.35);
 }
 
 /* ── Base ── */
@@ -352,7 +613,7 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 #currentProjectStatus {
   background: var(--s-teal-dim) !important;
   color: var(--s-teal) !important;
-  border: 1px solid rgba(45,212,191,.3) !important;
+  border: 1px solid rgba(36,231,143,.3) !important;
   border-radius: 20px !important;
   font-size: .7rem !important;
   font-weight: 600 !important;
@@ -391,16 +652,16 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 }
 .scrum-header .btn-primary {
   background: var(--s-teal) !important;
-  color: #0d1117 !important;
+  color: var(--s-teal-text) !important;
   border: none !important;
   border-radius: 8px !important;
   font-weight: 700 !important;
   font-size: .8rem !important;
   font-family: var(--s-font) !important;
-  box-shadow: 0 2px 12px rgba(45,212,191,.25) !important;
+  box-shadow: 0 2px 12px rgba(36,231,143,.25) !important;
   transition: all .2s !important;
 }
-.scrum-header .btn-primary:hover { background: #14b8a6 !important; box-shadow: 0 4px 20px rgba(45,212,191,.4) !important; transform: translateY(-1px); }
+.scrum-header .btn-primary:hover { background: var(--green-dark) !important; box-shadow: 0 4px 20px rgba(36,231,143,.4) !important; transform: translateY(-1px); }
 .scrum-header .btn-success {
   background: var(--s-surface2) !important;
   color: var(--s-green) !important;
@@ -478,7 +739,7 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 }
 .task-card:hover {
   border-color: var(--s-teal) !important;
-  box-shadow: 0 0 0 1px rgba(45,212,191,.2), 0 4px 16px rgba(0,0,0,.3) !important;
+  box-shadow: 0 0 0 1px rgba(36,231,143,.2), 0 4px 16px rgba(0,0,0,.3) !important;
   transform: translateY(-2px) !important;
 }
 .task-card.dragging { opacity: .5 !important; border-style: dashed !important; }
@@ -570,7 +831,7 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 
 /* ── Table action buttons ── */
 .btn-sm.btn-info    { background: rgba(88,166,255,.12) !important; color: var(--s-blue) !important; border: 1px solid rgba(88,166,255,.25) !important; border-radius: 7px !important; }
-.btn-sm.btn-primary { background: rgba(45,212,191,.12) !important; color: var(--s-teal) !important; border: 1px solid rgba(45,212,191,.25) !important; border-radius: 7px !important; }
+.btn-sm.btn-primary { background: rgba(36,231,143,.12) !important; color: var(--s-teal) !important; border: 1px solid rgba(36,231,143,.25) !important; border-radius: 7px !important; }
 .btn-sm.btn-success { background: rgba(63,185,80,.12) !important; color: var(--s-green) !important; border: 1px solid rgba(63,185,80,.25) !important; border-radius: 7px !important; }
 .btn-sm.btn-warning { background: rgba(210,153,34,.12) !important; color: #e3a520 !important; border: 1px solid rgba(210,153,34,.25) !important; border-radius: 7px !important; }
 .btn-sm.btn-danger  { background: rgba(248,81,73,.12) !important; color: var(--s-danger) !important; border: 1px solid rgba(248,81,73,.25) !important; border-radius: 7px !important; }
@@ -643,6 +904,22 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 .activity-meta { color: var(--s-muted) !important; }
 .comment-input { border-bottom: 1px solid var(--s-border) !important; }
 
+/* Activity log inside the task detail popup (viewTaskDetails) */
+.task-activity-log { max-height: 220px; overflow-y: auto; text-align: left; }
+.task-activity-log .activity-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--s-border) !important;
+}
+.task-activity-log .activity-item:last-child { border-bottom: none !important; }
+.task-activity-log .activity-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.task-activity-log .activity-content { flex: 1; }
+.task-activity-log .activity-desc { font-size: 13px; color: var(--s-text) !important; }
+.task-activity-log .activity-meta { font-size: 11px; margin-top: 2px; }
+
 /* Modal form controls */
 .modal .form-control, .modal .form-control:focus {
   background: var(--s-surface2) !important;
@@ -653,7 +930,7 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
   font-size: .875rem !important;
 }
 .modal .form-control::placeholder { color: var(--s-muted) !important; }
-.modal .form-control:focus { border-color: var(--s-teal) !important; box-shadow: 0 0 0 3px rgba(45,212,191,.12) !important; }
+.modal .form-control:focus { border-color: var(--s-teal) !important; box-shadow: 0 0 0 3px rgba(36,231,143,.12) !important; }
 .modal label { color: var(--s-muted) !important; font-size: .72rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: .5px !important; margin-bottom: 5px !important; }
 
 /* Checkbox labels */
@@ -661,8 +938,8 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 
 /* Modal buttons */
 .modal .btn-secondary { background: var(--s-surface3) !important; color: var(--s-muted) !important; border: 1px solid var(--s-border) !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 600 !important; }
-.modal .btn-primary { background: var(--s-teal) !important; color: #0d1117 !important; border: none !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 700 !important; box-shadow: 0 2px 12px rgba(45,212,191,.25) !important; }
-.modal .btn-primary:hover { background: #14b8a6 !important; }
+.modal .btn-primary { background: var(--s-teal) !important; color: var(--s-teal-text) !important; border: none !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 700 !important; box-shadow: 0 2px 12px rgba(36,231,143,.25) !important; }
+.modal .btn-primary:hover { background: var(--green-dark) !important; }
 .modal .btn-danger { background: rgba(248,81,73,.15) !important; color: var(--s-danger) !important; border: 1px solid rgba(248,81,73,.3) !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 600 !important; }
 
 /* Modal edit/close light buttons inside dark header */
@@ -704,14 +981,14 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 /* Page-level buttons (outside scrum-header, in content-header) */
 .content-header .btn-success {
   background: var(--s-teal) !important;
-  color: #0d1117 !important;
+  color: var(--s-teal-text) !important;
   border: none !important;
   border-radius: 9px !important;
   font-weight: 700 !important;
   font-family: var(--s-font) !important;
-  box-shadow: 0 2px 12px rgba(45,212,191,.25) !important;
+  box-shadow: 0 2px 12px rgba(36,231,143,.25) !important;
 }
-.content-header .btn-success:hover { background: #14b8a6 !important; }
+.content-header .btn-success:hover { background: var(--green-dark) !important; }
 
 /* Page search (scrum_project.php) */
 .content-header .input-group .form-control, .card-tools .form-control {
@@ -749,7 +1026,7 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 
 /* No boards message */
 #noBoardsMessage p { color: var(--s-muted) !important; }
-#noBoardsMessage .btn-primary { background: var(--s-teal) !important; color: #0d1117 !important; border: none !important; border-radius: 9px !important; font-weight: 700 !important; }
+#noBoardsMessage .btn-primary { background: var(--s-teal) !important; color: var(--s-teal-text) !important; border: none !important; border-radius: 9px !important; font-weight: 700 !important; }
 
 /* Refresh button */
 #refreshTasks.btn-tool { background: transparent !important; }
@@ -763,7 +1040,7 @@ input[type="color"] { background: var(--s-surface2) !important; border: 1px soli
 /* Textarea comment */
 #commentText { background: var(--s-surface3) !important; border: 1px solid var(--s-border) !important; color: var(--s-text) !important; border-radius: 8px !important; font-family: var(--s-font) !important; }
 #commentText::placeholder { color: var(--s-muted) !important; }
-#addCommentBtn { background: var(--s-teal) !important; color: #0d1117 !important; border: none !important; border-radius: 7px !important; font-weight: 700 !important; font-family: var(--s-font) !important; }
+#addCommentBtn { background: var(--s-teal) !important; color: var(--s-teal-text) !important; border: none !important; border-radius: 7px !important; font-weight: 700 !important; font-family: var(--s-font) !important; }
 
 /* No description / no labels text */
 #noDescription, #noLabels { color: var(--s-muted) !important; }
@@ -774,6 +1051,115 @@ input[type="color"] { background: var(--s-surface2) !important; border: 1px soli
   width: 10px; height: 10px; border-radius: 3px;
   display: inline-block; margin-right: 7px; flex-shrink: 0;
 }
+
+/* ── View toggle buttons ── */
+.view-toggle-group .view-toggle-btn {
+  background: var(--s-surface2) !important;
+  color: var(--s-muted) !important;
+  border: 1px solid var(--s-border) !important;
+  font-family: var(--s-font) !important;
+  font-size: .78rem !important;
+  font-weight: 600 !important;
+}
+.view-toggle-group .view-toggle-btn.active {
+  background: var(--s-teal) !important;
+  color: var(--s-teal-text, #fff) !important;
+  border-color: var(--s-teal) !important;
+}
+.view-toggle-group .view-toggle-btn:hover:not(.active) {
+  background: var(--s-surface3) !important;
+  color: var(--s-text) !important;
+}
+
+/* ── View toggle buttons ── */
+.view-toggle-group .view-toggle-btn {
+  background: var(--s-surface2) !important;
+  color: var(--s-muted) !important;
+  border: 1px solid var(--s-border) !important;
+  font-family: var(--s-font) !important;
+  font-size: .78rem !important;
+  font-weight: 600 !important;
+}
+.view-toggle-group .view-toggle-btn.active {
+  background: var(--s-teal) !important;
+  color: var(--s-teal-text, #fff) !important;
+  border-color: var(--s-teal) !important;
+}
+.view-toggle-group .view-toggle-btn:hover:not(.active) {
+  background: var(--s-surface3) !important;
+  color: var(--s-text) !important;
+}
+
+/* ── Board grid search bar ── */
+.grid-search-bar { display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.grid-search-input {
+  flex:1; min-width:180px; border-radius:8px !important;
+  border:1px solid var(--s-border) !important;
+  padding:9px 14px 9px 36px !important;
+  font-size:13px !important; font-family: var(--s-font) !important;
+  background: var(--s-surface2) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236aad8a' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M13 13l3 3m-5-3a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3e%3c/svg%3e") 10px center no-repeat !important;
+  background-size:16px !important;
+  color: var(--s-text) !important;
+  transition: all .2s;
+}
+.grid-search-input:focus { outline:none; border-color: var(--s-teal) !important; box-shadow: 0 0 0 3px var(--s-teal-dim) !important; }
+.grid-search-input::placeholder { color: var(--s-muted) !important; }
+.grid-count-badge { font-size:12px; font-weight:600; color: var(--s-muted) !important; white-space:nowrap; }
+
+/* ── Board grid pagination ── */
+.grid-pagination-bar { display:flex; align-items:center; justify-content:space-between; padding:14px 0 0; flex-wrap:wrap; gap:8px; }
+.grid-pagination-info { font-size:12px; color: var(--s-muted) !important; font-weight:500; }
+.grid-pagination-btns { display:flex; gap:6px; }
+.grid-page-btn {
+  border:1px solid var(--s-border) !important; background: var(--s-surface2) !important; color: var(--s-text) !important;
+  border-radius:8px !important; padding:6px 14px !important; font-size:12px !important; font-weight:600 !important;
+  cursor:pointer; transition: all .2s; font-family: var(--s-font) !important;
+}
+.grid-page-btn:hover:not(:disabled) { border-color: var(--s-teal) !important; color: var(--s-teal) !important; background: var(--s-teal-dim) !important; }
+.grid-page-btn:disabled { opacity:.4; cursor:not-allowed; }
+.grid-page-btn.active { background: var(--s-teal) !important; border-color: var(--s-teal) !important; color: var(--s-teal-text, #fff) !important; }
+
+.no-results-card { grid-column: 1 / -1; text-align:center; padding:60px 20px; color: var(--s-muted) !important; }
+
+/* ── Task detail card grid ── */
+.task-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:20px; padding:4px 0 20px; }
+.task-grid-card {
+  background: var(--s-surface) !important;
+  border-radius:16px !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,.07);
+  overflow:hidden; transition: all .3s ease;
+  display:flex; flex-direction:column;
+  border:1px solid var(--s-border) !important;
+  position:relative;
+}
+.task-grid-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px var(--s-teal-dim); border-color: var(--s-teal) !important; }
+.task-grid-card-accent { height:5px; width:100%; }
+.task-grid-card-icon-wrap { display:flex; justify-content:center; padding:20px 20px 10px; }
+.task-grid-card-icon-placeholder {
+  width:64px; height:64px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; font-weight:700; text-transform:uppercase;
+}
+.task-grid-card-body { padding:0 16px 14px; flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; }
+.task-grid-card-title { font-size:15px; font-weight:700; color: var(--s-text) !important; margin:0 0 3px; line-height:1.3; font-family: var(--s-font) !important; }
+.task-grid-card-subtitle { font-size:12px; color: var(--s-muted) !important; margin-bottom:10px; font-weight:500; }
+.task-grid-card-badges { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin-bottom:12px; }
+.task-grid-card-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; letter-spacing:.3px; text-transform:uppercase; }
+.task-grid-card-meta { width:100%; border-top:1px solid var(--s-border) !important; padding-top:10px; display:flex; flex-direction:column; gap:5px; }
+.task-grid-card-meta-row { display:flex; align-items:center; gap:7px; font-size:11.5px; color: var(--s-muted) !important; }
+.task-grid-card-meta-row i { width:14px; text-align:center; color: var(--s-teal) !important; flex-shrink:0; }
+.task-grid-card-meta-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.task-grid-card-actions { display:flex; border-top:1px solid var(--s-border) !important; overflow:hidden; border-radius:0 0 16px 16px; }
+.task-grid-card-action-btn {
+  flex:1; border:none; background:none; padding:10px 6px; font-size:13px; cursor:pointer;
+  transition: all .2s; display:flex; align-items:center; justify-content:center; gap:5px; font-weight:600;
+  color: var(--s-muted) !important;
+}
+.task-grid-card-action-btn:not(:last-child) { border-right:1px solid var(--s-border) !important; }
+.task-grid-card-action-btn.view { color: var(--s-blue) !important; }
+.task-grid-card-action-btn.edit { color: #e3a520 !important; }
+.task-grid-card-action-btn.go   { color: var(--s-teal) !important; }
+.task-grid-card-action-btn:hover { background: var(--s-surface2) !important; }
 </style>
 </body>
 </html>

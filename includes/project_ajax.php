@@ -11,6 +11,8 @@ error_log("Session status: " . session_status());
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/projects.php';
+require_once __DIR__ . '/activity_log.php';
+require_once __DIR__ . '/project_access.php';
 
 header('Content-Type: application/json');
 
@@ -35,6 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     error_log("Action received: " . $action);
     
     switch ($action) {
+        // Alias: my_scrum_project.php and my_scrum_task.php's project filter
+        // call this action name, but only 'get_user_projects' existed below —
+        // every call was silently hitting the 'Invalid action' default and
+        // rendering nothing. Reuse the exact same membership-based logic.
+        case 'get_my_projects':
         case 'get_user_projects':
             $emp_id = $_SESSION['emp_id'] ?? null;
             if (!$emp_id) {
@@ -60,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // If no projects found but we know user has projects, try a direct query
             if (count($projects) === 0) {
-                error_log("No projects found via getUserProjects, trying direct query...");
+                error_log("No projects found via getUserProjects for emp_id=$emp_id — primary JOIN query (which filters on p.status = 'active') returned 0 rows. Falling back to direct project_members lookup...");
                 try {
                     $db = $projectManager->getConnection();
                     
@@ -77,17 +84,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if (count($project_ids) > 0) {
                         $placeholders = implode(',', array_fill(0, count($project_ids), '?'));
-                        $project_query = "SELECT * FROM projects WHERE project_id IN ($placeholders) ORDER BY created_at DESC";
+                        // Include the same task/member aggregates as getUserProjects() so
+                        // total_tasks / completed_tasks / my_tasks are never silently dropped
+                        // when this fallback path is the one that ends up running.
+                        $project_query = "SELECT p.*, pm.role,
+                                COUNT(DISTINCT t.task_id) as total_tasks,
+                                COUNT(DISTINCT CASE WHEN t.status = 'done' THEN t.task_id END) as completed_tasks,
+                                COUNT(DISTINCT CASE WHEN ta.emp_id = ? THEN t.task_id END) as my_tasks
+                                FROM projects p
+                                JOIN project_members pm ON p.project_id = pm.project_id AND pm.emp_id = ?
+                                LEFT JOIN tasks t ON t.project_id = p.project_id
+                                LEFT JOIN task_assignees ta ON ta.task_id = t.task_id
+                                WHERE p.project_id IN ($placeholders)
+                                GROUP BY p.project_id
+                                ORDER BY p.created_at DESC";
                         $project_stmt = $db->prepare($project_query);
-                        $types = str_repeat('i', count($project_ids));
-                        $project_stmt->bind_param($types, ...$project_ids);
+                        $types = 'ii' . str_repeat('i', count($project_ids));
+                        $params = array_merge([$emp_id, $emp_id], $project_ids);
+                        $project_stmt->bind_param($types, ...$params);
                         $project_stmt->execute();
                         $project_result = $project_stmt->get_result();
                         
                         while ($row = $project_result->fetch_assoc()) {
                             $projects[] = $row;
                         }
-                        error_log("Direct query found " . count($projects) . " projects");
+                        error_log("Direct query found " . count($projects) . " projects (with task stats)");
                     }
                 } catch (Exception $e) {
                     error_log("Direct query failed: " . $e->getMessage());
@@ -203,6 +224,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
+                    logActivity($db, 'project', $project_id, $project_id, (int)$created_by, 'created', "Created the project \"$project_name\"");
+
                     echo json_encode(['success' => true, 'project_id' => $project_id]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Failed to create project: ' . $db->error]);
@@ -258,6 +281,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
 
+                // Capture the name before it's gone, so the log entry (kept
+                // for history even after the project row is deleted) still
+                // reads clearly.
+                $name_stmt = $db->prepare("SELECT project_name FROM projects WHERE project_id = ?");
+                $name_stmt->bind_param("i", $project_id);
+                $name_stmt->execute();
+                $name_row = $name_stmt->get_result()->fetch_assoc();
+                $deleted_project_name = $name_row['project_name'] ?? "#$project_id";
+
                 // Clean up dependent records first (in case FK constraints aren't set to CASCADE)
                 $db->query("DELETE ta FROM task_assignees ta INNER JOIN tasks t ON ta.task_id = t.task_id WHERE t.project_id = $project_id");
                 $db->query("DELETE FROM tasks WHERE project_id = $project_id");
@@ -268,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("i", $project_id);
 
                 if ($stmt->execute()) {
+                    logActivity($db, 'project', $project_id, $project_id, (int)($_SESSION['emp_id'] ?? 0), 'deleted', "Deleted the project \"$deleted_project_name\"");
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Failed to delete project: ' . $stmt->error]);
@@ -279,15 +312,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'update_project_status':
-            $project_id = $_POST['project_id'];
+            $project_id = (int)$_POST['project_id'];
             $status = $_POST['status'];
             if ($projectManager->updateProjectStatus($project_id, $status)) {
+                // Ensure we have a DB connection for logging
+                $db = $projectManager->getConnection();
+                logActivity($db, 'project', $project_id, $project_id, (int)($_SESSION['emp_id'] ?? 0), 'status_changed', "Changed project status to \"$status\"", ['to' => $status]);
                 echo json_encode(['success' => true]);
             } else {
                 echo json_encode(['success' => false, 'error' => 'Failed to update project status']);
             }
             break;
-            
+
+        case 'get_project_activity':
+            $project_id = (int)($_POST['project_id'] ?? 0);
+            if (!$project_id) {
+                echo json_encode(['success' => false, 'error' => 'Missing project id']);
+                break;
+            }
+            $db = $projectManager->getConnection();
+
+            if (!isProjectMember($db, $project_id, (int)($_SESSION['emp_id'] ?? 0))) {
+                echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                break;
+            }
+
+            $result = getProjectActivityLog($db, $project_id);
+            $activity = [];
+            while ($row = $result->fetch_assoc()) {
+                $activity[] = $row;
+            }
+            echo json_encode(['success' => true, 'activity' => $activity]);
+            break;
+
+        case 'get_project_assignable_members':
+            // Used by the scrumboard's task assignee dropdowns — unlike
+            // get_assignable_employees (which lists everyone, for picking a
+            // project's initial members), this only returns people who are
+            // already members of the given project, since only members can
+            // be assigned its tasks.
+            $project_id = (int)($_POST['project_id'] ?? 0);
+            if (!$project_id) {
+                echo json_encode(['success' => false, 'error' => 'Missing project id']);
+                break;
+            }
+            $db = $projectManager->getConnection();
+
+            if (!isProjectMember($db, $project_id, (int)($_SESSION['emp_id'] ?? 0))) {
+                echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                break;
+            }
+
+            $members_result = $projectManager->getProjectMembers($project_id);
+            $employees = [];
+            while ($row = $members_result->fetch_assoc()) {
+                $employees[] = $row;
+            }
+            echo json_encode(['success' => true, 'employees' => $employees]);
+            break;
+
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }

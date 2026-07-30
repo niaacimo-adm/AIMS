@@ -127,7 +127,7 @@ if ($employee_id && isset($db)) {
                         </a>
                     </div>
                     <div class="col-6">
-                        <a href="scrum.php" class="app-item" data-theme="scrum">
+                        <a href="scrum_dashboard.php" class="app-item" data-theme="scrum">
                             <div class="app-icon">
                                 <i class="fas fa-scroll"></i>
                             </div>

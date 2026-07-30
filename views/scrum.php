@@ -33,28 +33,28 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
    SCRUM BOARD — LIGHT MODE (default)
    ══════════════════════════════════════════════════ */
 :root {
-  /* palette */
-  --s-bg:       #f0f2f5;
-  --s-surface:  #ffffff;
-  --s-surface2: #f6f8fa;
-  --s-surface3: #eaedf1;
-  --s-border:   #d0d7de;
+  /* palette — sourced from the app-wide theme defined in mainheader.php */
+  --s-bg:       var(--body-bg, #eef7f2);
+  --s-surface:  var(--card-bg, #ffffff);
+  --s-surface2: var(--table-stripe, #f0faf5);
+  --s-surface3: #e2f3ea;
+  --s-border:   var(--card-border, rgba(42,152,99,0.15));
 
   /* accent */
-  --s-teal:     #0969da;
-  --s-teal-dim: rgba(9,105,218,.08);
-  --s-teal-glow: 0 0 20px rgba(9,105,218,.15);
-  --s-violet:   #8250df;
+  --s-teal:     var(--green-dark, #2a9863);
+  --s-teal-dim: rgba(42,152,99,.10);
+  --s-teal-glow: 0 0 20px rgba(36,231,143,.15);
+  --s-violet:   var(--green-mid, #1a5c38);
 
   /* text */
-  --s-text:     #1f2328;
-  --s-muted:    #57606a;
+  --s-text:     var(--text-primary, #0f2d1e);
+  --s-muted:    var(--text-muted, #4a7a5e);
 
   /* status */
   --s-danger:   #cf222e;
   --s-warning:  #9a6700;
   --s-green:    #1a7f37;
-  --s-blue:     #0969da;
+  --s-blue:     var(--green-dark, #2a9863);
 
   /* misc */
   --s-radius: 10px;
@@ -63,38 +63,40 @@ $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
   --s-mono: 'JetBrains Mono', monospace;
 
   /* column specific */
-  --s-col-bg:      #ebecf0;
-  --s-col-header:  #ffffff;
-  --s-col-border:  #d0d7de;
-  --s-card-bg:     #ffffff;
-  --s-card-hover:  #f6f8fa;
+  --s-col-bg:      #e9f5ee;
+  --s-col-header:  var(--card-bg, #ffffff);
+  --s-col-border:  var(--card-border, rgba(42,152,99,0.15));
+  --s-card-bg:     var(--card-bg, #ffffff);
+  --s-card-hover:  var(--table-stripe, #f0faf5);
 }
 
 /* ══════════════════════════════════════════════════
    SCRUM BOARD — DARK MODE overrides
+   Mirrors body.dark-mode from mainheader.php so the board
+   always matches the app-wide light/dark theme.
    ══════════════════════════════════════════════════ */
 body.dark-mode {
-  --s-bg:       #0d1117;
-  --s-surface:  #161b22;
-  --s-surface2: #21262d;
-  --s-surface3: #30363d;
-  --s-border:   #30363d;
-  --s-teal:     #2dd4bf;
-  --s-teal-dim: rgba(45,212,191,.12);
-  --s-teal-glow: 0 0 20px rgba(45,212,191,.2);
-  --s-violet:   #a78bfa;
-  --s-text:     #e6edf3;
-  --s-muted:    #7d8590;
+  --s-bg:       var(--body-bg, #0b1f17);
+  --s-surface:  var(--card-bg, #102f22);
+  --s-surface2: var(--table-stripe, #122b1d);
+  --s-surface3: #16352a;
+  --s-border:   var(--card-border, rgba(36,231,143,0.10));
+  --s-teal:     var(--green, #24e78f);
+  --s-teal-dim: rgba(36,231,143,.12);
+  --s-teal-glow: 0 0 20px rgba(36,231,143,.2);
+  --s-violet:   var(--green-dark, #2a9863);
+  --s-text:     var(--text-primary, #d4f5e5);
+  --s-muted:    var(--text-muted, #6aad8a);
   --s-danger:   #f85149;
   --s-warning:  #d29922;
   --s-green:    #3fb950;
-  --s-blue:     #58a6ff;
+  --s-blue:     var(--green, #24e78f);
   --s-shadow:   0 8px 32px rgba(0,0,0,.4);
-  --s-col-bg:      #161b22;
-  --s-col-header:  #21262d;
-  --s-col-border:  #30363d;
-  --s-card-bg:     #21262d;
-  --s-card-hover:  #2d333b;
+  --s-col-bg:      #0e2619;
+  --s-col-header:  var(--card-bg, #102f22);
+  --s-col-border:  var(--card-border, rgba(36,231,143,0.10));
+  --s-card-bg:     var(--card-bg, #102f22);
+  --s-card-hover:  #16352a;
 }
 
 /* ══════════════════════════════════════════════════
@@ -436,8 +438,8 @@ body.dark-mode .priority-low    { background: rgba(63,185,80,.12) !important; bo
 .btn-sm.btn-danger  { background: rgba(207,34,46,.10) !important; color: var(--s-danger) !important; border: 1px solid rgba(207,34,46,.25) !important; border-radius: 7px !important; }
 .btn-sm:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-body.dark-mode .btn-sm.btn-info    { background: rgba(88,166,255,.12) !important; color: #58a6ff !important; border-color: rgba(88,166,255,.25) !important; }
-body.dark-mode .btn-sm.btn-primary { background: rgba(45,212,191,.12) !important; color: #2dd4bf !important; border-color: rgba(45,212,191,.25) !important; }
+body.dark-mode .btn-sm.btn-info    { background: var(--s-teal-dim) !important; color: var(--s-blue) !important; border-color: color-mix(in srgb, var(--s-blue) 25%, transparent) !important; }
+body.dark-mode .btn-sm.btn-primary { background: var(--s-teal-dim) !important; color: var(--s-teal) !important; border-color: color-mix(in srgb, var(--s-teal) 25%, transparent) !important; }
 body.dark-mode .btn-sm.btn-success { background: rgba(63,185,80,.12) !important; color: #3fb950 !important; border-color: rgba(63,185,80,.25) !important; }
 body.dark-mode .btn-sm.btn-warning { background: rgba(210,153,34,.12) !important; color: #e3a520 !important; border-color: rgba(210,153,34,.25) !important; }
 body.dark-mode .btn-sm.btn-danger  { background: rgba(248,81,73,.12) !important; color: #f85149 !important; border-color: rgba(248,81,73,.25) !important; }
@@ -452,7 +454,7 @@ body.dark-mode .btn-sm.btn-danger  { background: rgba(248,81,73,.12) !important;
 
 body.dark-mode .badge-warning { background: rgba(210,153,34,.18) !important; color: #e3a520 !important; }
 body.dark-mode .badge-info    { background: rgba(88,166,255,.15) !important; color: #58a6ff !important; }
-body.dark-mode .badge-primary { background: rgba(167,139,250,.15) !important; color: #a78bfa !important; }
+body.dark-mode .badge-primary { background: var(--s-teal-dim) !important; color: var(--s-violet) !important; }
 body.dark-mode .badge-success { background: rgba(63,185,80,.15) !important; color: #3fb950 !important; }
 body.dark-mode .badge-danger  { background: rgba(248,81,73,.15) !important; color: #f85149 !important; }
 
@@ -522,6 +524,24 @@ body.dark-mode .priority-badge.priority-low    { background: rgba(63,185,80,.12)
   font-size: .875rem !important;
 }
 .modal .form-control::placeholder { color: var(--s-muted) !important; }
+
+/* Chrome/Edge autofill ignores background-color and forces its own white
+   or pale-blue fill via an internal UA style — this is the trick to
+   override it: an inset box-shadow the size of the field paints over it. */
+.modal .form-control:-webkit-autofill,
+.modal .form-control:-webkit-autofill:hover,
+.modal .form-control:-webkit-autofill:focus,
+.modal .form-control:-webkit-autofill:active,
+input.form-control:-webkit-autofill,
+input.form-control:-webkit-autofill:hover,
+input.form-control:-webkit-autofill:focus,
+input.form-control:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--s-surface2) inset !important;
+  box-shadow: 0 0 0 1000px var(--s-surface2) inset !important;
+  -webkit-text-fill-color: var(--s-text) !important;
+  caret-color: var(--s-text) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
 .modal .form-control:focus { border-color: var(--s-teal) !important; box-shadow: 0 0 0 3px var(--s-teal-dim) !important; }
 .modal label { color: var(--s-muted) !important; font-size: .72rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: .5px !important; margin-bottom: 5px !important; }
 
@@ -533,7 +553,7 @@ body.dark-mode .priority-badge.priority-low    { background: rgba(63,185,80,.12)
 .modal .btn-primary   { background: var(--s-teal) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 700 !important; }
 .modal .btn-primary:hover { filter: brightness(1.1) !important; }
 .modal .btn-danger    { background: rgba(207,34,46,.12) !important; color: var(--s-danger) !important; border: 1px solid rgba(207,34,46,.3) !important; border-radius: 8px !important; font-family: var(--s-font) !important; font-weight: 600 !important; }
-body.dark-mode .modal .btn-primary { color: #0d1117 !important; }
+body.dark-mode .modal .btn-primary { color: #0f2d1e !important; }
 body.dark-mode .modal .btn-danger  { background: rgba(248,81,73,.15) !important; color: #f85149 !important; border-color: rgba(248,81,73,.3) !important; }
 
 /* Modal edit/close buttons inside coloured header */
@@ -583,7 +603,7 @@ body.dark-mode .modal .btn-danger  { background: rgba(248,81,73,.15) !important;
   font-weight: 700 !important;
   font-family: var(--s-font) !important;
 }
-body.dark-mode .content-header .btn-success { color: #0d1117 !important; }
+body.dark-mode .content-header .btn-success { color: #0f2d1e !important; }
 .content-header .btn-success:hover { filter: brightness(1.1) !important; }
 
 .content-header .input-group .form-control, .card-tools .form-control {
@@ -622,7 +642,20 @@ body.dark-mode .content-header .btn-success { color: #0d1117 !important; }
 /* No boards message */
 #noBoardsMessage p { color: var(--s-muted) !important; }
 #noBoardsMessage .btn-primary { background: var(--s-teal) !important; color: #fff !important; border: none !important; border-radius: 9px !important; font-weight: 700 !important; }
-body.dark-mode #noBoardsMessage .btn-primary { color: #0d1117 !important; }
+body.dark-mode #noBoardsMessage .btn-primary { color: #0f2d1e !important; }
+
+/* Empty-state buttons rendered dynamically inside the board (e.g. "No Projects
+   Found" → "Create Your First Project"), not covered by #noBoardsMessage */
+.columns-container .btn-primary {
+  background: var(--s-teal) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 9px !important;
+  font-weight: 700 !important;
+  font-family: var(--s-font) !important;
+}
+body.dark-mode .columns-container .btn-primary { color: #0f2d1e !important; }
+.columns-container .btn-primary:hover { filter: brightness(1.1) !important; }
 
 /* Refresh button */
 #refreshTasks.btn-tool { background: transparent !important; }
@@ -637,11 +670,102 @@ input[type="color"] { background: var(--s-surface2) !important; border: 1px soli
 #commentText { background: var(--s-surface3) !important; border: 1px solid var(--s-border) !important; color: var(--s-text) !important; border-radius: 8px !important; font-family: var(--s-font) !important; }
 #commentText::placeholder { color: var(--s-muted) !important; }
 #addCommentBtn { background: var(--s-teal) !important; color: #fff !important; border: none !important; border-radius: 7px !important; font-weight: 700 !important; font-family: var(--s-font) !important; }
-body.dark-mode #addCommentBtn { color: #0d1117 !important; }
+body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
 
 /* No description / no labels */
 #noDescription, #noLabels { color: var(--s-muted) !important; }
 .task-description { color: var(--s-text) !important; line-height: 1.7; }
+
+/* Select2 (theme: 'bootstrap') — not covered by the global .form-control
+   rules since Select2 renders its own markup outside the native <select> */
+.select2-container--bootstrap .select2-selection--single,
+.select2-container--bootstrap .select2-selection--multiple {
+  background: var(--s-surface2) !important;
+  border: 1.5px solid var(--s-border) !important;
+  border-radius: 8px !important;
+  min-height: 38px !important;
+}
+.select2-container--bootstrap .select2-selection__rendered { color: var(--s-text) !important; }
+.select2-container--bootstrap .select2-selection__placeholder { color: var(--s-muted) !important; }
+.select2-container--bootstrap .select2-selection__choice {
+  background: var(--s-teal-dim) !important;
+  border: 1px solid var(--s-teal) !important;
+  color: var(--s-text) !important;
+  border-radius: 5px !important;
+}
+.select2-container--bootstrap .select2-selection__choice__remove { color: var(--s-muted) !important; }
+.select2-container--bootstrap .select2-selection__choice__remove:hover { color: var(--s-danger) !important; }
+.select2-container--bootstrap .select2-search--inline .select2-search__field { color: var(--s-text) !important; }
+
+/* Multi-select layout: when chips wrap to multiple lines, the default
+   select2-bootstrap markup lets the clear-all (x) button and the search
+   input overlap the wrapped chips. Force a proper flex-wrap layout and
+   pin the clear button so it never sits on top of a chip. */
+.select2-container--bootstrap .select2-selection--multiple {
+  position: relative !important;
+  padding: 5px 30px 3px 5px !important;
+  height: auto !important;
+  min-height: 38px !important;
+}
+.select2-container--bootstrap .select2-selection--multiple .select2-selection__rendered {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.select2-container--bootstrap .select2-selection--multiple .select2-selection__choice {
+  float: none !important;
+  margin: 0 !important;
+}
+.select2-container--bootstrap .select2-selection--multiple .select2-search--inline {
+  flex: 1 1 60px !important;
+  margin: 0 !important;
+}
+.select2-container--bootstrap .select2-selection--multiple .select2-search--inline .select2-search__field {
+  width: 100% !important;
+  min-width: 60px !important;
+  margin: 0 !important;
+  height: 22px !important;
+}
+.select2-container--bootstrap .select2-selection__clear {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  left: auto !important;
+  float: none !important;
+  color: var(--s-muted) !important;
+  background: transparent !important;
+  font-size: 1rem !important;
+  z-index: 2 !important;
+}
+.select2-container--bootstrap .select2-selection__clear:hover { color: var(--s-danger) !important; }
+.select2-dropdown {
+  background: var(--s-surface2) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--s-shadow) !important;
+}
+.select2-container--bootstrap .select2-search--dropdown .select2-search__field {
+  background: var(--s-surface3) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 6px !important;
+}
+.select2-container--bootstrap .select2-results__option {
+  color: var(--s-text) !important;
+  background: transparent !important;
+}
+.select2-container--bootstrap .select2-results__option--highlighted[aria-selected] {
+  background: var(--s-teal) !important;
+  color: #fff !important;
+}
+.select2-container--bootstrap .select2-results__option[aria-selected="true"] {
+  background: var(--s-surface3) !important;
+  color: var(--s-muted) !important;
+}
 
 /* Column "Add Task" button */
 .add-task-to-board {
@@ -723,51 +847,9 @@ body.dark-mode #addCommentBtn { color: #0d1117 !important; }
           <button class="btn btn-success ml-2" id="newProjectBtn">
             <i class="fas fa-plus mr-1"></i> New Project
           </button>
-          <button class="btn btn-info ml-2" id="projectsMonitoringBtn">
-            <i class="fas fa-chart-line mr-1"></i> Monitoring
-          </button>
         </div>
       </div>
 
-      <!-- Projects Monitoring Section -->
-      <div class="container-fluid mt-4" id="projectsMonitoring" style="display: none;">
-        <div class="row">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Projects Monitoring</h3>
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                    <i class="fas fa-minus"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="table-responsive">
-                  <table class="table table-bordered table-hover" id="projectsTable">
-                    <thead>
-                      <tr>
-                        <th>Project Code</th>
-                        <th>Project Name</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Status</th>
-                        <th>Tasks</th>
-                        <th>Members</th>
-                        <th>Created By</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="projectsTableBody">
-                      <!-- Projects will be loaded here -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- My Tasks Section -->
       <div class="container-fluid mt-4" id="myTasksSection" style="display: none;">
@@ -1231,6 +1313,7 @@ class Scrumboard {
         this.tasks = [];
         this.boards = [];
         this.canAssignTasks = <?php echo $canAssignTasks ? 'true' : 'false'; ?>;
+        this.currentEmpId = <?= (int)$_SESSION['emp_id'] ?>;
         this.selectedBoardId = null;
         this.init();
     }
@@ -1342,7 +1425,13 @@ class Scrumboard {
         
         // Set labels
         this.setEditTaskLabels(task.labels);
-        
+
+        // Only the project creator is allowed to delete tasks (enforced
+        // again server-side in task_ajax.php — this just keeps the button
+        // from being shown to people who can't use it).
+        const isProjectCreator = this.currentProject && (this.currentProject.created_by == this.currentEmpId);
+        $('#deleteTaskBtn').toggle(!!isProjectCreator);
+
         // Show the modal
         $('#editTaskModal').modal('show');
     }
@@ -1550,32 +1639,6 @@ class Scrumboard {
         }
     }
 
-    renderProjectsMonitoring(projects) {
-        const tbody = $('#projectsTableBody');
-        tbody.empty();
-        
-        projects.forEach(project => {
-            const row = `
-                <tr>
-                    <td>${project.project_code}</td>
-                    <td>${project.project_name}</td>
-                    <td>${project.start_date || 'Not set'}</td>
-                    <td>${project.end_date || 'Not set'}</td>
-                    <td><span class="badge ${this.getStatusBadgeClass(project.status)}">${project.status}</span></td>
-                    <td>${project.task_count || 0}</td>
-                    <td>${project.member_count || 0}</td>
-                    <td>${project.created_by_name || 'Unknown'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="scrumboard.selectProject(${project.project_id})">
-                            View Board
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.append(row);
-        });
-    }
-
     renderMyTasks(tasks) {
         const tbody = $('#myTasksTableBody');
         tbody.empty();
@@ -1647,9 +1710,13 @@ class Scrumboard {
                 this.renderProjectsDropdown();
                 
                 let projectToSelect = null;
+                let deniedProjectId = null;
                 
                 if (this.pendingProjectId) {
                     projectToSelect = this.projects.find(p => p.project_id == this.pendingProjectId);
+                    if (!projectToSelect) {
+                        deniedProjectId = this.pendingProjectId;
+                    }
                     this.pendingProjectId = null;
                 }
                 
@@ -1661,6 +1728,10 @@ class Scrumboard {
                     await this.selectProject(projectToSelect.project_id);
                 } else {
                     this.showNoProjectsMessage();
+                }
+
+                if (deniedProjectId) {
+                    this.showNotMemberAlert(deniedProjectId);
                 }
             } else {
                 this.showError('Failed to load projects: ' + (response.error || 'Unknown error'));
@@ -1857,14 +1928,15 @@ class Scrumboard {
     async loadAssignableEmployees() {
         try {
             const response = await $.post('../includes/project_ajax.php', {
-                action: 'get_assignable_employees'
+                action: 'get_project_assignable_members',
+                project_id: this.currentProjectId
             });
             
             if (response.success) {
                 const buildOptions = (select) => {
                     select.empty();
                     response.employees.forEach(employee => {
-                        const role = employee.role_name || (employee.is_manager ? 'Manager' : 'Employee');
+                        const role = employee.role ? employee.role.charAt(0).toUpperCase() + employee.role.slice(1) : 'Member';
                         select.append(`<option value="${employee.emp_id}">${employee.first_name} ${employee.last_name} (${role})</option>`);
                     });
                 };
@@ -2280,6 +2352,54 @@ class Scrumboard {
             text: message
         });
     }
+
+    async showNotMemberAlert(projectId) {
+        let projectName = 'this project';
+        let creatorLine = '';
+
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'get_project_basic_info',
+                project_id: projectId
+            });
+            if (response.success && response.project) {
+                projectName = response.project.project_name || projectName;
+                const creator = `${response.project.creator_first || ''} ${response.project.creator_last || ''}`.trim();
+                if (creator) creatorLine = ` (created by ${creator})`;
+            }
+        } catch (error) {
+            console.error('Error loading project info:', error);
+        }
+
+        Swal.fire({
+            icon: 'error',
+            title: "You're not a member of this project",
+            text: `You don't have permission to open "${projectName}"${creatorLine}. Only project members can view its board.`,
+            showCancelButton: true,
+            confirmButtonText: 'Request to Join',
+            confirmButtonColor: '#3085d6',
+            cancelButtonText: 'Close'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.requestProjectMembership(projectId);
+            }
+        });
+    }
+
+    requestProjectMembership(projectId) {
+        $.post('../includes/project_ajax.php', {
+            action: 'request_project_membership',
+            project_id: projectId
+        }, function(response) {
+            if (response.success) {
+                Swal.fire('Request Sent', 'The project creator has been notified of your request to join.', 'success');
+            } else {
+                Swal.fire('Error', response.error || 'Failed to send request', 'error');
+            }
+        }, 'json').fail(function() {
+            Swal.fire('Error', 'Failed to send request', 'error');
+        });
+    }
     // Add these methods to the Scrumboard class
     async viewTask(taskId) {
         try {
@@ -2401,6 +2521,9 @@ class Scrumboard {
         // Timestamps
         $('#viewTaskCreated').text(new Date(task.created_at).toLocaleString());
         $('#viewTaskUpdated').text(new Date(task.updated_at || task.created_at).toLocaleString());
+
+        // Activity log (fetched from the server, keyed on this task)
+        this.loadTaskActivity(task.task_id);
     }
 
     getStatusDisplayText(status) {
@@ -2451,52 +2574,45 @@ class Scrumboard {
     }
 
     async loadTaskActivity(taskId) {
+        const activityTimeline = $('#activityTimeline');
+        activityTimeline.html('<div class="text-muted small">Loading activity&hellip;</div>');
+
         try {
-            // For now, we'll create a simple activity log
-            // In a real implementation, you'd fetch this from the server
-            const activityTimeline = $('#activityTimeline');
-            activityTimeline.empty();
+            const response = await $.post('../includes/task_ajax.php', {
+                action: 'get_task_activity',
+                task_id: taskId
+            }, null, 'json');
 
-            // Add creation activity
-            activityTimeline.append(`
-                <div class="activity-item d-flex">
-                    <div class="activity-avatar mr-3" style="background: #10b981;">
-                        ${this.currentViewingTask.creator_first?.charAt(0) || 'U'}
-                    </div>
-                    <div class="activity-content">
-                        <div class="font-weight-bold">
-                            ${this.currentViewingTask.creator_first ? `${this.currentViewingTask.creator_first} ${this.currentViewingTask.creator_last}` : 'User'}
-                        </div>
-                        <div class="text-muted">created this task</div>
-                        <div class="activity-meta">
-                            ${new Date(this.currentViewingTask.created_at).toLocaleString()}
-                        </div>
-                    </div>
-                </div>
-            `);
+            // Modal may have been closed while the request was in flight
+            if (!$('#activityTimeline').length) return;
 
-            // Add status change activity if applicable
-            if (this.currentViewingTask.updated_at !== this.currentViewingTask.created_at) {
-                activityTimeline.prepend(`
-                    <div class="activity-item d-flex">
-                        <div class="activity-avatar mr-3" style="background: #3b82f6;">
-                            ${this.currentViewingTask.creator_first?.charAt(0) || 'U'}
-                        </div>
-                        <div class="activity-content">
-                            <div class="font-weight-bold">
-                                ${this.currentViewingTask.creator_first ? `${this.currentViewingTask.creator_first} ${this.currentViewingTask.creator_last}` : 'User'}
-                            </div>
-                            <div class="text-muted">updated this task</div>
-                            <div class="activity-meta">
-                                ${new Date(this.currentViewingTask.updated_at).toLocaleString()}
-                            </div>
-                        </div>
-                    </div>
-                `);
+            if (!response.success || !response.activity || response.activity.length === 0) {
+                activityTimeline.html('<div class="text-muted small">No activity yet.</div>');
+                return;
             }
 
+            const items = response.activity.map(entry => {
+                const who = entry.first_name ? `${entry.first_name} ${entry.last_name}` : 'Someone';
+                const when = new Date(entry.created_at).toLocaleString();
+                const initial = (entry.first_name || '?').charAt(0).toUpperCase();
+                return `
+                    <div class="activity-item d-flex">
+                        <div class="activity-avatar mr-3">${this.escapeHtml(initial)}</div>
+                        <div class="activity-content">
+                            <div class="font-weight-bold">${this.escapeHtml(who)}</div>
+                            <div class="text-muted">${this.escapeHtml(entry.description)}</div>
+                            <div class="activity-meta">${when}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            activityTimeline.html(items);
         } catch (error) {
             console.error('Error loading activity:', error);
+            if ($('#activityTimeline').length) {
+                activityTimeline.html('<div class="text-muted small">Couldn\'t load activity.</div>');
+            }
         }
     }
 

@@ -28,35 +28,38 @@ $user_id = $_SESSION['emp_id'];
         margin-bottom: 2rem;
     }
     .stat-card {
-        background: white;
+        background: var(--card-bg) !important;
         border-radius: 8px;
         padding: 1.5rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-left: 4px solid #007bff;
+        border: 1px solid var(--card-border);
+        border-left: 4px solid var(--green-dark);
     }
     .stat-card h3 {
         font-size: 2rem;
         margin: 0;
-        color: #2c3e50;
+        color: var(--text-primary);
     }
     .stat-card p {
         margin: 0.5rem 0 0 0;
-        color: #7f8c8d;
+        color: var(--text-muted);
     }
-    .stat-card.project { border-left-color: #3498db; }
+    .stat-card.project { border-left-color: var(--green-dark); }
     .stat-card.task { border-left-color: #e74c3c; }
-    .stat-card.completed { border-left-color: #27ae60; }
+    .stat-card.completed { border-left-color: var(--green); }
     .stat-card.pending { border-left-color: #f39c12; }
-    
+
     .recent-activities {
-        background: white;
+        background: var(--card-bg) !important;
         border-radius: 8px;
         padding: 1.5rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border: 1px solid var(--card-border);
+        color: var(--text-primary);
     }
     .activity-item {
         padding: 1rem 0;
-        border-bottom: 1px solid #ecf0f1;
+        border-bottom: 1px solid var(--card-border);
     }
     .activity-item:last-child {
         border-bottom: none;
@@ -136,7 +139,7 @@ $user_id = $_SESSION['emp_id'];
     </section>
   </div>
 </div>
-
+<?php include '../includes/mainfooter.php'; ?>
 <?php include '../includes/footer.php'; ?>
 
 <script>

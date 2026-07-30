@@ -281,7 +281,8 @@ function getTaskStatusBadgeClass(status) {
 
 <style>
 #calendar {
-    background: white;
+    background: var(--card-bg);
+    color: var(--text-primary);
     border-radius: 8px;
     padding: 1rem;
 }
@@ -292,6 +293,11 @@ function getTaskStatusBadgeClass(status) {
 .fc-header-toolbar {
     margin-bottom: 1.5em !important;
 }
+.fc-theme-standard td, .fc-theme-standard th { border-color: var(--table-border) !important; }
+.fc-col-header-cell-cushion, .fc-daygrid-day-number { color: var(--text-primary) !important; }
+.fc-toolbar-title { color: var(--text-primary) !important; }
+.fc-daygrid-day { background: var(--card-bg) !important; }
+.fc-day-today { background: var(--table-stripe) !important; }
 </style>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 class ProjectManager {
     private $db;
@@ -117,10 +117,16 @@ class ProjectManager {
             return false;
         }
         
-        $query = "SELECT p.*, pm.role 
-                FROM projects p 
-                JOIN project_members pm ON p.project_id = pm.project_id 
+        $query = "SELECT p.*, pm.role,
+                COUNT(DISTINCT t.task_id) as total_tasks,
+                COUNT(DISTINCT CASE WHEN t.status = 'done' THEN t.task_id END) as completed_tasks,
+                COUNT(DISTINCT CASE WHEN ta.emp_id = ? THEN t.task_id END) as my_tasks
+                FROM projects p
+                JOIN project_members pm ON p.project_id = pm.project_id
+                LEFT JOIN tasks t ON t.project_id = p.project_id
+                LEFT JOIN task_assignees ta ON ta.task_id = t.task_id
                 WHERE pm.emp_id = ? AND p.status = 'active'
+                GROUP BY p.project_id
                 ORDER BY p.created_at DESC";
         
         error_log("ProjectManager: Executing query: " . $query);
@@ -131,7 +137,7 @@ class ProjectManager {
             return false;
         }
         
-        $stmt->bind_param("i", $emp_id);
+        $stmt->bind_param("ii", $emp_id, $emp_id);
         
         if (!$stmt->execute()) {
             error_log("ProjectManager: Execute failed: " . $stmt->error);

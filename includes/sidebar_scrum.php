@@ -70,7 +70,6 @@ if ($employee_id) {
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
 
-         
           <li class="nav-item">
             <a href="scrum_dashboard.php" class="nav-link <?= $current_page == 'scrum_dashboard.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tachometer-alt"></i>
@@ -79,51 +78,135 @@ if ($employee_id) {
           </li>
           <li class="nav-item">
             <a href="scrum_project.php" class="nav-link <?= $current_page == 'scrum_project.php' ? 'active' : 'text-white' ?>">
-              <i class="fas fa-project-diagram"></i>
-              <span>Projects Monitoring</span>
+              <i class="nav-icon fas fa-project-diagram"></i>
+              <p>Projects Monitoring</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="scrum_team.php" class="nav-link <?= $current_page == 'scrum_team.php' ? 'active' : 'text-white' ?>">
-              <i class="fas fa-project-diagram"></i>
-              <span>Teams</span>
+              <i class="nav-icon fas fa-users"></i>
+              <p>Teams</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="my_scrum_project.php" class="nav-link <?= $current_page == 'my_scrum_project.php' ? 'active' : 'text-white' ?>">
-              <i class="fas fa-project-diagram"></i>
-              <span>My Projects</span>
+              <i class="nav-icon fas fa-folder-open"></i>
+              <p>My Projects</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="my_scrum_task.php" class="nav-link <?= $current_page == 'my_scrum_task.php' ? 'active' : 'text-white' ?>">
-              <i class="fas fa-tasks"></i>
-              <span>My Tasks</span>
+              <i class="nav-icon fas fa-tasks"></i>
+              <p>My Tasks</p>
             </a>
           </li>
-          <li class="nav-item"> 
+          <li class="nav-item">
             <a href="scrum_calendar.php" class="nav-link <?= $current_page == 'scrum_calendar.php' ? 'active' : 'text-white' ?>">
-              <i class="fas fa-calendar-alt"></i>
-              <span>Calendar</span>
+              <i class="nav-icon fas fa-calendar-alt"></i>
+              <p>Calendar</p>
             </a>
           </li>
         </ul>
       </nav>
     </div>
-    <div class="sidebar-footer">
-        <button class="btn btn-primary btn-block" id="newBoardBtn">
-            <i class="fas fa-plus mr-2"></i>New Board
-        </button>
-        <button class="btn btn-outline-secondary btn-block mt-2" id="mobileToggle">
-            <i class="fas fa-bars mr-2"></i>Menu
-        </button>
-    </div>
 </aside>
 <style>
 /*
- * Sidebar styles are driven by CSS variables defined in mainheader.php.
- * Light / dark mode is toggled globally — no per-module colours.
+ * Matches the layout/typography conventions of the app's standard
+ * sidebar.php so the scrum module doesn't look or behave differently
+ * from the rest of AIMS. Colors still come entirely from the CSS
+ * variables defined in mainheader.php — nothing here is hardcoded
+ * per light/dark mode.
  */
+
+/* Fixed, full-height sidebar with a scrollable nav area (same as sidebar.php) */
+.main-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 250px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+.brand-link {
+    flex-shrink: 0 !important;
+}
+.sidebar {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 10px !important;
+}
+.sidebar-dark-primary {
+    background-color: var(--sidebar-bg) !important;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
+    color: var(--sidebar-text) !important;
+    border-radius: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: background-color .15s ease, color .15s ease;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-active-text) !important;
+    border-left: 4px solid rgba(255,255,255,0.5);
+    font-weight: 700;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: var(--sidebar-hover-bg) !important;
+    color: white !important;
+}
+.brand-link.bg-gradient-primary {
+    background: var(--sidebar-brand-bg) !important;
+}
+.main-sidebar.sidebar-dark-primary .nav-sidebar .nav-icon {
+    width: 20px;
+    text-align: center;
+    margin-right: 8px;
+}
+.main-sidebar.sidebar-dark-primary .user-panel img {
+    border: 2px solid var(--sidebar-active-bg, #24e78f);
+}
+
+/* Custom scrollbar to match sidebar.php */
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: var(--sidebar-bg);
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #4aad7a;
+    border-radius: 5px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #24e78f;
+}
+
+/* Scrum-specific footer (New Board / Menu) — pinned below the scrollable nav,
+   themed with the same sidebar accent variables as everything else. */
+.sidebar-footer {
+    flex-shrink: 0 !important;
+    padding: 10px 12px;
+}
+.sidebar-footer #newBoardBtn {
+    background: var(--sidebar-active-bg, #24e78f) !important;
+    color: var(--sidebar-active-text, #0f2d1e) !important;
+    border: none !important;
+    font-weight: 700;
+    border-radius: 6px !important;
+    transition: filter .15s ease;
+}
+.sidebar-footer #newBoardBtn:hover { filter: brightness(1.08); }
+.sidebar-footer #mobileToggle {
+    border-radius: 6px !important;
+    color: var(--sidebar-text, rgba(255,255,255,.8)) !important;
+    border-color: var(--sidebar-text, rgba(255,255,255,.3)) !important;
+}
 </style>
 <script>
 $(document).ready(function() {
