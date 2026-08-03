@@ -11,12 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Add new position
     if (isset($_POST['add_position'])) {
-        $position_name = trim($_POST['position_name']);
-        $salary        = isset($_POST['salary']) && $_POST['salary'] !== '' ? (float)$_POST['salary'] : 0;
+        $position_name  = trim($_POST['position_name']);
+        $salary_per_day = isset($_POST['salary_per_day']) && $_POST['salary_per_day'] !== '' ? (float)$_POST['salary_per_day'] : 0;
+        // Monthly salary is always derived from the daily rate (per day x 31), computed server-side for accuracy/security.
+        $salary         = round($salary_per_day * 31, 2);
 
         if (!empty($position_name)) {
-            $stmt = $db->prepare("INSERT INTO position (position_name, salary) VALUES (?, ?)");
-            if ($stmt->execute([$position_name, $salary])) {
+            $stmt = $db->prepare("INSERT INTO position (position_name, salary, salary_per_day) VALUES (?, ?, ?)");
+            if ($stmt->execute([$position_name, $salary, $salary_per_day])) {
                 $_SESSION['swal'] = [
                     'type' => 'success',
                     'title' => 'Success!',
@@ -36,13 +38,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Update position
     if (isset($_POST['update_position'])) {
-        $id            = (int)$_POST['id'];
-        $position_name = trim($_POST['position_name']);
-        $salary        = isset($_POST['salary']) && $_POST['salary'] !== '' ? (float)$_POST['salary'] : 0;
+        $id             = (int)$_POST['id'];
+        $position_name  = trim($_POST['position_name']);
+        $salary_per_day = isset($_POST['salary_per_day']) && $_POST['salary_per_day'] !== '' ? (float)$_POST['salary_per_day'] : 0;
+        // Monthly salary is always derived from the daily rate (per day x 31), computed server-side for accuracy/security.
+        $salary         = round($salary_per_day * 31, 2);
 
         if (!empty($position_name)) {
-            $stmt = $db->prepare("UPDATE position SET position_name = ?, salary = ? WHERE position_id = ?");
-            if ($stmt->execute([$position_name, $salary, $id])) {
+            $stmt = $db->prepare("UPDATE position SET position_name = ?, salary = ?, salary_per_day = ? WHERE position_id = ?");
+            if ($stmt->execute([$position_name, $salary, $salary_per_day, $id])) {
                 $_SESSION['swal'] = [
                     'type' => 'success',
                     'title' => 'Success!',
@@ -282,16 +286,28 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
                            value="<?= $isEditing ? htmlspecialchars($editPosition['position_name']) : '' ?>" required>
                   </div>
                   <div class="form-group">
-                    <label for="salary">Salary per Position</label>
+                    <label for="salary_per_day">Salary per Day</label>
+                    <div class="input-group">
+                      <div class="input-group-prepend">
+                        <span class="input-group-text">&#8369;</span>
+                      </div>
+                      <input type="number" step="0.01" min="0" class="form-control" id="salary_per_day" name="salary_per_day"
+                             value="<?= $isEditing ? htmlspecialchars($editPosition['salary_per_day'] ?? '') : '' ?>"
+                             placeholder="0.00" required>
+                    </div>
+                    <div class="form-text-hint">Daily rate for this position.</div>
+                  </div>
+                  <div class="form-group">
+                    <label for="salary">Salary per Position (Monthly)</label>
                     <div class="input-group">
                       <div class="input-group-prepend">
                         <span class="input-group-text">&#8369;</span>
                       </div>
                       <input type="number" step="0.01" min="0" class="form-control" id="salary" name="salary"
                              value="<?= $isEditing ? htmlspecialchars($editPosition['salary']) : '' ?>"
-                             placeholder="0.00" required>
+                             placeholder="0.00" readonly>
                     </div>
-                    <div class="form-text-hint">Monthly base salary assigned to this position.</div>
+                    <div class="form-text-hint">Auto-computed: Salary per Day &times; 31.</div>
                   </div>
                 </div>
                 <div class="card-footer">
@@ -315,6 +331,7 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
                   <thead>
                     <tr>
                       <th>Position Name</th>
+                      <th>Salary per Day</th>
                       <th>Salary per Position</th>
                       <th>Actions</th>
                     </tr>
@@ -323,6 +340,11 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
                     <?php foreach ($positions as $status): ?>
                     <tr class="<?= ($isEditing && $editPosition['position_id'] == $status['position_id']) ? 'row-editing' : '' ?>">
                       <td><?= htmlspecialchars($status['position_name']) ?></td>
+                      <td>
+                        <span class="badge badge-salary">
+                          &#8369;<?= number_format((float)($status['salary_per_day'] ?? 0), 2) ?>
+                        </span>
+                      </td>
                       <td>
                         <span class="badge badge-salary">
                           &#8369;<?= number_format((float)($status['salary'] ?? 0), 2) ?>
@@ -444,6 +466,25 @@ $(document).on('click', '.delete-btn', function(e) {
             });
         });
 });
+</script>
+
+<!-- Auto-compute Monthly Salary from Salary per Day -->
+<script>
+(function() {
+    const perDayInput = document.getElementById('salary_per_day');
+    const monthlyInput = document.getElementById('salary');
+
+    function computeMonthly() {
+        const perDay = parseFloat(perDayInput.value);
+        monthlyInput.value = (!isNaN(perDay) && perDay >= 0) ? (perDay * 31).toFixed(2) : '';
+    }
+
+    if (perDayInput && monthlyInput) {
+        perDayInput.addEventListener('input', computeMonthly);
+        // Compute immediately in case of pre-filled edit values
+        computeMonthly();
+    }
+})();
 </script>
 
 <!-- DataTables Initialization -->
