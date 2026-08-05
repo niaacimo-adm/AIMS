@@ -65,6 +65,31 @@ class ProjectManager {
 
         return $creator_result['count'] > 0;
     }
+
+    // Check if user can create a new project.
+    // Restricted to specific user_roles only: Administrator, Heads, Manager, Unit Head.
+    public function canCreateProject($emp_id) {
+        $allowed_roles = ['Administrator', 'Heads', 'Manager', 'Unit Head'];
+
+        $query = "SELECT ur.name as role_name
+                FROM employee e
+                LEFT JOIN users u ON e.emp_id = u.employee_id
+                LEFT JOIN user_roles ur ON u.role_id = ur.id
+                WHERE e.emp_id = ?";
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("i", $emp_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+            if (in_array($user['role_name'], $allowed_roles, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
     
     // Create new project
     public function createProject($data) {

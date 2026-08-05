@@ -156,6 +156,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'create_project':
             try {
                 $db = $projectManager->getConnection();
+
+                $requester_id = (int)($_SESSION['emp_id'] ?? 0);
+                if (!$projectManager->canCreateProject($requester_id)) {
+                    echo json_encode(['success' => false, 'error' => 'You do not have permission to create projects. Only Administrators, Heads, Managers, and Unit Heads can create projects.']);
+                    break;
+                }
                 
                 // Extract variables from POST
                 $project_name = $_POST['project_name'] ?? '';
@@ -281,14 +287,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
 
-                // Capture the name before it's gone, so the log entry (kept
-                // for history even after the project row is deleted) still
-                // reads clearly.
-                $name_stmt = $db->prepare("SELECT project_name FROM projects WHERE project_id = ?");
-                $name_stmt->bind_param("i", $project_id);
-                $name_stmt->execute();
-                $name_row = $name_stmt->get_result()->fetch_assoc();
-                $deleted_project_name = $name_row['project_name'] ?? "#$project_id";
+                // Only the person who created the project may delete it —
+                // not other owners/managers, and not just anyone with
+                // canAssignTasks()-level access.
+                $creator_stmt = $db->prepare("SELECT project_name, created_by FROM projects WHERE project_id = ?");
+                $creator_stmt->bind_param("i", $project_id);
+                $creator_stmt->execute();
+                $project_row = $creator_stmt->get_result()->fetch_assoc();
+
+                if (!$project_row) {
+                    echo json_encode(['success' => false, 'error' => 'Project not found']);
+                    break;
+                }
+
+                $current_emp_id_for_delete = (int)($_SESSION['emp_id'] ?? 0);
+                if ((int)$project_row['created_by'] !== $current_emp_id_for_delete) {
+                    echo json_encode(['success' => false, 'error' => 'Only the project creator can delete this project']);
+                    break;
+                }
+
+                $deleted_project_name = $project_row['project_name'];
 
                 // Clean up dependent records first (in case FK constraints aren't set to CASCADE)
                 $db->query("DELETE ta FROM task_assignees ta INNER JOIN tasks t ON ta.task_id = t.task_id WHERE t.project_id = $project_id");
@@ -300,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("i", $project_id);
 
                 if ($stmt->execute()) {
-                    logActivity($db, 'project', $project_id, $project_id, (int)($_SESSION['emp_id'] ?? 0), 'deleted', "Deleted the project \"$deleted_project_name\"");
+                    logActivity($db, 'project', $project_id, $project_id, $current_emp_id_for_delete, 'deleted', "Deleted the project \"$deleted_project_name\"");
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'error' => 'Failed to delete project: ' . $stmt->error]);
@@ -370,6 +388,365 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             echo json_encode(['success' => true, 'employees' => $employees]);
             break;
+
+        case 'add_project_member':
+            try {
+                $project_id = (int)($_POST['project_id'] ?? 0);
+                $requester_id = (int)($_SESSION['emp_id'] ?? 0);
+                $role = $_POST['role'] ?? 'member';
+                $emp_ids = isset($_POST['emp_ids']) ? (array)$_POST['emp_ids'] : [];
+                $emp_ids = array_unique(array_filter(array_map('intval', $emp_ids), function($v) {
+                    return $v > 0;
+                }));
+
+                if (!$project_id) {
+                    echo json_encode(['success' => false, 'error' => 'Missing project id']);
+                    break;
+                }
+                if (empty($emp_ids)) {
+                    echo json_encode(['success' => false, 'error' => 'Please select at least one employee']);
+                    break;
+                }
+                if (!in_array($role, ['member', 'manager', 'owner'], true)) {
+                    $role = 'member';
+                }
+
+                $db = $projectManager->getConnection();
+
+                // Only existing project members can view the project; only
+                // owners/managers (or admins/section heads via canAssignTasks)
+                // may add new members to it.
+                if (!isProjectMember($db, $project_id, $requester_id)) {
+                    echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                    break;
+                }
+
+                $role_check = $db->prepare("SELECT role FROM project_members WHERE project_id = ? AND emp_id = ?");
+                $role_check->bind_param("ii", $project_id, $requester_id);
+                $role_check->execute();
+                $role_row = $role_check->get_result()->fetch_assoc();
+                $requester_role = $role_row['role'] ?? null;
+
+                $canManageMembers = in_array($requester_role, ['owner', 'manager'], true)
+                    || $projectManager->canAssignTasks($requester_id);
+
+                if (!$canManageMembers) {
+                    echo json_encode(['success' => false, 'error' => 'Only project owners or managers can add members']);
+                    break;
+                }
+
+                // Find who's already a member so we don't duplicate or error out
+                $existing = [];
+                $existing_result = $projectManager->getProjectMembers($project_id);
+                while ($row = $existing_result->fetch_assoc()) {
+                    $existing[(int)$row['emp_id']] = true;
+                }
+
+                $added = [];
+                $skipped = [];
+                $insert_stmt = $db->prepare("INSERT INTO project_members (project_id, emp_id, role, added_by) VALUES (?, ?, ?, ?)");
+
+                foreach ($emp_ids as $emp_id) {
+                    if (isset($existing[$emp_id])) {
+                        $skipped[] = $emp_id;
+                        continue;
+                    }
+                    $insert_stmt->bind_param("iisi", $project_id, $emp_id, $role, $requester_id);
+                    if ($insert_stmt->execute()) {
+                        $added[] = $emp_id;
+                    }
+                }
+
+                if (!empty($added)) {
+                    $project_row = $db->query("SELECT project_name FROM projects WHERE project_id = " . (int)$project_id)->fetch_assoc();
+                    $project_name = $project_row['project_name'] ?? '';
+                    logActivity($db, 'project', $project_id, $project_id, $requester_id, 'members_added', count($added) . " member(s) added to \"$project_name\"", ['added' => $added]);
+                }
+
+                // Return the refreshed member list so the UI can update immediately
+                $members_result = $projectManager->getProjectMembers($project_id);
+                $members = [];
+                while ($row = $members_result->fetch_assoc()) {
+                    $members[] = $row;
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'added_count' => count($added),
+                    'skipped_count' => count($skipped),
+                    'members' => $members
+                ]);
+            } catch (Exception $e) {
+                error_log("Add project member error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+
+        case 'remove_project_member':
+            try {
+                $project_id = (int)($_POST['project_id'] ?? 0);
+                $emp_id = (int)($_POST['emp_id'] ?? 0);
+                $requester_id = (int)($_SESSION['emp_id'] ?? 0);
+
+                if (!$project_id || !$emp_id) {
+                    echo json_encode(['success' => false, 'error' => 'Missing project or employee id']);
+                    break;
+                }
+
+                $db = $projectManager->getConnection();
+
+                if (!isProjectMember($db, $project_id, $requester_id)) {
+                    echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                    break;
+                }
+
+                $role_check = $db->prepare("SELECT role FROM project_members WHERE project_id = ? AND emp_id = ?");
+                $role_check->bind_param("ii", $project_id, $requester_id);
+                $role_check->execute();
+                $role_row = $role_check->get_result()->fetch_assoc();
+                $requester_role = $role_row['role'] ?? null;
+
+                $canManageMembers = in_array($requester_role, ['owner', 'manager'], true)
+                    || $projectManager->canAssignTasks($requester_id);
+
+                if (!$canManageMembers) {
+                    echo json_encode(['success' => false, 'error' => 'Only project owners or managers can remove members']);
+                    break;
+                }
+
+                // Look up the member being removed
+                $target_check = $db->prepare("SELECT role FROM project_members WHERE project_id = ? AND emp_id = ?");
+                $target_check->bind_param("ii", $project_id, $emp_id);
+                $target_check->execute();
+                $target_row = $target_check->get_result()->fetch_assoc();
+
+                if (!$target_row) {
+                    echo json_encode(['success' => false, 'error' => 'That person is not a member of this project']);
+                    break;
+                }
+
+                if ($target_row['role'] === 'owner') {
+                    echo json_encode(['success' => false, 'error' => 'The project owner cannot be removed']);
+                    break;
+                }
+
+                $delete_stmt = $db->prepare("DELETE FROM project_members WHERE project_id = ? AND emp_id = ?");
+                $delete_stmt->bind_param("ii", $project_id, $emp_id);
+
+                if ($delete_stmt->execute()) {
+                    $project_row = $db->query("SELECT project_name FROM projects WHERE project_id = " . (int)$project_id)->fetch_assoc();
+                    $project_name = $project_row['project_name'] ?? '';
+                    logActivity($db, 'project', $project_id, $project_id, $requester_id, 'member_removed', "Removed a member from \"$project_name\"", ['emp_id' => $emp_id]);
+
+                    // Return the refreshed member list so the UI can update immediately
+                    $members_result = $projectManager->getProjectMembers($project_id);
+                    $members = [];
+                    while ($row = $members_result->fetch_assoc()) {
+                        $members[] = $row;
+                    }
+
+                    echo json_encode(['success' => true, 'members' => $members]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to remove member: ' . $db->error]);
+                }
+            } catch (Exception $e) {
+                error_log("Remove project member error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+
+        case 'request_project_membership':
+            try {
+                $project_id = (int)($_POST['project_id'] ?? 0);
+                $requester_id = (int)($_SESSION['emp_id'] ?? 0);
+
+                if (!$project_id || !$requester_id) {
+                    echo json_encode(['success' => false, 'error' => 'Missing project id']);
+                    break;
+                }
+
+                $db = $projectManager->getConnection();
+
+                // Already a member? Nothing to request.
+                if (isProjectMember($db, $project_id, $requester_id)) {
+                    echo json_encode(['success' => false, 'error' => 'You are already a member of this project']);
+                    break;
+                }
+
+                // Don't stack duplicate pending requests
+                $dup_check = $db->prepare("SELECT request_id FROM project_join_requests WHERE project_id = ? AND emp_id = ? AND status = 'pending'");
+                $dup_check->bind_param("ii", $project_id, $requester_id);
+                $dup_check->execute();
+
+                if ($dup_check->get_result()->num_rows > 0) {
+                    echo json_encode(['success' => false, 'error' => 'You already have a pending request for this project']);
+                    break;
+                }
+
+                $insert_stmt = $db->prepare("INSERT INTO project_join_requests (project_id, emp_id, status) VALUES (?, ?, 'pending')");
+                $insert_stmt->bind_param("ii", $project_id, $requester_id);
+
+                if ($insert_stmt->execute()) {
+                    $project_row = $db->query("SELECT project_name FROM projects WHERE project_id = " . (int)$project_id)->fetch_assoc();
+                    $project_name = $project_row['project_name'] ?? '';
+                    logActivity($db, 'project', $project_id, $project_id, $requester_id, 'membership_requested', "Requested to join \"$project_name\"");
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to send request: ' . $db->error]);
+                }
+            } catch (Exception $e) {
+                error_log("Request project membership error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+
+        case 'get_pending_join_requests':
+            try {
+                $project_id = (int)($_POST['project_id'] ?? 0);
+                $requester_id = (int)($_SESSION['emp_id'] ?? 0);
+
+                if (!$project_id) {
+                    echo json_encode(['success' => false, 'error' => 'Missing project id']);
+                    break;
+                }
+
+                $db = $projectManager->getConnection();
+
+                if (!isProjectMember($db, $project_id, $requester_id)) {
+                    echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                    break;
+                }
+
+                $role_check = $db->prepare("SELECT role FROM project_members WHERE project_id = ? AND emp_id = ?");
+                $role_check->bind_param("ii", $project_id, $requester_id);
+                $role_check->execute();
+                $role_row = $role_check->get_result()->fetch_assoc();
+                $requester_role = $role_row['role'] ?? null;
+
+                $canManageMembers = in_array($requester_role, ['owner', 'manager'], true)
+                    || $projectManager->canAssignTasks($requester_id);
+
+                if (!$canManageMembers) {
+                    // Not an error — just nothing to show for regular members
+                    echo json_encode(['success' => true, 'requests' => []]);
+                    break;
+                }
+
+                $query = "SELECT jr.request_id, jr.project_id, jr.emp_id, jr.requested_at,
+                                 e.first_name, e.last_name, e.picture
+                          FROM project_join_requests jr
+                          JOIN employee e ON jr.emp_id = e.emp_id
+                          WHERE jr.project_id = ? AND jr.status = 'pending'
+                          ORDER BY jr.requested_at ASC";
+                $stmt = $db->prepare($query);
+                $stmt->bind_param("i", $project_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                $requests = [];
+                while ($row = $result->fetch_assoc()) {
+                    $requests[] = $row;
+                }
+
+                echo json_encode(['success' => true, 'requests' => $requests]);
+            } catch (Exception $e) {
+                error_log("Get pending join requests error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+
+        case 'respond_join_request':
+            try {
+                $request_id = (int)($_POST['request_id'] ?? 0);
+                $decision = $_POST['decision'] ?? '';
+                $requester_id = (int)($_SESSION['emp_id'] ?? 0);
+
+                if (!$request_id || !in_array($decision, ['approve', 'deny'], true)) {
+                    echo json_encode(['success' => false, 'error' => 'Invalid request']);
+                    break;
+                }
+
+                $db = $projectManager->getConnection();
+
+                $req_stmt = $db->prepare("SELECT * FROM project_join_requests WHERE request_id = ? AND status = 'pending'");
+                $req_stmt->bind_param("i", $request_id);
+                $req_stmt->execute();
+                $join_request = $req_stmt->get_result()->fetch_assoc();
+
+                if (!$join_request) {
+                    echo json_encode(['success' => false, 'error' => 'Request not found or already handled']);
+                    break;
+                }
+
+                $project_id = (int)$join_request['project_id'];
+                $target_emp_id = (int)$join_request['emp_id'];
+
+                $role_check = $db->prepare("SELECT role FROM project_members WHERE project_id = ? AND emp_id = ?");
+                $role_check->bind_param("ii", $project_id, $requester_id);
+                $role_check->execute();
+                $role_row = $role_check->get_result()->fetch_assoc();
+                $requester_role = $role_row['role'] ?? null;
+
+                $canManageMembers = in_array($requester_role, ['owner', 'manager'], true)
+                    || $projectManager->canAssignTasks($requester_id);
+
+                if (!$canManageMembers) {
+                    echo json_encode(['success' => false, 'error' => 'Only project owners or managers can respond to join requests']);
+                    break;
+                }
+
+                $new_status = $decision === 'approve' ? 'approved' : 'denied';
+                $update_stmt = $db->prepare("UPDATE project_join_requests SET status = ?, responded_at = NOW(), responded_by = ? WHERE request_id = ?");
+                $update_stmt->bind_param("sii", $new_status, $requester_id, $request_id);
+                $update_stmt->execute();
+
+                if ($decision === 'approve') {
+                    $already_member = isProjectMember($db, $project_id, $target_emp_id);
+                    if (!$already_member) {
+                        $projectManager->addProjectMember($project_id, $target_emp_id, 'member', $requester_id);
+                    }
+                    $project_row = $db->query("SELECT project_name FROM projects WHERE project_id = " . $project_id)->fetch_assoc();
+                    $project_name = $project_row['project_name'] ?? '';
+                    logActivity($db, 'project', $project_id, $project_id, $requester_id, 'join_request_approved', "Approved a join request for \"$project_name\"", ['emp_id' => $target_emp_id]);
+                } else {
+                    $project_row = $db->query("SELECT project_name FROM projects WHERE project_id = " . $project_id)->fetch_assoc();
+                    $project_name = $project_row['project_name'] ?? '';
+                    logActivity($db, 'project', $project_id, $project_id, $requester_id, 'join_request_denied', "Denied a join request for \"$project_name\"", ['emp_id' => $target_emp_id]);
+                }
+
+                // Return refreshed data so the UI can update immediately
+                $members_result = $projectManager->getProjectMembers($project_id);
+                $members = [];
+                while ($row = $members_result->fetch_assoc()) {
+                    $members[] = $row;
+                }
+
+                $pending_stmt = $db->prepare("SELECT jr.request_id, jr.project_id, jr.emp_id, jr.requested_at,
+                                                      e.first_name, e.last_name, e.picture
+                                               FROM project_join_requests jr
+                                               JOIN employee e ON jr.emp_id = e.emp_id
+                                               WHERE jr.project_id = ? AND jr.status = 'pending'
+                                               ORDER BY jr.requested_at ASC");
+                $pending_stmt->bind_param("i", $project_id);
+                $pending_stmt->execute();
+                $pending_result = $pending_stmt->get_result();
+                $requests = [];
+                while ($row = $pending_result->fetch_assoc()) {
+                    $requests[] = $row;
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'decision' => $decision,
+                    'members' => $members,
+                    'requests' => $requests
+                ]);
+            } catch (Exception $e) {
+                error_log("Respond join request error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+
 
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);

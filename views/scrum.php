@@ -11,6 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $projectManager = new ProjectManager();
 $canAssignTasks = $projectManager->canAssignTasks($_SESSION['emp_id']);
+$canCreateProject = $projectManager->canCreateProject($_SESSION['emp_id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -111,114 +112,275 @@ body { font-family: var(--s-font) !important; background: var(--s-bg) !important
 .scrum-header {
   background: var(--s-surface) !important;
   border-bottom: 1px solid var(--s-border) !important;
-  padding: 12px 20px !important;
+  padding: 14px 24px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   flex-wrap: wrap !important;
-  gap: 10px !important;
+  row-gap: 12px !important;
+  column-gap: 20px !important;
+}
+.scrum-header-group {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  row-gap: 8px !important;
+}
+.scrum-header-group.scrum-header-meta { column-gap: 4px; min-width: 0; }
+.scrum-header-group.scrum-header-actions { column-gap: 4px; margin-left: auto; }
+.scrum-header-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--s-border) !important;
+  margin: 0 12px;
+  flex-shrink: 0;
+}
+.scrum-search-group {
+  flex: 1 1 160px;
+  min-width: 140px;
+  max-width: 260px;
+}
+.scrum-view-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 2px !important;
+}
+.scrum-view-toolbar .btn {
+  white-space: nowrap;
 }
 .scrum-content {
   background: var(--s-bg) !important;
   padding: 16px 20px !important;
-  /* Full viewport height minus header bars → kanban fills vertically */
-  height: calc(100vh - 116px);
+  /* Fills whatever space remains below the header, however tall it wraps */
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
 }
 
+@media (max-width: 991.98px) {
+  .scrum-header { justify-content: flex-start !important; }
+  .scrum-header-group.scrum-header-actions { margin-left: 0; width: 100%; }
+  .scrum-search-group { max-width: none; flex-basis: 100%; }
+  .scrum-header-divider { display: none; }
+}
+
 /* ── Project title / status ── */
 #currentProjectTitle {
   font-family: var(--s-font) !important;
-  font-size: 1.05rem !important;
+  font-size: 1rem !important;
   font-weight: 700 !important;
   color: var(--s-text) !important;
-  letter-spacing: -.3px;
+  letter-spacing: -.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
 }
 #currentProjectStatus {
-  background: var(--s-teal-dim) !important;
-  color: var(--s-teal) !important;
-  border: 1px solid color-mix(in srgb, var(--s-teal) 30%, transparent) !important;
-  border-radius: 20px !important;
-  font-size: .7rem !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--s-muted) !important;
+  font-size: .72rem !important;
   font-weight: 600 !important;
-  padding: 3px 10px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+}
+#currentProjectStatus::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--s-teal);
+  display: inline-block;
+}
+#currentProjectStatus.badge-secondary::before { background: var(--s-muted); }
+
+/* ── Project members avatar stack ── */
+.project-members-stack {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.project-members-stack .pm-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--s-surface, #fff);
+  margin-left: -8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .65rem;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--s-mono);
+  background: var(--s-teal);
+}
+.project-members-stack .pm-avatar:first-child {
+  margin-left: 0;
+}
+.project-members-stack .pm-more {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--s-surface, #fff);
+  margin-left: -8px;
+  background: var(--s-muted, #6c757d);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .62rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.pm-add-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px dashed var(--s-border, #ccc) !important;
+  background: transparent !important;
+  color: var(--s-muted) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .7rem;
+  padding: 0 !important;
+  flex-shrink: 0;
+  position: relative;
+  transition: all .15s ease;
+}
+.pm-add-btn:hover {
+  color: var(--s-teal) !important;
+  border-color: var(--s-teal) !important;
+  border-style: solid !important;
+}
+.pm-request-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #dc3545;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 2px solid var(--s-surface, #fff);
 }
 
-/* ── Header buttons ── */
-.scrum-header .btn-outline-primary {
-  background: transparent !important;
-  color: var(--s-text) !important;
-  border: 1px solid var(--s-border) !important;
-  border-radius: 8px !important;
-  font-size: .8rem !important;
-  font-weight: 500 !important;
-  font-family: var(--s-font) !important;
-  transition: all .2s !important;
-}
-.scrum-header .btn-outline-primary:hover {
-  border-color: var(--s-teal) !important;
-  color: var(--s-teal) !important;
-  background: var(--s-teal-dim) !important;
-}
+/* ── Header buttons: flat, borderless "ghost" style ── */
+/* Every header control is text/icon on transparent, no boxes at rest —
+   the filled Add Task button stays the one deliberate accent. */
+.scrum-header .btn-ghost,
+.scrum-header .btn-outline-primary,
 .scrum-header .btn-outline-secondary {
   background: transparent !important;
   color: var(--s-muted) !important;
-  border: 1px solid var(--s-border) !important;
-  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
   font-size: .8rem !important;
+  font-weight: 600 !important;
   font-family: var(--s-font) !important;
-  transition: all .2s !important;
+  padding: 7px 12px !important;
+  transition: color .15s ease, background-color .15s ease !important;
 }
+.scrum-header .btn-ghost:hover,
+.scrum-header .btn-outline-primary:hover,
 .scrum-header .btn-outline-secondary:hover {
   color: var(--s-text) !important;
   background: var(--s-surface2) !important;
 }
+/* Active / toggled state for the view toolbar (Filter, My Tasks, Calendar) */
+.scrum-view-toolbar .btn.active {
+  color: var(--s-teal) !important;
+  background: var(--s-teal-dim) !important;
+}
 .scrum-header .btn-primary {
   background: var(--s-teal) !important;
   color: #fff !important;
-  border: none !important;
-  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
   font-weight: 700 !important;
   font-size: .8rem !important;
   font-family: var(--s-font) !important;
-  transition: all .2s !important;
+  padding: 7px 14px !important;
+  transition: filter .15s ease !important;
 }
 body:not(.dark-mode) .scrum-header .btn-primary { color: #fff !important; }
-.scrum-header .btn-primary:hover { filter: brightness(1.1) !important; transform: translateY(-1px); }
+.scrum-header .btn-primary:hover { filter: brightness(1.08) !important; }
 .scrum-header .btn-success {
-  background: var(--s-surface2) !important;
-  color: var(--s-green) !important;
+  background: transparent !important;
+  color: var(--s-teal) !important;
   border: 1px solid var(--s-border) !important;
-  border-radius: 8px !important;
+  border-radius: 7px !important;
   font-weight: 600 !important;
   font-size: .8rem !important;
   font-family: var(--s-font) !important;
+  padding: 6px 13px !important;
+  transition: all .15s ease !important;
 }
-.scrum-header .btn-info {
-  background: var(--s-surface2) !important;
-  color: var(--s-blue) !important;
-  border: 1px solid var(--s-border) !important;
-  border-radius: 8px !important;
-  font-weight: 600 !important;
-  font-size: .8rem !important;
-  font-family: var(--s-font) !important;
+.scrum-header .btn-success:hover {
+  border-color: var(--s-teal) !important;
+  background: var(--s-teal-dim) !important;
 }
-.scrum-header .form-control {
-  background: var(--s-surface2) !important;
-  border: 1px solid var(--s-border) !important;
-  color: var(--s-text) !important;
-  border-radius: 8px !important;
-  font-family: var(--s-font) !important;
-  font-size: .85rem !important;
-}
-.scrum-header .form-control::placeholder { color: var(--s-muted) !important; }
-.scrum-header .input-group-append .btn {
-  background: var(--s-surface3) !important;
-  border: 1px solid var(--s-border) !important;
+.scrum-header .btn-outline-danger {
+  background: transparent !important;
   color: var(--s-muted) !important;
-  border-radius: 0 8px 8px 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+  font-size: .8rem !important;
+  font-family: var(--s-font) !important;
+  padding: 7px 12px !important;
+  transition: color .15s ease, background-color .15s ease !important;
+}
+.scrum-header .btn-outline-danger:hover {
+  color: var(--s-danger) !important;
+  background: rgba(207,34,46,.08) !important;
+}
+
+/* ── Search: hairline underline instead of a boxed input ── */
+.scrum-search-group {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.scrum-search-group .form-control {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  border-radius: 0 !important;
+  font-family: var(--s-font) !important;
+  font-size: .83rem !important;
+  padding: 6px 4px 6px 26px !important;
+  height: auto !important;
+  transition: border-color .15s ease !important;
+}
+.scrum-search-group .form-control:focus {
+  border-color: var(--s-teal) !important;
+  box-shadow: none !important;
+}
+.scrum-search-group .form-control::placeholder { color: var(--s-muted) !important; }
+.scrum-search-group .input-group-append { position: absolute; left: 0; top: 0; bottom: 0; }
+.scrum-search-group .input-group-append .btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--s-muted) !important;
+  padding: 0 4px !important;
+  height: 100%;
+  font-size: .78rem !important;
 }
 
 /* ══════════════════════════════════════════════════
@@ -323,6 +485,7 @@ body:not(.dark-mode) .scrum-header .btn-primary { color: #fff !important; }
   box-shadow: 0 1px 2px rgba(0,0,0,.07) !important;
   transition: box-shadow .15s, transform .15s, border-color .15s !important;
   cursor: pointer !important;
+  position: relative !important;
 }
 .task-card:last-child { margin-bottom: 0 !important; }
 .task-card:hover {
@@ -331,6 +494,21 @@ body:not(.dark-mode) .scrum-header .btn-primary { color: #fff !important; }
   transform: translateY(-1px) !important;
 }
 .task-card.dragging { opacity: .45 !important; border-style: dashed !important; }
+
+/* Delete-task shortcut on the card itself (project creator only — same
+   restriction the edit-modal delete used to enforce). Tucked in the corner
+   and only revealed on hover so it doesn't compete with the card content. */
+.task-delete-btn {
+  position: absolute !important; top: 6px !important; right: 6px !important;
+  width: 22px !important; height: 22px !important; border-radius: 50% !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: var(--s-card-bg) !important; border: 1px solid var(--s-border) !important;
+  color: var(--s-muted) !important; font-size: 11px !important; cursor: pointer !important;
+  opacity: 0; transition: opacity .15s, color .15s, border-color .15s !important;
+  z-index: 2;
+}
+.task-card:hover .task-delete-btn { opacity: 1; }
+.task-delete-btn:hover { color: #fff !important; background: #dc3545 !important; border-color: #dc3545 !important; }
 
 /* drag-over highlight on column */
 .tasks-container.drag-over {
@@ -353,6 +531,9 @@ body:not(.dark-mode) .scrum-header .btn-primary { color: #fff !important; }
   border-radius: 4px !important;
   padding: 2px 7px !important;
   letter-spacing: .3px;
+  background: var(--s-surface3) !important;
+  color: var(--s-text) !important;
+  border: 1px solid var(--s-border) !important;
 }
 
 /* ── Priority badges ── */
@@ -372,6 +553,49 @@ body.dark-mode .priority-low    { background: rgba(63,185,80,.12) !important; bo
 .label-design    { background: rgba(130,80,223,.12) !important; color: var(--s-violet) !important; }
 .label-development { background: rgba(26,127,55,.12) !important; color: var(--s-green) !important; }
 .label-review    { background: rgba(9,105,218,.10) !important; color: var(--s-blue) !important; }
+
+/* ── Free-typed label tag input ── */
+.label-tag-box {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 8px !important;
+  background: var(--s-surface3) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 6px !important;
+}
+.label-tag-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: var(--s-surface2, var(--s-surface3)) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  font-size: .72rem !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  padding: 2px 6px 2px 8px !important;
+}
+.label-tag-remove {
+  cursor: pointer !important;
+  margin-left: 6px !important;
+  color: var(--s-muted) !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+.label-tag-remove:hover { color: var(--s-danger) !important; }
+.label-tag-text {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--s-text) !important;
+  flex: 1 1 120px !important;
+  min-width: 120px !important;
+  padding: 3px 2px !important;
+  font-family: var(--s-font) !important;
+  font-size: .82rem !important;
+}
 
 /* ── Empty column state ── */
 .empty-column { color: var(--s-muted) !important; text-align: center; padding: 24px 12px; }
@@ -508,11 +732,96 @@ body.dark-mode .priority-badge.priority-low    { background: rgba(63,185,80,.12)
 /* Detail labels in modal */
 .detail-item label, .text-muted.small.mb-1 { color: var(--s-muted) !important; font-size: .7rem !important; text-transform: uppercase; letter-spacing: .5px; }
 
-/* Activity */
-.activity-item { border-bottom: 1px solid var(--s-border) !important; }
-.activity-avatar { background: var(--s-surface3) !important; color: var(--s-teal) !important; border: 1px solid var(--s-border) !important; font-family: var(--s-mono) !important; }
-.activity-meta { color: var(--s-muted) !important; }
+/* Activity — same one-line-per-entry look as the project activity log */
+.task-activity-log { max-height: 180px; overflow-y: auto; }
+.task-activity-log .activity-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--s-border) !important;
+  transition: background-color .3s ease;
+}
+.task-activity-log .activity-item:last-child { border-bottom: none !important; }
+.task-activity-log .activity-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--s-surface3) !important; color: var(--s-teal) !important;
+  border: 1px solid var(--s-border) !important;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  font-family: var(--s-mono) !important;
+}
+.task-activity-log img.activity-avatar { object-fit: cover; background: none !important; }
+.task-activity-log .activity-content { flex: 1; min-width: 0; }
+.task-activity-log .activity-desc { font-size: 13px; color: var(--s-text) !important; }
+.task-activity-log .activity-comment-text { font-style: italic; color: var(--s-muted) !important; }
+
+/* ── Activity / Comments tabs in the view-task modal ── */
+.task-detail-tabs { border-bottom: 1px solid var(--s-border) !important; margin-bottom: 12px !important; }
+.task-detail-tabs .nav-link {
+  color: var(--s-muted) !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  font-size: .8rem !important;
+  font-weight: 700 !important;
+  padding: 8px 4px !important;
+  margin-right: 20px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+.task-detail-tabs .nav-link:hover { color: var(--s-text) !important; }
+.task-detail-tabs .nav-link.active {
+  color: var(--s-teal) !important;
+  border-bottom-color: var(--s-teal) !important;
+}
+.task-detail-tab-content .task-activity-log { max-height: 180px; }
+.task-activity-log .activity-meta { font-size: 11px; color: var(--s-muted) !important; margin-top: 2px; }
 .comment-input { border-bottom: 1px solid var(--s-border) !important; }
+
+/* ── Comment replies & attachments ── */
+.comment-reply-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--s-surface3) !important; border: 1px solid var(--s-border) !important;
+    border-radius: 8px !important; padding: 6px 10px; margin-bottom: 6px; font-size: 12px;
+}
+.comment-reply-banner-text { color: var(--s-text) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comment-reply-cancel { padding: 0 4px !important; color: var(--s-muted) !important; }
+.comment-attachment-preview {
+    display: flex; align-items: center; font-size: 12px; color: var(--s-text) !important;
+    background: var(--s-surface3) !important; border: 1px solid var(--s-border) !important;
+    border-radius: 8px !important; padding: 5px 10px; margin-top: 6px;
+}
+.comment-attachment-preview span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 2px; }
+
+.activity-reply-quote {
+    display: block; background: var(--s-surface3) !important;
+    border-left: 3px solid var(--s-teal) !important; border-radius: 6px !important;
+    padding: 4px 8px; margin-bottom: 5px; cursor: pointer;
+}
+.activity-reply-quote:hover { background: var(--s-surface2) !important; }
+.activity-reply-quote-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--s-muted) !important; display: flex; align-items: center; gap: 4px;
+}
+.activity-reply-quote-text {
+    display: block; font-size: 12px; font-style: italic; color: var(--s-text) !important;
+    margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.activity-item.activity-item-highlight { background: var(--s-surface3) !important; border-radius: 8px !important; }
+.activity-attachment-chip {
+    display: inline-flex; align-items: center; margin-top: 4px; padding: 4px 8px;
+    background: var(--s-surface3) !important; border: 1px solid var(--s-border) !important;
+    border-radius: 6px !important; font-size: 12px; color: var(--s-text) !important; text-decoration: none !important;
+    max-width: 100%;
+}
+.activity-attachment-chip:hover { border-color: var(--s-teal) !important; }
+.activity-attachment-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-attachment-thumb {
+    width: 48px; height: 48px; object-fit: cover; border-radius: 6px !important;
+    border: 1px solid var(--s-border) !important; margin-top: 4px; cursor: pointer; display: block;
+}
+.activity-comment-reply-btn {
+    font-size: 11px; color: var(--s-muted) !important; background: none !important; border: none !important;
+    padding: 0; margin-top: 2px; cursor: pointer;
+}
+.activity-comment-reply-btn:hover { color: var(--s-teal) !important; text-decoration: underline; }
 
 /* Modal form controls */
 .modal .form-control, .modal .form-control:focus {
@@ -796,6 +1105,139 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
 }
 .board-settings:hover { border-color: var(--s-teal) !important; color: var(--s-teal) !important; background: var(--s-teal-dim) !important; }
 
+/* ── Calendar Timeline ─────────────────────────────────────────── */
+.calendar-card {
+  background: var(--s-surface) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+.calendar-card-header {
+  background: var(--s-surface2) !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px !important;
+}
+.calendar-nav { display: flex; align-items: center; gap: 10px; }
+.calendar-nav-btn {
+  background: var(--s-surface) !important;
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-text) !important;
+  width: 32px; height: 32px;
+  border-radius: 8px !important;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 !important;
+}
+.calendar-nav-btn:hover { border-color: var(--s-teal) !important; color: var(--s-teal) !important; background: var(--s-teal-dim) !important; }
+.calendar-title {
+  font-family: var(--s-font) !important;
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+  color: var(--s-text) !important;
+  min-width: 160px;
+  text-align: center;
+}
+.calendar-today-btn {
+  border: 1px solid var(--s-border) !important;
+  color: var(--s-muted) !important;
+  font-size: .75rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 5px 12px !important;
+}
+.calendar-today-btn:hover { border-color: var(--s-teal) !important; color: var(--s-teal) !important; background: var(--s-teal-dim) !important; }
+.calendar-legend { display: flex; align-items: center; gap: 14px; }
+.calendar-legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .72rem !important; color: var(--s-muted) !important; font-weight: 600;
+}
+.calendar-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.priority-urgent-dot { background: var(--s-danger); }
+.priority-high-dot   { background: var(--s-warning); }
+.priority-medium-dot { background: var(--s-blue); }
+.priority-low-dot    { background: var(--s-green); }
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--s-surface2) !important;
+  border-bottom: 1px solid var(--s-border) !important;
+}
+.calendar-weekdays div {
+  text-align: center;
+  padding: 8px 4px;
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--s-muted) !important;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.calendar-day-cell {
+  min-height: 110px;
+  border-right: 1px solid var(--s-border) !important;
+  border-bottom: 1px solid var(--s-border) !important;
+  padding: 6px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--s-surface) !important;
+  transition: background-color .15s ease;
+}
+.calendar-day-cell:nth-child(7n) { border-right: none !important; }
+.calendar-day-cell.calendar-day-outside { background: var(--s-surface2) !important; }
+.calendar-day-cell.calendar-day-outside .calendar-day-number { color: var(--s-muted) !important; opacity: .5; }
+.calendar-day-cell.calendar-day-today { background: var(--s-teal-dim) !important; }
+.calendar-day-number {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--s-text) !important;
+  font-family: var(--s-mono) !important;
+}
+.calendar-day-cell.calendar-day-today .calendar-day-number {
+  color: var(--s-teal) !important;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+}
+.calendar-day-tasks { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.calendar-task-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s-surface3) !important;
+  border: 1px solid var(--s-border) !important;
+  border-radius: 5px !important;
+  padding: 2px 6px;
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--s-text) !important;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all .15s ease;
+}
+.calendar-task-chip:hover { border-color: var(--s-teal) !important; background: var(--s-teal-dim) !important; }
+.calendar-task-chip .calendar-dot { flex-shrink: 0; }
+.calendar-task-chip.task-done { opacity: .55; text-decoration: line-through; }
+.calendar-more-btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--s-muted) !important;
+  font-size: .68rem !important;
+  font-weight: 700 !important;
+  text-align: left;
+  padding: 1px 6px !important;
+  cursor: pointer;
+}
+.calendar-more-btn:hover { color: var(--s-teal) !important; }
+body.dark-mode .calendar-day-cell.calendar-day-outside { background: rgba(0,0,0,.15) !important; }
+
   </style>
 </head>
 <body class="hold-transition sidebar-mini theme-scrum">
@@ -807,10 +1249,18 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
     <div class="scrum-main-content" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
       <!-- Scrum Header -->
       <div class="scrum-header">
-        <div class="d-flex align-items-center">
-          <h3 class="mb-0" id="currentProjectTitle">Select a Project</h3>
+        <div class="scrum-header-group scrum-header-meta">
+          <h3 class="mb-0" id="currentProjectTitle" title="Select a Project">Select a Project</h3>
           <span class="badge badge-secondary ml-2" id="currentProjectStatus">No Project</span>
-          <div class="btn-group ml-3">
+          <div class="project-members-stack ml-3" id="projectMembersStack" title="View project members">
+            <!-- Member avatars loaded here -->
+          </div>
+          <button type="button" class="btn pm-add-btn ml-1" id="addProjectMemberBtn" title="Add member">
+            <i class="fas fa-plus"></i>
+            <span class="pm-request-badge" id="pmRequestBadge" style="display:none;">0</span>
+          </button>
+          <span class="scrum-header-divider"></span>
+          <div class="btn-group">
             <button type="button" class="btn btn-outline-primary dropdown-toggle" data-toggle="dropdown">
               <i class="fas fa-project-diagram mr-1"></i> Projects
             </button>
@@ -818,35 +1268,45 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
               <!-- Projects will be loaded here -->
             </div>
           </div>
-          <button class="btn btn-outline-secondary ml-2" id="addNewBoardBtn" style="border-radius:8px;font-size:.8rem;font-weight:500;">
+          <button class="btn btn-outline-secondary" id="addNewBoardBtn">
               <i class="fas fa-plus mr-2"></i>Add New Board
             </button>
+          <button class="btn btn-outline-danger" id="deleteProjectBtn" style="display:none;" title="Delete this project">
+              <i class="fas fa-trash-alt mr-2"></i>Delete Project
+            </button>
         </div>
-        <div class="d-flex align-items-center">
-          <div class="input-group mr-3" style="width: 300px;">
+        <div class="scrum-header-group scrum-header-actions">
+          <div class="input-group scrum-search-group">
             <input type="text" class="form-control" id="taskSearch" placeholder="Search tasks...">
             <div class="input-group-append">
-              <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+              <button class="btn" type="button" id="searchBtn">
                 <i class="fas fa-search"></i>
               </button>
             </div>
           </div>
-          <div class="btn-group mr-2">
+          <span class="scrum-header-divider"></span>
+          <div class="scrum-view-toolbar">
             <button type="button" class="btn btn-outline-primary" id="filterBtn">
               <i class="fas fa-filter"></i> Filter
             </button>
             <button type="button" class="btn btn-outline-primary" id="viewMyTasksBtn">
               <i class="fas fa-tasks"></i> My Tasks
             </button>
+            <button type="button" class="btn btn-outline-primary" id="viewCalendarBtn">
+              <i class="fas fa-calendar-alt"></i> Calendar
+            </button>
           </div>
+          <span class="scrum-header-divider"></span>
+          <?php if ($canCreateProject): ?>
+          <button class="btn btn-success" id="newProjectBtn">
+            <i class="fas fa-plus mr-1"></i> New Project
+          </button>
+          <?php endif; ?>
           <?php if ($canAssignTasks): ?>
           <button class="btn btn-primary" id="addTaskBtn">
             <i class="fas fa-plus mr-1"></i> Add Task
           </button>
           <?php endif; ?>
-          <button class="btn btn-success ml-2" id="newProjectBtn">
-            <i class="fas fa-plus mr-1"></i> New Project
-          </button>
         </div>
       </div>
 
@@ -882,6 +1342,46 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
                       <!-- My tasks will be loaded here -->
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Timeline Section -->
+      <div class="container-fluid mt-4" id="calendarSection" style="display: none;">
+        <div class="row">
+          <div class="col-12">
+            <div class="card calendar-card">
+              <div class="card-header calendar-card-header">
+                <div class="calendar-nav">
+                  <button type="button" class="btn calendar-nav-btn" id="calendarPrevBtn" title="Previous month">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <h3 class="calendar-title mb-0" id="calendarMonthLabel">Month Year</h3>
+                  <button type="button" class="btn calendar-nav-btn" id="calendarNextBtn" title="Next month">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary calendar-today-btn" id="calendarTodayBtn">Today</button>
+                </div>
+                <div class="calendar-legend">
+                  <span class="calendar-legend-item"><span class="calendar-dot priority-urgent-dot"></span>Urgent</span>
+                  <span class="calendar-legend-item"><span class="calendar-dot priority-high-dot"></span>High</span>
+                  <span class="calendar-legend-item"><span class="calendar-dot priority-medium-dot"></span>Medium</span>
+                  <span class="calendar-legend-item"><span class="calendar-dot priority-low-dot"></span>Low</span>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="calendar-weekdays">
+                  <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                  <!-- Calendar day cells rendered here -->
+                </div>
+                <div class="calendar-empty-state text-center py-5" id="calendarEmptyState" style="display:none;">
+                  <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                  <p class="text-muted">Select a project to see its task timeline.</p>
                 </div>
               </div>
             </div>
@@ -964,28 +1464,10 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
           </div>
           
           <div class="form-group">
-            <label>Labels</label>
-            <div class="d-flex flex-wrap">
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="labelRevise" value="revise">
-                <label class="custom-control-label" for="labelRevise">Revise</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="labelUrgent" value="urgent">
-                <label class="custom-control-label" for="labelUrgent">Urgent</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="labelDesign" value="design">
-                <label class="custom-control-label" for="labelDesign">Design</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="labelDevelopment" value="development">
-                <label class="custom-control-label" for="labelDevelopment">Development</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="labelReview" value="review">
-                <label class="custom-control-label" for="labelReview">Review</label>
-              </div>
+            <label for="taskLabelsInput">Labels</label>
+            <div class="label-tag-box" id="taskLabelsBox">
+              <div id="taskLabelsChips"></div>
+              <input type="text" class="label-tag-text" id="taskLabelsInput" placeholder="Type a label, press Enter">
             </div>
           </div>
         </form>
@@ -1062,33 +1544,14 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
           
           <div class="form-group">
             <label>Labels</label>
-            <div class="d-flex flex-wrap">
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="editLabelRevise" value="revise">
-                <label class="custom-control-label" for="editLabelRevise">Revise</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="editLabelUrgent" value="urgent">
-                <label class="custom-control-label" for="editLabelUrgent">Urgent</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="editLabelDesign" value="design">
-                <label class="custom-control-label" for="editLabelDesign">Design</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="editLabelDevelopment" value="development">
-                <label class="custom-control-label" for="editLabelDevelopment">Development</label>
-              </div>
-              <div class="custom-control custom-checkbox mr-3 mb-2">
-                <input type="checkbox" class="custom-control-input" id="editLabelReview" value="review">
-                <label class="custom-control-label" for="editLabelReview">Review</label>
-              </div>
+            <div class="label-tag-box" id="editTaskLabelsBox">
+              <div id="editTaskLabelsChips"></div>
+              <input type="text" class="label-tag-text" id="editTaskLabelsInput" placeholder="Type a label, press Enter">
             </div>
           </div>
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-danger mr-auto" id="deleteTaskBtn">Delete Task</button>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-primary" id="updateTaskBtn">Update Task</button>
       </div>
@@ -1283,13 +1746,55 @@ body.dark-mode #addCommentBtn { color: #0f2d1e !important; }
         <hr style="border-color:var(--s-border);">
 
         <div class="form-group">
-          <label class="text-muted small"><i class="fas fa-comments mr-1"></i>Activity &amp; Comments</label>
-          <div id="activityTimeline" class="mb-3" style="max-height:180px;overflow-y:auto;"></div>
-          <textarea class="form-control" id="commentText" rows="2" placeholder="Add a comment..." style="resize:none;"></textarea>
-          <div class="mt-2 text-right">
-            <button class="btn btn-primary btn-sm" id="addCommentBtn">
-              <i class="fas fa-paper-plane mr-1"></i> Comment
-            </button>
+          <ul class="nav nav-tabs task-detail-tabs" id="taskDetailTabs" role="tablist">
+            <li class="nav-item">
+              <a class="nav-link active" id="taskActivityTabBtn" data-toggle="tab" href="#taskActivityTabPane" role="tab" aria-controls="taskActivityTabPane" aria-selected="true">
+                <i class="fas fa-history mr-1"></i>Activity
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="taskCommentsTabBtn" data-toggle="tab" href="#taskCommentsTabPane" role="tab" aria-controls="taskCommentsTabPane" aria-selected="false">
+                <i class="fas fa-comments mr-1"></i>Comments
+                <span class="badge badge-pill badge-secondary ml-1" id="taskCommentsCount" style="display:none;">0</span>
+              </a>
+            </li>
+          </ul>
+          <div class="tab-content task-detail-tab-content" id="taskDetailTabsContent">
+            <div class="tab-pane fade show active" id="taskActivityTabPane" role="tabpanel" aria-labelledby="taskActivityTabBtn">
+              <div id="activityTimeline" class="mb-0 task-activity-log"></div>
+            </div>
+            <div class="tab-pane fade" id="taskCommentsTabPane" role="tabpanel" aria-labelledby="taskCommentsTabBtn">
+              <div id="commentsTimeline" class="mb-3 task-activity-log"></div>
+
+              <div id="commentReplyBanner" class="comment-reply-banner" style="display:none;">
+                <div class="comment-reply-banner-text">
+                  <i class="fas fa-reply mr-1"></i>Replying to <strong id="commentReplyAuthor"></strong>: <span id="commentReplySnippet"></span>
+                </div>
+                <button type="button" class="btn btn-sm btn-link comment-reply-cancel" id="cancelCommentReplyBtn" title="Cancel reply">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <textarea class="form-control" id="commentText" rows="2" placeholder="Add a comment..." style="resize:none;"></textarea>
+
+              <div id="commentAttachmentPreview" class="comment-attachment-preview" style="display:none;">
+                <i class="fas fa-paperclip mr-1"></i><span id="commentAttachmentName"></span>
+                <button type="button" class="btn btn-sm btn-link comment-reply-cancel" id="removeCommentAttachmentBtn" title="Remove attachment">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <input type="file" id="commentAttachmentInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp" style="display:none;">
+
+              <div class="mt-2 d-flex justify-content-between align-items-center">
+                <button class="btn btn-sm btn-outline-secondary" id="attachCommentFileBtn" type="button" title="Attach a file (PDF, Word, Excel, or image)">
+                  <i class="fas fa-paperclip"></i>
+                </button>
+                <button class="btn btn-primary btn-sm" id="addCommentBtn">
+                  <i class="fas fa-paper-plane mr-1"></i> Comment
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1313,8 +1818,13 @@ class Scrumboard {
         this.tasks = [];
         this.boards = [];
         this.canAssignTasks = <?php echo $canAssignTasks ? 'true' : 'false'; ?>;
+        this.canCreateProject = <?php echo $canCreateProject ? 'true' : 'false'; ?>;
         this.currentEmpId = <?= (int)$_SESSION['emp_id'] ?>;
         this.selectedBoardId = null;
+        this.commentReplyTo = null;
+        this.commentAttachmentFile = null;
+        this.calendarDate = new Date();
+        this.calendarDate.setDate(1);
         this.init();
     }
     
@@ -1323,6 +1833,52 @@ class Scrumboard {
         this.setupEventListeners();
         this.setupDragAndDrop();
         this.handleUrlParameters();
+        this.setupLabelTagInput('#taskLabelsInput', '#taskLabelsChips');
+        this.setupLabelTagInput('#editTaskLabelsInput', '#editTaskLabelsChips');
+    }
+
+    // ── Free-typed label tags ──────────────────────────────────────────
+    // Labels used to be a fixed checkbox list; now the user can just type
+    // any label they want and press Enter (or comma) to turn it into a chip.
+    // Chips are collected back into the same comma-separated string the
+    // backend already expects, so no server-side change is needed.
+    setupLabelTagInput(inputSelector, chipsSelector) {
+        $(document).on('keydown', inputSelector, (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const $input = $(e.currentTarget);
+                this.addLabelTag(chipsSelector, $input.val());
+                $input.val('');
+            } else if (e.key === 'Backspace' && $(e.currentTarget).val() === '') {
+                $(chipsSelector).find('.label-tag-chip').last().remove();
+            }
+        });
+    }
+
+    addLabelTag(chipsSelector, value) {
+        value = (value || '').trim();
+        if (!value) return;
+        const existing = this.getLabelTags(chipsSelector).map(v => v.toLowerCase());
+        if (existing.includes(value.toLowerCase())) return;
+
+        const $chip = $('<span>').addClass('label-tag-chip').attr('data-value', value).text(value);
+        const $remove = $('<span>').addClass('label-tag-remove').html('&times;').on('click', () => $chip.remove());
+        $chip.append($remove);
+        $(chipsSelector).append($chip);
+    }
+
+    getLabelTags(chipsSelector) {
+        return $(chipsSelector).find('.label-tag-chip').map(function () {
+            return $(this).attr('data-value');
+        }).get();
+    }
+
+    setLabelTags(chipsSelector, labelsCsvOrArray) {
+        $(chipsSelector).empty();
+        const arr = Array.isArray(labelsCsvOrArray)
+            ? labelsCsvOrArray
+            : (labelsCsvOrArray ? labelsCsvOrArray.split(',') : []);
+        arr.map(l => l.trim()).filter(Boolean).forEach(l => this.addLabelTag(chipsSelector, l));
     }
     
     handleUrlParameters() {
@@ -1338,6 +1894,8 @@ class Scrumboard {
         // Project buttons
         $('#newProjectBtn').click(() => this.showNewProjectModal());
         $('#saveProjectBtn').click(() => this.createProject());
+        $('#projectMembersStack').click(() => this.showProjectMembersModal());
+        $('#addProjectMemberBtn').click(() => this.showAddMemberModal());
         
         // Task buttons
         $('#addTaskBtn').click(() => this.showAddTaskModal());
@@ -1346,6 +1904,18 @@ class Scrumboard {
         // Navigation buttons
         $('#projectsMonitoringBtn').click(() => this.toggleProjectsMonitoring());
         $('#viewMyTasksBtn').click(() => this.toggleMyTasks());
+        $('#viewCalendarBtn').click(() => this.toggleCalendarView());
+        $('#calendarPrevBtn').click(() => this.changeCalendarMonth(-1));
+        $('#calendarNextBtn').click(() => this.changeCalendarMonth(1));
+        $('#calendarTodayBtn').click(() => this.goToCalendarToday());
+        $(document).on('click', '.calendar-task-chip', (e) => {
+            const taskId = $(e.currentTarget).data('task-id');
+            if (taskId) this.viewTask(taskId);
+        });
+        $(document).on('click', '.calendar-more-btn', (e) => {
+            const dateKey = $(e.currentTarget).data('date-key');
+            if (dateKey) this.showCalendarDayTasks(dateKey);
+        });
         
         // Search
         $('#searchBtn').click(() => this.searchTasks());
@@ -1356,13 +1926,28 @@ class Scrumboard {
         // Board settings
         $('#boardSettingsBtn').click(() => this.showBoardSettings());
         $('#addNewBoardBtn').click(() => this.showAddBoardModal());
+        $('#deleteProjectBtn').click(() => this.confirmDeleteProject());
         $('#manageBoardsBtn').click(() => this.showManageBoards());
         $('#resetBoardsBtn').click(() => this.resetBoards());
         $('#saveBoardBtn').click(() => this.saveBoard());
         $('#deleteBoardBtn').click(() => this.deleteBoard());
         $('#updateTaskBtn').click(() => this.updateTask());
-        $('#deleteTaskBtn').click(() => this.deleteTask());
         $('#editTaskBtn').click(() => this.editCurrentTask());
+        $('#addCommentBtn').click(() => this.addComment());
+        $('#commentText').on('keydown', (e) => {
+            // Ctrl/Cmd+Enter submits, same convenience as most comment boxes
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                this.addComment();
+            }
+        });
+        $('#attachCommentFileBtn').click(() => $('#commentAttachmentInput').trigger('click'));
+        $('#commentAttachmentInput').on('change', (e) => {
+            const file = e.target.files[0];
+            if (file) this.setCommentAttachment(file);
+        });
+        $('#removeCommentAttachmentBtn').click(() => this.setCommentAttachment(null));
+        $('#cancelCommentReplyBtn').click(() => this.cancelCommentReply());
         // Board actions
         $(document).on('click', '.board-settings', (e) => {
             const boardId = $(e.currentTarget).data('board-id');
@@ -1374,7 +1959,7 @@ class Scrumboard {
         
         // Task card click handler - KEEP THIS ONE
         $(document).on('click', '.task-card', (e) => {
-            if ($(e.target).closest('.task-priority, .task-label').length) {
+            if ($(e.target).closest('.task-priority, .task-label, .task-delete-btn').length) {
                 return;
             }
             
@@ -1382,8 +1967,14 @@ class Scrumboard {
             this.viewTask(taskId);
         });
 
-        $('#editTaskBtn').click(() => this.editCurrentTask());
-        
+        // Delete-task shortcut on the card itself (see createTaskHtml —
+        // only rendered for the project creator to begin with).
+        $(document).on('click', '.task-delete-btn', (e) => {
+            e.stopPropagation();
+            const taskId = $(e.currentTarget).data('task-id');
+            this.deleteTaskById(taskId);
+        });
+
         $('#addTaskModal').on('show.bs.modal', function () {
             $(this).removeAttr('aria-hidden');
             $('body').addClass('modal-open');
@@ -1426,12 +2017,6 @@ class Scrumboard {
         // Set labels
         this.setEditTaskLabels(task.labels);
 
-        // Only the project creator is allowed to delete tasks (enforced
-        // again server-side in task_ajax.php — this just keeps the button
-        // from being shown to people who can't use it).
-        const isProjectCreator = this.currentProject && (this.currentProject.created_by == this.currentEmpId);
-        $('#deleteTaskBtn').toggle(!!isProjectCreator);
-
         // Show the modal
         $('#editTaskModal').modal('show');
     }
@@ -1462,27 +2047,13 @@ class Scrumboard {
 
     // Helper method to set labels in edit form
     setEditTaskLabels(labelsString) {
-        // Clear all checkboxes first
-        $('#editLabelRevise, #editLabelUrgent, #editLabelDesign, #editLabelDevelopment, #editLabelReview').prop('checked', false);
-        
-        if (labelsString) {
-            const labels = labelsString.split(',');
-            labels.forEach(label => {
-                $(`#editLabel${label.charAt(0).toUpperCase() + label.slice(1)}`).prop('checked', true);
-            });
-        }
+        this.setLabelTags('#editTaskLabelsChips', labelsString);
     }
 
     // Add update task method
     async updateTask() {
         const taskId = $('#editTaskId').val();
-        const labels = [];
-        
-        if ($('#editLabelRevise').is(':checked')) labels.push('revise');
-        if ($('#editLabelUrgent').is(':checked')) labels.push('urgent');
-        if ($('#editLabelDesign').is(':checked')) labels.push('design');
-        if ($('#editLabelDevelopment').is(':checked')) labels.push('development');
-        if ($('#editLabelReview').is(':checked')) labels.push('review');
+        const labels = this.getLabelTags('#editTaskLabelsChips');
         
         const formData = {
             action: 'update_task',
@@ -1535,9 +2106,7 @@ class Scrumboard {
     }
 
     // Add delete task method
-    async deleteTask() {
-        const taskId = $('#editTaskId').val();
-        
+    async deleteTaskById(taskId) {
         Swal.fire({
             title: 'Are you sure?',
             text: "This task will be permanently deleted!",
@@ -1555,7 +2124,10 @@ class Scrumboard {
                     });
 
                     if (response.success) {
+                        // In case the task's own detail/edit modal happens
+                        // to be open when it's deleted from the card.
                         $('#editTaskModal').modal('hide');
+                        $('#viewTaskModal').modal('hide');
                         await this.loadProjectTasks();
                         this.showSuccess('Task deleted successfully');
                     } else {
@@ -1568,6 +2140,71 @@ class Scrumboard {
             }
         });
     }
+
+    // ── Two-step delete verification for projects ──────────────────────
+    // Deleting a project wipes its boards, tasks, and membership, so a
+    // single "are you sure" isn't enough. Step 1 is a plain warning; step 2
+    // only unlocks once the person retypes the project's own name, the
+    // same "prove you mean it" pattern used for destructive actions like
+    // repo deletion. Both steps must pass before the request is sent.
+    async confirmDeleteProject() {
+        if (!this.currentProject) return;
+        const project = this.currentProject;
+
+        const step1 = await Swal.fire({
+            title: 'Delete this project?',
+            html: `This permanently deletes <strong>${project.project_name}</strong>, including all of its boards, tasks, and member access. This cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Continue',
+            cancelButtonText: 'Cancel'
+        });
+        if (!step1.isConfirmed) return;
+
+        const step2 = await Swal.fire({
+            title: 'Confirm deletion',
+            html: `Type <strong>${project.project_name}</strong> below to confirm.`,
+            input: 'text',
+            inputPlaceholder: project.project_name,
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Delete project',
+            cancelButtonText: 'Cancel',
+            inputValidator: (value) => {
+                if (value !== project.project_name) {
+                    return 'That doesn\'t match the project name';
+                }
+            }
+        });
+        if (!step2.isConfirmed) return;
+
+        await this.deleteProjectRequest(project.project_id);
+    }
+
+    async deleteProjectRequest(projectId) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'delete_project',
+                project_id: projectId
+            });
+
+            if (response.success) {
+                this.showSuccess('Project deleted successfully');
+                this.currentProject = null;
+                this.currentProjectId = null;
+                $('#deleteProjectBtn').hide();
+                await this.loadProjects();
+            } else {
+                this.showError(response.error || 'Failed to delete project');
+            }
+        } catch (error) {
+            console.error('Error deleting project:', error);
+            this.showError('Failed to delete project');
+        }
+    }
+
     toggleProjectsMonitoring() {
         const monitoringSection = $('#projectsMonitoring');
         const isVisible = monitoringSection.is(':visible');
@@ -1579,6 +2216,7 @@ class Scrumboard {
             monitoringSection.show();
             $('#scrumBoardContent').hide();
             $('#myTasksSection').hide();
+            $('#calendarSection').hide();
             this.loadProjectsMonitoring();
         }
     }
@@ -1590,12 +2228,163 @@ class Scrumboard {
         if (isVisible) {
             myTasksSection.hide();
             $('#scrumBoardContent').show();
+            $('#viewMyTasksBtn').removeClass('active');
         } else {
             myTasksSection.show();
             $('#scrumBoardContent').hide();
             $('#projectsMonitoring').hide();
+            $('#calendarSection').hide();
+            $('#viewMyTasksBtn').addClass('active');
+            $('#viewCalendarBtn').removeClass('active');
             this.loadMyTasks();
         }
+    }
+
+    toggleCalendarView() {
+        const calendarSection = $('#calendarSection');
+        const isVisible = calendarSection.is(':visible');
+
+        if (isVisible) {
+            calendarSection.hide();
+            $('#scrumBoardContent').show();
+            $('#viewCalendarBtn').removeClass('active');
+        } else {
+            calendarSection.show();
+            $('#scrumBoardContent').hide();
+            $('#projectsMonitoring').hide();
+            $('#myTasksSection').hide();
+            $('#viewCalendarBtn').addClass('active');
+            $('#viewMyTasksBtn').removeClass('active');
+            this.renderCalendar();
+        }
+    }
+
+    changeCalendarMonth(delta) {
+        this.calendarDate.setMonth(this.calendarDate.getMonth() + delta);
+        this.renderCalendar();
+    }
+
+    goToCalendarToday() {
+        this.calendarDate = new Date();
+        this.calendarDate.setDate(1);
+        this.renderCalendar();
+    }
+
+    // Formats a Date as a local YYYY-MM-DD key (avoids UTC off-by-one issues)
+    dateKey(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    renderCalendar() {
+        const monthLabel = this.calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        $('#calendarMonthLabel').text(monthLabel);
+
+        const grid = $('#calendarGrid');
+        grid.empty();
+
+        if (!this.currentProjectId) {
+            grid.hide();
+            $('#calendarEmptyState').text('Select a project to see its task timeline.').show();
+            return;
+        }
+        $('#calendarEmptyState').hide();
+        grid.show();
+
+        // Group this project's tasks by due date (YYYY-MM-DD)
+        const tasksByDate = {};
+        (this.tasks || []).forEach(task => {
+            if (!task.due_date) return;
+            const key = task.due_date.substring(0, 10); // handles 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS'
+            if (!tasksByDate[key]) tasksByDate[key] = [];
+            tasksByDate[key].push(task);
+        });
+
+        const year = this.calendarDate.getFullYear();
+        const month = this.calendarDate.getMonth();
+        const firstOfMonth = new Date(year, month, 1);
+        const startOffset = firstOfMonth.getDay(); // 0=Sun
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const gridStart = new Date(year, month, 1 - startOffset);
+
+        const todayKey = this.dateKey(new Date());
+        const totalCells = 42; // 6 weeks, keeps the grid a stable rectangle
+
+        for (let i = 0; i < totalCells; i++) {
+            const cellDate = new Date(gridStart);
+            cellDate.setDate(gridStart.getDate() + i);
+            const key = this.dateKey(cellDate);
+            const isOutside = cellDate.getMonth() !== month;
+            const isToday = key === todayKey;
+
+            const $cell = $('<div>').addClass('calendar-day-cell');
+            if (isOutside) $cell.addClass('calendar-day-outside');
+            if (isToday) $cell.addClass('calendar-day-today');
+
+            const $num = $('<div>').addClass('calendar-day-number').text(cellDate.getDate());
+            $cell.append($num);
+
+            const dayTasks = tasksByDate[key] || [];
+            if (dayTasks.length > 0) {
+                const $taskList = $('<div>').addClass('calendar-day-tasks');
+                const maxVisible = 3;
+                dayTasks.slice(0, maxVisible).forEach(task => {
+                    const priority = task.priority || 'medium';
+                    const isDone = task.status === 'done';
+                    const $chip = $('<div>')
+                        .addClass(`calendar-task-chip priority-${priority}${isDone ? ' task-done' : ''}`)
+                        .attr('data-task-id', task.task_id)
+                        .attr('title', task.title)
+                        .append($('<span>').addClass(`calendar-dot priority-${priority}-dot`))
+                        .append($('<span>').text(task.title));
+                    $taskList.append($chip);
+                });
+                if (dayTasks.length > maxVisible) {
+                    const $more = $('<button>')
+                        .addClass('calendar-more-btn')
+                        .attr('data-date-key', key)
+                        .text(`+${dayTasks.length - maxVisible} more`);
+                    $taskList.append($more);
+                }
+                $cell.append($taskList);
+            }
+
+            grid.append($cell);
+        }
+    }
+
+    showCalendarDayTasks(dateKey) {
+        const dayTasks = (this.tasks || []).filter(t => t.due_date && t.due_date.substring(0, 10) === dateKey);
+        if (dayTasks.length === 0) return;
+
+        const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString(undefined, {
+            weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+        });
+
+        const listHtml = dayTasks.map(task => {
+            const priority = task.priority || 'medium';
+            return `
+                <div class="calendar-task-chip priority-${priority}" data-task-id="${task.task_id}" style="width:100%; margin-bottom:6px; white-space:normal;">
+                    <span class="calendar-dot priority-${priority}-dot"></span>
+                    <span>${task.title}</span>
+                </div>`;
+        }).join('');
+
+        Swal.fire({
+            title: dateLabel,
+            html: `<div style="text-align:left; max-height:320px; overflow-y:auto;">${listHtml}</div>`,
+            showConfirmButton: false,
+            showCloseButton: true
+        });
+
+        // Let clicks inside the SweetAlert open the task modal too
+        $('.swal2-html-container .calendar-task-chip').off('click').on('click', (e) => {
+            const taskId = $(e.currentTarget).data('task-id');
+            Swal.close();
+            if (taskId) this.viewTask(taskId);
+        });
     }
 
     searchTasks() {
@@ -1744,15 +2533,20 @@ class Scrumboard {
     }
 
     showNoProjectsMessage() {
+        $('#deleteProjectBtn').hide();
         const container = $('.columns-container');
+        const createBtn = this.canCreateProject
+            ? `<button class="btn btn-primary" onclick="scrumboard.showNewProjectModal()">
+                   <i class="fas fa-plus mr-1"></i> Create Your First Project
+               </button>`
+            : `<p class="text-muted"><small>Ask an Administrator, Head, Manager, or Unit Head to create a project and add you as a member.</small></p>`;
+
         container.html(`
             <div class="col-12 text-center py-5">
                 <i class="fas fa-project-diagram fa-3x text-muted mb-3"></i>
                 <h4 class="text-muted">No Projects Found</h4>
                 <p class="text-muted">You are not a member of any projects yet.</p>
-                <button class="btn btn-primary" onclick="scrumboard.showNewProjectModal()">
-                    <i class="fas fa-plus mr-1"></i> Create Your First Project
-                </button>
+                ${createBtn}
             </div>
         `);
     }
@@ -1801,16 +2595,24 @@ class Scrumboard {
             $('#currentProjectStatus').removeClass('badge-secondary badge-success badge-warning badge-danger')
                 .addClass(this.getStatusBadgeClass(this.currentProject.status));
             $('#currentProjectId').val(projectId);
+
+            // Only the project's creator may delete it (also enforced server-side)
+            const isCreator = String(this.currentProject.created_by) === String(this.currentEmpId);
+            $('#deleteProjectBtn').toggle(isCreator);
             
             // Load boards and tasks
             await this.loadProjectBoards();
             await this.loadProjectTasks();
             await this.loadAssignableEmployees();
+            await this.loadProjectMembers(projectId);
+            await this.loadPendingJoinRequests(projectId);
             
             // Hide other sections
             $('#projectsMonitoring').hide();
             $('#myTasksSection').hide();
+            $('#calendarSection').hide();
             $('#scrumBoardContent').show();
+            $('#viewMyTasksBtn, #viewCalendarBtn').removeClass('active');
             
         } catch (error) {
             this.showError('Failed to load project');
@@ -1826,6 +2628,397 @@ class Scrumboard {
         };
         return classes[status] || 'badge-secondary';
     }
+
+    async loadProjectMembers(projectId) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'get_project_details',
+                project_id: projectId
+            });
+
+            if (response.success && response.project) {
+                this.currentProjectMembers = response.project.members || [];
+                this.renderProjectMembersStack(this.currentProjectMembers);
+            } else {
+                this.currentProjectMembers = [];
+                $('#projectMembersStack').empty();
+            }
+        } catch (error) {
+            console.error('Error loading project members:', error);
+            this.currentProjectMembers = [];
+            $('#projectMembersStack').empty();
+        }
+    }
+
+    renderProjectMembersStack(members) {
+        const stack = $('#projectMembersStack');
+        stack.empty();
+
+        if (!members || members.length === 0) {
+            return;
+        }
+
+        const maxShown = 5;
+        members.slice(0, maxShown).forEach(member => {
+            const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Unknown';
+            const initials = ((member.first_name ? member.first_name[0] : '') + (member.last_name ? member.last_name[0] : '')).toUpperCase() || '?';
+            const title = `${name}${member.role ? ' (' + member.role + ')' : ''}`;
+
+            if (member.picture) {
+                const $img = $('<img>')
+                    .addClass('pm-avatar')
+                    .attr({ src: `../dist/img/employees/${member.picture}`, alt: name, title: title });
+                $img.on('error', function() {
+                    $(this).replaceWith(
+                        $('<div>').addClass('pm-avatar').attr('title', title).text(initials)
+                    );
+                });
+                stack.append($img);
+            } else {
+                stack.append(
+                    $('<div>').addClass('pm-avatar').attr('title', title).text(initials)
+                );
+            }
+        });
+
+        if (members.length > maxShown) {
+            stack.append(
+                $('<div>').addClass('pm-more').attr('title', `${members.length - maxShown} more`).text(`+${members.length - maxShown}`)
+            );
+        }
+    }
+
+    showProjectMembersModal() {
+        const members = this.currentProjectMembers || [];
+
+        if (members.length === 0) {
+            Swal.fire('No Members', 'This project has no members yet.', 'info');
+            return;
+        }
+
+        const rows = members.map(member => {
+            const name = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Unknown';
+            const initials = ((member.first_name ? member.first_name[0] : '') + (member.last_name ? member.last_name[0] : '')).toUpperCase() || '?';
+            const avatarHtml = member.picture
+                ? `<img src="../dist/img/employees/${member.picture}" alt="${name}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:10px;">`
+                : `<div style="width:36px;height:36px;border-radius:50%;background:#3498db;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;margin-right:10px;">${initials}</div>`;
+            const roleLabel = member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : 'Member';
+            const removeBtn = member.role === 'owner'
+                ? ''
+                : `<button type="button" class="pm-remove-btn" data-emp-id="${member.emp_id}" title="Remove from project" style="background:none;border:none;color:#dc3545;margin-left:8px;font-size:.9rem;cursor:pointer;">
+                       <i class="fas fa-user-minus"></i>
+                   </button>`;
+
+            return `
+                <div class="pm-member-row" style="display:flex;align-items:center;padding:8px 4px;border-bottom:1px solid #eee;">
+                    ${avatarHtml}
+                    <div style="text-align:left;flex:1;">
+                        <div style="font-weight:600;">${name}</div>
+                    </div>
+                    <span class="badge badge-secondary">${roleLabel}</span>
+                    ${removeBtn}
+                </div>
+            `;
+        }).join('');
+
+        Swal.fire({
+            title: `Project Members (${members.length})`,
+            html: `<div style="max-height:320px;overflow-y:auto;">${rows}</div>`,
+            showDenyButton: true,
+            denyButtonText: '<i class="fas fa-plus mr-1"></i> Add Member',
+            confirmButtonText: 'Close',
+            didOpen: () => {
+                $('.pm-remove-btn').on('click', (e) => {
+                    const empId = $(e.currentTarget).data('emp-id');
+                    Swal.close();
+                    this.confirmRemoveMember(empId);
+                });
+            }
+        }).then((result) => {
+            if (result.isDenied) {
+                this.showAddMemberModal();
+            }
+        });
+    }
+
+    confirmRemoveMember(empId) {
+        const member = (this.currentProjectMembers || []).find(m => String(m.emp_id) === String(empId));
+        const name = member ? `${member.first_name || ''} ${member.last_name || ''}`.trim() : 'this person';
+
+        Swal.fire({
+            title: 'Remove Member?',
+            text: `Remove ${name} from this project?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: 'Remove',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.removeProjectMember(empId);
+            } else {
+                this.showProjectMembersModal();
+            }
+        });
+    }
+
+    async removeProjectMember(empId) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'remove_project_member',
+                project_id: this.currentProjectId,
+                emp_id: empId
+            });
+
+            if (response.success) {
+                this.currentProjectMembers = response.members || [];
+                this.renderProjectMembersStack(this.currentProjectMembers);
+                await this.loadAssignableEmployees();
+                this.showSuccess('Member removed successfully');
+                this.showProjectMembersModal();
+            } else {
+                this.showError(response.error || 'Failed to remove member');
+            }
+        } catch (error) {
+            console.error('Error removing project member:', error);
+            this.showError('Failed to remove member');
+        }
+    }
+
+    async loadPendingJoinRequests(projectId) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'get_pending_join_requests',
+                project_id: projectId
+            });
+
+            this.pendingJoinRequests = (response.success && response.requests) ? response.requests : [];
+            this.renderRequestBadge();
+        } catch (error) {
+            console.error('Error loading join requests:', error);
+            this.pendingJoinRequests = [];
+            this.renderRequestBadge();
+        }
+    }
+
+    renderRequestBadge() {
+        const count = (this.pendingJoinRequests || []).length;
+        const badge = $('#pmRequestBadge');
+
+        if (count > 0) {
+            badge.text(count > 9 ? '9+' : count).show();
+            $('#addProjectMemberBtn').attr('title', `${count} pending join request${count === 1 ? '' : 's'}`);
+        } else {
+            badge.hide();
+            $('#addProjectMemberBtn').attr('title', 'Add member');
+        }
+    }
+
+    renderPendingRequestsHtml() {
+        const requests = this.pendingJoinRequests || [];
+        if (requests.length === 0) return '';
+
+        const rows = requests.map(req => {
+            const name = `${req.first_name || ''} ${req.last_name || ''}`.trim() || 'Unknown';
+            const initials = ((req.first_name ? req.first_name[0] : '') + (req.last_name ? req.last_name[0] : '')).toUpperCase() || '?';
+            const avatarHtml = req.picture
+                ? `<img src="../dist/img/employees/${req.picture}" alt="${name}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:10px;">`
+                : `<div style="width:32px;height:32px;border-radius:50%;background:#f0ad4e;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;margin-right:10px;">${initials}</div>`;
+
+            return `
+                <div class="pm-request-row" data-request-id="${req.request_id}" style="display:flex;align-items:center;padding:7px 8px;border-bottom:1px solid #eee;text-align:left;">
+                    ${avatarHtml}
+                    <span style="flex:1;font-weight:600;">${name}</span>
+                    <button type="button" class="pm-approve-btn btn btn-sm btn-success mr-1" data-request-id="${req.request_id}" title="Approve"><i class="fas fa-check"></i></button>
+                    <button type="button" class="pm-deny-btn btn btn-sm btn-outline-danger" data-request-id="${req.request_id}" title="Deny"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div style="text-align:left;margin-bottom:14px;">
+                <label class="small text-muted mb-1 d-block"><i class="fas fa-bell mr-1"></i>Pending Join Requests (${requests.length})</label>
+                <div id="pendingRequestsList" style="max-height:180px;overflow-y:auto;border:1px solid #eee;border-radius:4px;">
+                    ${rows}
+                </div>
+            </div>
+        `;
+    }
+
+    bindPendingRequestActions() {
+        $('.pm-approve-btn').on('click', (e) => {
+            e.stopPropagation();
+            this.respondJoinRequest($(e.currentTarget).data('request-id'), 'approve');
+        });
+        $('.pm-deny-btn').on('click', (e) => {
+            e.stopPropagation();
+            const requestId = $(e.currentTarget).data('request-id');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Deny Request?',
+                text: "Are you sure you're denying/rejecting this request?",
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                confirmButtonText: 'Yes, Deny',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.respondJoinRequest(requestId, 'deny');
+                } else {
+                    this.showAddMemberModal();
+                }
+            });
+        });
+    }
+
+    async respondJoinRequest(requestId, decision) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'respond_join_request',
+                request_id: requestId,
+                decision: decision
+            });
+
+            if (response.success) {
+                this.currentProjectMembers = response.members || this.currentProjectMembers;
+                this.pendingJoinRequests = response.requests || [];
+                this.renderProjectMembersStack(this.currentProjectMembers);
+                this.renderRequestBadge();
+                await this.loadAssignableEmployees();
+
+                if (decision === 'approve') {
+                    this.showToast('success', 'Request approved — member added');
+                } else {
+                    this.showToast('info', 'Request denied');
+                }
+
+                this.showAddMemberModal();
+            } else {
+                this.showError(response.error || 'Failed to respond to request');
+            }
+        } catch (error) {
+            console.error('Error responding to join request:', error);
+            this.showError('Failed to respond to request');
+        }
+    }
+
+    async showAddMemberModal() {
+        if (!this.currentProjectId) {
+            this.showError('Please select a project first');
+            return;
+        }
+
+        try {
+            await this.loadPendingJoinRequests(this.currentProjectId);
+
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'get_assignable_employees'
+            });
+
+            if (!response.success) {
+                this.showError(response.error || 'Failed to load employees');
+                return;
+            }
+
+            const existingIds = new Set((this.currentProjectMembers || []).map(m => String(m.emp_id)));
+            const available = response.employees.filter(emp => !existingIds.has(String(emp.emp_id)));
+            const pendingHtml = this.renderPendingRequestsHtml();
+
+            if (available.length === 0 && (this.pendingJoinRequests || []).length === 0) {
+                Swal.fire('No Employees Available', 'Everyone eligible is already a member of this project.', 'info');
+                return;
+            }
+
+            const rowsHtml = available.map(emp => {
+                const name = `${emp.first_name} ${emp.last_name}`;
+                const sub = emp.section_name ? emp.section_name : '';
+                return `
+                    <label class="add-member-row" style="display:flex;align-items:center;padding:7px 8px;border-bottom:1px solid #eee;cursor:pointer;text-align:left;">
+                        <input type="checkbox" class="add-member-checkbox" value="${emp.emp_id}" style="margin-right:10px;">
+                        <span style="flex:1;">
+                            <div style="font-weight:600;">${name}</div>
+                            ${sub ? `<small class="text-muted">${sub}</small>` : ''}
+                        </span>
+                    </label>
+                `;
+            }).join('');
+
+            const employeeListHtml = available.length > 0
+                ? `
+                    <label class="small text-muted mb-1 d-block" style="text-align:left;">Add from employees</label>
+                    <input type="text" id="addMemberSearch" class="swal2-input" placeholder="Search employees..." style="margin-bottom:8px;width:90%;">
+                    <div id="addMemberList" style="max-height:220px;overflow-y:auto;border:1px solid #eee;border-radius:4px;">
+                        ${rowsHtml}
+                    </div>
+                `
+                : '';
+
+            Swal.fire({
+                title: 'Add Project Members',
+                html: `${pendingHtml}${employeeListHtml}`,
+                showCancelButton: true,
+                showConfirmButton: available.length > 0,
+                confirmButtonText: 'Add Selected',
+                cancelButtonText: available.length > 0 ? 'Cancel' : 'Close',
+                focusConfirm: false,
+                didOpen: () => {
+                    this.bindPendingRequestActions();
+                    $('#addMemberSearch').on('input', function() {
+                        const term = $(this).val().toLowerCase();
+                        $('#addMemberList .add-member-row').each(function() {
+                            $(this).toggle($(this).text().toLowerCase().includes(term));
+                        });
+                    });
+                },
+                preConfirm: () => {
+                    const empIds = $('#addMemberList .add-member-checkbox:checked').map(function() {
+                        return $(this).val();
+                    }).get();
+
+                    if (empIds.length === 0) {
+                        Swal.showValidationMessage('Please select at least one employee');
+                        return false;
+                    }
+
+                    return { empIds };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.addProjectMembers(result.value.empIds);
+                }
+            });
+        } catch (error) {
+            console.error('Error loading assignable employees:', error);
+            this.showError('Failed to load employees');
+        }
+    }
+
+    async addProjectMembers(empIds) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'add_project_member',
+                project_id: this.currentProjectId,
+                emp_ids: empIds
+            });
+
+            if (response.success) {
+                this.currentProjectMembers = response.members || [];
+                this.renderProjectMembersStack(this.currentProjectMembers);
+                await this.loadAssignableEmployees();
+
+                let message = `${response.added_count} member(s) added successfully`;
+                if (response.skipped_count > 0) {
+                    message += ` (${response.skipped_count} were already members)`;
+                }
+                this.showSuccess(message);
+            } else {
+                this.showError(response.error || 'Failed to add members');
+            }
+        } catch (error) {
+            console.error('Error adding project members:', error);
+            this.showError('Failed to add members');
+        }
+    }
     
     async loadProjectTasks() {
         try {
@@ -1837,6 +3030,9 @@ class Scrumboard {
             if (response.success) {
                 this.tasks = response.tasks;
                 this.renderTasks();
+                if ($('#calendarSection').is(':visible')) {
+                    this.renderCalendar();
+                }
             }
         } catch (error) {
             this.showError('Failed to load tasks');
@@ -1899,9 +3095,23 @@ class Scrumboard {
             ? task.assignees.map(a => `${a.first_name} ${a.last_name}`).join(', ')
             : 'Unassigned';
         const creatorName = task.creator_first ? `${task.creator_first} ${task.creator_last}` : 'Unknown';
-        
+
+        // Only the people this task is assigned to can drag it — unless the
+        // viewer has broader task-assignment permission (manager/admin/
+        // section head/project owner-manager), in which case they can move
+        // any card on the board.
+        const assignedIds = (task.assignees || []).map(a => String(a.emp_id));
+        const canMove = this.canAssignTasks || assignedIds.includes(String(this.currentEmpId));
+        const lockedAttrs = canMove ? '' : 'title="Only tasks assigned to you can be moved"';
+
+        // Only the project creator can delete a task — enforced again
+        // server-side in task_ajax.php; this just controls whether the
+        // shortcut shows up on the card.
+        const isProjectCreator = this.currentProject && (this.currentProject.created_by == this.currentEmpId);
+
         return `
-            <div class="task-card" draggable="true" data-task-id="${task.task_id}" data-board-id="${task.board_id}">
+            <div class="task-card${canMove ? '' : ' task-card-locked'}" draggable="${canMove}" data-task-id="${task.task_id}" data-board-id="${task.board_id}" ${lockedAttrs}>
+                ${isProjectCreator ? `<button type="button" class="task-delete-btn" data-task-id="${task.task_id}" title="Delete task"><i class="fas fa-trash"></i></button>` : ''}
                 ${task.priority !== 'medium' ? 
                     `<div class="task-priority priority-${task.priority}">${task.priority}</div>` : ''}
                 <div class="task-labels">
@@ -1913,6 +3123,7 @@ class Scrumboard {
                 <div class="task-meta">
                     <span><i class="far fa-calendar mr-1"></i> ${dueDate}</span>
                     <span><i class="far fa-user mr-1"></i> ${assigneeName}</span>
+                    ${canMove ? '' : '<span class="task-lock-icon" title="Only tasks assigned to you can be moved"><i class="fas fa-lock"></i></span>'}
                 </div>
                 <small class="text-muted">Created by: ${creatorName}</small>
             </div>
@@ -2232,6 +3443,8 @@ class Scrumboard {
             this.showError('Please select a project first');
             return;
         }
+        $('#taskLabelsChips').empty();
+        $('#taskLabelsInput').val('');
         $('#addTaskModal').modal('show');
     }
     
@@ -2244,12 +3457,7 @@ class Scrumboard {
             return;
         }
 
-        const labels = [];
-        if ($('#labelRevise').is(':checked')) labels.push('revise');
-        if ($('#labelUrgent').is(':checked')) labels.push('urgent');
-        if ($('#labelDesign').is(':checked')) labels.push('design');
-        if ($('#labelDevelopment').is(':checked')) labels.push('development');
-        if ($('#labelReview').is(':checked')) labels.push('review');
+        const labels = this.getLabelTags('#taskLabelsChips');
         
         const formData = {
             action: 'create_task',
@@ -2290,6 +3498,7 @@ class Scrumboard {
             if (response.success) {
                 $('#addTaskModal').modal('hide');
                 $('#taskForm')[0].reset();
+                $('#taskLabelsChips').empty();
                 $('#taskAssignee').val(null).trigger('change');
                 this.selectedBoardId = null;
                 await this.loadProjectTasks();
@@ -2327,7 +3536,7 @@ class Scrumboard {
                 await this.loadProjectTasks();
                 this.showSuccess('Task moved successfully');
             } else {
-                this.showError('Failed to move task');
+                this.showError(response.error || 'Failed to move task');
             }
         } catch (error) {
             console.error('Error moving task:', error);
@@ -2343,6 +3552,19 @@ class Scrumboard {
             timer: 3000,
             showConfirmButton: false
         });
+    }
+
+    showToast(icon, title) {
+        // A corner toast instead of a full modal — used when we need to notify
+        // the user right before/after reopening another Swal modal, since two
+        // full Swal.fire() modals in a row would otherwise clobber each other.
+        Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        }).fire({ icon, title });
     }
     
     showError(message) {
@@ -2386,19 +3608,28 @@ class Scrumboard {
         });
     }
 
-    requestProjectMembership(projectId) {
-        $.post('../includes/project_ajax.php', {
-            action: 'request_project_membership',
-            project_id: projectId
-        }, function(response) {
+    async requestProjectMembership(projectId) {
+        try {
+            const response = await $.post('../includes/project_ajax.php', {
+                action: 'request_project_membership',
+                project_id: projectId
+            });
+
             if (response.success) {
-                Swal.fire('Request Sent', 'The project creator has been notified of your request to join.', 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Request Sent!',
+                    text: 'The project owner has been notified of your request to join.',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
             } else {
-                Swal.fire('Error', response.error || 'Failed to send request', 'error');
+                this.showError(response.error || 'Failed to send request');
             }
-        }, 'json').fail(function() {
-            Swal.fire('Error', 'Failed to send request', 'error');
-        });
+        } catch (error) {
+            console.error('Error requesting project membership:', error);
+            this.showError('Failed to send request');
+        }
     }
     // Add these methods to the Scrumboard class
     async viewTask(taskId) {
@@ -2451,6 +3682,10 @@ class Scrumboard {
 
     populateTaskModal(task) {
         this.currentViewingTask = task;
+        $('#commentText').val('');
+        this.setCommentAttachment(null);
+        this.cancelCommentReply();
+        $('#taskActivityTabBtn').tab('show');
 
         // Header
         $('#viewTaskKey').text(`TASK-${task.task_id}`);
@@ -2522,6 +3757,13 @@ class Scrumboard {
         $('#viewTaskCreated').text(new Date(task.created_at).toLocaleString());
         $('#viewTaskUpdated').text(new Date(task.updated_at || task.created_at).toLocaleString());
 
+        // Only an assignee (or someone with elevated permission, same as who
+        // can drag cards between boards) may edit the task. Everyone else on
+        // the project can still view it and leave a comment.
+        const viewAssignedIds = (task.assignees || []).map(a => String(a.emp_id));
+        const canEditThisTask = this.canAssignTasks || viewAssignedIds.includes(String(this.currentEmpId));
+        $('#editTaskBtn').toggle(canEditThisTask);
+
         // Activity log (fetched from the server, keyed on this task)
         this.loadTaskActivity(task.task_id);
     }
@@ -2573,9 +3815,162 @@ class Scrumboard {
         return displayText || status;
     }
 
+    renderActivityAvatar($container, picturePath, initial) {
+        // Same real-photo-with-fallback pattern as renderAvatar(), sized to
+        // fit the existing 26px .activity-avatar circle used in the log.
+        const $fallback = $('<div>').addClass('activity-avatar').text(initial);
+        if (picturePath) {
+            const $img = $('<img>')
+                .addClass('activity-avatar')
+                .attr({ src: `../dist/img/employees/${picturePath}`, alt: initial })
+                .on('error', function () { $(this).replaceWith($fallback); });
+            $container.append($img);
+        } else {
+            $container.append($fallback);
+        }
+    }
+
+    // File-type icon for a comment attachment chip, keyed off its extension.
+    attachmentIconClass(ext) {
+        const map = {
+            pdf: 'fa-file-pdf', doc: 'fa-file-word', docx: 'fa-file-word',
+            xls: 'fa-file-excel', xlsx: 'fa-file-excel',
+            png: 'fa-file-image', jpg: 'fa-file-image', jpeg: 'fa-file-image',
+            gif: 'fa-file-image', webp: 'fa-file-image'
+        };
+        return map[ext] || 'fa-file';
+    }
+
+    isImageExt(ext) {
+        return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+    }
+
+    // entry.meta comes back from the server as a JSON string (or already
+    // parsed / absent) — normalize it here so callers don't have to care.
+    parseEntryMeta(entry) {
+        if (!entry.meta) return null;
+        if (typeof entry.meta === 'object') return entry.meta;
+        try {
+            return JSON.parse(entry.meta);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    buildActivityItem(entry, isComment) {
+        const who = entry.first_name ? `${entry.first_name} ${entry.last_name}` : 'Someone';
+        const when = new Date(entry.created_at).toLocaleString();
+        const initial = (entry.first_name || '?').charAt(0).toUpperCase();
+        const meta = isComment ? this.parseEntryMeta(entry) : null;
+
+        const $item = $('<div>').addClass('activity-item');
+        if (isComment && entry.log_id) {
+            $item.attr('id', `comment-log-${entry.log_id}`);
+        }
+        this.renderActivityAvatar($item, entry.picture, initial);
+        const $content = $('<div>').addClass('activity-content');
+
+        if (isComment && meta && meta.reply_to) {
+            $content.append(
+                $('<div>').addClass('activity-reply-quote')
+                    .append($('<div>').addClass('activity-reply-quote-label')
+                        .append($('<i>').addClass('fas fa-reply'))
+                        .append(document.createTextNode(`Replying to ${meta.reply_to.author}`)))
+                    .append($('<div>').addClass('activity-reply-quote-text').text(`"${meta.reply_to.snippet}"`))
+                    .on('click', () => this.jumpToComment(meta.reply_to.log_id))
+            );
+        }
+
+        const $desc = $('<div>').addClass('activity-desc');
+        if (isComment) {
+            $desc.append($('<strong>').text(who));
+            $desc.append(document.createTextNode(': '));
+            $desc.append($('<span>').addClass('activity-comment-text').text(`"${entry.description}"`));
+        } else {
+            $desc.append($('<strong>').text(who));
+            $desc.append(document.createTextNode(` ${entry.description}`));
+        }
+        $content.append($desc);
+
+        if (isComment && meta && meta.attachment) {
+            const att = meta.attachment;
+            if (this.isImageExt(att.ext)) {
+                $content.append(
+                    $('<img>').addClass('activity-attachment-thumb')
+                        .attr({ src: att.url, alt: att.name, title: att.name })
+                        .on('click', () => window.open(att.url, '_blank'))
+                );
+            } else {
+                $content.append(
+                    $('<a>').addClass('activity-attachment-chip')
+                        .attr({ href: att.url, target: '_blank', rel: 'noopener' })
+                        .append($('<i>').addClass(`fas ${this.attachmentIconClass(att.ext)} mr-1`))
+                        .append($('<span>').text(att.name))
+                );
+            }
+        }
+
+        $content.append($('<div>').addClass('activity-meta').text(when));
+
+        if (isComment && entry.log_id) {
+            $content.append(
+                $('<button>').addClass('activity-comment-reply-btn').attr('type', 'button')
+                    .html('<i class="fas fa-reply mr-1"></i>Reply')
+                    .on('click', () => this.startCommentReply(entry))
+            );
+        }
+
+        $item.append($content);
+        return $item;
+    }
+
+    startCommentReply(entry) {
+        this.commentReplyTo = {
+            log_id: entry.log_id,
+            author: entry.first_name ? `${entry.first_name} ${entry.last_name}` : 'Someone',
+            snippet: entry.description.length > 80 ? entry.description.slice(0, 80) + '…' : entry.description
+        };
+        $('#commentReplyAuthor').text(this.commentReplyTo.author);
+        $('#commentReplySnippet').text(`"${this.commentReplyTo.snippet}"`);
+        $('#commentReplyBanner').show();
+        $('#taskCommentsTabBtn').tab('show');
+        $('#commentText').focus();
+    }
+
+    cancelCommentReply() {
+        this.commentReplyTo = null;
+        $('#commentReplyBanner').hide();
+    }
+
+    // Scrolls the referenced comment into view within the comments panel and
+    // briefly highlights it, so a reply quote is unambiguous even when the
+    // original comment is out of sight or several comments back.
+    jumpToComment(logId) {
+        const $target = $(`#comment-log-${logId}`);
+        if (!$target.length) return;
+        $target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        $target.addClass('activity-item-highlight');
+        setTimeout(() => $target.removeClass('activity-item-highlight'), 1200);
+    }
+
+    setCommentAttachment(file) {
+        this.commentAttachmentFile = file || null;
+        if (file) {
+            $('#commentAttachmentName').text(`${file.name} (${(file.size / 1024).toFixed(0)} KB)`);
+            $('#commentAttachmentPreview').show();
+        } else {
+            $('#commentAttachmentPreview').hide();
+        }
+        // Always reset the underlying input so choosing the same file twice
+        // still fires a change event.
+        $('#commentAttachmentInput').val('');
+    }
+
     async loadTaskActivity(taskId) {
         const activityTimeline = $('#activityTimeline');
+        const commentsTimeline = $('#commentsTimeline');
         activityTimeline.html('<div class="text-muted small">Loading activity&hellip;</div>');
+        commentsTimeline.html('<div class="text-muted small">Loading comments&hellip;</div>');
 
         try {
             const response = await $.post('../includes/task_ajax.php', {
@@ -2586,33 +3981,92 @@ class Scrumboard {
             // Modal may have been closed while the request was in flight
             if (!$('#activityTimeline').length) return;
 
-            if (!response.success || !response.activity || response.activity.length === 0) {
-                activityTimeline.html('<div class="text-muted small">No activity yet.</div>');
+            if (!response.success) {
+                activityTimeline.html('<div class="text-muted small">Couldn\'t load activity.</div>');
+                commentsTimeline.html('<div class="text-muted small">Couldn\'t load comments.</div>');
                 return;
             }
 
-            const items = response.activity.map(entry => {
-                const who = entry.first_name ? `${entry.first_name} ${entry.last_name}` : 'Someone';
-                const when = new Date(entry.created_at).toLocaleString();
-                const initial = (entry.first_name || '?').charAt(0).toUpperCase();
-                return `
-                    <div class="activity-item d-flex">
-                        <div class="activity-avatar mr-3">${this.escapeHtml(initial)}</div>
-                        <div class="activity-content">
-                            <div class="font-weight-bold">${this.escapeHtml(who)}</div>
-                            <div class="text-muted">${this.escapeHtml(entry.description)}</div>
-                            <div class="activity-meta">${when}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            const allEntries = response.activity || [];
+            const activityEntries = allEntries.filter(e => e.action !== 'commented');
+            const commentEntries = allEntries.filter(e => e.action === 'commented');
 
-            activityTimeline.html(items);
+            activityTimeline.empty();
+            if (activityEntries.length === 0) {
+                activityTimeline.html('<div class="text-muted small">No activity yet.</div>');
+            } else {
+                activityEntries.forEach(entry => activityTimeline.append(this.buildActivityItem(entry, false)));
+            }
+
+            commentsTimeline.empty();
+            if (commentEntries.length === 0) {
+                commentsTimeline.html('<div class="text-muted small">No comments yet.</div>');
+            } else {
+                commentEntries.forEach(entry => commentsTimeline.append(this.buildActivityItem(entry, true)));
+            }
+
+            const $commentsCount = $('#taskCommentsCount');
+            if (commentEntries.length > 0) {
+                $commentsCount.text(commentEntries.length).show();
+            } else {
+                $commentsCount.hide();
+            }
         } catch (error) {
             console.error('Error loading activity:', error);
             if ($('#activityTimeline').length) {
                 activityTimeline.html('<div class="text-muted small">Couldn\'t load activity.</div>');
+                commentsTimeline.html('<div class="text-muted small">Couldn\'t load comments.</div>');
             }
+        }
+    }
+
+    async addComment() {
+        if (!this.currentViewingTask) return;
+
+        const text = $('#commentText').val().trim();
+        if (!text && !this.commentAttachmentFile) {
+            this.showError('Please enter a comment or attach a file');
+            return;
+        }
+
+        const taskId = this.currentViewingTask.task_id;
+        const $btn = $('#addCommentBtn');
+        $btn.prop('disabled', true);
+
+        const formData = new FormData();
+        formData.append('action', 'add_comment');
+        formData.append('task_id', taskId);
+        formData.append('comment', text);
+        if (this.commentReplyTo) {
+            formData.append('reply_to', this.commentReplyTo.log_id);
+        }
+        if (this.commentAttachmentFile) {
+            formData.append('attachment', this.commentAttachmentFile);
+        }
+
+        try {
+            const response = await $.ajax({
+                url: '../includes/task_ajax.php',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json'
+            });
+
+            if (response.success) {
+                $('#commentText').val('');
+                this.setCommentAttachment(null);
+                this.cancelCommentReply();
+                await this.loadTaskActivity(taskId);
+            } else {
+                this.showError(response.error || 'Failed to add comment');
+            }
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            this.showError('Failed to add comment');
+        } finally {
+            $btn.prop('disabled', false);
         }
     }
 

@@ -83,12 +83,6 @@ if ($employee_id) {
             </a>
           </li>
           <li class="nav-item">
-            <a href="scrum_team.php" class="nav-link <?= $current_page == 'scrum_team.php' ? 'active' : 'text-white' ?>">
-              <i class="nav-icon fas fa-users"></i>
-              <p>Teams</p>
-            </a>
-          </li>
-          <li class="nav-item">
             <a href="my_scrum_project.php" class="nav-link <?= $current_page == 'my_scrum_project.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-folder-open"></i>
               <p>My Projects</p>
@@ -98,12 +92,6 @@ if ($employee_id) {
             <a href="my_scrum_task.php" class="nav-link <?= $current_page == 'my_scrum_task.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tasks"></i>
               <p>My Tasks</p>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a href="scrum_calendar.php" class="nav-link <?= $current_page == 'scrum_calendar.php' ? 'active' : 'text-white' ?>">
-              <i class="nav-icon fas fa-calendar-alt"></i>
-              <p>Calendar</p>
             </a>
           </li>
         </ul>

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/tasks.php';
+require_once __DIR__ . '/projects.php';
 require_once __DIR__ . '/activity_log.php';
 require_once __DIR__ . '/project_access.php';
 
@@ -18,6 +19,114 @@ try {
     exit;
 }
 $taskManager = new TaskManager();
+$projectManager = new ProjectManager();
+
+// A member can only edit a task (edit fields, change its status/board) if they
+// are actually assigned to that task, or if they have elevated permission
+// (Administrator, manager, section head, or project creator/owner/manager —
+// same set ProjectManager::canAssignTasks() already grants board-move rights
+// to). Everyone who is a project member can still view the task and comment
+// on it; this only gates the edit-type actions below.
+function isTaskAssignee($db, $task_id, $emp_id) {
+    $stmt = $db->prepare("
+        SELECT 1 FROM task_assignees WHERE task_id = ? AND emp_id = ?
+        UNION
+        SELECT 1 FROM tasks WHERE task_id = ? AND assigned_to = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param("iiii", $task_id, $emp_id, $task_id, $emp_id);
+    $stmt->execute();
+    return $stmt->get_result()->num_rows > 0;
+}
+
+function canEditTask($db, $projectManager, $task_id, $emp_id) {
+    return $projectManager->canAssignTasks($emp_id) || isTaskAssignee($db, $task_id, $emp_id);
+}
+
+// ── Comment attachments ──────────────────────────────────────────────────
+// Stored on disk under dist/uploads/task_attachments (a sibling of dist/img,
+// which is how employee photos are already served — see renderActivityAvatar
+// in scrum.php) and referenced from the activity_log row's JSON `meta`
+// column, so no new database table was needed for this.
+define('TASK_ATTACHMENT_MAX_BYTES', 10 * 1024 * 1024); // 10MB
+define('TASK_ATTACHMENT_DIR', __DIR__ . '/../dist/uploads/task_attachments/');
+define('TASK_ATTACHMENT_URL_BASE', '../dist/uploads/task_attachments/');
+
+function taskAttachmentAllowedTypes() {
+    // extension => acceptable MIME types (a couple of entries list more than
+    // one because different OSes/browsers report Office files inconsistently)
+    return [
+        'pdf'  => ['application/pdf'],
+        'doc'  => ['application/msword'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+        'xls'  => ['application/vnd.ms-excel'],
+        'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+        'png'  => ['image/png'],
+        'jpg'  => ['image/jpeg'],
+        'jpeg' => ['image/jpeg'],
+        'gif'  => ['image/gif'],
+        'webp' => ['image/webp'],
+    ];
+}
+
+/**
+ * Validate and store an uploaded comment attachment (field name
+ * "attachment"). Returns metadata to save in activity_log.meta, an
+ * ['error' => ...] array on failure, or null if no file was sent — no
+ * attachment is not an error, since attachments are optional on a comment.
+ */
+function handleTaskAttachmentUpload() {
+    if (empty($_FILES['attachment']) || ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+
+    $file = $_FILES['attachment'];
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return ['error' => 'File upload failed'];
+    }
+
+    if ($file['size'] > TASK_ATTACHMENT_MAX_BYTES) {
+        return ['error' => 'File is too large (max 10MB)'];
+    }
+
+    $originalName = $file['name'];
+    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $allowed = taskAttachmentAllowedTypes();
+
+    if (!isset($allowed[$ext])) {
+        return ['error' => 'Unsupported file type. Allowed: PDF, Word, Excel, or an image (PNG/JPG/GIF/WEBP)'];
+    }
+
+    // Extension alone can be spoofed, so double-check the actual content
+    // type where the server supports it.
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $detectedMime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if ($detectedMime && !in_array($detectedMime, $allowed[$ext], true)) {
+            return ['error' => 'File content does not match its extension'];
+        }
+    }
+
+    if (!is_dir(TASK_ATTACHMENT_DIR)) {
+        mkdir(TASK_ATTACHMENT_DIR, 0755, true);
+    }
+
+    $storedName = bin2hex(random_bytes(16)) . '.' . $ext;
+    $destination = TASK_ATTACHMENT_DIR . $storedName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        return ['error' => 'Failed to save the uploaded file'];
+    }
+
+    return [
+        'name' => $originalName,
+        'url' => TASK_ATTACHMENT_URL_BASE . $storedName,
+        'size' => (int)$file['size'],
+        'ext' => $ext,
+    ];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -180,8 +289,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             }
 
-            if (!isProjectMember($db, (int)$proj_row['project_id'], (int)($_SESSION['emp_id'] ?? 0))) {
+            $current_emp_id = (int)($_SESSION['emp_id'] ?? 0);
+
+            if (!isProjectMember($db, (int)$proj_row['project_id'], $current_emp_id)) {
                 echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                break;
+            }
+
+            // Only assignees (or those with elevated permission) may move a task.
+            if (!canEditTask($db, $projectManager, $task_id, $current_emp_id)) {
+                echo json_encode(['success' => false, 'error' => 'You can only edit tasks assigned to you']);
                 break;
             }
 
@@ -284,8 +401,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $move_info_stmt->execute();
             $move_info = $move_info_stmt->get_result()->fetch_assoc();
 
-            if ($move_info && !isProjectMember($db, (int)$move_info['project_id'], (int)($_SESSION['emp_id'] ?? 0))) {
+            $current_emp_id = (int)($_SESSION['emp_id'] ?? 0);
+
+            if ($move_info && !isProjectMember($db, (int)$move_info['project_id'], $current_emp_id)) {
                 echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                break;
+            }
+
+            // Only assignees (or those with elevated permission) may move a task.
+            if (!canEditTask($db, $projectManager, $task_id, $current_emp_id)) {
+                echo json_encode(['success' => false, 'error' => 'You can only edit tasks assigned to you']);
                 break;
             }
 
@@ -339,8 +464,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $project_id_for_log_row = $project_id_for_log_stmt->get_result()->fetch_assoc();
             $project_id_for_log = $project_id_for_log_row ? (int)$project_id_for_log_row['project_id'] : 0;
 
-            if (!$project_id_for_log || !isProjectMember($db, $project_id_for_log, (int)($_SESSION['emp_id'] ?? 0))) {
+            $current_emp_id = (int)($_SESSION['emp_id'] ?? 0);
+
+            if (!$project_id_for_log || !isProjectMember($db, $project_id_for_log, $current_emp_id)) {
                 echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                break;
+            }
+
+            // Only assignees (or those with elevated permission) may edit a task.
+            // Everyone else on the project can still view it and comment.
+            if (!canEditTask($db, $projectManager, $task_id, $current_emp_id)) {
+                echo json_encode(['success' => false, 'error' => 'You can only edit tasks assigned to you']);
                 break;
             }
 
@@ -464,6 +598,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activity[] = $row;
             }
             echo json_encode(['success' => true, 'activity' => $activity]);
+            break;
+
+        case 'add_comment':
+            $task_id = (int)($_POST['task_id'] ?? 0);
+            $comment = trim($_POST['comment'] ?? '');
+            $reply_to = (int)($_POST['reply_to'] ?? 0);
+            $current_emp_id = (int)($_SESSION['emp_id'] ?? 0);
+
+            // Validate/store the optional attachment first so upload errors
+            // (bad type, too large, ...) are reported before touching the DB.
+            $attachment = handleTaskAttachmentUpload();
+            if ($attachment && isset($attachment['error'])) {
+                echo json_encode(['success' => false, 'error' => $attachment['error']]);
+                break;
+            }
+
+            // A comment can now be text, an attachment, or both — but not
+            // neither.
+            if (!$task_id || ($comment === '' && !$attachment)) {
+                echo json_encode(['success' => false, 'error' => 'Missing task or comment text']);
+                break;
+            }
+
+            // `description` is varchar(255) — reject rather than let MySQL
+            // silently truncate it.
+            if (strlen($comment) > 255) {
+                echo json_encode(['success' => false, 'error' => 'Comment is too long (max 255 characters)']);
+                break;
+            }
+
+            $task_proj_stmt = $db->prepare("SELECT project_id FROM tasks WHERE task_id = ?");
+            $task_proj_stmt->bind_param("i", $task_id);
+            $task_proj_stmt->execute();
+            $task_proj_row = $task_proj_stmt->get_result()->fetch_assoc();
+
+            if (!$task_proj_row) {
+                echo json_encode(['success' => false, 'error' => 'Task not found']);
+                break;
+            }
+
+            $project_id_for_comment = (int)$task_proj_row['project_id'];
+
+            // Commenting is open to any project member — unlike the edit
+            // actions above, this is not gated by canEditTask().
+            if (!isProjectMember($db, $project_id_for_comment, $current_emp_id)) {
+                echo json_encode(['success' => false, 'error' => 'You do not have permission to open this project']);
+                break;
+            }
+
+            $meta = [];
+
+            if ($attachment) {
+                $meta['attachment'] = $attachment;
+            }
+
+            // A reply only makes sense against another comment that already
+            // exists on this same task. Pull the parent's author/text now so
+            // the UI can show "Replying to ..." without an extra join later.
+            if ($reply_to) {
+                $parent_stmt = $db->prepare("
+                    SELECT al.log_id, al.description, e.first_name, e.last_name
+                    FROM activity_log al
+                    LEFT JOIN employee e ON al.emp_id = e.emp_id
+                    WHERE al.log_id = ? AND al.entity_type = 'task' AND al.entity_id = ? AND al.action = 'commented'
+                ");
+                $parent_stmt->bind_param("ii", $reply_to, $task_id);
+                $parent_stmt->execute();
+                $parent_row = $parent_stmt->get_result()->fetch_assoc();
+
+                if (!$parent_row) {
+                    echo json_encode(['success' => false, 'error' => 'The comment you are replying to no longer exists']);
+                    break;
+                }
+
+                $parent_name = trim(($parent_row['first_name'] ?? '') . ' ' . ($parent_row['last_name'] ?? ''));
+                $parent_desc = (string)$parent_row['description'];
+                $meta['reply_to'] = [
+                    'log_id' => (int)$parent_row['log_id'],
+                    'author' => $parent_name !== '' ? $parent_name : 'Someone',
+                    'snippet' => strlen($parent_desc) > 80 ? substr($parent_desc, 0, 80) . '…' : $parent_desc,
+                ];
+            }
+
+            // description is NOT NULL — fall back to something readable when
+            // the comment is attachment-only with no text.
+            $description = $comment !== '' ? $comment : substr('Shared a file: ' . $attachment['name'], 0, 255);
+
+            $logged = logActivity($db, 'task', $task_id, $project_id_for_comment, $current_emp_id, 'commented', $description, $meta ?: null);
+
+            if ($logged) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to add comment']);
+            }
             break;
 
                 default:

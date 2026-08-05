@@ -10,6 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Initialize project manager
 $projectManager = new ProjectManager();
+$canCreateProject = $projectManager->canCreateProject($_SESSION['emp_id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,9 +46,11 @@ $projectManager = new ProjectManager();
                   <i class="fas fa-columns"></i> Board
                 </button>
               </div>
+              <?php if ($canCreateProject): ?>
               <button class="btn btn-success" id="newProjectBtn" style="border-radius:9px;font-weight:700;">
                 <i class="fas fa-plus mr-1"></i> New Project
               </button>
+              <?php endif; ?>
             </div>
           </div>
         </div>
@@ -909,6 +912,9 @@ $(document).ready(function() {
 
 let currentProjectsView = localStorage.getItem('projectsView') || 'list';
 let currentProjects = [];
+// Only the project's own creator may delete it — mirrors the server-side
+// check in project_ajax.php's delete_project action.
+const currentEmpId = <?= (int)($_SESSION['emp_id'] ?? 0); ?>;
 
 function setProjectsView(view, rerender = true) {
     currentProjectsView = view;
@@ -961,6 +967,7 @@ function renderProjectsTable(projects) {
     
     projects.forEach(project => {
         const progress = calculateProgress(project);
+        const isCreator = Number(project.created_by) === currentEmpId;
         const row = $(`
             <tr>
                 <td><strong>${project.project_code}</strong></td>
@@ -999,9 +1006,10 @@ function renderProjectsTable(projects) {
                     <button class="btn btn-sm view-project-activity" style="background: var(--s-violet, #8B5CF6); color:#fff;" data-project-id="${project.project_id}" data-project-name="${escapeHtml(project.project_name)}" title="Activity Log">
                         <i class="fas fa-history"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger delete-project" data-project-id="${project.project_id}" data-project-name="${project.project_name}">
+                    ${isCreator ? `
+                    <button class="btn btn-sm btn-danger delete-project" data-project-id="${project.project_id}" data-project-name="${project.project_name}" title="Delete">
                         <i class="fas fa-trash"></i>
-                    </button>
+                    </button>` : ''}
                 </td>
             </tr>
         `);
@@ -1068,6 +1076,7 @@ function renderProjectsBoard(projects) {
     pageProjects.forEach(project => {
         const progress = calculateProgress(project);
         const initials = project.project_code ? project.project_code.substring(0, 3).toUpperCase() : project.project_name.substring(0, 2).toUpperCase();
+        const isCreator = Number(project.created_by) === currentEmpId;
 
         const card = $(`
             <div class="task-grid-card">
@@ -1115,9 +1124,10 @@ function renderProjectsBoard(projects) {
                     <button type="button" class="task-grid-card-action-btn activity grid-view-activity" data-project-id="${project.project_id}" data-project-name="${escapeHtml(project.project_name)}" title="Activity Log">
                         <i class="fas fa-history"></i><span class="d-none d-md-inline">Activity</span>
                     </button>
+                    ${isCreator ? `
                     <button type="button" class="task-grid-card-action-btn del grid-delete-project" data-project-id="${project.project_id}" data-project-name="${project.project_name}" title="Delete">
                         <i class="fas fa-trash"></i><span class="d-none d-md-inline">Delete</span>
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
         `);
