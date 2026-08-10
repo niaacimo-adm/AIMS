@@ -88,12 +88,16 @@ try {
     $query = "SELECT e.*, 
                      p.position_name,
                      es.status_name,
+                     es.color AS employment_status_color,
+                     apt.status_name AS appointment_status_name,
+                     apt.color AS appointment_status_color,
                      s.section_name,
                      us.unit_name,
                      o.office_name
               FROM employee e
               LEFT JOIN position p ON e.position_id = p.position_id
               LEFT JOIN employment_status es ON e.employment_status_id = es.status_id
+              LEFT JOIN appointment_status apt ON e.appointment_status_id = apt.appointment_id
               LEFT JOIN section s ON e.section_id = s.section_id
               LEFT JOIN unit_section us ON e.unit_section_id = us.unit_id
               LEFT JOIN office o ON e.office_id = o.office_id

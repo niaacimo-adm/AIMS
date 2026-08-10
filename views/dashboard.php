@@ -43,10 +43,30 @@ $stmt = $db->prepare("SELECT mos.*, CONCAT(e.first_name,' ',e.last_name) as empl
 $stmt->execute();
 $manager_staff = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+// Manager's office staff total count (for the filter button badge)
+$stmt = $db->prepare("SELECT COUNT(*) as cnt FROM managers_office_staff");
+$stmt->execute();
+$manager_staff_count = $stmt->get_result()->fetch_assoc()['cnt'];
+
+// Offices (main + branch/sub offices), with employee counts, for the office filter buttons
+$stmt = $db->prepare("SELECT o.office_id, o.office_name, o.is_main_office, o.parent_office_id, COUNT(e.emp_id) as employee_count FROM office o LEFT JOIN employee e ON e.office_id=o.office_id GROUP BY o.office_id, o.office_name, o.is_main_office, o.parent_office_id ORDER BY o.is_main_office DESC, o.office_name");
+$stmt->execute();
+$offices = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
 // Appointment data
 $stmt = $db->prepare("SELECT a.status_name, a.color, COUNT(e.emp_id) as count FROM appointment_status a LEFT JOIN employee e ON a.appointment_id=e.appointment_status_id GROUP BY a.appointment_id,a.status_name,a.color ORDER BY count DESC");
 $stmt->execute();
 $appointment_data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// Full employment status list (for filter dropdown)
+$stmt = $db->prepare("SELECT status_id, status_name, color FROM employment_status ORDER BY status_id");
+$stmt->execute();
+$employment_statuses = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// Full appointment status list (for filter dropdown)
+$stmt = $db->prepare("SELECT appointment_id, status_name, color FROM appointment_status ORDER BY status_name");
+$stmt->execute();
+$appointment_statuses = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 // Gender data
 $stmt = $db->prepare("SELECT s.section_name, SUM(CASE WHEN e.gender='Male' THEN 1 ELSE 0 END) as male_count, SUM(CASE WHEN e.gender='Female' THEN 1 ELSE 0 END) as female_count, COUNT(e.emp_id) as total_count FROM section s LEFT JOIN employee e ON s.section_id=e.section_id GROUP BY s.section_id,s.section_name ORDER BY s.section_name");
@@ -542,7 +562,7 @@ $uploads_url = '../dist/img/employees/';
                             <?php endif; ?>
                         </div>
                         <div class="mh-info">
-                            <div class="mh-tag"><i class="fas fa-star mr-1"></i>Office Manager</div>
+                            <div class="mh-tag"><i class="fas fa-star mr-1"></i>IMO Manager</div>
                             <div class="mh-name"><?= htmlspecialchars($manager['first_name'] . ' ' . $manager['last_name']) ?></div>
                             <div class="mh-title"><?= htmlspecialchars($manager['position_name'] ?? 'Manager') ?></div>
                             <div class="mh-meta">
@@ -583,8 +603,23 @@ $uploads_url = '../dist/img/employees/';
                                     <span class="emp-count-badge"><?= count($sections) ?></span>
                                 </div>
                                 <ul class="sec-list" id="sectionsList">
+                                    <li class="sec-item active" id="allEmployeesItem" onclick="showAllEmployees(this)" style="font-weight:600;">
+                                        <div class="sec-item-av" style="background:var(--brand-lt);color:var(--brand);"><i class="fas fa-users" style="font-size:.8rem;"></i></div>
+                                        <div class="sec-item-body">
+                                            <div class="sec-item-name">All Employees</div>
+                                            <div class="sec-item-sub">Every section &amp; unit</div>
+                                        </div>
+                                    </li>
+                                    <li class="sec-item" id="managerStaffItem" onclick="selectManagerStaff(this)" style="font-weight:600;">
+                                        <div class="sec-item-av" style="background:#fef3c7;color:var(--amber);"><i class="fas fa-user-tie" style="font-size:.8rem;"></i></div>
+                                        <div class="sec-item-body">
+                                            <div class="sec-item-name">Manager's Office Staff</div>
+                                            <div class="sec-item-sub">Direct office support staff</div>
+                                        </div>
+                                        <div class="sec-item-count"><?= (int)$manager_staff_count ?></div>
+                                    </li>
                                     <?php foreach ($sections as $idx => $sec): ?>
-                                    <li class="sec-item <?= $idx===0?'active':'' ?>"
+                                    <li class="sec-item"
                                         data-section-id="<?= $sec['section_id'] ?>"
                                         data-section-name="<?= htmlspecialchars($sec['section_name']) ?>"
                                         data-head-name="<?= htmlspecialchars($sec['head_name']??'') ?>"
@@ -618,6 +653,28 @@ $uploads_url = '../dist/img/employees/';
                                         </li>
                                     </ul>
                                 </div>
+
+                                <!-- Offices panel -->
+                                <?php if (count($offices) > 1): ?>
+                                <div style="border-top:1px solid var(--border);">
+                                    <div class="dir-card-header" style="border-radius:0;background:var(--surface2);">
+                                        <h5 style="font-size:.82rem;"><div class="icon-circle ic-brand" style="width:24px;height:24px;font-size:.7rem;"><i class="fas fa-map-marker-alt"></i></div>Offices</h5>
+                                        <span class="emp-count-badge"><?= count($offices) ?></span>
+                                    </div>
+                                    <ul class="sec-list" id="officesList">
+                                        <?php foreach ($offices as $off): ?>
+                                        <li class="sec-item" data-office-id="<?= $off['office_id'] ?>" onclick="selectOffice(this, <?= $off['office_id'] ?>)">
+                                            <div class="sec-item-av" style="background:#e0f2fe;color:#0369a1;"><i class="fas fa-<?= $off['is_main_office'] ? 'building' : 'map-pin' ?>" style="font-size:.75rem;"></i></div>
+                                            <div class="sec-item-body">
+                                                <div class="sec-item-name"><?= htmlspecialchars($off['office_name']) ?></div>
+                                                <div class="sec-item-sub"><?= $off['is_main_office'] ? 'Main office' : 'Sub-office' ?></div>
+                                            </div>
+                                            <div class="sec-item-count"><?= (int)$off['employee_count'] ?></div>
+                                        </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                                <?php endif; ?>
                             </div>
 
                             <!-- ── Right: Employees ── -->
@@ -625,7 +682,7 @@ $uploads_url = '../dist/img/employees/';
                                 <!-- Controls bar -->
                                 <div class="dir-controls">
                                     <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                                        <span style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;" id="selectedDepartment">Select Department</span>
+                                        <span style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;" id="selectedDepartment">All Employees</span>
                                         <small style="color:var(--text3);" id="selectedUnitInfo"></small>
                                         <span class="emp-count-badge" id="employeeCount">0 employees</span>
                                     </div>
@@ -633,11 +690,17 @@ $uploads_url = '../dist/img/employees/';
                                         <i class="fas fa-search"></i>
                                         <input type="text" id="searchInput" onkeyup="searchEmployees()" placeholder="Search name, ID, position…">
                                     </div>
-                                    <select class="dir-select" id="statusFilter" onchange="filterEmployees()">
-                                        <option value="">All Status</option>
-                                        <option value="1">Active</option>
-                                        <option value="2">On Leave</option>
-                                        <option value="3">Inactive</option>
+                                    <select class="dir-select" id="employmentStatusFilter" onchange="filterEmployees()">
+                                        <option value="">All Employment Status</option>
+                                        <?php foreach ($employment_statuses as $es): ?>
+                                        <option value="<?= $es['status_id'] ?>" <?= $es['status_id'] == 1 ? 'selected' : '' ?>><?= htmlspecialchars($es['status_name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <select class="dir-select" id="appointmentStatusFilter" onchange="filterEmployees()">
+                                        <option value="">All Appointment Status</option>
+                                        <?php foreach ($appointment_statuses as $as): ?>
+                                        <option value="<?= $as['appointment_id'] ?>"><?= htmlspecialchars($as['status_name']) ?></option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
 
@@ -656,7 +719,7 @@ $uploads_url = '../dist/img/employees/';
                                     <!-- Empty -->
                                     <div class="dir-empty" id="noEmployees">
                                         <i class="fas fa-users"></i>
-                                        <p id="noEmployeesMessage">Please select a department to view employees</p>
+                                        <p id="noEmployeesMessage">No employees found</p>
                                     </div>
                                 </div>
                             </div>
@@ -677,23 +740,23 @@ $uploads_url = '../dist/img/employees/';
 // ── Global state ──────────────────────────────────────────────
 let sections      = <?= json_encode($sections) ?>;
 let unitSections  = <?= json_encode($unit_sections) ?>;
-let currentSectionId = sections.length > 0 ? sections[0].section_id : null;
+let currentSectionId = null;
 let currentUnitId    = null;
 let allEmployees     = [];
 let filteredEmployees= [];
 let searchQuery      = '';
-let statusFilter     = '';
+let employmentStatusFilter = '1'; // default: Active, per initial "All Employees" view
+let appointmentStatusFilter = '';
+let managerStaffOnly = false;
+let officeFilter = null;
 const uploadsUrl     = '<?= $uploads_url ?>';
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
-    if (sections.length > 0) {
-        updateUnitsPanel(sections[0].section_id);
-        loadEmployees(sections[0].section_id, null);
-        document.getElementById('selectedDepartment').textContent = sections[0].section_name;
-    } else {
-        document.getElementById('noEmployees').style.display = 'block';
-    }
+    // On open, show every employee across all sections/units, defaulted to Active employment status
+    document.getElementById('selectedDepartment').textContent = 'All Employees';
+    document.getElementById('unitsPanel').style.display = 'none';
+    loadEmployees(null, null);
     initCharts();
 });
 
@@ -765,13 +828,59 @@ function toggleDirectory(btn) {
     }
 }
 
+// ── Clear active state across sections + offices lists ─────────
+function clearMainListActive() {
+    document.querySelectorAll('#sectionsList .sec-item, #officesList .sec-item').forEach(i => i.classList.remove('active'));
+}
+
+// ── Show all employees (every section & unit) ───────────────────
+function showAllEmployees(el) {
+    clearMainListActive();
+    if (el) el.classList.add('active');
+    currentSectionId = null; currentUnitId = null;
+    managerStaffOnly = false;
+    officeFilter = null;
+    document.getElementById('selectedDepartment').textContent = 'All Employees';
+    document.getElementById('selectedUnitInfo').textContent = '';
+    document.getElementById('unitsPanel').style.display = 'none';
+    loadEmployees(null, null);
+}
+
+// ── Show manager's office staff only ────────────────────────────
+function selectManagerStaff(el) {
+    clearMainListActive();
+    if (el) el.classList.add('active');
+    currentSectionId = null; currentUnitId = null;
+    managerStaffOnly = true;
+    officeFilter = null;
+    document.getElementById('selectedDepartment').textContent = "Manager's Office Staff";
+    document.getElementById('selectedUnitInfo').textContent = '';
+    document.getElementById('unitsPanel').style.display = 'none';
+    loadEmployees(null, null);
+}
+
+// ── Show employees of a specific office (e.g. a branch office) ──
+function selectOffice(el, officeId) {
+    clearMainListActive();
+    if (el) el.classList.add('active');
+    currentSectionId = null; currentUnitId = null;
+    managerStaffOnly = false;
+    officeFilter = officeId;
+    document.getElementById('selectedDepartment').textContent = el.querySelector('.sec-item-name').textContent;
+    document.getElementById('selectedUnitInfo').textContent = '';
+    document.getElementById('unitsPanel').style.display = 'none';
+    loadEmployees(null, null);
+}
+
 // ── Select section ────────────────────────────────────────────
 function selectSection(el, sectionId) {
-    document.querySelectorAll('#sectionsList .sec-item').forEach(i => i.classList.remove('active'));
+    clearMainListActive();
     el.classList.add('active');
     const section = sections.find(s => s.section_id == sectionId);
     if (!section) return;
     currentSectionId = sectionId; currentUnitId = null;
+    managerStaffOnly = false;
+    officeFilter = null;
     document.getElementById('selectedDepartment').textContent = section.section_name;
     document.getElementById('selectedUnitInfo').textContent = '';
     updateUnitsPanel(sectionId);
@@ -827,6 +936,8 @@ function selectUnit(el, unitId) {
     const unit = unitSections.find(u => u.unit_id == unitId);
     if (!unit) return;
     currentUnitId = unitId;
+    managerStaffOnly = false;
+    officeFilter = null;
     document.getElementById('selectedDepartment').textContent = unit.unit_name;
     document.getElementById('selectedUnitInfo').textContent = `(${unit.section_name})`;
     loadEmployees(null, unitId);
@@ -904,6 +1015,7 @@ function displayEmployees() {
                         <span class="status-label ${slClass}">${escapeHtml(statusTxt)}</span>
                         <span style="margin-left:4px;">&middot; ID: ${escapeHtml(emp.id_number||'—')}</span>
                     </div>
+                    ${emp.appointment_status_name ? `<div class="section-chip" style="margin-top:6px;background:${escapeHtml(emp.appointment_status_color||'#800020')}22;color:${escapeHtml(emp.appointment_status_color||'#800020')};">${escapeHtml(emp.appointment_status_name)}</div>` : ''}
                 </div>`;
             container.appendChild(card);
         });
@@ -914,7 +1026,9 @@ function displayEmployees() {
         grid.style.display = 'none';
         none.style.display = 'block';
         document.getElementById('noEmployeesMessage').textContent =
-            (currentSectionId || currentUnitId) ? 'No employees found in this department' : 'Please select a department to view employees';
+            (searchQuery || employmentStatusFilter || appointmentStatusFilter)
+                ? 'No employees match your current filters'
+                : 'No employees found in this department';
         countEl.textContent = '0 employees';
     }
 }
@@ -929,12 +1043,19 @@ function applySearchAndFilter() {
             const q    = searchQuery.toLowerCase();
             if (!full.includes(q) && !id.includes(q) && !pos.includes(q)) return false;
         }
-        if (statusFilter && emp.employment_status_id != statusFilter) return false;
+        if (employmentStatusFilter && emp.employment_status_id != employmentStatusFilter) return false;
+        if (appointmentStatusFilter && emp.appointment_status_id != appointmentStatusFilter) return false;
+        if (managerStaffOnly && emp.is_manager_office_staff != 1) return false;
+        if (officeFilter && emp.office_id != officeFilter) return false;
         return true;
     });
 }
 function searchEmployees() { searchQuery = document.getElementById('searchInput').value; displayEmployees(); }
-function filterEmployees() { statusFilter = document.getElementById('statusFilter').value; displayEmployees(); }
+function filterEmployees() {
+    employmentStatusFilter  = document.getElementById('employmentStatusFilter').value;
+    appointmentStatusFilter = document.getElementById('appointmentStatusFilter').value;
+    displayEmployees();
+}
 function escapeHtml(t) { if (!t) return ''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
 // ── Session toasts ────────────────────────────────────────────

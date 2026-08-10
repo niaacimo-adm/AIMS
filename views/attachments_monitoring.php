@@ -221,35 +221,151 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
   
   <style>
     :root {
-      --primary: #4361ee;
-      --secondary: #3f37c9;
-      --success: #4cc9f0;
-      --info: #4895ef;
-      --warning: #f72585;
-      --danger: #e63946;
+      --primary: #2a9863;
+      --secondary: #24e78f;
+      --success: #2a9863;
+      --info: #0d9488;
+      --warning: #e67700;
+      --danger: #c92a2a;
       --light: #f8f9fa;
       --dark: #212529;
       --gray: #6c757d;
-      --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      --hover-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+      --card-shadow: 0 2px 8px rgba(42,152,99,.07);
+      --hover-shadow: 0 4px 24px rgba(42,152,99,.12);
+
+      /* ══ TOKENS — green forest theme (aligned with HR Leave Monitoring) ══ */
+      --h-bg:       #eef7f2;
+      --h-card:     #ffffff;
+      --h-card-alt: #f0faf5;
+      --h-border:   rgba(42,152,99,0.18);
+      --h-text:     #0f2d1e;
+      --h-muted:    #4a7a5e;
+      --h-primary:  #2a9863;
+      --h-accent:   #24e78f;
+      --h-success:  #2a9863;
+      --h-warning:  #e67700;
+      --h-danger:   #c92a2a;
+      --h-shadow:   0 4px 24px rgba(42,152,99,.12);
+      --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
     }
-    
+    body.dark-mode {
+      --h-bg:       #0b1f17;
+      --h-card:     #102f22;
+      --h-card-alt: #0e2619;
+      --h-border:   rgba(36,231,143,0.12);
+      --h-text:     #d4f5e5;
+      --h-muted:    #6aad8a;
+      --h-primary:  #24e78f;
+      --h-accent:   #2a9863;
+      --h-success:  #24e78f;
+      --h-warning:  #ffd43b;
+      --h-danger:   #ff6b6b;
+      --h-shadow:   0 4px 24px rgba(0,0,0,.35);
+      --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
+    }
+
     body {
-      background-color: #f5f7fb;
+      background-color: var(--h-bg);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
     .content-wrapper {
-      background-color: #f5f7fb;
+      background-color: var(--h-bg);
+    }
+
+    .am-content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
+
+    /* Stat cards — matches HR Leave Monitoring .stats-row/.stat-card */
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+    @media(max-width:1100px){ .stats-row{ grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:600px){ .stats-row{ grid-template-columns:repeat(2,1fr); } }
+    .stat-card {
+        background:var(--h-card); border:1px solid var(--h-border);
+        border-radius:14px; padding:18px 20px;
+        display:flex; align-items:center; gap:14px;
+        box-shadow:var(--h-shadow-sm); transition:transform .2s,box-shadow .2s;
+    }
+    .stat-card:hover { transform:translateY(-3px); box-shadow:var(--h-shadow); }
+    .stat-ico {
+        width:48px; height:48px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:18px; color:#fff; flex-shrink:0;
+    }
+    .si-tot  { background:linear-gradient(135deg,#2a9863,#24e78f); }
+    .si-appr { background:linear-gradient(135deg,#099268,#20c997); }
+    .si-pend { background:linear-gradient(135deg,#e67700,#f59f00); }
+    .si-rejt { background:linear-gradient(135deg,#c92a2a,#e03131); }
+    .stat-val { font-size:1.8rem; font-weight:800; color:var(--h-text); line-height:1; }
+    .stat-lbl { font-size:.72rem; color:var(--h-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
+
+    /* General card — matches HR Leave Monitoring .h-card */
+    .h-card {
+        background:var(--h-card); border:1px solid var(--h-border);
+        border-radius:14px; overflow:hidden; box-shadow:var(--h-shadow-sm);
+        transition:box-shadow .2s;
+    }
+    .h-card:hover { box-shadow:var(--h-shadow); }
+    .h-card-head {
+        padding:16px 22px; border-bottom:1px solid var(--h-border);
+        background:var(--h-card-alt); display:flex; align-items:center;
+        justify-content:space-between; flex-wrap:wrap; gap:8px;
+    }
+    .h-card-head-left { display:flex; align-items:center; gap:12px; }
+    .h-card-ico {
+        width:36px; height:36px; border-radius:9px;
+        background:linear-gradient(135deg,#2a9863,#24e78f);
+        display:flex; align-items:center; justify-content:center;
+        color:#fff; font-size:14px; flex-shrink:0;
+    }
+    .h-card-head h5, .h-card-head h3 { margin:0; font-size:1rem; font-weight:700; color:var(--h-text); }
+    .h-rec-count {
+        font-size:.74rem; color:var(--h-muted);
+        background:var(--h-bg); border-radius:20px;
+        padding:3px 10px; border:1px solid var(--h-border);
+    }
+
+    /* Filter bar — matches HR Leave Monitoring .filter-bar */
+    .filter-bar {
+        background:var(--h-card); border:1px solid var(--h-border);
+        border-radius:14px; padding:16px 20px; margin-bottom:20px;
+        display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;
+        box-shadow:var(--h-shadow-sm);
+    }
+    .filter-bar .fg { margin:0; flex:1; min-width:140px; }
+    .filter-bar .fg label {
+        font-size:.7rem; font-weight:700; color:var(--h-muted);
+        text-transform:uppercase; letter-spacing:.5px;
+        margin-bottom:5px; display:block;
+    }
+    .filter-bar .h-ctrl {
+        width:100%; background:var(--h-card); border:1.5px solid var(--h-border);
+        border-radius:8px; padding:8px 12px; font-size:.85rem; color:var(--h-text);
+        transition:border-color .18s, box-shadow .18s; box-sizing:border-box; height:calc(1.5em + 0.75rem + 2px);
+    }
+    .filter-bar .h-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px rgba(42,152,99,.13); }
+    .btn-am-reset {
+        background:var(--h-card); color:var(--h-muted);
+        border:1.5px solid var(--h-border); border-radius:8px;
+        padding:9px 14px; font-size:.85rem; cursor:pointer;
+        text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+        transition:background .15s; white-space:nowrap;
+    }
+    .btn-am-reset:hover { background:var(--h-bg); color:var(--h-text); }
+
+    /* Bulk actions bar */
+    .bulk-bar {
+        background:var(--h-card-alt); border:1px solid var(--h-border);
+        border-radius:10px; padding:10px 16px; margin-bottom:16px;
     }
 
     .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
     .card {
-      border: none;
-      border-radius: 12px;
+      border: 1px solid var(--h-border);
+      border-radius: 14px;
       box-shadow: var(--card-shadow);
-      transition: all 0.3s ease;
+      transition: box-shadow 0.2s ease;
       margin-bottom: 20px;
+      background: var(--h-card);
     }
     
     .card:hover {
@@ -257,40 +373,44 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     }
     
     .card-header {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      color: white;
-      border-radius: 12px 12px 0 0 !important;
-      padding: 15px 20px;
-      border-bottom: none;
+      background: var(--h-card-alt);
+      color: var(--h-text);
+      border-radius: 14px 14px 0 0 !important;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--h-border);
     }
     
-    .card-header h3 {
+    .card-header h3,
+    .card-header .card-title {
       margin: 0;
-      font-weight: 600;
-      font-size: 1.4rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--h-text);
     }
     
     .small-box {
-      border-radius: 12px;
+      border-radius: 14px;
       box-shadow: var(--card-shadow);
-      transition: all 0.3s ease;
-      border: none;
+      transition: all 0.2s ease;
+      border: 1px solid var(--h-border);
       overflow: hidden;
+      background: var(--h-card);
     }
     
     .small-box:hover {
-      transform: translateY(-5px);
+      transform: translateY(-3px);
       box-shadow: var(--hover-shadow);
     }
     
     .small-box .inner {
       padding: 20px;
+      color: var(--h-text);
     }
     
     .small-box h3 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin: 0 0 10px 0;
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin: 0 0 6px 0;
     }
     
     .small-box .icon {
@@ -299,26 +419,33 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       right: 15px;
       z-index: 0;
       font-size: 70px;
-      opacity: 0.3;
+      opacity: 0.15;
       transition: all 0.3s ease;
     }
     
     .small-box:hover .icon {
       transform: scale(1.1);
-      opacity: 0.4;
+      opacity: 0.22;
     }
+
+    .small-box.bg-info    { background:linear-gradient(135deg,#0d9488,#2a9863) !important; }
+    .small-box.bg-success { background:linear-gradient(135deg,#099268,#20c997) !important; }
+    .small-box.bg-warning { background:linear-gradient(135deg,#e67700,#f59f00) !important; color:#fff; }
+    .small-box.bg-danger  { background:linear-gradient(135deg,#c92a2a,#e03131) !important; }
+    .small-box.bg-info .inner, .small-box.bg-success .inner,
+    .small-box.bg-warning .inner, .small-box.bg-danger .inner { color:#fff; }
     
     .btn {
       border-radius: 8px;
       font-weight: 500;
       padding: 8px 16px;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       border: none;
     }
     
     .btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 8px rgba(42,152,99,.18);
     }
     
     .btn-sm {
@@ -327,24 +454,25 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     }
     
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      background: linear-gradient(135deg, #2a9863, #24e78f);
     }
     
     .btn-success {
-      background: linear-gradient(135deg, #4cc9f0, #4895ef);
+      background: linear-gradient(135deg, #099268, #20c997);
     }
     
     .btn-info {
-      background: linear-gradient(135deg, #4cc9f0, #4361ee);
+      background: linear-gradient(135deg, #0d9488, #2a9863);
+      color: #fff;
     }
     
     .btn-warning {
-      background: linear-gradient(135deg, #f72585, #b51717ff);
+      background: linear-gradient(135deg, #e67700, #f59f00);
       color:white;  
     }
     
     .btn-danger {
-      background: linear-gradient(135deg, #e63946, #d00000);
+      background: linear-gradient(135deg, #c92a2a, #e03131);
     }
     
     .table-container {
@@ -360,11 +488,14 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     }
     
     .monitoring-table th {
-      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-      color: var(--dark);
-      font-weight: 600;
+      background: var(--h-card-alt);
+      color: var(--h-muted);
+      font-weight: 700;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
       padding: 12px 15px;
-      border-bottom: 2px solid #dee2e6;
+      border-bottom: 2px solid var(--h-border);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -372,108 +503,121 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     
     .monitoring-table td {
       padding: 12px 15px;
-      border-bottom: 1px solid #e9ecef;
+      border-bottom: 1px solid var(--h-border);
       vertical-align: middle;
+      color: var(--h-text);
+      font-size: .87rem;
     }
     
     .monitoring-table tbody tr {
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     
     .monitoring-table tbody tr:hover {
-      background-color: rgba(67, 97, 238, 0.05);
-      transform: scale(1.002);
+      background-color: var(--h-card-alt);
     }
     
     .status-badge {
-      font-size: 0.75rem;
-      padding: 6px 10px;
+      font-size: 0.72rem;
+      padding: 3px 10px;
       border-radius: 20px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      display: inline-block;
     }
     
     .status-complete { 
-      background: #1de32eff; 
-      color: white; 
+      background: #e6fbf4; 
+      color: #087f5b; 
     }
+    body.dark-mode .status-complete { background:#0d3d2c; color:#63e6be; }
     
     .status-incomplete { 
-      background: linear-gradient(135deg, #ffc107, #ffaa00); 
-      color: black; 
+      background: #fff8e1; 
+      color: #b45309; 
     }
+    body.dark-mode .status-incomplete { background:#3d2e00; color:#ffd43b; }
     
     .status-complete-late { 
-      background: #1ffaebff; 
-      color: white; 
+      background: #e6f7ef; 
+      color: #1c4d38; 
     }
+    body.dark-mode .status-complete-late { background:#0e2619; color:#b8f0d4; }
     
     .status-not-submitted { 
-      background: linear-gradient(135deg, #e63946, #d00000); 
-      color: white; 
+      background: #fff0f0; 
+      color: #c92a2a; 
     }
+    body.dark-mode .status-not-submitted { background:#3d0f0f; color:#ff8787; }
     
     .filing-badge {
-      font-size: 0.75rem;
-      padding: 6px 10px;
+      font-size: 0.72rem;
+      padding: 3px 10px;
       border-radius: 20px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      display: inline-block;
     }
     
     .filing-forwarded { 
-      background: linear-gradient(135deg, #4cc9f0, #4895ef); 
-      color: white; 
+      background: #e6fbf4; 
+      color: #087f5b; 
     }
+    body.dark-mode .filing-forwarded { background:#0d3d2c; color:#63e6be; }
     
     .filing-not-forwarded { 
-      background: linear-gradient(135deg, #6c757d, #495057); 
-      color: white; 
+      background: #f1f5f9; 
+      color: #64748b; 
     }
+    body.dark-mode .filing-not-forwarded { background:#1e2030; color:#8892a4; }
     
     .appointment-badge {
       font-size: 0.7rem;
       padding: 4px 8px;
       border-radius: 12px;
-      background-color: #e9ecef;
-      color: #495057;
+      background-color: var(--h-card-alt);
+      color: var(--h-muted);
+      border: 1px solid var(--h-border);
     }
     
     .form-control {
       border-radius: 8px;
-      border: 1px solid #dee2e6;
+      border: 1.5px solid var(--h-border);
       padding: 0px 12px;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
+      background: var(--h-card);
+      color: var(--h-text);
     }
     
     .form-control:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+      border-color: var(--h-primary);
+      box-shadow: 0 0 0 3px rgba(42,152,99,.13);
     }
     
     .modal-content {
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       box-shadow: var(--hover-shadow);
+      overflow: hidden;
     }
     
     .modal-header {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      background: linear-gradient(135deg,#0f2d1e,#2a9863);
       color: white;
-      border-radius: 12px 12px 0 0;
+      border-radius: 14px 14px 0 0;
       border-bottom: none;
-      padding: 15px 20px;
+      padding: 18px 24px;
     }
+    .modal-header .close { color:#fff; opacity:.7; text-shadow:none; }
+    .modal-header .close:hover { opacity:1; color:#fff; }
     
     .modal-title {
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 1rem;
     }
     
     .modal-footer {
-      border-top: 1px solid #e9ecef;
-      padding: 15px 20px;
+      border-top: 1px solid var(--h-border);
+      padding: 14px 24px;
+      background: var(--h-card-alt);
     }
     
     .breadcrumb {
@@ -484,13 +628,14 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     
     .content-header h1 {
       font-weight: 700;
-      color: var(--dark);
+      color: var(--h-text);
       margin-bottom: 5px;
     }
     
     .filter-card {
-      background: dark;
-      border-radius: 12px;
+      background: var(--h-card);
+      border: 1px solid var(--h-border);
+      border-radius: 14px;
       padding: 20px;
       box-shadow: var(--card-shadow);
       margin-bottom: 20px;
@@ -498,8 +643,12 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     
     .filter-card h5 {
       margin-bottom: 15px;
-      font-weight: 600;
-      color: var(--dark);
+      font-weight: 700;
+      color: var(--h-text);
+    }
+    .filter-card label {
+      font-size:.7rem; font-weight:700; color:var(--h-muted);
+      text-transform:uppercase; letter-spacing:.5px;
     }
     
     /* .export-dropdown {
@@ -520,11 +669,12 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     } */
     
     .bulk-actions-card {
-      background: dark;
+      background: var(--h-card-alt);
+      border: 1px solid var(--h-border);
       border-radius: 12px;
       padding: 15px;
-      box-shadow: var(--card-shadow);
       margin-bottom: 20px;
+      color: var(--h-text);
     }
     
     .table-actions {
@@ -554,19 +704,22 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     }
 
     .status-no-attachments { 
-        background: #e9a214ff; 
-        color: white; 
+        background: #fff0f0; 
+        color: #c92a2a; 
     }
+    body.dark-mode .status-no-attachments { background:#3d0f0f; color:#ff8787; }
 
     .status-lacking-information { 
-        background: #4bcbe2ff; 
-        color: black; 
+        background: #fff8e1; 
+        color: #b45309; 
     }
+    body.dark-mode .status-lacking-information { background:#3d2e00; color:#ffd43b; }
 
     .status-for-review { 
-        background:  #df67d3ff; 
-        color: white; 
+        background: #f1f5f9; 
+        color: #64748b; 
     }
+    body.dark-mode .status-for-review { background:#1e2030; color:#8892a4; }
 
   /* Update the export dropdown styles */
   .export-dropdown {
@@ -654,9 +807,9 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
   }
 
   .year-btn.active {
-    background: #4361ee;
+    background: #2a9863;
     color: white;
-    border-color: #4361ee;
+    border-color: #2a9863;
   }
 
   .period-with-year {
@@ -899,64 +1052,48 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             </div>
         </div>
 
-    <section class="content">
+    <section class="content am-content">
       <div class="container-fluid">
         <!-- Statistics Cards -->
-        <div class="row">
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h3><?= count($employees) ?></h3>
-                        <p>Total Employees</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-users"></i>
-                    </div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-ico si-tot"><i class="fas fa-users"></i></div>
+                <div>
+                    <div class="stat-val"><?= count($employees) ?></div>
+                    <div class="stat-lbl">Total Employees</div>
                 </div>
             </div>
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>
-                            <?= count(array_filter($monitoringRecords, function($record) {
-                                return $record['status'] === 'COMPLETE';
-                            })) ?>
-                        </h3>
-                        <p>Complete</p>
+            <div class="stat-card">
+                <div class="stat-ico si-appr"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <div class="stat-val">
+                        <?= count(array_filter($monitoringRecords, function($record) {
+                            return $record['status'] === 'COMPLETE';
+                        })) ?>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+                    <div class="stat-lbl">Complete</div>
                 </div>
             </div>
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-warning">
-                    <div class="inner">
-                        <h3>
-                            <?= count(array_filter($monitoringRecords, function($record) {
-                                return $record['status'] === 'COMPLETE AND LATE';
-                            })) ?>
-                        </h3>
-                        <p>Complete & Late</p>
+            <div class="stat-card">
+                <div class="stat-ico si-pend"><i class="fas fa-clock"></i></div>
+                <div>
+                    <div class="stat-val">
+                        <?= count(array_filter($monitoringRecords, function($record) {
+                            return $record['status'] === 'COMPLETE AND LATE';
+                        })) ?>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
+                    <div class="stat-lbl">Complete &amp; Late</div>
                 </div>
             </div>
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h3>
-                            <?= count(array_filter($monitoringRecords, function($record) {
-                                return $record['status'] === 'NO ATTACHMENTS';
-                            })) ?>
-                        </h3>
-                        <p>No Attachments</p>
+            <div class="stat-card">
+                <div class="stat-ico si-rejt"><i class="fas fa-times-circle"></i></div>
+                <div>
+                    <div class="stat-val">
+                        <?= count(array_filter($monitoringRecords, function($record) {
+                            return $record['status'] === 'NO ATTACHMENTS';
+                        })) ?>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-times-circle"></i>
-                    </div>
+                    <div class="stat-lbl">No Attachments</div>
                 </div>
             </div>
         </div>
@@ -1005,9 +1142,11 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
               </div>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-              <button type="button" class="btn btn-outline-secondary w-100" id="resetFilters">
+              <div class="form-group ">
+              <button type="button" class="btn btn-outline-secondary w-100 " id="resetFilters">
                 <i class="fas fa-redo"></i> Reset
               </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1122,7 +1261,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
                             
                             <?php foreach ($groupedPeriods as $year => $periods): ?>
                               <!-- Year Header -->
-                              <div class="dropdown-header year-header small font-weight-bold text-primary bg-light" data-year="<?= $year ?>">
+                              <div class="dropdown-header year-header small font-weight-bold" style="color:#2a9863;" data-year="<?= $year ?>">
                                 <i class="fas fa-calendar-alt mr-1"></i> <?= $year ?>
                               </div>
                               

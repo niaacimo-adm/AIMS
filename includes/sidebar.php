@@ -167,6 +167,12 @@ if ($employee_id) {
             </a>
           </li>
           <?php endif; ?>
+          <li class="nav-item">
+                  <a href="../views/coe_request.php" class="nav-link <?= $current_page == 'coe_request.php' ? 'active' : 'text-white' ?>">
+                      <i class="fas fa-certificate nav-icon"></i>
+                      <p>Request a COE</p>
+                  </a>
+              </li>
           <li class="nav-item"> 
             <a href="leave_request.php" class="nav-link <?= $current_page == 'leave_request.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-newspaper nav-icon"></i>
@@ -204,6 +210,12 @@ if ($employee_id) {
                   <a href="../views/hr_leave_monitoring.php" class="nav-link <?= $current_page == 'hr_leave_monitoring.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-list nav-icon"></i>
                       <p>HR Leave Monitoring</p>
+                  </a>
+              </li>
+              <li class="nav-item">
+                  <a href="../views/certificate_of_employment.php" class="nav-link <?= $current_page == 'certificate_of_employment.php' ? 'active' : 'text-white' ?>">
+                      <i class="fas fa-certificate nav-icon"></i>
+                      <p>Employee COE Request</p>
                   </a>
               </li>
               <li class="nav-item">

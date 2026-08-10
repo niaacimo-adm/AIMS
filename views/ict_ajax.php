@@ -53,7 +53,25 @@ switch ($action) {
                           FROM ict_equipment_assignments a
                           JOIN employee emp ON emp.emp_id = a.employee_id
                          WHERE a.equipment_id = e.id AND a.status = 'Assigned'
-                         ORDER BY a.assigned_date DESC LIMIT 1) AS assigned_to
+                         ORDER BY a.assigned_date DESC LIMIT 1) AS assigned_to,
+                       (SELECT sec.section_name
+                          FROM ict_equipment_assignments a
+                          JOIN employee emp ON emp.emp_id = a.employee_id
+                          LEFT JOIN section sec ON sec.section_id = emp.section_id
+                         WHERE a.equipment_id = e.id AND a.status = 'Assigned'
+                         ORDER BY a.assigned_date DESC LIMIT 1) AS assigned_section,
+                       (SELECT us.unit_name
+                          FROM ict_equipment_assignments a
+                          JOIN employee emp ON emp.emp_id = a.employee_id
+                          LEFT JOIN unit_section us ON us.unit_id = emp.unit_section_id
+                         WHERE a.equipment_id = e.id AND a.status = 'Assigned'
+                         ORDER BY a.assigned_date DESC LIMIT 1) AS assigned_unit_section,
+                       (SELECT pos.position_name
+                          FROM ict_equipment_assignments a
+                          JOIN employee emp ON emp.emp_id = a.employee_id
+                          LEFT JOIN position pos ON pos.position_id = emp.position_id
+                         WHERE a.equipment_id = e.id AND a.status = 'Assigned'
+                         ORDER BY a.assigned_date DESC LIMIT 1) AS assigned_position
                 FROM ict_equipment e
                 LEFT JOIN ict_categories c ON c.id = e.category_id
                 LEFT JOIN office o ON o.office_id = e.office_id
@@ -306,9 +324,13 @@ switch ($action) {
             break;
         }
 
-        $astmt = $db->prepare("SELECT a.*, CONCAT(emp.first_name,' ',emp.last_name) AS employee_name
+        $astmt = $db->prepare("SELECT a.*, CONCAT(emp.first_name,' ',emp.last_name) AS employee_name,
+                                      sec.section_name, us.unit_name AS unit_section_name, pos.position_name
                                 FROM ict_equipment_assignments a
                                 JOIN employee emp ON emp.emp_id = a.employee_id
+                                LEFT JOIN section sec ON sec.section_id = emp.section_id
+                                LEFT JOIN unit_section us ON us.unit_id = emp.unit_section_id
+                                LEFT JOIN position pos ON pos.position_id = emp.position_id
                                 WHERE a.equipment_id = ? AND a.status = 'Assigned'
                                 ORDER BY a.assigned_date DESC LIMIT 1");
         $astmt->bind_param("i", $eid);

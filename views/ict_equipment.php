@@ -23,6 +23,7 @@ $offices    = $db->query("SELECT office_id, office_name FROM office ORDER BY off
 <title>NIA-ACIMO | Equipment Inventory</title>
 <?php include '../includes/header.php'; ?>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════
    DESIGN TOKENS — Light Mode
@@ -327,37 +328,49 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 
 <!-- QR Code Modal -->
 <div class="modal fade" id="qrModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
+  <div class="modal-dialog modal-md">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="fas fa-qrcode mr-2"></i>Equipment QR Label</h5>
         <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
       </div>
       <div class="modal-body text-center" id="qrLabelArea">
-        <p class="text-muted mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Live Lookup</p>
-        <div id="qrCodeCanvas" class="d-flex justify-content-center mb-1"></div>
-        <p class="text-muted mb-2" style="font-size:.68rem;">Needs same network as server</p>
+        <p class="text-muted mb-1" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Live Lookup</p>
+        <div id="qrCodeCanvas" class="d-flex justify-content-center"></div>
+        <p class="text-muted mb-1" style="font-size:.6rem;">Needs same network as server</p>
 
-        <hr class="my-2">
-
-        <p class="text-muted mb-1" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Offline Snapshot</p>
-        <div id="qrCodeCanvasOffline" class="d-flex justify-content-center mb-1"></div>
-        <p class="text-muted mb-2" style="font-size:.68rem;">Any phone, no network — shows as plain text after scanning</p>
-
-        <h5 id="qrAssetTag" class="mb-0"></h5>
-        <p id="qrEquipmentName" class="text-muted mb-2"></p>
-        <table class="table table-sm table-borderless text-left mb-0" id="qrSpecsTable" style="font-size:.8rem;">
-          <tbody id="qrSpecsBody"></tbody>
-        </table>
+        <h5 id="qrAssetTag" class="mb-0" style="font-size:1rem;"></h5>
+        <p id="qrEquipmentName" class="text-muted mb-1" style="font-size:.85rem;"></p>
+        <div id="qrSpecsBody" style="font-size:.8rem;"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-success" id="btnDownloadQr"><i class="fas fa-download"></i> Download QR</button>
+        <button type="button" class="btn btn-success" id="btnDownloadQr"><i class="fas fa-download"></i> Download Label</button>
         <button type="button" class="btn btn-primary" id="btnPrintQr"><i class="fas fa-print"></i> Print Label</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Label Preview Modal — shows the exact exported PNG before saving -->
+<div class="modal fade" id="qrPreviewModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-image mr-2"></i>Label Preview</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body text-center" style="background:#e9edf2;padding:20px;">
+        <img id="qrPreviewImg" src="" alt="Label preview" style="max-width:100%;border:1px solid #dee2e6;box-shadow:0 2px 10px rgba(0,0,0,.12);">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Back</button>
+        <button type="button" class="btn btn-success" id="btnConfirmDownload"><i class="fas fa-download"></i> Save PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const CAN_MANAGE = <?= $can_manage ? 'true' : 'false' ?>;
@@ -391,7 +404,7 @@ $(function() {
                 data: null,
                 orderable: false,
                 render: function(row) {
-                    let btns = `<button class="btn btn-xs btn-info btnQr" data-id="${row.id}" data-tag="${row.asset_tag}" data-name="${row.equipment_name}" data-category="${row.category_name || ''}" data-brand="${row.brand || ''}" data-model="${row.model || ''}" data-serial="${row.serial_number || ''}" data-condition="${row.condition_status || ''}" data-status="${row.status || ''}" data-office="${row.office_name || ''}" data-assigned="${row.assigned_to || ''}"><i class="fas fa-qrcode"></i></button> `;
+                    let btns = `<button class="btn btn-xs btn-info btnQr" data-id="${row.id}" data-tag="${row.asset_tag}" data-name="${row.equipment_name}" data-category="${row.category_name || ''}" data-brand="${row.brand || ''}" data-model="${row.model || ''}" data-serial="${row.serial_number || ''}" data-condition="${row.condition_status || ''}" data-status="${row.status || ''}" data-office="${row.office_name || ''}" data-assigned="${row.assigned_to || ''}" data-section="${row.assigned_section || ''}" data-unit="${row.assigned_unit_section || ''}" data-position="${row.assigned_position || ''}"><i class="fas fa-qrcode"></i></button> `;
                     if (CAN_MANAGE) {
                         btns += `<button class="btn btn-xs btn-warning btnEdit" data-id="${row.id}"><i class="fas fa-edit"></i></button> `;
                         btns += `<button class="btn btn-xs btn-danger btnDelete" data-id="${row.id}"><i class="fas fa-trash"></i></button>`;
@@ -471,45 +484,44 @@ $(function() {
 
     // QR code generation — encodes a scannable URL back to the scanner page
     function specRow(label, value) {
-        return value ? `<tr><th style="width:110px;color:var(--rr-text-muted);">${label}</th><td>${value}</td></tr>` : '';
+        return value ? `<div class="mb-2"><strong>${label}</strong><br>${value}</div>` : '';
     }
 
     const STATUS_COLORS = { Available: '#10b981', Assigned: '#f59e0b', 'Under Repair': '#ef4444', Retired: '#94a3b8', Lost: '#334155' };
 
-    function toPlainAscii(str) {
-        return String(str || '')
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents (é→e, ñ→n)
-            .replace(/[^\x20-\x7E]/g, '');                      // drop anything else non-ASCII
-    }
-
-    function buildOfflineSnapshotText(d) {
-        const lines = [
-            `ASSET TAG: ${toPlainAscii(d.tag)}`,
-            `EQUIPMENT: ${toPlainAscii(d.name)}`,
-            `CATEGORY: ${toPlainAscii(d.category) || '-'}`,
-            `BRAND/MODEL: ${toPlainAscii((d.brand || '') + ' ' + (d.model || ''))}`.trim(),
-            `SERIAL: ${toPlainAscii(d.serial) || '-'}`,
-            `CONDITION: ${toPlainAscii(d.condition) || '-'}`,
-            `STATUS: ${toPlainAscii(d.status) || '-'}`,
-            `OFFICE: ${toPlainAscii(d.office) || '-'}`
-        ];
-        if (d.status === 'Assigned' && d.assigned) lines.push(`ASSIGNED TO: ${toPlainAscii(d.assigned)}`);
-        lines.push(`(Offline snapshot - may be outdated. Scan Live QR on office network for current status.)`);
-        return lines.join('\n');
-    }
-
     $('#equipmentTable').on('click', '.btnQr', function() {
         const d = $(this).data();
         let specsHtml = '';
+
+        // "Assigned To" — employee's name on its own line, with their
+        // Section / Unit Section / Position in parentheses on the line below.
+        if (d.assigned) {
+            const orgParts = [d.section, d.unit, d.position].filter(Boolean).join(' / ');
+            const orgLine = orgParts ? `<br><span id="qrAssignedOrgLine" style="white-space:nowrap;">(${orgParts})</span>` : '';
+            specsHtml += `<div class="mb-2"><strong>Assigned To</strong><br>${d.assigned}${orgLine}</div>`;
+        }
+
         specsHtml += specRow('Category', d.category);
         specsHtml += specRow('Brand / Model', `${d.brand || ''} ${d.model || ''}`.trim());
         specsHtml += specRow('Serial No.', d.serial);
-        specsHtml += specRow('Condition', d.condition);
         $('#qrSpecsBody').html(specsHtml);
+
+        // Shrink the org-info line's font size just enough to keep it on
+        // one line without spilling outside the label — never below 0.55rem.
+        const $assignedLine = $('#qrAssignedOrgLine');
+        if ($assignedLine.length) {
+            let size = 0.85;
+            $assignedLine.css('font-size', size + 'rem');
+            const container = $assignedLine.parent()[0];
+            while (container.scrollWidth > container.clientWidth && size > 0.55) {
+                size -= 0.05;
+                $assignedLine.css('font-size', size + 'rem');
+            }
+        }
+
         const tag = $(this).data('tag');
         const name = $(this).data('name');
         $('#qrCodeCanvas').empty();
-        $('#qrCodeCanvasOffline').empty();
         $('#qrAssetTag').text(tag);
         $('#qrEquipmentName').text(name);
 
@@ -520,40 +532,76 @@ $(function() {
             height: 160
         });
 
-        // QR #2 — offline snapshot, compact plain text baked directly into the
-        // QR (not a URL), so it needs no network and stays small enough to scan
-        const snapshotText = buildOfflineSnapshotText(d);
-        new QRCode(document.getElementById('qrCodeCanvasOffline'), {
-            text: snapshotText,
-            width: 160,
-            height: 160,
-            correctLevel: QRCode.CorrectLevel.M
-        });
-
         $('#qrModal').modal('show');
     });
 
-    // Download QR — exports the on-screen QR canvas as a PNG file
+    // Download Label — captures the whole label area (QR + tag + specs text),
+    // shows it in a preview modal, and only saves the file once the user confirms
+    let pendingLabelDataUrl = null;
+    let pendingLabelFilename = null;
+
     $('#btnDownloadQr').on('click', function() {
-        const canvas = document.querySelector('#qrCodeCanvas canvas');
-        if (!canvas) {
+        const labelEl = document.getElementById('qrLabelArea');
+        if (!document.querySelector('#qrCodeCanvas canvas')) {
             toastr.error('QR code is not ready yet. Please try again.');
             return;
         }
         const tag = ($('#qrAssetTag').text().trim() || 'equipment-qr').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const $btn = $(this).prop('disabled', true);
+
+        html2canvas(labelEl, {
+            backgroundColor: '#ffffff', // force white background regardless of dark mode
+            scale: 3,                   // higher-res export for crisp printing/scanning
+            useCORS: true
+        }).then(function(canvas) {
+            pendingLabelDataUrl = canvas.toDataURL('image/png');
+            pendingLabelFilename = tag + '_label.png';
+            $('#qrPreviewImg').attr('src', pendingLabelDataUrl);
+            $btn.prop('disabled', false);
+            $('#qrModal').modal('hide');
+            $('#qrPreviewModal').modal('show');
+        }).catch(function() {
+            toastr.error('Could not generate the label image. Please try again.');
+            $btn.prop('disabled', false);
+        });
+    });
+
+    // Save PNG — actually triggers the file download once the preview is confirmed
+    $('#btnConfirmDownload').on('click', function() {
+        if (!pendingLabelDataUrl) return;
         const link = document.createElement('a');
-        link.download = tag + '.png';
-        link.href = canvas.toDataURL('image/png');
+        link.download = pendingLabelFilename;
+        link.href = pendingLabelDataUrl;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        pendingLabelDataUrl = null;
+        $('#qrPreviewModal').modal('hide');
     });
 
-    $('#btnPrintQr').on('click', function() {
+    // "Back" (Close button / X) on the preview returns to the label modal
+    $('#qrPreviewModal').on('hidden.bs.modal', function() {
+        if (pendingLabelDataUrl) {
+            pendingLabelDataUrl = null;
+            $('#qrModal').modal('show');
+        }
+    });
+
+$('#btnPrintQr').on('click', function() {
         const printContents = document.getElementById('qrLabelArea').innerHTML;
-        const w = window.open('', '', 'width=400,height=500');
+        const w = window.open('', '', 'width=380,height=420');
         w.document.write(`<html><head><title>Print Label</title>
-            <style>body{font-family:sans-serif;text-align:center;padding-top:30px;} img,canvas{margin:auto;}</style>
+            <style>
+                @page { size: 80mm auto; margin: 4mm; }
+                * { box-sizing: border-box; }
+                body { font-family: sans-serif; text-align: center; margin: 0; padding: 6px; }
+                #qrLabelArea { max-width: 220px; margin: 0 auto; }
+                img, canvas { margin: auto; display: block; }
+                p { margin: 0 0 4px; }
+                h5 { margin: 4px 0 2px; }
+                table { width: auto; border-collapse: collapse; margin: 4px auto 0; }
+                td, th { padding: 1px 4px !important; line-height: 1.2; }
+            </style>
             </head><body>${printContents}</body></html>`);
         w.document.close();
         w.focus();

@@ -1,7 +1,12 @@
 <?php
 session_start();
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+if (!isset($conn) && class_exists('Database')) {
+    $database = new Database();
+    $conn = $database->getConnection();
+}
 
 // Get dashboard statistics
 $stats = [];
@@ -150,277 +155,114 @@ $stats['month_efficiency'] = $stats['month_trips'] > 0 ?
   <title>NIA-ACIMO | Service Dashboard</title>
   
   <?php include '../includes/header.php'; ?>
+
   <style>
-    /* Custom styles matching inventory.php */
-    .small-box {
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 20px;
-    }
-    
-    .small-box>.inner {
-        padding: 20px;
-    }
-    
-    .small-box h3 {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin: 0 0 10px 0;
-        white-space: nowrap;
-        padding: 0;
-        color: white;
-    }
-    
-    .small-box p {
-        font-size: 1rem;
-        color: rgba(255,255,255,0.9);
-    }
-    
-    .small-box .icon {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 0;
-        font-size: 70px;
-        color: rgba(255,255,255,0.2);
-        transition: all 0.3s ease;
-    }
-    
-    .small-box:hover .icon {
-        font-size: 75px;
-    }
-    
-    .small-box-footer {
-        position: relative;
-        text-align: center;
-        padding: 10px 0;
-        color: rgba(255,255,255,0.8);
-        background: rgba(0,0,0,0.1);
-        text-decoration: none;
-        display: block;
-        z-index: 10;
-    }
-    
-    .small-box-footer:hover {
-        color: white;
-        background: rgba(0,0,0,0.2);
-        text-decoration: none;
-    }
-    
-    /* Service-specific gradient backgrounds */
-    .bg-gradient-vehicles {
-        background: linear-gradient(120deg, #007bff, #0056b3) !important;
-    }
-    
-    .bg-gradient-drivers {
-        background: linear-gradient(120deg, #28a745, #20c997) !important;
-    }
-    
-    .bg-gradient-pending {
-        background: linear-gradient(120deg, #ffc107, #fd7e14) !important;
-    }
-    
-    .bg-gradient-completed {
-        background: linear-gradient(120deg, #17a2b8, #138496) !important;
-    }
-    
-    .bg-gradient-available {
-        background: linear-gradient(120deg, #28a745, #20c997) !important;
-    }
-    
-    .bg-gradient-maintenance {
-        background: linear-gradient(120deg, #ffc107, #fd7e14) !important;
-    }
-    
-    .bg-gradient-unavailable {
-        background: linear-gradient(120deg, #dc3545, #c82333) !important;
-    }
-    
-    /* Dashboard cards */
-    .dashboard-card {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        margin-bottom: 25px;
-        overflow: hidden;
-    }
-    
-    .dashboard-card .card-header {
-        background: white;
-        border-bottom: 1px solid rgba(0,0,0,0.1);
-        padding: 15px 20px;
-    }
-    
-    .dashboard-card .card-header h3 {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin: 0;
-        color: #343a40;
-    }
-    
-    .dashboard-card .card-body {
-        padding: 20px;
-    }
-    
-    /* Quick Actions */
-    .quick-action {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 15px 10px;
-        border-radius: 10px;
-        transition: all 0.3s;
-        text-decoration: none;
-        color: #343a40;
-    }
-    
-    .quick-action:hover {
-        background-color: #f8f9fa;
-        transform: translateY(-3px);
-        color: #007bff;
-        text-decoration: none;
-    }
-    
-    .quick-action i {
-        font-size: 2rem;
-        margin-bottom: 10px;
-    }
-    
-    .quick-action div {
-        font-weight: 500;
-    }
-    
-    /* Upcoming Requests */
-    .upcoming-request {
-        padding: 15px;
-        border-radius: 8px;
-        background-color: #f8f9fa;
-        margin-bottom: 15px;
-        transition: all 0.3s;
-        border-left: 4px solid #007bff;
-    }
-    
-    .upcoming-request:hover {
-        background-color: #e9ecef;
-    }
-    
-    .request-date {
-        font-weight: 600;
-        color: #343a40;
-    }
-    
-    .request-destination {
-        font-size: 0.95rem;
-        margin: 5px 0;
-        color: #6c757d;
-    }
-    
-    .request-requester {
-        font-size: 0.85rem;
-        color: #6c757d;
-    }
-    
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 5px 10px;
-        border-radius: 20px;
-    }
-    
-    /* Progress Bars */
-    .progress {
-        height: 8px;
-        border-radius: 10px;
-        margin-top: 5px;
-        background-color: #e9ecef;
-    }
-    
-    .progress-bar {
-        border-radius: 10px;
-    }
-    
-    /* Recent Activity */
-    .recent-activity {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .recent-activity li {
-        display: flex;
-        align-items: flex-start;
-        padding: 12px 0;
-        border-bottom: 1px solid #e9ecef;
-    }
-    
-    .recent-activity li:last-child {
-        border-bottom: none;
-    }
-    
-    .activity-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 15px;
-        flex-shrink: 0;
-        color: white;
-    }
-    
-    .activity-content {
-        flex: 1;
-    }
-    
-    .activity-time {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 3px;
-    }
-    
-    /* Quick Stats */
-    .quick-stats .border-right {
-        border-right: 1px solid #e9ecef !important;
-    }
-    
-    /* Empty States */
-    .empty-state {
-        text-align: center;
-        padding: 30px 15px;
-        color: #6c757d;
-    }
-    
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 15px;
-        opacity: 0.5;
-    }
-    
-    /* Responsive */
-    @media (max-width: 768px) {
-        .small-box h3 {
-            font-size: 1.8rem;
-        }
-        
-        .quick-action {
-            margin-bottom: 15px;
-        }
-        
-        .dashboard-card .card-body {
-            padding: 15px;
-        }
-    }
-  
+  /* ============================================================
+     NIA-ACIMO Service Module — Modern UI Layer
+     Built on top of the app's existing --variables (light/dark
+     mode values are supplied globally in includes/header.php).
+     ============================================================ */
+  .service-ui{ --su-accent:#24e78f; --su-accent-rgb:36,231,143; --su-radius:16px; --su-radius-sm:10px; }
+
+  /* ---------- Page header ---------- */
+  .service-ui .content-header{ padding:18px 0 6px; }
+  .service-ui .content-header .container-fluid{
+      background:linear-gradient(135deg, rgba(var(--su-accent-rgb),.10), rgba(var(--su-accent-rgb),.02));
+      border:1px solid var(--card-border);
+      border-radius:var(--su-radius);
+      padding:20px 24px;
+  }
+  .service-ui .content-header h1{
+      display:flex; align-items:center; gap:12px;
+      font-size:1.45rem; font-weight:800; color:var(--text-primary); margin:0;
+  }
+  .service-ui .content-header h1 .page-icon{
+      width:42px; height:42px; border-radius:12px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      background:var(--su-accent); color:#04160e; font-size:1.05rem;
+      box-shadow:0 6px 16px -4px rgba(var(--su-accent-rgb),.5);
+  }
+  .service-ui .page-subtitle{ color:var(--text-muted); font-size:.85rem; margin:6px 0 0 54px; }
+  .service-ui .content-header .breadcrumb{ background:transparent; margin:0; padding:0; }
+
+  /* ---------- Cards ---------- */
+  .service-ui .card{
+      border:1px solid var(--card-border); border-radius:var(--su-radius);
+      box-shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 24px -18px rgba(0,0,0,.18);
+      overflow:hidden;
+  }
+  .service-ui .card-header{
+      background:var(--card-bg); border-bottom:1px solid var(--card-border);
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+      padding:16px 20px;
+  }
+  .service-ui .card-title{
+      font-size:1.05rem; font-weight:700; color:var(--text-primary);
+      display:flex; align-items:center; gap:8px; margin:0;
+  }
+  .service-ui .card-title i{ color:var(--su-accent); }
+  .service-ui .card-body{ padding:20px; }
+
+  /* ---------- Buttons ---------- */
+  .service-ui .btn{ border-radius:var(--su-radius-sm); font-weight:600; font-size:.85rem; letter-spacing:.01em; transition:all .18s ease; }
+  .service-ui .btn-primary{ background:var(--su-accent); border-color:var(--su-accent); color:#04160e; }
+  .service-ui .btn-primary:hover, .service-ui .btn-primary:focus{ background:#1fcf80; border-color:#1fcf80; color:#04160e; transform:translateY(-1px); box-shadow:0 6px 14px -6px rgba(var(--su-accent-rgb),.6); }
+  .service-ui .btn-sm{ border-radius:8px; }
+  .service-ui .action-btns .btn{ padding:.3rem .55rem; font-size:.8rem; margin-right:3px; }
+  .service-ui .action-btns .btn:last-child{ margin-right:0; }
+  .service-ui .btn-group .btn{ border-radius:8px !important; margin-right:3px; }
+
+  /* ---------- Table ---------- */
+  .service-ui .table{ margin-bottom:0; font-size:.9rem; }
+  .service-ui .table thead th{
+      background:var(--table-stripe); color:var(--text-muted); border-bottom:2px solid var(--table-border);
+      font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; font-weight:700; white-space:nowrap;
+  }
+  .service-ui .table td{ vertical-align:middle; border-color:var(--table-border); }
+  .service-ui .table-hover tbody tr{ transition:background .15s ease; }
+  .service-ui .table-hover tbody tr:hover{ background:rgba(var(--su-accent-rgb),.07) !important; }
+
+  /* ---------- Badges ---------- */
+  .service-ui .badge{ font-weight:600; padding:.42em .8em; border-radius:20px; letter-spacing:.02em; }
+  .service-ui .status-badge{ font-size:.72rem; }
+
+  /* ---------- Forms ---------- */
+  .service-ui .form-control{ border-radius:var(--su-radius-sm); border-color:var(--input-border); }
+  .service-ui .form-control:focus{ border-color:var(--su-accent); box-shadow:0 0 0 .2rem rgba(var(--su-accent-rgb),.2); }
+  .service-ui .form-group label{ font-weight:600; font-size:.85rem; color:var(--text-primary); }
+
+  /* ---------- Modals ---------- */
+  .service-ui .modal-content{ border:none; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px -20px rgba(0,0,0,.4); }
+  .service-ui .modal-header{ background:var(--modal-header-bg); color:var(--modal-header-color); border-bottom:none; padding:18px 22px; }
+  .service-ui .modal-header .close{ color:var(--modal-header-color); opacity:.8; text-shadow:none; }
+  .service-ui .modal-header .close:hover{ opacity:1; }
+  .service-ui .modal-title{ font-weight:700; }
+  .service-ui .modal-body{ padding:22px; }
+  .service-ui .modal-footer{ border-top:1px solid var(--card-border); padding:14px 22px; }
+
+  /* ---------- Alerts ---------- */
+  .service-ui .alert{ border:none; border-left:4px solid; border-radius:10px; }
+  .service-ui .alert-warning{ border-left-color:#f59e0b; }
+  .service-ui .alert-danger{ border-left-color:#ef4444; }
+  .service-ui .alert-success{ border-left-color:var(--su-accent); }
+  .service-ui .alert-info{ border-left-color:#3b82f6; }
+
+  /* ---------- Empty state ---------- */
+  .service-ui .empty-state{ text-align:center; padding:40px 15px; color:var(--text-muted); }
+  .service-ui .empty-state i{ font-size:2.6rem; margin-bottom:12px; opacity:.4; }
+
+  /* ---------- Photo thumbnails ---------- */
+  .service-ui .driver-photo, .service-ui .request-photo{
+      box-shadow:0 0 0 2px var(--card-bg), 0 0 0 3px var(--card-border);
+  }
+
 /* =========================================================
    DARK MODE OVERRIDES — applied via body.dark-mode
    ========================================================= */
 body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; border-color: var(--card-border) !important; }
+body.dark-mode .card-header { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
 body.dark-mode .card-body { background: var(--card-bg) !important; color: var(--text-primary) !important; }
 body.dark-mode .card-footer { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
 body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
@@ -431,10 +273,9 @@ body.dark-mode .table { background: var(--table-bg) !important; color: var(--tex
 body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
 body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
 body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
-body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
+body.dark-mode .table-hover tbody tr:hover { background: rgba(36,231,143,.10) !important; }
 body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
 body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
 body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
 body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
 body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
@@ -445,17 +286,9 @@ body.dark-mode p, body.dark-mode span:not(.badge) { color: var(--text-primary); 
 body.dark-mode .breadcrumb { background: var(--card-bg) !important; }
 body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
 body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
-body.dark-mode .nav-tabs .nav-link { color: var(--text-muted) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs .nav-link.active { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs { border-color: var(--card-border) !important; }
-body.dark-mode .tab-content, body.dark-mode .tab-pane { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .accordion .card { background: var(--card-bg) !important; }
-body.dark-mode .accordion .card-header { background: var(--table-stripe) !important; }
-body.dark-mode .list-group-item { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
 body.dark-mode .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
 body.dark-mode .dropdown-item { color: var(--dropdown-color) !important; }
 body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
-body.dark-mode .alert { border-color: var(--card-border) !important; }
 body.dark-mode .alert-info { background: #1e2f3e !important; color: #93c5fd !important; }
 body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
 body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
@@ -465,24 +298,107 @@ body.dark-mode .page-item.active .page-link { background: var(--sidebar-active-b
 body.dark-mode hr { border-color: var(--card-border) !important; }
 body.dark-mode .dataTables_wrapper { color: var(--text-primary) !important; }
 body.dark-mode .dataTables_filter input, body.dark-mode .dataTables_length select { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .dataTables_info { color: var(--text-muted) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection__rendered { color: var(--input-color) !important; }
-body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
-body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
+body.dark-mode .dataTables_info, body.dark-mode .dataTables_paginate { color: var(--text-muted) !important; }
 
-body.dark-mode .service-card { background: var(--card-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .service-card .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
-body.dark-mode .status-tabs .nav-link { color: var(--text-muted) !important; background: var(--card-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .status-tabs .nav-link.active { background: var(--sidebar-active-bg) !important; color: #fff !important; }
-body.dark-mode .vehicle-info-row { color: var(--text-muted) !important; }
-body.dark-mode .schedule-item { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .schedule-item:hover { background: var(--table-stripe) !important; }
+  /* ---------- Dashboard stat cards ---------- */
+  .service-ui .small-box{
+      background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--su-radius);
+      box-shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 24px -18px rgba(0,0,0,.18);
+      position:relative; overflow:hidden; margin-bottom:20px;
+      border-top:3px solid var(--su-accent);
+      transition:transform .25s ease, box-shadow .25s ease;
+  }
+  .service-ui .small-box:hover{ transform:translateY(-4px); box-shadow:0 16px 32px -16px rgba(0,0,0,.25); }
+  .service-ui .small-box>.inner{ padding:22px 22px 16px; position:relative; z-index:1; }
+  .service-ui .small-box h3{ font-size:2rem; font-weight:800; margin:0 0 4px; color:var(--text-primary); white-space:nowrap; }
+  .service-ui .small-box p{ font-size:.8rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin:0; }
+  .service-ui .small-box .icon{
+      position:absolute; top:18px; right:18px; z-index:0;
+      width:50px; height:50px; border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.3rem; color:#fff; transition:none;
+      box-shadow:0 6px 16px -4px rgba(0,0,0,.25);
+  }
+  .service-ui .small-box:hover .icon{ font-size:1.3rem; }
+  .service-ui .small-box-footer{
+      position:relative; text-align:left; padding:10px 22px; z-index:1;
+      background:transparent; border-top:1px solid var(--card-border);
+      color:var(--su-accent); font-weight:700; font-size:.82rem; text-decoration:none; display:block;
+  }
+  .service-ui .small-box-footer:hover{ color:var(--text-primary); background:var(--table-stripe); text-decoration:none; }
 
-</style>
+  .service-ui .bg-gradient-vehicles .icon{ background:linear-gradient(135deg,#3b82f6,#2563eb); }
+  .service-ui .bg-gradient-drivers .icon{ background:linear-gradient(135deg,#24e78f,#1a9d63); }
+  .service-ui .bg-gradient-pending .icon{ background:linear-gradient(135deg,#f59e0b,#d97706); }
+  .service-ui .bg-gradient-completed .icon{ background:linear-gradient(135deg,#06b6d4,#0e7490); }
+  .service-ui .bg-gradient-available .icon{ background:linear-gradient(135deg,#24e78f,#1a9d63); }
+  .service-ui .bg-gradient-maintenance .icon{ background:linear-gradient(135deg,#f59e0b,#d97706); }
+  .service-ui .bg-gradient-unavailable .icon{ background:linear-gradient(135deg,#ef4444,#b91c1c); }
+
+  /* ---------- Dashboard cards ---------- */
+  .service-ui .dashboard-card{
+      background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--su-radius);
+      box-shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 24px -18px rgba(0,0,0,.18);
+      margin-bottom:24px; overflow:hidden;
+  }
+  .service-ui .dashboard-card .card-header{
+      background:var(--card-bg); border-bottom:1px solid var(--card-border); padding:16px 20px;
+  }
+  .service-ui .dashboard-card .card-header h3{ font-size:1.05rem; font-weight:700; margin:0; color:var(--text-primary); }
+  .service-ui .dashboard-card .card-body{ padding:20px; }
+
+  /* ---------- Quick actions ---------- */
+  .service-ui .quick-action{
+      display:flex; flex-direction:column; align-items:center; text-align:center;
+      padding:18px 10px; border-radius:var(--su-radius-sm); transition:all .25s ease;
+      text-decoration:none; color:var(--text-primary); border:1px solid var(--card-border);
+  }
+  .service-ui .quick-action:hover{
+      background:rgba(var(--su-accent-rgb),.08); border-color:var(--su-accent);
+      transform:translateY(-3px); color:var(--su-accent); text-decoration:none;
+  }
+  .service-ui .quick-action i{ font-size:1.8rem; margin-bottom:10px; }
+  .service-ui .quick-action div{ font-weight:600; font-size:.85rem; }
+
+  /* ---------- Upcoming requests ---------- */
+  .service-ui .upcoming-request{
+      padding:15px 16px; border-radius:var(--su-radius-sm); background:var(--table-stripe);
+      margin-bottom:12px; transition:all .2s ease; border-left:4px solid var(--su-accent);
+  }
+  .service-ui .upcoming-request:hover{ background:rgba(var(--su-accent-rgb),.12); }
+  .service-ui .request-date{ font-weight:700; color:var(--text-primary); font-size:.9rem; }
+  .service-ui .request-destination{ font-size:.9rem; margin:4px 0; color:var(--text-muted); }
+  .service-ui .request-requester{ font-size:.8rem; color:var(--text-muted); }
+
+  /* ---------- Progress bars ---------- */
+  .service-ui .progress{ height:8px; border-radius:10px; margin-top:5px; background:var(--table-stripe); }
+  .service-ui .progress-bar{ border-radius:10px; }
+
+  /* ---------- Recent activity ---------- */
+  .service-ui .recent-activity{ list-style:none; padding:0; margin:0; }
+  .service-ui .recent-activity li{ display:flex; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--card-border); }
+  .service-ui .recent-activity li:last-child{ border-bottom:none; }
+  .service-ui .activity-icon{
+      width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+      margin-right:14px; flex-shrink:0; color:#04160e; background:var(--su-accent) !important;
+  }
+  .service-ui .activity-content{ flex:1; }
+  .service-ui .activity-time{ font-size:.78rem; color:var(--text-muted); margin-top:2px; }
+
+  /* ---------- Quick stats ---------- */
+  .service-ui .quick-stats .border-right{ border-right:1px solid var(--card-border) !important; }
+
+  @media (max-width:768px){
+      .service-ui .small-box h3{ font-size:1.7rem; }
+      .service-ui .quick-action{ margin-bottom:14px; }
+      .service-ui .dashboard-card .card-body{ padding:15px; }
+      .service-ui .content-header .page-subtitle{ margin-left:0; }
+  }
+
+body.dark-mode .service-ui .activity-icon{ color:#04160e !important; }
+  </style>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition sidebar-mini layout-fixed service-ui">
   <div class="wrapper">
     <!-- Navbar -->
     <?php include '../includes/mainheader.php'; ?>
@@ -498,7 +414,8 @@ body.dark-mode .schedule-item:hover { background: var(--table-stripe) !important
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="m-0">Service Dashboard</h1>
+                        <h1 class="m-0"><span class="page-icon"><i class="fas fa-shuttle-van"></i></span>Service Dashboard</h1>
+                        <p class="page-subtitle">Fleet, drivers, and transport requests at a glance.</p>
                     </div><!-- /.col -->
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">

@@ -143,18 +143,157 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
   <title>NIA-Albay | Vehicle Management</title>
   <?php include '../includes/header.php'; ?>
   
+
   <style>
-    .status-badge {
-        font-size: 0.8rem;
-        padding: 0.35rem 0.5rem;
-    }
-    .action-btns .btn {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-    }
+  /* ============================================================
+     NIA-ACIMO Service Module — Modern UI Layer
+     Built on top of the app's existing --variables (light/dark
+     mode values are supplied globally in includes/header.php).
+     ============================================================ */
+  .service-ui{ --su-accent:#24e78f; --su-accent-rgb:36,231,143; --su-radius:16px; --su-radius-sm:10px; }
+
+  /* ---------- Page header ---------- */
+  .service-ui .content-header{ padding:18px 0 6px; }
+  .service-ui .content-header .container-fluid{
+      background:linear-gradient(135deg, rgba(var(--su-accent-rgb),.10), rgba(var(--su-accent-rgb),.02));
+      border:1px solid var(--card-border);
+      border-radius:var(--su-radius);
+      padding:20px 24px;
+  }
+  .service-ui .content-header h1{
+      display:flex; align-items:center; gap:12px;
+      font-size:1.45rem; font-weight:800; color:var(--text-primary); margin:0;
+  }
+  .service-ui .content-header h1 .page-icon{
+      width:42px; height:42px; border-radius:12px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      background:var(--su-accent); color:#04160e; font-size:1.05rem;
+      box-shadow:0 6px 16px -4px rgba(var(--su-accent-rgb),.5);
+  }
+  .service-ui .page-subtitle{ color:var(--text-muted); font-size:.85rem; margin:6px 0 0 54px; }
+  .service-ui .content-header .breadcrumb{ background:transparent; margin:0; padding:0; }
+
+  /* ---------- Cards ---------- */
+  .service-ui .card{
+      border:1px solid var(--card-border); border-radius:var(--su-radius);
+      box-shadow:0 1px 2px rgba(0,0,0,.04), 0 10px 24px -18px rgba(0,0,0,.18);
+      overflow:hidden;
+  }
+  .service-ui .card-header{
+      background:var(--card-bg); border-bottom:1px solid var(--card-border);
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+      padding:16px 20px;
+  }
+  .service-ui .card-title{
+      font-size:1.05rem; font-weight:700; color:var(--text-primary);
+      display:flex; align-items:center; gap:8px; margin:0;
+  }
+  .service-ui .card-title i{ color:var(--su-accent); }
+  .service-ui .card-body{ padding:20px; }
+
+  /* ---------- Buttons ---------- */
+  .service-ui .btn{ border-radius:var(--su-radius-sm); font-weight:600; font-size:.85rem; letter-spacing:.01em; transition:all .18s ease; }
+  .service-ui .btn-primary{ background:var(--su-accent); border-color:var(--su-accent); color:#04160e; }
+  .service-ui .btn-primary:hover, .service-ui .btn-primary:focus{ background:#1fcf80; border-color:#1fcf80; color:#04160e; transform:translateY(-1px); box-shadow:0 6px 14px -6px rgba(var(--su-accent-rgb),.6); }
+  .service-ui .btn-sm{ border-radius:8px; }
+  .service-ui .action-btns .btn{ padding:.3rem .55rem; font-size:.8rem; margin-right:3px; }
+  .service-ui .action-btns .btn:last-child{ margin-right:0; }
+  .service-ui .btn-group .btn{ border-radius:8px !important; margin-right:3px; }
+
+  /* ---------- Table ---------- */
+  .service-ui .table{ margin-bottom:0; font-size:.9rem; }
+  .service-ui .table thead th{
+      background:var(--table-stripe); color:var(--text-muted); border-bottom:2px solid var(--table-border);
+      font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; font-weight:700; white-space:nowrap;
+  }
+  .service-ui .table td{ vertical-align:middle; border-color:var(--table-border); }
+  .service-ui .table-hover tbody tr{ transition:background .15s ease; }
+  .service-ui .table-hover tbody tr:hover{ background:rgba(var(--su-accent-rgb),.07) !important; }
+
+  /* ---------- Badges ---------- */
+  .service-ui .badge{ font-weight:600; padding:.42em .8em; border-radius:20px; letter-spacing:.02em; }
+  .service-ui .status-badge{ font-size:.72rem; }
+
+  /* ---------- Forms ---------- */
+  .service-ui .form-control{ border-radius:var(--su-radius-sm); border-color:var(--input-border); }
+  .service-ui .form-control:focus{ border-color:var(--su-accent); box-shadow:0 0 0 .2rem rgba(var(--su-accent-rgb),.2); }
+  .service-ui .form-group label{ font-weight:600; font-size:.85rem; color:var(--text-primary); }
+
+  /* ---------- Modals ---------- */
+  .service-ui .modal-content{ border:none; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px -20px rgba(0,0,0,.4); }
+  .service-ui .modal-header{ background:var(--modal-header-bg); color:var(--modal-header-color); border-bottom:none; padding:18px 22px; }
+  .service-ui .modal-header .close{ color:var(--modal-header-color); opacity:.8; text-shadow:none; }
+  .service-ui .modal-header .close:hover{ opacity:1; }
+  .service-ui .modal-title{ font-weight:700; }
+  .service-ui .modal-body{ padding:22px; }
+  .service-ui .modal-footer{ border-top:1px solid var(--card-border); padding:14px 22px; }
+
+  /* ---------- Alerts ---------- */
+  .service-ui .alert{ border:none; border-left:4px solid; border-radius:10px; }
+  .service-ui .alert-warning{ border-left-color:#f59e0b; }
+  .service-ui .alert-danger{ border-left-color:#ef4444; }
+  .service-ui .alert-success{ border-left-color:var(--su-accent); }
+  .service-ui .alert-info{ border-left-color:#3b82f6; }
+
+  /* ---------- Empty state ---------- */
+  .service-ui .empty-state{ text-align:center; padding:40px 15px; color:var(--text-muted); }
+  .service-ui .empty-state i{ font-size:2.6rem; margin-bottom:12px; opacity:.4; }
+
+  /* ---------- Photo thumbnails ---------- */
+  .service-ui .driver-photo, .service-ui .request-photo{
+      box-shadow:0 0 0 2px var(--card-bg), 0 0 0 3px var(--card-border);
+  }
+
+/* =========================================================
+   DARK MODE OVERRIDES — applied via body.dark-mode
+   ========================================================= */
+body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
+body.dark-mode .card-header { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .card-body { background: var(--card-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .card-footer { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .modal-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
+body.dark-mode .modal-body { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .modal-footer { background: var(--modal-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .table { background: var(--table-bg) !important; color: var(--text-primary) !important; }
+body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
+body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
+body.dark-mode .table-hover tbody tr:hover { background: rgba(36,231,143,.10) !important; }
+body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
+body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
+body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
+body.dark-mode .text-muted { color: var(--text-muted) !important; }
+body.dark-mode .text-dark { color: var(--text-primary) !important; }
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 { color: var(--text-primary) !important; }
+body.dark-mode p, body.dark-mode span:not(.badge) { color: var(--text-primary); }
+body.dark-mode .breadcrumb { background: var(--card-bg) !important; }
+body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
+body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
+body.dark-mode .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
+body.dark-mode .dropdown-item { color: var(--dropdown-color) !important; }
+body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
+body.dark-mode .alert-info { background: #1e2f3e !important; color: #93c5fd !important; }
+body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
+body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
+body.dark-mode .alert-danger { background: #2e1515 !important; color: #fca5a5 !important; }
+body.dark-mode .page-item .page-link { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
+body.dark-mode .page-item.active .page-link { background: var(--sidebar-active-bg) !important; border-color: var(--sidebar-active-bg) !important; }
+body.dark-mode hr { border-color: var(--card-border) !important; }
+body.dark-mode .dataTables_wrapper { color: var(--text-primary) !important; }
+body.dark-mode .dataTables_filter input, body.dark-mode .dataTables_length select { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
+body.dark-mode .dataTables_info, body.dark-mode .dataTables_paginate { color: var(--text-muted) !important; }
+
+  /* ---------- Vehicle module extras ---------- */
+  body.dark-mode .service-ui .status-badge{ color:#04160e; }
   </style>
+
 </head>
-<body class="hold-transition sidebar-mini">
+<body class="hold-transition sidebar-mini service-ui">
 <div class="wrapper">
   <?php include '../includes/mainheader.php'; ?>
   <?php include '../includes/sidebar_service.php'; ?>
@@ -164,7 +303,8 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
       <div class="container-fluid">
         <div class="row mb-2">
           <div class="col-sm-6">
-            <h1>Vehicle Management</h1>
+            <h1><span class="page-icon"><i class="fas fa-car-side"></i></span>Vehicle Management</h1>
+            <p class="page-subtitle">Manage the office motor pool — property records, plate numbers, and status.</p>
           </div>
         </div>
       </div>
