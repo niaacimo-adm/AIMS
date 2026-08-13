@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $issued_by       = intval($_SESSION['emp_id'] ?? 0);
         $request_id      = intval($_POST['request_id'] ?? 0); // set when issued from an employee self-service request
 
-        if (!$emp_id || !$purpose || !$appt_text || !$position_text || !$requestor_ref || !$issued_date) {
+        if (!$emp_id || !$appt_text || !$position_text || !$requestor_ref || !$issued_date) {
             echo json_encode(['success'=>false,'message'=>'Please fill in all required fields.']); exit;
         }
         if ($include_salary && $salary_amount <= 0) {
@@ -156,6 +156,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $s->bind_param("si", $reason, $coe_id);
         if ($s->execute()) {
             logCoeHistory($db, $coe_id, 'voided', null, $reason ?: null);
+            echo json_encode(['success'=>true]);
+        } else {
+            echo json_encode(['success'=>false,'message'=>$db->error]);
+        }
+
+    } elseif ($action === 'restore_coe') {
+        if (!$can_issue) { echo json_encode(['success'=>false,'message'=>'Permission denied.']); exit; }
+        $confirm_password = (string)($_POST['confirm_password'] ?? '');
+        if (!verifyCurrentUserPassword($db, $confirm_password)) {
+            echo json_encode(['success'=>false,'message'=>'Incorrect password. Action cancelled.']); exit;
+        }
+
+        $row = $db->query("SELECT status FROM certificate_of_employment WHERE coe_id = $coe_id")->fetch_assoc();
+        if (!$row) { echo json_encode(['success'=>false,'message'=>'Record not found.']); exit; }
+        if ($row['status'] !== 'Voided') { echo json_encode(['success'=>false,'message'=>'Only Voided certificates can be restored.']); exit; }
+
+        $s = $db->prepare("UPDATE certificate_of_employment SET status='Issued', void_reason=NULL WHERE coe_id=?");
+        $s->bind_param("i", $coe_id);
+        if ($s->execute()) {
+            logCoeHistory($db, $coe_id, 'restored', null, null);
             echo json_encode(['success'=>true]);
         } else {
             echo json_encode(['success'=>false,'message'=>$db->error]);
@@ -501,6 +521,7 @@ $common_purposes = [
         .ba-view { background:#e6f7ef; color:#2a9863; } .ba-view:hover { background:#2a9863; color:#fff; }
         .ba-dl   { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; text-decoration:none; } .ba-dl:hover { opacity:.85; color:#fff; }
         .ba-void { background:#fff8e1; color:#b45309; } .ba-void:hover { background:#b45309; color:#fff; }
+        .ba-restore { background:#e6fbf4; color:#087f5b; } .ba-restore:hover { background:#087f5b; color:#fff; }
         .ba-hist { background:#eef3ff; color:#3b5bdb; } .ba-hist:hover { background:#3b5bdb; color:#fff; }
         .ba-del  { background:#fff0f0; color:#9b1c1c; border:1.5px solid #fca5a5; } .ba-del:hover { background:#9b1c1c; color:#fff; border-color:#9b1c1c; }
         .ba-review { background:#eef3ff; color:#3b5bdb; } .ba-review:hover { background:#3b5bdb; color:#fff; }
@@ -740,6 +761,7 @@ $common_purposes = [
                         <tbody>
                         <?php foreach ($pending_requests as $req):
                             $reqPurposeDisplay = $req['purpose_category'] === 'Other' ? $req['purpose_other'] : $req['purpose_category'];
+                            $reqPurposeDisplay = $reqPurposeDisplay !== '' ? $reqPurposeDisplay : 'Not specified';
                         ?>
                         <tr>
                             <td>
@@ -854,9 +876,15 @@ $common_purposes = [
                             <td><span class="h-badge <?= $isVoided?'hb-void':'hb-iss' ?>"><?= htmlspecialchars($rec['status']) ?></span></td>
                             <td>
                                 <div class="action-btns">
+                                    <?php if(!$isVoided): ?>
                                     <a class="btn-act ba-dl" href="generate_coe.php?coe_id=<?= $rec['coe_id'] ?>" target="_blank" title="Download COE (.docx)">
                                         <i class="fas fa-file-word"></i>
                                     </a>
+                                    <?php else: ?>
+                                    <span class="btn-act ba-dl-disabled" title="Voided certificates can't be downloaded — restore first" style="opacity:.4;cursor:not-allowed;">
+                                        <i class="fas fa-file-word"></i>
+                                    </span>
+                                    <?php endif; ?>
                                     <button class="btn-act ba-view btn-view-detail" data-id="<?= $rec['coe_id'] ?>" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -870,6 +898,11 @@ $common_purposes = [
                                         <span class="lock-ico" title="Requires elevated role"><i class="fas fa-lock"></i></span>
                                         <?php endif; ?>
                                     <?php else: ?>
+                                        <?php if($can_issue): ?>
+                                        <button class="btn-act ba-restore btn-restore" data-id="<?= $rec['coe_id'] ?>" data-name="<?= htmlspecialchars($rec['emp_name']) ?>" title="Restore"><i class="fas fa-undo"></i></button>
+                                        <?php else: ?>
+                                        <span class="lock-ico" title="Requires elevated role"><i class="fas fa-lock"></i></span>
+                                        <?php endif; ?>
                                         <?php if($can_delete): ?>
                                         <button class="btn-act ba-del btn-coe-delete" data-id="<?= $rec['coe_id'] ?>" data-name="<?= htmlspecialchars($rec['emp_name']) ?>" title="Delete Record"><i class="fas fa-trash-alt"></i></button>
                                         <?php else: ?>
@@ -921,13 +954,13 @@ $common_purposes = [
                     </div>
 
                     <div class="form-group">
-                        <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Purpose</label>
+                        <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Purpose <span style="font-weight:400;text-transform:none;color:var(--h-muted);">(optional)</span></label>
                         <div id="icPurposeChips">
                             <?php foreach($common_purposes as $p): ?>
                             <span class="purpose-chip" data-val="<?= htmlspecialchars($p) ?>"><?= htmlspecialchars($p) ?></span>
                             <?php endforeach; ?>
                         </div>
-                        <input type="text" id="icPurpose" class="h-ctrl mt-2" placeholder="Purpose that will appear on the certificate (editable)">
+                        <input type="text" id="icPurpose" class="h-ctrl mt-2" placeholder="Leave blank to default to &quot;reference purposes&quot; on the certificate">
                     </div>
 
                     <div class="row">
@@ -1037,6 +1070,30 @@ $common_purposes = [
                 <div class="modal-footer">
                     <button type="button" class="btn-reset" data-dismiss="modal">Cancel</button>
                     <button type="button" id="btnConfirmReject" class="btn btn-danger"><i class="fas fa-times-circle"></i> Reject Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ Restore Modal ══ -->
+    <div class="modal fade hm-modal" id="restoreCoeModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-undo mr-2"></i>Restore Certificate</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p>You are about to restore the voided certificate issued to <strong id="restoreEmpName"></strong>. Its status will be set back to <strong>Issued</strong> and it will be downloadable again.</p>
+                    <div class="form-group">
+                        <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Confirm Your Password</label>
+                        <input type="password" id="restorePassword" class="h-ctrl">
+                    </div>
+                    <input type="hidden" id="restoreCoeId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-reset" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="btnConfirmRestore" class="btn btn-success"><i class="fas fa-undo"></i> Restore Certificate</button>
                 </div>
             </div>
         </div>
@@ -1264,7 +1321,6 @@ $(document).ready(function() {
         if (!empId)      { Swal.fire({icon:'warning',title:'Select Employee',confirmButtonColor:'#2a9863'}); return; }
         if (!appt)       { Swal.fire({icon:'warning',title:'Appointment status is required',confirmButtonColor:'#2a9863'}); return; }
         if (!pos)        { Swal.fire({icon:'warning',title:'Position is required',confirmButtonColor:'#2a9863'}); return; }
-        if (!purpose)    { Swal.fire({icon:'warning',title:'Purpose is required',confirmButtonColor:'#2a9863'}); return; }
         if (!requestorRef){Swal.fire({icon:'warning',title:'"Requested By" is required',confirmButtonColor:'#2a9863'}); return; }
         if (!issuedDate) { Swal.fire({icon:'warning',title:'Issued date is required',confirmButtonColor:'#2a9863'}); return; }
         if (includeSalary && (!salaryAmount || parseFloat(salaryAmount) <= 0)) {
@@ -1324,13 +1380,35 @@ $(document).ready(function() {
         }, 'json');
     });
 
+    // Restore
+    $(document).on('click', '.btn-restore', function() {
+        $('#restoreCoeId').val($(this).data('id'));
+        $('#restoreEmpName').text($(this).data('name'));
+        $('#restorePassword').val('');
+        $('#restoreCoeModal').modal('show');
+    });
+    $('#btnConfirmRestore').on('click', function() {
+        var pwd = $('#restorePassword').val();
+        if (!pwd) { Swal.fire({icon:'warning',title:'Password required',confirmButtonColor:'#2a9863'}); return; }
+        $.post('certificate_of_employment.php', {
+            ajax:1, action:'restore_coe', coe_id:$('#restoreCoeId').val(), confirm_password:pwd
+        }, function(res) {
+            if (res.success) {
+                $('#restoreCoeModal').modal('hide');
+                Swal.fire({icon:'success',title:'Certificate Restored',confirmButtonColor:'#2a9863'}).then(()=>location.reload());
+            } else {
+                Swal.fire({icon:'error',title:'Error',text:res.message,confirmButtonColor:'#c92a2a'});
+            }
+        }, 'json');
+    });
+
     // Review an employee's self-service COE request
     $(document).on('click', '.btn-review-request', function() {
         var id = $(this).data('id');
         $('#reviewRequestModal').modal('show');
         $('#reviewRequestModalInner').html('<div class="modal-header"><h5 class="modal-title">Loading…</h5></div><div class="modal-body text-center"><i class="fas fa-spinner fa-spin"></i></div>');
         $.post('certificate_of_employment.php', {ajax:1, action:'get_request_detail', request_id:id}, function(d) {
-            var purposeDisplay = d.purpose_category === 'Other' ? d.purpose_other : d.purpose_category;
+            var purposeDisplay = (d.purpose_category === 'Other' ? d.purpose_other : d.purpose_category) || 'Not specified';
             var html = ''
                 + '<div class="modal-header"><h5 class="modal-title"><i class="fas fa-inbox mr-2"></i>Review Request</h5>'
                 + '<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div>'
@@ -1463,7 +1541,9 @@ $(document).ready(function() {
                 + (d.void_reason ? '<div class="info-box mt-2"><strong>Void Reason:</strong> '+d.void_reason+'</div>' : '')
                 + '</div>'
                 + '<div class="modal-footer">'
-                + '<a href="generate_coe.php?coe_id='+d.coe_id+'" target="_blank" class="btn-filter" style="text-decoration:none;"><i class="fas fa-file-word"></i> Download</a>'
+                + (d.status === 'Voided'
+                    ? '<span class="btn-reset" style="cursor:not-allowed;" title="Voided certificates can\'t be downloaded — restore first"><i class="fas fa-file-word"></i> Download</span>'
+                    : '<a href="generate_coe.php?coe_id='+d.coe_id+'" target="_blank" class="btn-filter" style="text-decoration:none;"><i class="fas fa-file-word"></i> Download</a>')
                 + '</div>';
             $('#detailModalInner').html(html);
         }, 'json');

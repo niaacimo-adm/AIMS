@@ -46,6 +46,11 @@ if (!$rec) {
     die('Certificate record not found.');
 }
 
+if ($rec['status'] === 'Voided') {
+    http_response_code(409);
+    die('This certificate has been voided and can no longer be downloaded. Restore it first if you need to re-issue the document.');
+}
+
 /** Escape a value for safe insertion into a WordprocessingML text node. */
 function xmlEscape(string $val): string {
     return htmlspecialchars($val, ENT_QUOTES | ENT_XML1, 'UTF-8');

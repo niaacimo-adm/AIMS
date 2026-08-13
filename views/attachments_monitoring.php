@@ -632,25 +632,6 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       margin-bottom: 5px;
     }
     
-    .filter-card {
-      background: var(--h-card);
-      border: 1px solid var(--h-border);
-      border-radius: 14px;
-      padding: 20px;
-      box-shadow: var(--card-shadow);
-      margin-bottom: 20px;
-    }
-    
-    .filter-card h5 {
-      margin-bottom: 15px;
-      font-weight: 700;
-      color: var(--h-text);
-    }
-    .filter-card label {
-      font-size:.7rem; font-weight:700; color:var(--h-muted);
-      text-transform:uppercase; letter-spacing:.5px;
-    }
-    
     /* .export-dropdown {
       min-width: 250px;
     } */
@@ -898,6 +879,40 @@ body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; bo
 body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
 body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
 
+/* Select2 (theme: bootstrap4) — Employee picker in Add Monitoring Record modal.
+   Matches the form-control look/rounded corners used elsewhere on this page. */
+.select2-container--bootstrap4 .select2-selection--single {
+  height: calc(2.25rem + 2px) !important;
+  border: 1px solid var(--h-border, #ced4da) !important;
+  border-radius: .25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  background: var(--h-card, #fff) !important;
+}
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+  padding-left: .75rem !important;
+  color: var(--h-text, #495057) !important;
+  line-height: normal !important;
+}
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+  height: calc(2.25rem) !important;
+  right: 6px !important;
+}
+.select2-container--bootstrap4.select2-container--focus .select2-selection--single,
+.select2-container--bootstrap4.select2-container--open .select2-selection--single {
+  border-color: var(--h-primary) !important;
+  box-shadow: 0 0 0 3px rgba(42,152,99,.13) !important;
+}
+.select2-container--bootstrap4 .select2-dropdown {
+  border-color: var(--h-border, #ced4da) !important;
+}
+.select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] {
+  background-color: var(--h-primary) !important;
+  color: #fff !important;
+}
+/* Ensure the dropdown isn't clipped/misaligned inside the Bootstrap modal */
+#addRecordModal .select2-container { width: 100% !important; }
+
 body.dark-mode .monitoring-table th { background: var(--table-stripe) !important; color: var(--text-primary) !important; }
 body.dark-mode .monitoring-table td { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
 body.dark-mode .monitoring-table tbody tr:hover { background: var(--notification-unread-bg) !important; }
@@ -1098,25 +1113,22 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             </div>
         </div>
 
-        <!-- Filters Card -->
-        <div class="filter-card">
-          <div class="row">
-            <div class="col-md-3">
-              <div class="form-group">
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <div class="fg">
                 <label>Payroll Period</label>
-                <select id="periodFilter" class="form-control">
-                  <option value="">All Payroll Periods</option>
-                  <?php foreach ($payrollPeriods as $period): ?>
-                    <option value="<?= htmlspecialchars($period['payroll_period']) ?>">
-                      <?= htmlspecialchars($period['payroll_period']) ?>
-                    </option>
-                  <?php endforeach; ?>
+                <select id="periodFilter" class="h-ctrl">
+                    <option value="">All Payroll Periods</option>
+                    <?php foreach ($payrollPeriods as $period): ?>
+                        <option value="<?= htmlspecialchars($period['payroll_period']) ?>">
+                            <?= htmlspecialchars($period['payroll_period']) ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
-              </div>
             </div>
-            <div class="form-group">
+            <div class="fg">
                 <label>Status</label>
-                <select id="statusFilter" class="form-control">
+                <select id="statusFilter" class="h-ctrl">
                     <option value="">All Statuses</option>
                     <option value="NO ATTACHMENTS">No Attachments</option>
                     <option value="COMPLETE">Complete</option>
@@ -1125,30 +1137,21 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
                     <option value="FOR REVIEW">For Review</option>
                 </select>
             </div>
-            <div class="col-md-2">
-              <div class="form-group">
+            <div class="fg">
                 <label>Filing Status</label>
-                <select id="filingFilter" class="form-control">
-                  <option value="">All Filing Status</option>
-                  <option value="FORWARDED">Forwarded</option>
-                  <option value="NOT FORWARDED">Not Forwarded</option>
+                <select id="filingFilter" class="h-ctrl">
+                    <option value="">All Filing Status</option>
+                    <option value="FORWARDED">Forwarded</option>
+                    <option value="NOT FORWARDED">Not Forwarded</option>
                 </select>
-              </div>
             </div>
-            <div class="col-md-3">
-              <div class="form-group">
+            <div class="fg">
                 <label>Search</label>
-                <input type="text" id="searchFilter" class="form-control" placeholder="Search employees...">
-              </div>
+                <input type="text" id="searchFilter" class="h-ctrl" placeholder="Search employees...">
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <div class="form-group ">
-              <button type="button" class="btn btn-outline-secondary w-100 " id="resetFilters">
+            <button type="button" class="btn-am-reset" id="resetFilters">
                 <i class="fas fa-redo"></i> Reset
-              </button>
-              </div>
-            </div>
-          </div>
+            </button>
         </div>
 
         <div class="row">
@@ -1434,8 +1437,8 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
         <div class="modal-body">
           <div class="form-group">
             <label>Employee</label>
-            <select name="emp_id" class="form-control" required>
-              <option value="">Select Employee</option>
+            <select name="emp_id" id="add_emp_id" class="form-control" style="width:100%;" required>
+              <option value=""></option>
               <?php foreach ($employees as $employee): ?>
                 <option value="<?= $employee['emp_id'] ?>">
                   <?= htmlspecialchars($employee['employee_name']) ?> (<?= htmlspecialchars($employee['id_number']) ?>)
@@ -1586,6 +1589,28 @@ $(document).ready(function() {
     <?php unset($_SESSION['toast']); ?>
   <?php endif; ?>
   
+  // Employee picker (Add Monitoring Record modal) — Select2, same setup as
+  // the Certificate of Employment "Issue COE" employee select.
+  function initAddRecordEmployeeSelect2() {
+    var $sel = $('#add_emp_id');
+    if ($sel.hasClass('select2-hidden-accessible')) {
+      $sel.select2('destroy');
+    }
+    $sel.select2({
+      theme: 'bootstrap4',
+      width: '100%',
+      placeholder: 'Select Employee',
+      allowClear: true,
+      dropdownParent: $('#addRecordModal')
+    });
+  }
+
+  // (Re)initialize every time the modal opens so it renders correctly even
+  // though it starts hidden (Select2 can miscalculate width on a display:none element).
+  $('#addRecordModal').on('show.bs.modal', function() {
+    initAddRecordEmployeeSelect2();
+  });
+
   // Table filtering
   $('#periodFilter, #statusFilter, #filingFilter, #searchFilter').on('input change', function() {
     filterTable();

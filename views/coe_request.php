@@ -252,7 +252,7 @@ foreach ($my_requests as $r) {
         .action-btns { display:flex; gap:5px; align-items:center; }
         .btn-act { width:30px; height:30px; border-radius:7px; border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:12px; transition:all .15s; }
         .ba-view { background:#e6f7ef; color:#2a9863; } .ba-view:hover { background:#2a9863; color:#fff; }
-        .ba-dl   { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; text-decoration:none; } .ba-dl:hover { opacity:.85; color:#fff; }
+        .ba-issued-note { background:#e6fbf4; color:#087f5b; cursor:default; }
         .ba-cancel { background:#fff0f0; color:#9b1c1c; } .ba-cancel:hover { background:#9b1c1c; color:#fff; }
 
         .h-empty { text-align:center; padding:50px 20px; }
@@ -272,15 +272,12 @@ foreach ($my_requests as $r) {
         .detail-item span { font-size:.9rem; color:var(--h-text); font-weight:500; }
         .info-box { background:var(--h-card-alt); border:1px solid var(--h-border); border-radius:8px; padding:12px 14px; font-size:.87rem; color:var(--h-text); margin-top:4px; }
 
-        .purpose-opt { display:block; border:1.5px solid var(--h-border); border-radius:10px; padding:10px 14px; margin-bottom:8px; cursor:pointer; font-size:.85rem; color:var(--h-text); transition:all .15s; }
-        .purpose-opt:hover { border-color:var(--h-primary); }
-        .purpose-opt input { margin-right:9px; }
-        .purpose-opt.active { border-color:var(--h-primary); background:var(--h-card-alt); font-weight:600; }
+        .purpose-chip { display:inline-block; padding:5px 12px; margin:3px 4px 3px 0; border-radius:20px; font-size:.78rem; font-weight:600; cursor:pointer; border:1.5px solid var(--h-border); color:var(--h-muted); background:var(--h-card); transition:all .15s; }
+        .purpose-chip.active, .purpose-chip:hover { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; border-color:transparent; }
 
-        .detail-opt { display:block; border:1.5px solid var(--h-border); border-radius:10px; padding:10px 14px; margin-bottom:8px; cursor:pointer; font-size:.85rem; color:var(--h-text); transition:all .15s; }
-        .detail-opt:hover { border-color:var(--h-primary); }
-        .detail-opt input { margin-right:9px; }
-        .detail-opt.active { border-color:var(--h-primary); background:var(--h-card-alt); font-weight:600; }
+        .toggle-switch { display:inline-flex; border:1.5px solid var(--h-border); border-radius:8px; overflow:hidden; flex-wrap:wrap; }
+        .toggle-switch button { border:none; background:var(--h-card); color:var(--h-muted); padding:8px 16px; font-size:.83rem; font-weight:700; cursor:pointer; transition:all .15s; }
+        .toggle-switch button.active { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; }
 
         @media(max-width:768px){ .hr-content{ padding:0 14px; } .hr-hero{ padding:24px 16px 50px; } }
     </style>
@@ -394,9 +391,9 @@ foreach ($my_requests as $r) {
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     <?php if ($r['status'] === 'Issued' && $r['coe_id']): ?>
-                                    <a class="btn-act ba-dl" href="generate_coe.php?coe_id=<?= (int)$r['coe_id'] ?>" target="_blank" title="Download COE (.docx)">
-                                        <i class="fas fa-file-word"></i>
-                                    </a>
+                                    <span class="btn-act ba-issued-note" title="Your COE has been generated. Please claim it from the Admin/HR Section — it isn't downloadable from this page.">
+                                        <i class="fas fa-check-circle"></i>
+                                    </span>
                                     <?php endif; ?>
                                     <?php if ($r['status'] === 'Pending'): ?>
                                     <button class="btn-act ba-cancel btn-cancel-request" data-id="<?= $r['request_id'] ?>" title="Cancel Request">
@@ -431,42 +428,31 @@ foreach ($my_requests as $r) {
                         <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Purpose of Request</label>
                         <div id="reqPurposeOptions">
                             <?php foreach ($purpose_categories as $cat): ?>
-                            <label class="purpose-opt">
-                                <input type="radio" name="reqPurposeCategory" value="<?= htmlspecialchars($cat) ?>"> <?= htmlspecialchars($cat) ?>
-                            </label>
+                            <span class="purpose-chip" data-val="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></span>
                             <?php endforeach; ?>
+                            <span class="purpose-chip" data-val="Other">Other</span>
                         </div>
+                        <input type="hidden" id="reqPurposeCategory" value="">
                         <input type="text" id="reqPurposeOther" class="h-ctrl mt-2" placeholder="Please specify your purpose" style="display:none;">
                     </div>
-
-                    <div class="form-group">
-                        <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Certificate Details Requested</label>
-                        <div id="reqDetailOptions">
-                            <label class="detail-opt">
-                                <input type="radio" name="reqDetailType" value="with_salary"> With salary / compensation details
-                            </label>
-                            <label class="detail-opt">
-                                <input type="radio" name="reqDetailType" value="without_salary"> Without salary / compensation details
-                            </label>
-                            <label class="detail-opt">
-                                <input type="radio" name="reqDetailType" value="dates_only"> With inclusive dates of service only
-                            </label>
-                        </div>
-                    </div>
-
                     <div class="row">
-                        <div class="col-md-4 form-group">
-                            <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Number of Copies</label>
-                            <input type="number" min="1" value="1" id="reqNumCopies" class="h-ctrl">
+                        <div class="form-group">
+                            <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Certificate Details Requested</label><br>
+                            <div class="toggle-switch" id="reqDetailToggle">
+                                <button type="button" class="salary-toggle-btn" data-val="with_salary">With Salary</button>
+                                <button type="button" class="salary-toggle-btn" data-val="without_salary">Without Salary</button>
+                                <button type="button" class="salary-toggle-btn" data-val="dates_only">Dates Only</button>
+                            </div>
+                            <input type="hidden" id="reqDetailType" value="">
                         </div>
-                        <div class="col-md-4 form-group">
-                            <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Date Needed</label>
-                            <input type="date" id="reqDateNeeded" class="h-ctrl">
-                        </div>
-                        <div class="col-md-4 form-group">
-                            <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Contact No.</label>
-                            <input type="text" id="reqContactNo" class="h-ctrl" placeholder="09xx-xxx-xxxx">
-                        </div>
+                            <div class="col-md-3 form-group">
+                                <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Number of Copies</label>
+                                <input type="number" min="1" value="1" id="reqNumCopies" class="h-ctrl">
+                            </div>
+                            <div class="col-md-3 form-group">
+                                <label style="font-size:.75rem;font-weight:700;color:var(--h-muted);text-transform:uppercase;">Date Needed</label>
+                                <input type="date" id="reqDateNeeded" class="h-ctrl">
+                            </div>
                     </div>
 
                     <div class="info-box">
@@ -511,38 +497,43 @@ var BADGE_CLASS = {
 $(document).ready(function() {
 
     $('#btnOpenNewRequest').on('click', function() {
-        $('input[name="reqPurposeCategory"]').prop('checked', false);
-        $('input[name="reqDetailType"]').prop('checked', false);
-        $('.purpose-opt, .detail-opt').removeClass('active');
+        $('#reqPurposeOptions .purpose-chip').removeClass('active');
+        $('#reqPurposeCategory').val('');
+        $('#reqDetailToggle .salary-toggle-btn').removeClass('active');
+        $('#reqDetailType').val('');
         $('#reqPurposeOther').val('').hide();
         $('#reqNumCopies').val(1);
         $('#reqDateNeeded').val('');
-        $('#reqContactNo').val('');
         $('#newRequestModal').modal('show');
     });
 
-    $(document).on('change', 'input[name="reqPurposeCategory"]', function() {
-        $('.purpose-opt').removeClass('active');
-        $(this).closest('.purpose-opt').addClass('active');
-        if ($(this).val() === 'Other') {
+    // Purpose quick-select chips
+    $(document).on('click', '#reqPurposeOptions .purpose-chip', function() {
+        $('#reqPurposeOptions .purpose-chip').removeClass('active');
+        $(this).addClass('active');
+        var val = $(this).data('val');
+        $('#reqPurposeCategory').val(val);
+        if (val === 'Other') {
             $('#reqPurposeOther').show();
         } else {
             $('#reqPurposeOther').hide().val('');
         }
     });
 
-    $(document).on('change', 'input[name="reqDetailType"]', function() {
-        $('.detail-opt').removeClass('active');
-        $(this).closest('.detail-opt').addClass('active');
+    // Certificate details toggle
+    $(document).on('click', '#reqDetailToggle .salary-toggle-btn', function() {
+        $('#reqDetailToggle .salary-toggle-btn').removeClass('active');
+        $(this).addClass('active');
+        $('#reqDetailType').val($(this).data('val'));
     });
 
     $('#btnSubmitRequest').on('click', function() {
-        var purposeCategory = $('input[name="reqPurposeCategory"]:checked').val();
+        var purposeCategory = $('#reqPurposeCategory').val();
         var purposeOther    = $('#reqPurposeOther').val().trim();
-        var detailType       = $('input[name="reqDetailType"]:checked').val();
+        var detailType       = $('#reqDetailType').val();
         var numCopies        = parseInt($('#reqNumCopies').val()) || 1;
         var dateNeeded        = $('#reqDateNeeded').val();
-        var contactNo         = $('#reqContactNo').val().trim();
+        var contactNo         = '';
 
         if (!purposeCategory) { Swal.fire({icon:'warning',title:'Select a purpose',confirmButtonColor:'#2a9863'}); return; }
         if (purposeCategory === 'Other' && !purposeOther) { Swal.fire({icon:'warning',title:'Please specify your purpose',confirmButtonColor:'#2a9863'}); return; }
@@ -605,7 +596,6 @@ $(document).ready(function() {
                 + '<div class="detail-item"><label>Details Requested</label><span>'+(DETAIL_LABELS[d.detail_type]||d.detail_type)+'</span></div>'
                 + '<div class="detail-item"><label>Number of Copies</label><span>'+d.num_copies+'</span></div>'
                 + '<div class="detail-item"><label>Date Needed</label><span>'+(d.date_needed||'Not specified')+'</span></div>'
-                + '<div class="detail-item"><label>Contact No.</label><span>'+(d.contact_no||'Not provided')+'</span></div>'
                 + '<div class="detail-item"><label>Requested On</label><span>'+d.created_at+'</span></div>'
                 + '<div class="detail-item"><label>Status</label><span>'+d.status+'</span></div>'
                 + (d.reviewed_by_name ? '<div class="detail-item"><label>Reviewed By</label><span>'+d.reviewed_by_name+'</span></div>' : '')
@@ -614,7 +604,7 @@ $(document).ready(function() {
                 + '</div>'
                 + '<div class="modal-footer">'
                 + (d.status === 'Issued' && d.coe_id
-                    ? '<a href="generate_coe.php?coe_id='+d.coe_id+'" target="_blank" class="btn-filter" style="text-decoration:none;"><i class="fas fa-file-word"></i> Download</a>'
+                    ? '<div class="info-box mb-0" style="text-align:left;"><i class="fas fa-info-circle mr-1"></i>Your certificate has been generated and is ready. Please coordinate with the Admin/HR Section to claim your copy — it can\'t be downloaded from this page.</div><button type="button" class="btn-reset mt-2" data-dismiss="modal">Close</button>'
                     : '<button type="button" class="btn-reset" data-dismiss="modal">Close</button>')
                 + '</div>';
             $('#detailModalInner').html(html);
