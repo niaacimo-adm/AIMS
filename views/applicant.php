@@ -47,6 +47,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   if (!file_exists($upload_dir)) {
     mkdir($upload_dir, 0777, true);
   }
+
+  // Saves every file from a multi-file input (name="field[]") and returns
+  // their generated filenames as a comma-separated string (or null if none).
+  function handleMultiUpload($fieldName, $prefix, $upload_dir) {
+    if (!isset($_FILES[$fieldName])) return null;
+    $names = $_FILES[$fieldName]['name'];
+    if (!is_array($names)) return null; // no files selected
+    $saved = [];
+    foreach ($names as $i => $name) {
+      if ($_FILES[$fieldName]['error'][$i] === 0 && $name !== '') {
+        $file_ext = pathinfo($name, PATHINFO_EXTENSION);
+        $filename = $prefix . '_' . time() . '_' . uniqid() . '.' . $file_ext;
+        move_uploaded_file($_FILES[$fieldName]['tmp_name'][$i], $upload_dir . $filename);
+        $saved[] = $filename;
+      }
+    }
+    return count($saved) ? implode(',', $saved) : null;
+  }
   
   if ($_POST['action'] === 'create') {
     try {
@@ -78,10 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         move_uploaded_file($_FILES['cover_letter_file']['tmp_name'], $upload_dir . $cover_letter_file);
       }
       
-      if (isset($_FILES['other_documents']) && $_FILES['other_documents']['error'] === 0) {
-        $file_ext = pathinfo($_FILES['other_documents']['name'], PATHINFO_EXTENSION);
-        $other_documents = 'other_' . time() . '_' . uniqid() . '.' . $file_ext;
-        move_uploaded_file($_FILES['other_documents']['tmp_name'], $upload_dir . $other_documents);
+      if (isset($_FILES['other_documents']) && is_array($_FILES['other_documents']['name'])) {
+        $other_documents = handleMultiUpload('other_documents', 'other', $upload_dir);
       }
       
       $stmt = $db->prepare("INSERT INTO applicant (first_name, middle_name, last_name, email, phone_number, address, position_applied, application_date, status, remarks, resume_file, cover_letter_file, other_documents) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -141,13 +157,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         move_uploaded_file($_FILES['cover_letter_file']['tmp_name'], $upload_dir . $cover_letter_file);
       }
       
-      if (isset($_FILES['other_documents']) && $_FILES['other_documents']['error'] === 0) {
-        if ($other_documents && file_exists($upload_dir . $other_documents)) {
-          unlink($upload_dir . $other_documents);
+      if (isset($_FILES['other_documents']) && is_array($_FILES['other_documents']['name'])) {
+        $new_other = handleMultiUpload('other_documents', 'other', $upload_dir);
+        if ($new_other !== null) {
+          // Remove previously uploaded "other" files before replacing them
+          if ($other_documents) {
+            foreach (explode(',', $other_documents) as $old_file) {
+              if ($old_file && file_exists($upload_dir . $old_file)) {
+                unlink($upload_dir . $old_file);
+              }
+            }
+          }
+          $other_documents = $new_other;
         }
-        $file_ext = pathinfo($_FILES['other_documents']['name'], PATHINFO_EXTENSION);
-        $other_documents = 'other_' . time() . '_' . uniqid() . '.' . $file_ext;
-        move_uploaded_file($_FILES['other_documents']['tmp_name'], $upload_dir . $other_documents);
       }
       
       $stmt = $db->prepare("UPDATE applicant SET first_name=?, middle_name=?, last_name=?, email=?, phone_number=?, address=?, position_applied=?, application_date=?, status=?, remarks=?, resume_file=?, cover_letter_file=?, other_documents=? WHERE applicant_id=?");
@@ -181,8 +203,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       if ($files['cover_letter_file'] && file_exists($upload_dir . $files['cover_letter_file'])) {
         unlink($upload_dir . $files['cover_letter_file']);
       }
-      if ($files['other_documents'] && file_exists($upload_dir . $files['other_documents'])) {
-        unlink($upload_dir . $files['other_documents']);
+      if ($files['other_documents']) {
+        foreach (explode(',', $files['other_documents']) as $other_file) {
+          if ($other_file && file_exists($upload_dir . $other_file)) {
+            unlink($upload_dir . $other_file);
+          }
+        }
       }
       
       // Delete record
@@ -238,6 +264,45 @@ while ($row = $result->fetch_assoc()) {
   <title>Applicant Databank</title>
   <?php include '../includes/header.php'; ?>
   <style>
+    :root {
+      --h-bg:       #eef7f2;
+      --h-card:     #ffffff;
+      --h-card-alt: #f0faf5;
+      --h-surface3: #e2f3ea;
+      --h-border:   rgba(42,152,99,0.18);
+      --h-text:     #0f2d1e;
+      --h-muted:    #4a7a5e;
+      --h-primary:  #2a9863;
+      --h-primary-dim: rgba(42,152,99,.10);
+      --h-accent:   #24e78f;
+      --h-success:  #2a9863;
+      --h-warning:  #e67700;
+      --h-danger:   #c92a2a;
+      --h-blue:     #2a9863;
+      --h-shadow:   0 4px 24px rgba(42,152,99,.12);
+      --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
+    }
+    body.dark-mode {
+      --h-bg:       #0b1f17;
+      --h-card:     #102f22;
+      --h-card-alt: #0e2619;
+      --h-surface3: #16352a;
+      --h-border:   rgba(36,231,143,0.12);
+      --h-text:     #d4f5e5;
+      --h-muted:    #6aad8a;
+      --h-primary:  #24e78f;
+      --h-primary-dim: rgba(36,231,143,.12);
+      --h-accent:   #2a9863;
+      --h-success:  #24e78f;
+      --h-warning:  #ffd43b;
+      --h-danger:   #ff6b6b;
+      --h-blue:     #24e78f;
+      --h-shadow:   0 4px 24px rgba(0,0,0,.35);
+      --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
+    }
+
+    .content-wrapper { background: var(--h-bg) !important; }
+
     /* CRITICAL Z-INDEX FIX FOR MODAL OVERLAP */
     .main-header.navbar, .main-header, nav.main-header, header.main-header {
         z-index: 1000 !important;
@@ -379,7 +444,297 @@ while ($row = $result->fetch_assoc()) {
             width:180px; height:auto; pointer-events:none; z-index:0;
             opacity:0.50;
         }
-</style>
+
+        /* ── Card (mirrors the Scrum > Projects "card" look) ── */
+        .card {
+            background: var(--h-card) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 12px !important;
+            box-shadow: var(--h-shadow-sm) !important;
+        }
+        .card-header {
+            background: var(--h-card) !important;
+            border-bottom: 1px solid var(--h-border) !important;
+            padding: 14px 20px !important;
+        }
+        .card-title {
+            font-weight: 700 !important;
+            font-size: .9rem !important;
+            color: var(--h-text) !important;
+            letter-spacing: -.2px;
+        }
+        .card-body { background: var(--h-card) !important; padding: 18px !important; }
+        .card-tools .btn-primary {
+            background: var(--h-primary) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 700 !important;
+            font-size: .8rem !important;
+            box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+        }
+        .card-tools .btn-primary:hover { filter: brightness(1.1) !important; }
+
+        /* ── Table ── */
+        #applicantsTable.table { color: var(--h-text) !important; }
+        #applicantsTable.table thead th {
+            background: var(--h-card-alt) !important;
+            border: none !important;
+            border-bottom: 1px solid var(--h-border) !important;
+            color: var(--h-muted) !important;
+            font-size: .68rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .6px !important;
+            padding: 10px 14px !important;
+        }
+        #applicantsTable.table tbody tr { transition: background .12s; }
+        #applicantsTable.table tbody tr:hover { background: var(--h-card-alt) !important; }
+        #applicantsTable.table tbody td {
+            border-top: 1px solid var(--h-border) !important;
+            border-left: none !important;
+            border-right: none !important;
+            padding: 12px 14px !important;
+            vertical-align: middle !important;
+            font-size: .85rem !important;
+            color: var(--h-text) !important;
+        }
+        #applicantsTable.table-bordered { border: none !important; }
+
+        /* Status badges */
+        .badge-secondary { background: var(--h-surface3) !important; color: var(--h-muted) !important; border-radius: 5px !important; }
+        .badge-warning   { background: rgba(230,119,0,.15) !important; color: var(--h-warning) !important; border-radius: 5px !important; }
+        .badge-info      { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border-radius: 5px !important; }
+        .badge-primary   { background: rgba(167,139,250,.15) !important; color: #7c5cd6 !important; border-radius: 5px !important; }
+        .badge-success   { background: rgba(42,152,99,.15) !important; color: var(--h-success) !important; border-radius: 5px !important; }
+        .badge-danger    { background: rgba(201,34,46,.15) !important; color: var(--h-danger) !important; border-radius: 5px !important; }
+
+        /* Row action buttons */
+        #applicantsTable .btn-sm.btn-info    { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
+        #applicantsTable .btn-sm.btn-warning { background: rgba(230,119,0,.12) !important; color: var(--h-warning) !important; border: 1px solid rgba(230,119,0,.25) !important; border-radius: 7px !important; }
+        #applicantsTable .btn-sm.btn-danger  { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.25) !important; border-radius: 7px !important; }
+        #applicantsTable .btn-sm:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+        /* ── Scrum-style modal (mirrors the "Create New Project" modal in
+           Scrum > Projects) — applied to Add/Edit/View Applicant ── */
+        .scrum-style-modal .modal-content {
+            background: var(--h-card) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 24px 80px rgba(0,0,0,.25) !important;
+            color: var(--h-text) !important;
+        }
+        .scrum-style-modal .modal-header {
+            background: var(--h-card-alt) !important;
+            border-bottom: 1px solid var(--h-border) !important;
+            border-radius: 14px 14px 0 0 !important;
+            padding: 16px 20px !important;
+        }
+        .scrum-style-modal .modal-title {
+            font-weight: 700 !important;
+            font-size: .95rem !important;
+            color: var(--h-text) !important;
+        }
+        .scrum-style-modal .modal-title i { color: var(--h-primary) !important; margin-right: 8px; }
+        .scrum-style-modal .modal-header .close {
+            color: var(--h-muted) !important;
+            text-shadow: none !important;
+            opacity: 1 !important;
+        }
+        .scrum-style-modal .modal-header .close:hover { opacity: .7 !important; }
+        .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
+        .scrum-style-modal .modal-footer {
+            border-top: 1px solid var(--h-border) !important;
+            padding: 14px 20px !important;
+            background: var(--h-card-alt) !important;
+            border-radius: 0 0 14px 14px !important;
+        }
+        .scrum-style-modal label {
+            color: var(--h-muted) !important;
+            font-size: .72rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .5px !important;
+            margin-bottom: 5px !important;
+        }
+        .scrum-style-modal label .text-danger { text-transform: none !important; }
+        .scrum-style-modal .form-control,
+        .scrum-style-modal .form-control:focus {
+            background: var(--h-card-alt) !important;
+            border: 1.5px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+            border-radius: 8px !important;
+            font-size: .875rem !important;
+        }
+        .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
+        .scrum-style-modal .form-control:focus {
+            border-color: var(--h-primary) !important;
+            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+        }
+        .scrum-style-modal select.form-control option { background: var(--h-card) !important; color: var(--h-text) !important; }
+        .scrum-style-modal hr { border-color: var(--h-border) !important; }
+        .scrum-style-modal h6 {
+            color: var(--h-muted) !important;
+            font-size: .72rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .5px !important;
+        }
+        .scrum-style-modal .form-text.text-muted { color: var(--h-muted) !important; }
+        .scrum-style-modal .info-box {
+            background: var(--h-card-alt) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 8px !important;
+            padding: 10px 14px !important;
+            font-size: .8rem !important;
+            color: var(--h-text) !important;
+        }
+
+        /* Bootstrap custom-file input */
+        .scrum-style-modal .custom-file-label {
+            background: var(--h-card-alt) !important;
+            border: 1.5px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+            border-radius: 8px !important;
+        }
+        .scrum-style-modal .custom-file-label::after {
+            background: var(--h-surface3) !important;
+            color: var(--h-muted) !important;
+            border-left: 1.5px solid var(--h-border) !important;
+            border-radius: 0 8px 8px 0 !important;
+        }
+        .scrum-style-modal .custom-file-input:focus ~ .custom-file-label {
+            border-color: var(--h-primary) !important;
+            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+        }
+
+        /* Select2 (default theme) — Position Applied picker */
+        .scrum-style-modal .select2-container--default .select2-selection--multiple {
+            background: var(--h-card-alt) !important;
+            border: 1.5px solid var(--h-border) !important;
+            border-radius: 8px !important;
+            min-height: 38px !important;
+        }
+        .scrum-style-modal .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background: var(--h-primary-dim) !important;
+            border: 1px solid var(--h-primary) !important;
+            color: var(--h-text) !important;
+            border-radius: 5px !important;
+        }
+        .scrum-style-modal .select2-container--default .select2-selection__choice__remove { color: var(--h-muted) !important; }
+        .scrum-style-modal .select2-container--default .select2-selection__choice__remove:hover { color: var(--h-danger) !important; }
+        .scrum-style-modal .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: var(--h-primary) !important;
+            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+        }
+        .scrum-style-modal .select2-dropdown {
+            background: var(--h-card-alt) !important;
+            border: 1px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+            border-radius: 8px !important;
+            box-shadow: var(--h-shadow) !important;
+        }
+        .scrum-style-modal .select2-search--dropdown .select2-search__field {
+            background: var(--h-card) !important;
+            border: 1px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+            border-radius: 6px !important;
+        }
+        .scrum-style-modal .select2-results__option { color: var(--h-text) !important; background: transparent !important; }
+        .scrum-style-modal .select2-results__option--highlighted[aria-selected] {
+            background: var(--h-primary) !important;
+            color: #fff !important;
+        }
+
+        /* Buttons */
+        .scrum-style-modal .btn-secondary {
+            background: var(--h-card-alt) !important;
+            color: var(--h-muted) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        .scrum-style-modal .btn-primary,
+        .scrum-style-modal .btn-warning {
+            background: var(--h-primary) !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+        }
+        .scrum-style-modal .btn-primary:hover,
+        .scrum-style-modal .btn-warning:hover { filter: brightness(1.1) !important; color: #fff !important; }
+
+        /* View Applicant detail content */
+        .scrum-style-modal #viewApplicantContent p { color: var(--h-text) !important; }
+        .scrum-style-modal #viewApplicantContent strong { color: var(--h-muted) !important; font-weight: 700 !important; }
+        .scrum-style-modal #viewApplicantContent a { color: var(--h-primary) !important; }
+        .scrum-style-modal #viewApplicantContent hr { border-color: var(--h-border) !important; }
+
+        /* Applicant Details tabs */
+        .applicant-detail-tabs {
+            border-bottom: 1px solid var(--h-border) !important;
+            margin: -20px -20px 18px !important;
+            padding: 0 20px !important;
+        }
+        .applicant-detail-tabs .nav-link {
+            border: none !important;
+            border-bottom: 2px solid transparent !important;
+            color: var(--h-muted) !important;
+            font-size: .82rem !important;
+            font-weight: 700 !important;
+            padding: 12px 14px !important;
+            border-radius: 0 !important;
+            transition: color .15s, border-color .15s;
+        }
+        .applicant-detail-tabs .nav-link:hover { color: var(--h-text) !important; }
+        .applicant-detail-tabs .nav-link.active {
+            color: var(--h-primary) !important;
+            background: transparent !important;
+            border-bottom-color: var(--h-primary) !important;
+        }
+        .applicant-detail-tab-content { padding-top: 2px; }
+
+        /* Uploaded documents nav list */
+        .doc-nav-list { display: flex; flex-direction: column; gap: 8px; }
+        .doc-nav-item {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--h-card-alt) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 10px !important;
+            padding: 10px 14px !important;
+            text-decoration: none !important;
+            transition: border-color .15s, transform .15s, box-shadow .15s;
+        }
+        .doc-nav-item:not(.doc-nav-item-empty):hover {
+            border-color: var(--h-primary) !important;
+            box-shadow: 0 0 0 1px var(--h-primary-dim) !important;
+            transform: translateY(-1px);
+        }
+        .doc-nav-item-empty { opacity: .6; cursor: default; }
+        .doc-nav-icon {
+            width: 34px; height: 34px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--h-surface3) !important;
+            border-radius: 8px !important;
+            font-size: .95rem;
+        }
+        .doc-nav-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+        .doc-nav-label {
+            font-size: .68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .5px; color: var(--h-muted) !important;
+        }
+        .doc-nav-file {
+            font-size: .84rem; color: var(--h-text) !important; font-weight: 500;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .doc-nav-item-empty .doc-nav-file { color: var(--h-muted) !important; font-style: italic; }
+        .doc-nav-open {
+            color: var(--h-muted) !important;
+            font-size: .8rem; flex-shrink: 0;
+        }
+        .doc-nav-item:hover .doc-nav-open { color: var(--h-primary) !important; }
+  </style>
 </head>
 <body class="hold-transition sidebar-mini">
   <div class="wrapper">
@@ -484,109 +839,128 @@ while ($row = $result->fetch_assoc()) {
   </div>
 
   <!-- Add Applicant Modal -->
-  <div class="modal fade" id="addApplicantModal" tabindex="-1">
+  <div class="modal fade scrum-style-modal" id="addApplicantModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <form id="addApplicantForm" enctype="multipart/form-data">
-          <div class="modal-header bg-primary">
-            <h5 class="modal-title">Add New Applicant</h5>
-            <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-user-plus"></i>Add New Applicant</h5>
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
           <div class="modal-body">
-            <div class="row">
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>First Name <span class="text-danger">*</span></label>
-                  <input type="text" name="first_name" class="form-control" required>
+            <ul class="nav nav-tabs applicant-detail-tabs" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" href="#addTabInfo" role="tab">
+                  <i class="fas fa-user mr-1"></i>Applicant Info
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#addTabDocuments" role="tab">
+                  <i class="fas fa-paperclip mr-1"></i>Documents
+                </a>
+              </li>
+            </ul>
+            <div class="tab-content applicant-detail-tab-content">
+              <div class="tab-pane fade show active" id="addTabInfo" role="tabpanel">
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>First Name <span class="text-danger">*</span></label>
+                      <input type="text" name="first_name" class="form-control" required>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Middle Name</label>
+                      <input type="text" name="middle_name" class="form-control">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Last Name <span class="text-danger">*</span></label>
+                      <input type="text" name="last_name" class="form-control" required>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Middle Name</label>
-                  <input type="text" name="middle_name" class="form-control">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Email <span class="text-danger">*</span></label>
+                      <input type="email" name="email" class="form-control" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Phone Number <span class="text-danger">*</span></label>
+                      <input type="text" name="phone_number" class="form-control" required>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-4">
                 <div class="form-group">
-                  <label>Last Name <span class="text-danger">*</span></label>
-                  <input type="text" name="last_name" class="form-control" required>
+                  <label>Address <span class="text-danger">*</span></label>
+                  <textarea name="address" class="form-control" rows="2" required></textarea>
                 </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Email <span class="text-danger">*</span></label>
-                  <input type="email" name="email" class="form-control" required>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Position Applied <span class="text-danger">*</span></label>
+                      <select name="position_applied" class="form-control select2" multiple="multiple" required>
+                        <option value="">-- Select Position --</option>
+                        <?php foreach ($positions as $position): ?>
+                          <option value="<?= htmlspecialchars($position['position_name']) ?>">
+                            <?= htmlspecialchars($position['position_name']) ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Application Date <span class="text-danger">*</span></label>
+                      <input type="date" name="application_date" class="form-control" required>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-6">
                 <div class="form-group">
-                  <label>Phone Number <span class="text-danger">*</span></label>
-                  <input type="text" name="phone_number" class="form-control" required>
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Address <span class="text-danger">*</span></label>
-              <textarea name="address" class="form-control" rows="2" required></textarea>
-            </div>
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Position Applied <span class="text-danger">*</span></label>
-                  <select name="position_applied" class="form-control select2" multiple="multiple" required>
-                    <option value="">-- Select Position --</option>
-                    <?php foreach ($positions as $position): ?>
-                      <option value="<?= htmlspecialchars($position['position_name']) ?>">
-                        <?= htmlspecialchars($position['position_name']) ?>
-                      </option>
-                    <?php endforeach; ?>
+                  <label>Status <span class="text-danger">*</span></label>
+                  <select name="status" class="form-control" required>
+                    <option value="Pending">Pending</option>
+                    <option value="For Review">For Review</option>
+                    <option value="For Interview">For Interview</option>
+                    <option value="Accepted">Accepted</option>
+                    <option value="Rejected">Rejected</option>
                   </select>
                 </div>
-              </div>
-              <div class="col-md-6">
                 <div class="form-group">
-                  <label>Application Date <span class="text-danger">*</span></label>
-                  <input type="date" name="application_date" class="form-control" required>
+                  <label>Remarks</label>
+                  <textarea name="remarks" class="form-control" rows="2"></textarea>
                 </div>
               </div>
-            </div>
-            <div class="form-group">
-              <label>Status <span class="text-danger">*</span></label>
-              <select name="status" class="form-control" required>
-                <option value="Pending">Pending</option>
-                <option value="For Review">For Review</option>
-                <option value="For Interview">For Interview</option>
-                <option value="Accepted">Accepted</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Remarks</label>
-              <textarea name="remarks" class="form-control" rows="2"></textarea>
-            </div>
-            <hr>
-            <h6>Upload Documents</h6>
-            <div class="form-group">
-              <label>Resume (PDF, DOC, DOCX - Max 5MB)</label>
-              <div class="custom-file">
-                <input type="file" name="resume_file" class="custom-file-input" accept=".pdf,.doc,.docx">
-                <label class="custom-file-label">Choose file</label>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Cover Letter (PDF, DOC, DOCX - Max 5MB)</label>
-              <div class="custom-file">
-                <input type="file" name="cover_letter_file" class="custom-file-input" accept=".pdf,.doc,.docx">
-                <label class="custom-file-label">Choose file</label>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Other Documents (PDF, DOC, DOCX - Max 5MB)</label>
-              <div class="custom-file">
-                <input type="file" name="other_documents" class="custom-file-input" accept=".pdf,.doc,.docx">
-                <label class="custom-file-label">Choose file</label>
+              <div class="tab-pane fade" id="addTabDocuments" role="tabpanel">
+                <div class="info-box mb-3">
+                  <i class="fas fa-info-circle mr-1"></i>Accepted formats: PDF, DOC, DOCX — Max 5MB each.
+                </div>
+                <div class="form-group">
+                  <label>Resume</label>
+                  <div class="custom-file">
+                    <input type="file" name="resume_file" class="custom-file-input" accept=".pdf,.doc,.docx">
+                    <label class="custom-file-label">Choose file</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Cover Letter</label>
+                  <div class="custom-file">
+                    <input type="file" name="cover_letter_file" class="custom-file-input" accept=".pdf,.doc,.docx">
+                    <label class="custom-file-label">Choose file</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Other Documents <small class="font-weight-normal" style="text-transform:none;">(you can select multiple files)</small></label>
+                  <div class="custom-file">
+                    <input type="file" name="other_documents[]" class="custom-file-input" accept=".pdf,.doc,.docx" multiple>
+                    <label class="custom-file-label">Choose files</label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -600,114 +974,133 @@ while ($row = $result->fetch_assoc()) {
   </div>
 
   <!-- Edit Applicant Modal -->
-  <div class="modal fade" id="editApplicantModal" tabindex="-1">
+  <div class="modal fade scrum-style-modal" id="editApplicantModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <form id="editApplicantForm" enctype="multipart/form-data">
           <input type="hidden" name="applicant_id" id="edit_applicant_id">
-          <div class="modal-header bg-warning">
-            <h5 class="modal-title">Edit Applicant</h5>
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-user-edit"></i>Edit Applicant</h5>
             <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
           <div class="modal-body">
-            <div class="row">
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>First Name <span class="text-danger">*</span></label>
-                  <input type="text" name="first_name" id="edit_first_name" class="form-control" required>
+            <ul class="nav nav-tabs applicant-detail-tabs" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" href="#editTabInfo" role="tab">
+                  <i class="fas fa-user mr-1"></i>Applicant Info
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#editTabDocuments" role="tab">
+                  <i class="fas fa-paperclip mr-1"></i>Documents
+                </a>
+              </li>
+            </ul>
+            <div class="tab-content applicant-detail-tab-content">
+              <div class="tab-pane fade show active" id="editTabInfo" role="tabpanel">
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>First Name <span class="text-danger">*</span></label>
+                      <input type="text" name="first_name" id="edit_first_name" class="form-control" required>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Middle Name</label>
+                      <input type="text" name="middle_name" id="edit_middle_name" class="form-control">
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>Last Name <span class="text-danger">*</span></label>
+                      <input type="text" name="last_name" id="edit_last_name" class="form-control" required>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-4">
-                <div class="form-group">
-                  <label>Middle Name</label>
-                  <input type="text" name="middle_name" id="edit_middle_name" class="form-control">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Email <span class="text-danger">*</span></label>
+                      <input type="email" name="email" id="edit_email" class="form-control" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Phone Number <span class="text-danger">*</span></label>
+                      <input type="text" name="phone_number" id="edit_phone_number" class="form-control" required>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-4">
                 <div class="form-group">
-                  <label>Last Name <span class="text-danger">*</span></label>
-                  <input type="text" name="last_name" id="edit_last_name" class="form-control" required>
+                  <label>Address <span class="text-danger">*</span></label>
+                  <textarea name="address" id="edit_address" class="form-control" rows="2" required></textarea>
                 </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Email <span class="text-danger">*</span></label>
-                  <input type="email" name="email" id="edit_email" class="form-control" required>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Position Applied <span class="text-danger">*</span></label>
+                      <select name="position_applied" id="edit_position_applied" class="form-control select2" multiple="multiple" required>
+                        <option value="">-- Select Position --</option>
+                        <?php foreach ($positions as $position): ?>
+                          <option value="<?= htmlspecialchars($position['position_name']) ?>">
+                            <?= htmlspecialchars($position['position_name']) ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Application Date <span class="text-danger">*</span></label>
+                      <input type="date" name="application_date" id="edit_application_date" class="form-control" required>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="col-md-6">
                 <div class="form-group">
-                  <label>Phone Number <span class="text-danger">*</span></label>
-                  <input type="text" name="phone_number" id="edit_phone_number" class="form-control" required>
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Address <span class="text-danger">*</span></label>
-              <textarea name="address" id="edit_address" class="form-control" rows="2" required></textarea>
-            </div>
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Position Applied <span class="text-danger">*</span></label>
-                  <select name="position_applied" id="edit_position_applied" class="form-control select2" multiple="multiple" required>
-                    <option value="">-- Select Position --</option>
-                    <?php foreach ($positions as $position): ?>
-                      <option value="<?= htmlspecialchars($position['position_name']) ?>">
-                        <?= htmlspecialchars($position['position_name']) ?>
-                      </option>
-                    <?php endforeach; ?>
+                  <label>Status <span class="text-danger">*</span></label>
+                  <select name="status" id="edit_status" class="form-control" required>
+                    <option value="Pending">Pending</option>
+                    <option value="For Review">For Review</option>
+                    <option value="For Interview">For Interview</option>
+                    <option value="Accepted">Accepted</option>
+                    <option value="Rejected">Rejected</option>
                   </select>
                 </div>
-              </div>
-              <div class="col-md-6">
                 <div class="form-group">
-                  <label>Application Date <span class="text-danger">*</span></label>
-                  <input type="date" name="application_date" id="edit_application_date" class="form-control" required>
+                  <label>Remarks</label>
+                  <textarea name="remarks" id="edit_remarks" class="form-control" rows="2"></textarea>
                 </div>
               </div>
-            </div>
-            <div class="form-group">
-              <label>Status <span class="text-danger">*</span></label>
-              <select name="status" id="edit_status" class="form-control" required>
-                <option value="Pending">Pending</option>
-                <option value="For Review">For Review</option>
-                <option value="For Interview">For Interview</option>
-                <option value="Accepted">Accepted</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Remarks</label>
-              <textarea name="remarks" id="edit_remarks" class="form-control" rows="2"></textarea>
-            </div>
-            <hr>
-            <h6>Upload Documents (Leave blank to keep existing files)</h6>
-            <div class="form-group">
-              <label>Resume</label>
-              <div class="custom-file">
-                <input type="file" name="resume_file" class="custom-file-input" accept=".pdf,.doc,.docx">
-                <label class="custom-file-label">Choose file</label>
+              <div class="tab-pane fade" id="editTabDocuments" role="tabpanel">
+                <div class="info-box mb-3">
+                  <i class="fas fa-info-circle mr-1"></i>Leave a field blank to keep the existing file.
+                </div>
+                <div class="form-group">
+                  <label>Resume</label>
+                  <div class="custom-file">
+                    <input type="file" name="resume_file" class="custom-file-input" accept=".pdf,.doc,.docx">
+                    <label class="custom-file-label">Choose file</label>
+                  </div>
+                  <small class="form-text text-muted" id="current_resume"></small>
+                </div>
+                <div class="form-group">
+                  <label>Cover Letter</label>
+                  <div class="custom-file">
+                    <input type="file" name="cover_letter_file" class="custom-file-input" accept=".pdf,.doc,.docx">
+                    <label class="custom-file-label">Choose file</label>
+                  </div>
+                  <small class="form-text text-muted" id="current_cover"></small>
+                </div>
+                <div class="form-group">
+                  <label>Other Documents <small class="font-weight-normal" style="text-transform:none;">(you can select multiple files; uploading new ones replaces all existing)</small></label>
+                  <div class="custom-file">
+                    <input type="file" name="other_documents[]" class="custom-file-input" accept=".pdf,.doc,.docx" multiple>
+                    <label class="custom-file-label">Choose files</label>
+                  </div>
+                  <small class="form-text text-muted" id="current_other"></small>
+                </div>
               </div>
-              <small class="form-text text-muted" id="current_resume"></small>
-            </div>
-            <div class="form-group">
-              <label>Cover Letter</label>
-              <div class="custom-file">
-                <input type="file" name="cover_letter_file" class="custom-file-input" accept=".pdf,.doc,.docx">
-                <label class="custom-file-label">Choose file</label>
-              </div>
-              <small class="form-text text-muted" id="current_cover"></small>
-            </div>
-            <div class="form-group">
-              <label>Other Documents</label>
-              <div class="custom-file">
-                <input type="file" name="other_documents" class="custom-file-input" accept=".pdf,.doc,.docx">
-                <label class="custom-file-label">Choose file</label>
-              </div>
-              <small class="form-text text-muted" id="current_other"></small>
             </div>
           </div>
           <div class="modal-footer">
@@ -720,12 +1113,12 @@ while ($row = $result->fetch_assoc()) {
   </div>
 
   <!-- View Applicant Modal -->
-  <div class="modal fade" id="viewApplicantModal" tabindex="-1">
+  <div class="modal fade scrum-style-modal" id="viewApplicantModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-info">
-          <h5 class="modal-title">Applicant Details</h5>
-          <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-id-badge"></i>Applicant Details</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
         </div>
         <div class="modal-body">
           <div id="viewApplicantContent"></div>
@@ -755,8 +1148,24 @@ while ($row = $result->fetch_assoc()) {
 
     // Custom file input label
     $('.custom-file-input').on('change', function() {
-      let fileName = $(this).val().split('\\').pop();
-      $(this).next('.custom-file-label').html(fileName);
+      let files = this.files;
+      let label;
+      if (files.length > 1) {
+        label = files.length + ' files selected';
+      } else if (files.length === 1) {
+        label = files[0].name;
+      } else {
+        label = $(this).is('[multiple]') ? 'Choose files' : 'Choose file';
+      }
+      $(this).next('.custom-file-label').html(label);
+    });
+
+    // Reset Add/Edit modals to the "Applicant Info" tab each time they open
+    $('#addApplicantModal, #editApplicantModal').on('show.bs.modal', function() {
+      $(this).find('.applicant-detail-tabs .nav-link').removeClass('active');
+      $(this).find('.applicant-detail-tabs .nav-link:first').addClass('active');
+      $(this).find('.tab-pane').removeClass('show active');
+      $(this).find('.tab-pane:first').addClass('show active');
     });
 
     // Add Applicant
@@ -812,7 +1221,7 @@ while ($row = $result->fetch_assoc()) {
             
             $('#current_resume').text(data.resume_file ? 'Current: ' + data.resume_file : 'No file uploaded');
             $('#current_cover').text(data.cover_letter_file ? 'Current: ' + data.cover_letter_file : 'No file uploaded');
-            $('#current_other').text(data.other_documents ? 'Current: ' + data.other_documents : 'No file uploaded');
+            $('#current_other').text(data.other_documents ? 'Current: ' + data.other_documents.split(',').join(', ') : 'No file uploaded');
             
             $('#editApplicantModal').modal('show');
           }
@@ -856,28 +1265,79 @@ while ($row = $result->fetch_assoc()) {
         success: function(response) {
           if (response.success) {
             let data = response.data;
+
+            function docIcon(filename) {
+              let ext = (filename || '').split('.').pop().toLowerCase();
+              if (ext === 'pdf') return { icon: 'fa-file-pdf', color: '#c92a2a' };
+              if (ext === 'doc' || ext === 'docx') return { icon: 'fa-file-word', color: '#2a5c98' };
+              return { icon: 'fa-file', color: 'var(--h-muted)' };
+            }
+
+            function docItem(label, filenames) {
+              let list = (filenames || '').split(',').map(f => f.trim()).filter(Boolean);
+              if (!list.length) {
+                return `
+                  <div class="doc-nav-item doc-nav-item-empty">
+                    <span class="doc-nav-icon"><i class="fas fa-file"></i></span>
+                    <span class="doc-nav-info">
+                      <span class="doc-nav-label">${label}</span>
+                      <span class="doc-nav-file">Not uploaded</span>
+                    </span>
+                  </div>`;
+              }
+              return list.map((filename, i) => {
+                let meta = docIcon(filename);
+                let itemLabel = list.length > 1 ? `${label} ${i + 1}` : label;
+                return `
+                  <a class="doc-nav-item" href="../uploads/applicants/${filename}" target="_blank">
+                    <span class="doc-nav-icon" style="color:${meta.color}"><i class="fas ${meta.icon}"></i></span>
+                    <span class="doc-nav-info">
+                      <span class="doc-nav-label">${itemLabel}</span>
+                      <span class="doc-nav-file">${filename}</span>
+                    </span>
+                    <span class="doc-nav-open"><i class="fas fa-external-link-alt"></i></span>
+                  </a>`;
+              }).join('');
+            }
+
             let content = `
-              <div class="row">
-                <div class="col-md-6">
-                  <p><strong>Name:</strong> ${data.first_name} ${data.middle_name || ''} ${data.last_name}</p>
-                  <p><strong>Email:</strong> ${data.email}</p>
-                  <p><strong>Phone:</strong> ${data.phone_number}</p>
-                  <p><strong>Address:</strong> ${data.address}</p>
+              <ul class="nav nav-tabs applicant-detail-tabs" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" data-toggle="tab" href="#tabApplicantDetails" role="tab">
+                    <i class="fas fa-user mr-1"></i>Details
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" data-toggle="tab" href="#tabApplicantDocuments" role="tab">
+                    <i class="fas fa-paperclip mr-1"></i>Documents
+                  </a>
+                </li>
+              </ul>
+              <div class="tab-content applicant-detail-tab-content">
+                <div class="tab-pane fade show active" id="tabApplicantDetails" role="tabpanel">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <p><strong>Name:</strong> ${data.first_name} ${data.middle_name || ''} ${data.last_name}</p>
+                      <p><strong>Email:</strong> ${data.email}</p>
+                      <p><strong>Phone:</strong> ${data.phone_number}</p>
+                      <p><strong>Address:</strong> ${data.address}</p>
+                    </div>
+                    <div class="col-md-6">
+                      <p><strong>Position Applied:</strong> ${data.position_applied}</p>
+                      <p><strong>Application Date:</strong> ${new Date(data.application_date).toLocaleDateString()}</p>
+                      <p><strong>Status:</strong> <span class="badge badge-info">${data.status}</span></p>
+                      <p><strong>Remarks:</strong> ${data.remarks || 'N/A'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="col-md-6">
-                  <p><strong>Position Applied:</strong> ${data.position_applied}</p>
-                  <p><strong>Application Date:</strong> ${new Date(data.application_date).toLocaleDateString()}</p>
-                  <p><strong>Status:</strong> <span class="badge badge-info">${data.status}</span></p>
-                  <p><strong>Remarks:</strong> ${data.remarks || 'N/A'}</p>
+                <div class="tab-pane fade" id="tabApplicantDocuments" role="tabpanel">
+                  <div class="doc-nav-list">
+                    ${docItem('Resume', data.resume_file)}
+                    ${docItem('Cover Letter', data.cover_letter_file)}
+                    ${docItem('Other Documents', data.other_documents)}
+                  </div>
                 </div>
               </div>
-              <hr>
-              <h6>Uploaded Documents:</h6>
-              <ul>
-                <li><strong>Resume:</strong> ${data.resume_file ? '<a href="../uploads/applicants/' + data.resume_file + '" target="_blank">' + data.resume_file + '</a>' : 'Not uploaded'}</li>
-                <li><strong>Cover Letter:</strong> ${data.cover_letter_file ? '<a href="../uploads/applicants/' + data.cover_letter_file + '" target="_blank">' + data.cover_letter_file + '</a>' : 'Not uploaded'}</li>
-                <li><strong>Other Documents:</strong> ${data.other_documents ? '<a href="../uploads/applicants/' + data.other_documents + '" target="_blank">' + data.other_documents + '</a>' : 'Not uploaded'}</li>
-              </ul>
             `;
             $('#viewApplicantContent').html(content);
             $('#viewApplicantModal').modal('show');

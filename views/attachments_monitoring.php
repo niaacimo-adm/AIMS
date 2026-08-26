@@ -241,6 +241,7 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       --h-text:     #0f2d1e;
       --h-muted:    #4a7a5e;
       --h-primary:  #2a9863;
+      --h-primary-dim: rgba(42,152,99,.10);
       --h-accent:   #24e78f;
       --h-success:  #2a9863;
       --h-warning:  #e67700;
@@ -256,6 +257,7 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       --h-text:     #d4f5e5;
       --h-muted:    #6aad8a;
       --h-primary:  #24e78f;
+      --h-primary-dim: rgba(36,231,143,.12);
       --h-accent:   #2a9863;
       --h-success:  #24e78f;
       --h-warning:  #ffd43b;
@@ -619,6 +621,19 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
       padding: 14px 24px;
       background: var(--h-card-alt);
     }
+
+    .modal-title i { margin-right: 8px; }
+
+    .info-box {
+      background: var(--h-card-alt);
+      border: 1px solid var(--h-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: .8rem;
+      color: var(--h-muted);
+      margin-top: 4px;
+    }
+    .info-box i { color: var(--h-primary); margin-right: 4px; }
     
     .breadcrumb {
       background-color: transparent;
@@ -1034,6 +1049,87 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             width:180px; height:auto; pointer-events:none; z-index:0;
             opacity:0.50;
         }
+
+        /* ── Scrum-style modal (mirrors the "Create New Project" modal in
+           Scrum > Projects) — applied to Add/Edit Monitoring Record ── */
+        .scrum-style-modal .modal-content {
+            background: var(--h-card) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 24px 80px rgba(0,0,0,.25) !important;
+            color: var(--h-text) !important;
+        }
+        .scrum-style-modal .modal-header {
+            background: var(--h-card-alt) !important;
+            border-bottom: 1px solid var(--h-border) !important;
+            border-radius: 14px 14px 0 0 !important;
+            padding: 16px 20px !important;
+        }
+        .scrum-style-modal .modal-title {
+            font-weight: 700 !important;
+            font-size: .95rem !important;
+            color: var(--h-text) !important;
+        }
+        .scrum-style-modal .modal-title i { color: var(--h-primary) !important; }
+        .scrum-style-modal .modal-header .close {
+            color: var(--h-muted) !important;
+            text-shadow: none !important;
+            opacity: 1 !important;
+        }
+        .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
+        .scrum-style-modal .modal-footer {
+            border-top: 1px solid var(--h-border) !important;
+            padding: 14px 20px !important;
+            background: var(--h-card-alt) !important;
+            border-radius: 0 0 14px 14px !important;
+        }
+        .scrum-style-modal label {
+            color: var(--h-muted) !important;
+            font-size: .72rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .5px !important;
+            margin-bottom: 5px !important;
+        }
+        .scrum-style-modal .form-control,
+        .scrum-style-modal .form-control:focus {
+            background: var(--h-card-alt) !important;
+            border: 1.5px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+            border-radius: 8px !important;
+            font-size: .875rem !important;
+        }
+        .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
+        .scrum-style-modal .form-control:focus {
+            border-color: var(--h-primary) !important;
+            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+        }
+        .scrum-style-modal .btn-secondary {
+            background: var(--h-card-alt) !important;
+            color: var(--h-muted) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        .scrum-style-modal .btn-primary {
+            background: var(--h-primary) !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+        }
+        .scrum-style-modal .btn-primary:hover { filter: brightness(1.1) !important; }
+        .scrum-style-modal .info-box {
+            background: var(--h-card-alt) !important;
+            border: 1px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+        }
+        /* Select2 employee picker (Add Monitoring Record) — match the
+           rounded, flat input look used across the rest of this modal */
+        #addRecordModal.scrum-style-modal .select2-container--bootstrap4 .select2-selection--single {
+            border-radius: 8px !important;
+        }
 </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -1424,11 +1520,11 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
 </div>
 
 <!-- Add Record Modal -->
-<div class="modal fade" id="addRecordModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+<div class="modal fade scrum-style-modal" id="addRecordModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Add Monitoring Record</h5>
+        <h5 class="modal-title"><i class="fas fa-clipboard-list"></i>Add Monitoring Record</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -1458,22 +1554,28 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             </div>
             <small class="form-text text-muted">Select start and end dates for the payroll period</small>
           </div>
-          <div class="form-group">
-              <label>Status</label>
-              <select name="status" class="form-control" required>
-                  <option value="NO ATTACHMENTS">No Attachments</option>
-                  <option value="COMPLETE">Complete</option>
-                  <option value="COMPLETE AND LATE">Complete and Late</option>
-                  <option value="LACKING INFORMATION">Lacking Information</option>
-                  <option value="FOR REVIEW">For Review</option>
-              </select>
-          </div>
-          <div class="form-group">
-            <label>Filing Status</label>
-            <select name="filing_status" class="form-control" required>
-              <option value="NOT FORWARDED">Not Forwarded</option>
-              <option value="FORWARDED">Forwarded</option>
-            </select>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                  <label>Status</label>
+                  <select name="status" class="form-control" required>
+                      <option value="NO ATTACHMENTS">No Attachments</option>
+                      <option value="COMPLETE">Complete</option>
+                      <option value="COMPLETE AND LATE">Complete and Late</option>
+                      <option value="LACKING INFORMATION">Lacking Information</option>
+                      <option value="FOR REVIEW">For Review</option>
+                  </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Filing Status</label>
+                <select name="filing_status" class="form-control" required>
+                  <option value="NOT FORWARDED">Not Forwarded</option>
+                  <option value="FORWARDED">Forwarded</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div class="form-group">
             <label>Submission Date</label>
@@ -1483,10 +1585,13 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             <label>Remarks</label>
             <textarea name="remarks" class="form-control" rows="3" placeholder="Enter remarks..."></textarea>
           </div>
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>Saving a record for an employee/period that already exists will update that existing record instead of creating a duplicate.
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" name="add_record" class="btn btn-primary">Add Record</button>
+          <button type="submit" name="add_record" class="btn btn-primary"><i class="fas fa-plus mr-1"></i>Add Record</button>
         </div>
       </form>
     </div>
@@ -1494,11 +1599,11 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
 </div>
 
 <!-- Edit Record Modal -->
-<div class="modal fade" id="editRecordModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+<div class="modal fade scrum-style-modal" id="editRecordModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Edit Monitoring Record</h5>
+        <h5 class="modal-title"><i class="fas fa-pen"></i>Edit Monitoring Record</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -1506,22 +1611,28 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
       <form method="POST">
         <input type="hidden" name="monitoring_id" id="edit_monitoring_id">
         <div class="modal-body">
-          <div class="form-group">
-              <label>Status</label>
-              <select name="status" id="edit_status" class="form-control" required>
-                  <option value="NO ATTACHMENTS">No Attachments</option>
-                  <option value="COMPLETE">Complete</option>
-                  <option value="COMPLETE AND LATE">Complete and Late</option>
-                  <option value="LACKING INFORMATION">Lacking Information</option>
-                  <option value="FOR REVIEW">For Review</option>
-              </select>
-          </div>
-          <div class="form-group">
-            <label>Filing Status</label>
-            <select name="filing_status" id="edit_filing_status" class="form-control" required>
-              <option value="NOT FORWARDED">Not Forwarded</option>
-              <option value="FORWARDED">Forwarded</option>
-            </select>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                  <label>Status</label>
+                  <select name="status" id="edit_status" class="form-control" required>
+                      <option value="NO ATTACHMENTS">No Attachments</option>
+                      <option value="COMPLETE">Complete</option>
+                      <option value="COMPLETE AND LATE">Complete and Late</option>
+                      <option value="LACKING INFORMATION">Lacking Information</option>
+                      <option value="FOR REVIEW">For Review</option>
+                  </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Filing Status</label>
+                <select name="filing_status" id="edit_filing_status" class="form-control" required>
+                  <option value="NOT FORWARDED">Not Forwarded</option>
+                  <option value="FORWARDED">Forwarded</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div class="form-group">
             <label>Submission Date</label>
@@ -1534,7 +1645,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" name="update_attachment" class="btn btn-primary">Update Record</button>
+          <button type="submit" name="update_attachment" class="btn btn-primary"><i class="fas fa-save mr-1"></i>Update Record</button>
         </div>
       </form>
     </div>
@@ -1542,11 +1653,11 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
 </div>
 
 <!-- In the Import Modal -->
-<div class="modal fade" id="importModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+<div class="modal fade" id="importModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Import Excel File</h5>
+        <h5 class="modal-title"><i class="fas fa-file-excel"></i>Import Excel File</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -1571,7 +1682,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="importSubmitBtn">Import</button>
+          <button type="submit" class="btn btn-primary" id="importSubmitBtn"><i class="fas fa-upload mr-1"></i>Import</button>
         </div>
       </form>
     </div>

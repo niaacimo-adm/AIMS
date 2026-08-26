@@ -135,7 +135,6 @@ if ($employee_id) {
     border-radius: 0;
     margin: 0;
     padding: 0.75rem 1rem;
-    font-family: 'Plus Jakarta Sans', sans-serif;
     transition: background-color .15s ease, color .15s ease;
 }
 .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {

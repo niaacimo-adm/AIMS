@@ -460,7 +460,7 @@ $(function () {
        EVENT COLOUR HELPER
     ══════════════════════════════════════ */
     function evtColor(type) {
-        var m = { holiday:'#f59e0b', meeting:'#06b6d4', birthday:'#ec4899' };
+        var m = { holiday:'#f59e0b', meeting:'#06b6d4', birthday:'#ec4899', leave:'#e03131' };
         return m[type] || '#6366f1';
     }
 
@@ -494,49 +494,81 @@ $(function () {
             dayMaxEvents:  2,
             eventDisplay:  'block',
 
-            /* ── Fetch events ── */
+            /* ── Fetch events, birthdays & approved leaves together ── */
             events: function (info, ok, fail) {
-                $.ajax({
-                    url:      'views/get_events.php',
-                    type:     'GET',
-                    dataType: 'json',
-                    success: function (res) {
-                        var raw = extractEvents(res);
-                        if (raw.length) {
-                            ok(raw.map(function (ev) {
-                                return {
-                                    id:              ev.id,
-                                    title:           ev.title,
-                                    start:           ev.start,
-                                    end:             ev.end   || null,
-                                    description:     ev.description || '',
-                                    type:            ev.type  || 'event',
-                                    backgroundColor: evtColor(ev.type),
-                                    borderColor:     evtColor(ev.type),
-                                    textColor:       '#ffffff'
-                                };
-                            }));
-                            buildUpcoming(raw);
-                        } else {
-                            ok([]);
-                            buildUpcoming([]);
-                        }
-                    },
-                    error: function (xhr, st, err) {
-                        console.warn('[Calendar] fetch error:', err, xhr.responseText);
-                        fail(err);
+                $.when(
+                    $.ajax({ url:'views/get_events.php',          type:'GET', dataType:'json' }),
+                    $.ajax({ url:'views/get_birthdays.php',       type:'GET', dataType:'json' }),
+                    $.ajax({ url:'views/get_approved_leaves.php', type:'GET', dataType:'json' })
+                ).then(function (eventsRes, birthdaysRes, leavesRes) {
+                    var raw = extractEvents(eventsRes[0])
+                        .concat(extractEvents(birthdaysRes[0]))
+                        .concat(leavesRes[0] && leavesRes[0].success ? extractEvents(leavesRes[0]) : []);
+
+                    if (raw.length) {
+                        ok(raw.map(function (ev) {
+                            var type = ev.type || 'event';
+                            return {
+                                id:              ev.id,
+                                title:           ev.title,
+                                start:           ev.start,
+                                end:             ev.end   || null,
+                                allDay:          type === 'birthday' || type === 'leave' || !!ev.allDay,
+                                description:     ev.description || '',
+                                type:            type,
+                                emp_name:        ev.emp_name || '',
+                                leave_type:      ev.leave_type || '',
+                                number_of_days:  ev.number_of_days || '',
+                                backgroundColor: evtColor(type),
+                                borderColor:     evtColor(type),
+                                textColor:       '#ffffff'
+                            };
+                        }));
+                        buildUpcoming(raw);
+                    } else {
+                        ok([]);
                         buildUpcoming([]);
                     }
+                }, function (jqXHR, textStatus, errorThrown) {
+                    console.warn('[Calendar] fetch error:', textStatus);
+                    fail(textStatus);
+                    buildUpcoming([]);
                 });
             },
 
             eventClick: function (info) {
+                var type = info.event.extendedProps.type;
+
+                if (type === 'birthday') {
+                    Swal.fire(sOpts({
+                        title: info.event.title,
+                        icon:  'info',
+                        confirmButtonText: 'Close',
+                        html: '<p style="margin:4px 0"><strong>' + moment(info.event.start).format('MMMM D') + '</strong></p>'
+                    }));
+                    return;
+                }
+
+                if (type === 'leave') {
+                    Swal.fire(sOpts({
+                        title: info.event.extendedProps.emp_name || 'Approved Leave',
+                        icon:  'info',
+                        confirmButtonText: 'Close',
+                        html:
+                            '<p style="margin:4px 0"><strong>Leave Type:</strong> ' + (info.event.extendedProps.leave_type || 'N/A') + '</p>'
+                          + '<p style="margin:4px 0"><strong>Days:</strong> ' + (info.event.extendedProps.number_of_days || '—') + ' day(s)</p>'
+                          + '<p style="margin:4px 0"><strong>From:</strong> ' + moment(info.event.start).format('MMMM D, YYYY') + '</p>'
+                          + '<p style="margin:4px 0"><strong>To:</strong> ' + (info.event.end ? moment(info.event.end).subtract(1,'day').format('MMMM D, YYYY') : moment(info.event.start).format('MMMM D, YYYY')) + '</p>'
+                    }));
+                    return;
+                }
+
                 Swal.fire(sOpts({
                     title:           info.event.title,
                     icon:            'info',
                     confirmButtonText:'Close',
                     html:
-                        '<p style="margin:4px 0"><strong>Type:</strong> ' + (info.event.extendedProps.type || '—') + '</p>'
+                        '<p style="margin:4px 0"><strong>Type:</strong> ' + (type || '—') + '</p>'
                       + '<p style="margin:4px 0"><strong>Description:</strong> ' + (info.event.extendedProps.description || 'No description') + '</p>'
                       + '<p style="margin:4px 0"><strong>Start:</strong> ' + moment(info.event.start).format('MMMM D, YYYY h:mm A') + '</p>'
                       + (info.event.end ? '<p style="margin:4px 0"><strong>End:</strong> ' + moment(info.event.end).format('MMMM D, YYYY h:mm A') + '</p>' : '')

@@ -146,6 +146,7 @@ foreach ($my_requests as $r) {
             --h-text:     #0f2d1e;
             --h-muted:    #4a7a5e;
             --h-primary:  #2a9863;
+            --h-primary-dim: rgba(42,152,99,.10);
             --h-accent:   #24e78f;
             --h-success:  #2a9863;
             --h-warning:  #e67700;
@@ -161,6 +162,7 @@ foreach ($my_requests as $r) {
             --h-text:     #d4f5e5;
             --h-muted:    #6aad8a;
             --h-primary:  #24e78f;
+            --h-primary-dim: rgba(36,231,143,.12);
             --h-accent:   #2a9863;
             --h-success:  #24e78f;
             --h-warning:  #ffd43b;
@@ -280,6 +282,61 @@ foreach ($my_requests as $r) {
         .toggle-switch button.active { background:linear-gradient(135deg,#2a9863,#24e78f); color:#fff; }
 
         @media(max-width:768px){ .hr-content{ padding:0 14px; } .hr-hero{ padding:24px 16px 50px; } }
+
+        /* ── Scrum-style modal (mirrors the "Create New Project" modal in
+           Scrum > Projects) — applied to the COE request modal ── */
+        .hm-modal.scrum-style-modal .modal-content {
+            background: var(--h-card) !important;
+            border: 1px solid var(--h-border) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 24px 80px rgba(0,0,0,.25) !important;
+            color: var(--h-text) !important;
+        }
+        .hm-modal.scrum-style-modal .modal-header {
+            background: var(--h-card-alt) !important;
+            color: var(--h-text) !important;
+            border-bottom: 1px solid var(--h-border) !important;
+            border-radius: 14px 14px 0 0 !important;
+            padding: 16px 20px !important;
+        }
+        .hm-modal.scrum-style-modal .modal-title {
+            font-size: .95rem !important;
+            font-weight: 700 !important;
+            color: var(--h-text) !important;
+        }
+        .hm-modal.scrum-style-modal .modal-title i { color: var(--h-primary) !important; }
+        .hm-modal.scrum-style-modal .modal-header .close {
+            color: var(--h-muted) !important;
+            opacity: 1 !important;
+            text-shadow: none !important;
+        }
+        .hm-modal.scrum-style-modal .modal-header .close:hover { opacity: .7 !important; }
+        .hm-modal.scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
+        .hm-modal.scrum-style-modal .modal-footer {
+            border-top: 1px solid var(--h-border) !important;
+            padding: 14px 20px !important;
+            background: var(--h-card-alt) !important;
+            border-radius: 0 0 14px 14px !important;
+        }
+        .hm-modal.scrum-style-modal .form-group label {
+            font-size: .72rem !important;
+            font-weight: 600 !important;
+            letter-spacing: .5px !important;
+        }
+        .hm-modal.scrum-style-modal .h-ctrl {
+            background: var(--h-card-alt) !important;
+            border: 1.5px solid var(--h-border) !important;
+            border-radius: 8px !important;
+        }
+        .hm-modal.scrum-style-modal .h-ctrl:focus {
+            border-color: var(--h-primary) !important;
+            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+        }
+        .hm-modal.scrum-style-modal .info-box {
+            background: var(--h-card-alt) !important;
+            border: 1px solid var(--h-border) !important;
+            color: var(--h-text) !important;
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -416,7 +473,7 @@ foreach ($my_requests as $r) {
     </div>
 
     <!-- ══ New Request Modal ══ -->
-    <div class="modal fade hm-modal" id="newRequestModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade hm-modal scrum-style-modal" id="newRequestModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
