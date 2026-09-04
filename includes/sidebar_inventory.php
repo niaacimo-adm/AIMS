@@ -90,9 +90,15 @@ if ($employee_id) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="my_supply_requests.php" class="nav-link <?= $current_page == 'my_supply_requests.php' ? 'active' : 'text-white' ?>">
-                        <i class="nav-icon fas fa-list-ol"></i>
-                        <p>My Requests</p>
+                    <a href="manage_types.php" class="nav-link <?= $current_page == 'manage_types.php' ? 'active' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-tags"></i>
+                        <p>Category</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="unit_of_measure.php" class="nav-link <?= $current_page == 'unit_of_measure.php' ? 'active' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-balance-scale"></i>
+                        <p>Unit of Measure</p>
                     </a>
                 </li>
             </ul>

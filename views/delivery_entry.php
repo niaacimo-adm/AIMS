@@ -181,6 +181,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Validate required fields
         if (empty($po_number) || empty($supplier) || empty($delivery_date) || empty($requisition_office)) {
             $error = "PO Number, Supplier, Delivery Date, and Requisition Office are required.";
+        } elseif (!preg_match('/^PO-\d{4}-\d{2}-\d{4}$/', $po_number)) {
+            $error = "PO Number must be in the format PO-YYYY-MM-#### (e.g., PO-2025-03-0045).";
         } elseif (empty($item_ids) || empty($quantities)) {
             $error = "At least one item is required.";
         } else {
@@ -580,72 +582,241 @@ if ($employee_result) {
     <?php include '../includes/header.php'; ?>
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer">
     <style>
-        .card {
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            border: none;
-            border-radius: 10px;
+        :root {
+            --h-bg:       #eef7f2;
+            --h-card:     #ffffff;
+            --h-card-alt: #f0faf5;
+            --h-surface3: #e2f3ea;
+            --h-border:   rgba(42,152,99,0.18);
+            --h-text:     #0f2d1e;
+            --h-muted:    #4a7a5e;
+            --h-primary:  #2a9863;
+            --h-primary-dim: rgba(42,152,99,.10);
+            --h-accent:   #24e78f;
+            --h-success:  #2a9863;
+            --h-warning:  #e67700;
+            --h-danger:   #c92a2a;
+            --h-blue:     #2a9863;
+            --h-shadow:   0 4px 24px rgba(42,152,99,.12);
+            --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
         }
-        .card-header {
-            background: linear-gradient(120deg, #007bff, #0056b3);
-            color: white;
-            border-radius: 10px 10px 0 0;
+        body.dark-mode {
+            --h-bg:       #0b1f17;
+            --h-card:     #102f22;
+            --h-card-alt: #0e2619;
+            --h-surface3: #16352a;
+            --h-border:   rgba(36,231,143,0.12);
+            --h-text:     #d4f5e5;
+            --h-muted:    #6aad8a;
+            --h-primary:  #24e78f;
+            --h-primary-dim: rgba(36,231,143,.12);
+            --h-accent:   #2a9863;
+            --h-success:  #24e78f;
+            --h-warning:  #ffd43b;
+            --h-danger:   #ff6b6b;
+            --h-blue:     #24e78f;
+            --h-shadow:   0 4px 24px rgba(0,0,0,.35);
+            --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
         }
-        .delivery-item {
-            background: linear-gradient(120deg, #f8f9fa, #e9ecef);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
+
+        .content-wrapper { background: var(--h-bg) !important; }
+
+        .main-header.navbar, .main-header, nav.main-header, header.main-header { z-index: 1000 !important; }
+        .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
+        .main-sidebar, aside.main-sidebar { z-index: 999 !important; }
+        .modal-backdrop { z-index: 1040 !important; }
+        .modal { z-index: 1050 !important; }
+        .modal-dialog { z-index: 1051 !important; }
+        .modal-content { z-index: 1052 !important; }
+        .select2-container, .select2-dropdown { z-index: 1055 !important; }
+
+        /* ══ HERO ══ */
+        @keyframes pgHeroMeshDrift {
+            0%   { transform:translate(0,0)   rotate(0deg); }
+            100% { transform:translate(3%,2%) rotate(2deg); }
+        }
+        @keyframes pgHeroOrbFloat {
+            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+        }
+        .pg-hero { background:#0b1f17; padding:36px 28px 66px; position:relative; overflow:hidden; }
+        .pg-hero-mesh {
+            position:absolute; inset:-50%; width:200%; height:200%;
+            background:
+                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
+                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
+                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
+            z-index:0;
+        }
+        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
+        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
+        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
+        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
+        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
+        .pg-hero-dots {
+            position:absolute; inset:0; z-index:0; pointer-events:none;
+            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+            background-size:36px 36px;
+        }
+        .pg-hero-arc {
+            position:absolute; top:-50px; right:-50px; width:200px; height:200px; border-radius:50%;
+            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .pg-hero::after {
+            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
+            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
+        }
+        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
+        .pg-hero-inner { position:relative; z-index:2; }
+        .pg-hero-title {
+            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
+            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
+            display:flex; align-items:center; gap:10px;
+        }
+        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
+        .pg-hero-divider {
+            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
+            background:linear-gradient(90deg,transparent,#24e78f,transparent);
+        }
+        .pg-hero-layout { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:14px; position:relative; z-index:2; }
+
+        /* ── Card ── */
+        .card { background: var(--h-card) !important; border: 1px solid var(--h-border) !important; border-radius: 12px !important; box-shadow: var(--h-shadow-sm) !important; }
+        .card-header { background: var(--h-card) !important; border-bottom: 1px solid var(--h-border) !important; padding: 14px 20px !important; display:flex !important; align-items:center !important; justify-content:space-between !important; flex-wrap:wrap !important; gap:10px !important; }
+        .card-title { font-weight: 700 !important; font-size: .9rem !important; color: var(--h-text) !important; letter-spacing: -.2px; margin-right: auto !important; }
+        .card-body { background: var(--h-card) !important; padding: 18px !important; }
+        .card-tools { display:flex !important; align-items:center !important; justify-content:flex-end !important; gap:8px !important; flex-wrap:wrap !important; margin-left: auto !important; }
+        .card-tools .btn-primary {
+            background: var(--h-primary) !important; border: none !important; border-radius: 8px !important;
+            font-weight: 700 !important; font-size: .8rem !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+        }
+        .card-tools .btn-primary:hover { filter: brightness(1.1) !important; }
+        .card-tools .btn-success {
+            background: var(--h-card-alt) !important; color: var(--h-primary) !important; border: 1px solid var(--h-border) !important;
+            border-radius: 8px !important; font-weight: 700 !important; font-size: .8rem !important;
+        }
+        .card-tools .btn-success:hover { background: var(--h-surface3) !important; }
+
+        /* ── Table ── */
+        #deliveryTable.table, #risTable.table { color: var(--h-text) !important; }
+        #deliveryTable.table thead th, #risTable.table thead th {
+            background: var(--h-card-alt) !important; border: none !important; border-bottom: 1px solid var(--h-border) !important;
+            color: var(--h-muted) !important; font-size: .68rem !important; font-weight: 700 !important;
+            text-transform: uppercase !important; letter-spacing: .6px !important; padding: 10px 14px !important;
+        }
+        #deliveryTable.table tbody tr, #risTable.table tbody tr { transition: background .12s; }
+        #deliveryTable.table tbody tr:hover, #risTable.table tbody tr:hover { background: var(--h-card-alt) !important; }
+        #deliveryTable.table tbody td, #risTable.table tbody td {
+            border-top: 1px solid var(--h-border) !important; border-left: none !important; border-right: none !important;
+            padding: 12px 14px !important; vertical-align: middle !important; font-size: .85rem !important; color: var(--h-text) !important;
+        }
+        #deliveryTable.table-bordered, #risTable.table-bordered { border: none !important; }
+        .table-responsive { border-radius: 8px; overflow: hidden; }
+
+        /* Row action buttons */
+        .action-buttons { display: flex; gap: 5px; }
+        .action-buttons .btn.btn-info    { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
+        .action-buttons .btn.btn-secondary { background: var(--h-card-alt) !important; color: var(--h-muted) !important; border: 1px solid var(--h-border) !important; border-radius: 7px !important; }
+        .action-buttons .btn.btn-success { background: rgba(42,152,99,.12) !important; color: var(--h-primary) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
+        .action-buttons .btn.btn-danger  { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.25) !important; border-radius: 7px !important; }
+        .action-buttons .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+        /* ── Scrum-style modal (mirrors Applicant Databank modals) ── */
+        .scrum-style-modal .modal-content { background: var(--h-card) !important; border: 1px solid var(--h-border) !important; border-radius: 14px !important; box-shadow: 0 24px 80px rgba(0,0,0,.25) !important; color: var(--h-text) !important; }
+        .scrum-style-modal .modal-header { background: var(--h-card-alt) !important; border-bottom: 1px solid var(--h-border) !important; border-radius: 14px 14px 0 0 !important; padding: 16px 20px !important; }
+        .scrum-style-modal .modal-title { font-weight: 700 !important; font-size: .95rem !important; color: var(--h-text) !important; }
+        .scrum-style-modal .modal-title i { color: var(--h-primary) !important; margin-right: 8px; }
+        .scrum-style-modal .modal-header .close { color: var(--h-muted) !important; text-shadow: none !important; opacity: 1 !important; }
+        .scrum-style-modal .modal-header .close:hover { opacity: .7 !important; }
+        .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
+        .scrum-style-modal .modal-footer { border-top: 1px solid var(--h-border) !important; padding: 14px 20px !important; background: var(--h-card-alt) !important; border-radius: 0 0 14px 14px !important; }
+        .scrum-style-modal label { color: var(--h-muted) !important; font-size: .72rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: .5px !important; margin-bottom: 5px !important; }
+        .scrum-style-modal .form-control, .scrum-style-modal .form-control:focus {
+            background: var(--h-card-alt) !important; border: 1.5px solid var(--h-border) !important; color: var(--h-text) !important;
+            border-radius: 8px !important; font-size: .875rem !important;
+        }
+        .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
+        .scrum-style-modal .form-control:focus { border-color: var(--h-primary) !important; box-shadow: 0 0 0 3px var(--h-primary-dim) !important; }
+        .scrum-style-modal .form-control[readonly] { opacity: .8; }
+        .scrum-style-modal select.form-control option { background: var(--h-card) !important; color: var(--h-text) !important; }
+        .scrum-style-modal .form-text.text-muted { color: var(--h-muted) !important; }
+        .scrum-style-modal h4 { color: var(--h-text) !important; font-size: .95rem !important; font-weight: 700 !important; }
+        .scrum-style-modal .btn-secondary { background: var(--h-card-alt) !important; color: var(--h-muted) !important; border: 1px solid var(--h-border) !important; border-radius: 8px !important; font-weight: 600 !important; }
+        .scrum-style-modal .btn-primary { background: var(--h-primary) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important; }
+        .scrum-style-modal .btn-primary:hover { filter: brightness(1.1) !important; color: #fff !important; }
+        .scrum-style-modal .btn-success { background: var(--h-primary) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important; }
+        .scrum-style-modal .btn-success:hover { filter: brightness(1.1) !important; color: #fff !important; }
+
+        /* Info panels inside modals */
+        .iar-info, .ris-info {
+            background: var(--h-card-alt) !important; border: 1px solid var(--h-border) !important;
+            border-radius: 10px !important; padding: 16px 18px !important; margin-bottom: 20px !important;
+        }
+        .iar-info h4, .ris-info h4 { margin-bottom: 14px !important; }
+
+        /* Delivery / RIS line-item rows */
+        .delivery-item, .ris-item {
+            background: var(--h-card-alt) !important; border: 1px solid var(--h-border) !important;
+            border-radius: 10px !important; padding: 15px !important; margin-bottom: 15px !important;
         }
         .btn-add-item {
-            background: linear-gradient(120deg, #28a745, #20c997);
-            border: none;
+            background: var(--h-primary) !important; border: none !important; color: #fff !important;
+            border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important;
         }
-        .btn-remove-item {
-            background: linear-gradient(120deg, #dc3545, #c82333);
-            border: none;
+        .btn-add-item:hover { filter: brightness(1.1) !important; color: #fff !important; }
+        .btn-remove-item,
+        .scrum-style-modal .btn-remove-item {
+            background: var(--h-danger) !important; border: 1px solid var(--h-danger) !important; color: #fff !important;
+            border-radius: 8px !important; font-weight: 700 !important;
         }
-        .iar-info {
-            background: linear-gradient(120deg, #e3f2fd, #bbdefb);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .ris-info {
-            background: linear-gradient(120deg, #d2fbd5ff, #90e49eff);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .status-badge {
-            font-size: 0.9rem;
-            padding: 8px 15px;
-            border-radius: 20px;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        .table-responsive {
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .btn-excel {
-            background: linear-gradient(120deg, #28a745, #20c997);
-            color: white;
-        }
+        .btn-remove-item:hover,
+        .scrum-style-modal .btn-remove-item:hover { background: #a82530 !important; border-color: #a82530 !important; }
+        .btn-remove-item i,
+        .scrum-style-modal .btn-remove-item i { margin-right: 4px; color: #fff !important; }
+        .ris-remove-item { border-radius: 8px !important; }
+
+        .status-badge { font-size: 0.9rem; padding: 8px 15px; border-radius: 20px; }
+        .btn-excel { background: var(--h-primary) !important; color: #fff !important; border: none !important; }
+
+        /* Select2 (default theme) */
         .select2-container--default .select2-selection--multiple {
-        min-height: 38px;
-        border: 1px solid #ced4da;
-        border-radius: 4px;
+            background: var(--h-card-alt) !important; border: 1.5px solid var(--h-border) !important; border-radius: 8px !important; min-height: 38px !important;
         }
         .select2-container--default .select2-selection--multiple .select2-selection__choice {
-            background-color: #007bff;
-            border-color: #006fe6;
-            color: white;
+            background: var(--h-primary-dim) !important; border: 1px solid var(--h-primary) !important; color: var(--h-text) !important; border-radius: 5px !important;
         }
-        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-            color: rgba(255,255,255,0.7);
+        .select2-container--default .select2-selection__choice__remove { color: var(--h-muted) !important; }
+        .select2-container--default .select2-selection__choice__remove:hover { color: var(--h-danger) !important; }
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: var(--h-primary) !important; box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+        }
+        .select2-dropdown {
+            background: var(--h-card-alt) !important; border: 1px solid var(--h-border) !important; color: var(--h-text) !important;
+            border-radius: 8px !important; box-shadow: var(--h-shadow) !important;
+        }
+        .select2-search--dropdown .select2-search__field {
+            background: var(--h-card) !important; border: 1px solid var(--h-border) !important; color: var(--h-text) !important; border-radius: 6px !important;
+        }
+        .select2-results__option { color: var(--h-text) !important; background: transparent !important; }
+        .select2-results__option--highlighted[aria-selected] { background: var(--h-primary) !important; color: #fff !important; }
+
+        /* Item dropdown rows: name + short description preview, not the full spec sheet */
+        .item-option { padding: 2px 0; }
+        .item-option-name { font-weight: 600; font-size: .85rem; color: inherit; }
+        .item-option-desc {
+            font-weight: 400; font-size: .74rem; color: var(--h-muted) !important;
+            white-space: normal; line-height: 1.35; margin-top: 2px;
+        }
+        .select2-results__option--highlighted .item-option-desc { color: rgba(255,255,255,.85) !important; }
+        .select2-selection--multiple .select2-selection__choice {
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
     </style>
 </head>
@@ -655,23 +826,28 @@ if ($employee_result) {
     <?php include '../includes/sidebar_inventory.php'; ?>
 
     <div class="content-wrapper">
-        <section class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1>Delivery Management</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="inventory.php">Inventory</a></li>
-                            <li class='breadcrumb-item active'>Delivery Management</li>
-                        </ol>
-                    </div>
+
+        <!-- Page Hero -->
+        <div class="pg-hero">
+            <div class="pg-hero-mesh"></div>
+            <div class="pg-hero-dots"></div>
+            <div class="pg-hero-orbs">
+                <div class="pg-orb pg-orb-1"></div>
+                <div class="pg-orb pg-orb-2"></div>
+                <div class="pg-orb pg-orb-3"></div>
+                <div class="pg-orb pg-orb-4"></div>
+            </div>
+            <div class="pg-hero-arc"></div>
+            <div class="pg-hero-layout">
+                <div class="pg-hero-inner">
+                    <div class="pg-hero-title"><i class="fas fa-truck-loading"></i>Delivery Management</div>
+                    <div class="pg-hero-divider"></div>
+                    <p class="pg-hero-sub">Record deliveries, generate IAR documents, and issue RIS slips</p>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="content">
+        <div class="content">
             <div class="container-fluid">
                 <?php if ($error): ?>
                     <div class="alert alert-danger"><?= $error ?></div>
@@ -682,9 +858,9 @@ if ($employee_result) {
                 <?php endif; ?>
 
                 <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Delivery Records</h3>
-                        <div class="card-tools">
+                    <div class="card-header" style="display:flex !important; justify-content:space-between !important; align-items:center !important;">
+                        <h3 class="card-title" style="margin-right:auto !important;">Delivery Records</h3>
+                        <div class="card-tools" style="display:flex !important; justify-content:flex-end !important; margin-left:auto !important;">
                             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#deliveryModal">
                                 <i class="fas fa-plus"></i> New Delivery Entry
                             </button>
@@ -733,7 +909,7 @@ if ($employee_result) {
                                             <button class="btn btn-success btn-sm create-ris" data-id="<?= $record['id'] ?>" title="Create RIS">
                                                 <i class="fas fa-file-export"></i> RIS
                                             </button>
-                                            <form method="POST" action="" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this IAR record? This action cannot be undone.');">
+                                            <form method="POST" action="" style="display: inline;" class="delete-iar-form">
                                                 <input type="hidden" name="iar_id" value="<?= $record['id'] ?>">
                                                 <button type="submit" name="delete_iar" class="btn btn-danger btn-sm" title="Delete">
                                                     <i class="fas fa-trash"></i>
@@ -748,15 +924,15 @@ if ($employee_result) {
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 
     <!-- Delivery Entry Modal -->
-    <div class="modal fade" id="deliveryModal" tabindex="-1" role="dialog" aria-labelledby="deliveryModalLabel" aria-hidden="true">
+    <div class="modal fade scrum-style-modal" id="deliveryModal" tabindex="-1" role="dialog" aria-labelledby="deliveryModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
-                <div class="modal-header bg-primary">
-                    <h5 class="modal-title" id="deliveryModalLabel">New Delivery Entry</h5>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deliveryModalLabel"><i class="fas fa-truck"></i>New Delivery Entry</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -821,7 +997,10 @@ if ($employee_result) {
                                         <input type="text" class="form-control" id="po_number" name="po_number" 
                                             value="<?= htmlspecialchars($delivery_data['po_number']) ?>" 
                                             pattern="PO-\d{4}-\d{2}-\d{4}"
+                                            placeholder="PO-YYYY-MM-####"
                                             title="Format: PO-YYYY-MM-#### (e.g., PO-2025-03-0045)"
+                                            maxlength="15"
+                                            autocomplete="off"
                                             required>
                                         <small class="form-text text-muted">Format: PO-YYYY-MM-#### (e.g., PO-2025-03-0045)</small>
                                     </div>
@@ -856,10 +1035,10 @@ if ($employee_result) {
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label>Item *</label>
-                                            <select class="form-control select22" multiple="multiple" name="item_id[]" required>
+                                            <select class="form-control select22 item-select" multiple="multiple" name="item_id[]" required>
                                                 <option value="">-- Select Item --</option>
                                                 <?php foreach ($items as $id => $item): ?>
-                                                    <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) . ' ,' .htmlspecialchars($item['description']) ?></option>
+                                                    <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
@@ -885,8 +1064,8 @@ if ($employee_result) {
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label>Actions</label>
-                                            <button type="button" class="form-control btn btn-sm btn-remove-item text-white" onclick="removeItem(this)">
-                                                <i class="fas fa-trash text-white"></i>Remove
+                                            <button type="button" class="form-control btn btn-sm btn-remove-item" onclick="removeItem(this)">
+                                                <i class="fas fa-trash"></i> Remove
                                             </button>
                                         </div>
                                     </div>
@@ -911,11 +1090,11 @@ if ($employee_result) {
         </div>
     </div>
         <!-- RIS Entry Modal -->
-    <div class="modal fade" id="risModal" tabindex="-1" role="dialog" aria-labelledby="risModalLabel" aria-hidden="true">
+    <div class="modal fade scrum-style-modal" id="risModal" tabindex="-1" role="dialog" aria-labelledby="risModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
-                <div class="modal-header bg-success">
-                    <h5 class="modal-title" id="risModalLabel">Create Requisition and Issue Slip (RIS)</h5>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="risModalLabel"><i class="fas fa-file-export"></i>Create Requisition and Issue Slip (RIS)</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -1032,17 +1211,97 @@ if ($employee_result) {
 </div>
 <?php include '../includes/footer.php'; ?>
 <script>
+    // Renders each dropdown row as the item name plus a short, truncated
+    // preview of its (often very long) description, instead of dumping the
+    // whole spec sheet into the row/selected chip.
+    function formatItemOption(option) {
+        if (!option.id) {
+            return option.text;
+        }
+        var description = $(option.element).data('description') || '';
+        var $result = $('<div class="item-option"><div class="item-option-name"></div></div>');
+        $result.find('.item-option-name').text(option.text);
+        if (description) {
+            var preview = description.length > 90 ? description.substring(0, 90) + '…' : description;
+            $result.append($('<div class="item-option-desc"></div>').text(preview));
+        }
+        return $result;
+    }
+
     $(document).ready(function() {
-        // Add this script to update IAR number when PO number changes
+        // Delete IAR confirmation (SweetAlert2 instead of the native confirm())
+        $('.delete-iar-form').on('submit', function(e) {
+            let form = this;
+            if ($(form).data('confirmed')) {
+                return true;
+            }
+            e.preventDefault();
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This will delete the IAR record and cannot be undone.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#c92a2a',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $(form).data('confirmed', true);
+                    form.submit();
+                }
+            });
+        });
+
+        // Auto-format PO Number like a landline-style masked input:
+        // fixed "PO-" prefix, digits auto-grouped as YYYY-MM-####
+        function formatPoNumber(raw) {
+            // Strip everything except digits (ignore any existing "PO" / dashes the user typed)
+            var digits = raw.replace(/\D/g, '').substring(0, 10); // 4 (year) + 2 (month) + 4 (seq)
+            var formatted = 'PO-';
+            if (digits.length > 0) {
+                formatted += digits.substring(0, 4);
+            }
+            if (digits.length >= 5) {
+                formatted += '-' + digits.substring(4, 6);
+            }
+            if (digits.length >= 7) {
+                formatted += '-' + digits.substring(6, 10);
+            }
+            return formatted;
+        }
+
+        $('#po_number').on('focus', function() {
+            if ($(this).val().trim() === '') {
+                $(this).val('PO-');
+            }
+        });
+
         $('#po_number').on('input', function() {
-            var poNumber = $(this).val();
-            if (poNumber.startsWith('PO-')) {
-                var iarNumber = poNumber.replace('PO-', 'IAR-');
+            var cursorAtEnd = this.selectionStart === this.value.length;
+            var formatted = formatPoNumber($(this).val());
+            $(this).val(formatted);
+            if (cursorAtEnd) {
+                this.setSelectionRange(formatted.length, formatted.length);
+            }
+
+            // Update IAR number to mirror a complete PO number
+            var poPattern = /^PO-\d{4}-\d{2}-\d{4}$/;
+            if (poPattern.test(formatted)) {
+                var iarNumber = formatted.replace('PO-', 'IAR-');
                 $('#iar_number').val(iarNumber);
-                $('#hidden_iar_number').val(iarNumber); // Add this line
+                $('#hidden_iar_number').val(iarNumber);
             } else {
                 $('#iar_number').val('');
-                $('#hidden_iar_number').val(''); // Add this line
+                $('#hidden_iar_number').val('');
+            }
+        });
+
+        // Prevent the user from deleting into/through the fixed "PO-" prefix
+        $('#po_number').on('keydown', function(e) {
+            var val = $(this).val();
+            var start = this.selectionStart;
+            if ((e.key === 'Backspace' || e.key === 'Delete') && start <= 3 && val.substring(0, 3) === 'PO-') {
+                e.preventDefault();
             }
         });
 
@@ -1060,7 +1319,8 @@ if ($employee_result) {
         $('.select22').select2({
             placeholder: "-- Please Select --",
             allowClear: true,
-            maximumSelectionLength: 1
+            maximumSelectionLength: 1,
+            templateResult: formatItemOption
         });
         // Initialize DataTable with export buttons
         $('#deliveryTable').DataTable({
@@ -1086,10 +1346,10 @@ if ($employee_result) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control select22" multiple="multiple" name="item_id[]" required>
+                                <select class="form-control select22 item-select" multiple="multiple" name="item_id[]" required>
                                     <option value="">-- Select Item --</option>
                                     <?php foreach ($items as $id => $item): ?>
-                                        <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) .','. htmlspecialchars($item['description'])?></option>
+                                        <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -1115,8 +1375,8 @@ if ($employee_result) {
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label>Actions</label>
-                                <button type="button" class="form-control btn btn-sm btn-remove-item text-white"">
-                                    <i class="fas fa-trash text-white"></i> Remove
+                                <button type="button" class="form-control btn btn-sm btn-remove-item">
+                                    <i class="fas fa-trash"></i> Remove
                                 </button>
                             </div>
                         </div>
@@ -1128,7 +1388,8 @@ if ($employee_result) {
             $('.select22').select2({
             placeholder: "-- Please Select --",
             allowClear: true,
-            maximumSelectionLength: 1
+            maximumSelectionLength: 1,
+            templateResult: formatItemOption
         });
         });
         
@@ -1160,10 +1421,10 @@ if ($employee_result) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control select22" multiple="multiple" name="item_id[]" required>
+                                <select class="form-control select22 item-select" multiple="multiple" name="item_id[]" required>
                                     <option value="">-- Select Item --</option>
                                     <?php foreach ($items as $id => $item): ?>
-                                        <option value="<?= $id ?>"><?= htmlspecialchars($item['name']) ?></option>
+                                        <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -1274,9 +1535,10 @@ if ($employee_result) {
             $select.append(
                 $('<option>', {
                     value: item.item_id,
-                    text: item.name + ', ' + item.description + ' (Delivered: ' + item.quantity + ')',
+                    text: item.name + ' (Delivered: ' + item.quantity + ')',
                     'data-stock': item.quantity,
-                    'data-unit': item.unit_of_measure
+                    'data-unit': item.unit_of_measure,
+                    'data-description': item.description || ''
                 })
             );
         });
@@ -1285,7 +1547,8 @@ if ($employee_result) {
         $select.select2({
             placeholder: "-- Please Select --",
             allowClear: true,
-            maximumSelectionLength: 1
+            maximumSelectionLength: 1,
+            templateResult: formatItemOption
         });
     }
 
@@ -1354,7 +1617,8 @@ if ($employee_result) {
             $('.select21').select2({
                 placeholder: "-- Please Select --",
                 allowClear: true,
-                maximumSelectionLength: 1
+                maximumSelectionLength: 1,
+                templateResult: formatItemOption
             });
         });
 
@@ -1463,7 +1727,8 @@ if ($employee_result) {
             $('.select21').select2({
                 placeholder: "-- Please Select --",
                 allowClear: true,
-                maximumSelectionLength: 1
+                maximumSelectionLength: 1,
+                templateResult: formatItemOption
             });
             // Populate the new select with existing items
             const $newSelect = $('#risItems .ris-item-select').last();
@@ -1476,7 +1741,8 @@ if ($employee_result) {
                 placeholder: "-- Please Select --",
                 allowClear: true,
                 maximumSelectionLength: 1,
-                width: '100%'
+                width: '100%',
+                templateResult: formatItemOption
             });
         
 </script>
