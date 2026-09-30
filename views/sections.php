@@ -480,9 +480,8 @@ while ($row = $result->fetch_assoc()) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AdminLTE 3 | Section Management</title>
   <?php include '../includes/header.php'; ?>
+  
 <style>
-    /* ── Modern Section Management UI ── */
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap');
 
     :root {
       --sm-primary: #1a5c38;
@@ -538,20 +537,30 @@ while ($row = $result->fetch_assoc()) {
       box-shadow: var(--sm-shadow) !important;
       overflow: hidden;
     }
-    .card-header {
+    .card-header,
+    .card-primary > .card-header,
+    .card-success > .card-header {
       background: var(--sm-surface) !important;
       border-bottom: 1px solid var(--sm-border) !important;
-      padding: 16px 20px !important;
+      padding: 14px 20px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      flex-wrap: wrap;
+      gap: 10px;
     }
-    .card-primary > .card-header { background: linear-gradient(135deg,#2a9863,#1a5c38) !important; border: none !important; }
-    .card-success > .card-header { background: linear-gradient(135deg,#1c4d38,#24e78f) !important; border: none !important; }
-    .card-primary > .card-header .card-title,
-    .card-success > .card-header .card-title { color: #fff !important; }
+    .card-header .card-title { margin: 0 !important; }
+    .card-header .card-tools {
+      margin-left: auto !important;
+      float: none !important;
+      display: flex !important;
+      align-items: center !important;
+    }
 
     .card-title {
       font-family:  sans-serif !important;
-      font-weight: 700 !important; font-size: .95rem !important;
-      color: var(--sm-primary) !important; letter-spacing: -.3px; margin: 0 !important;
+      font-weight: 700 !important; font-size: .9rem !important;
+      color: var(--sm-text) !important; letter-spacing: -.2px; margin: 0 !important;
     }
     .card-body  { padding: 20px !important; }
     .card-footer { background: var(--sm-surface2) !important; border-top: 1px solid var(--sm-border) !important; padding: 14px 20px !important; }
@@ -574,26 +583,21 @@ while ($row = $result->fetch_assoc()) {
     .form-control:focus { border-color: var(--sm-accent) !important; box-shadow: 0 0 0 3px rgba(26,92,56,.12) !important; }
 
     /* Submit buttons */
-    .btn-primary {
-      background: linear-gradient(135deg,#2a9863,#1a5c38) !important;
-      color: #fff !important; border: none !important;
-      border-radius: 10px !important; font-weight: 600 !important;
-      padding: 8px 20px !important; font-family: 'DM Sans',sans-serif !important;
-      box-shadow: 0 2px 10px rgba(26,92,56,.25) !important;
-      transition: all .2s;
-    }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(26,92,56,.35) !important; }
+    .btn-primary,
     .btn-success {
-      background: linear-gradient(135deg,#1c4d38,#24e78f) !important;
+      background: var(--sm-accent) !important;
       color: #fff !important; border: none !important;
-      border-radius: 10px !important; font-weight: 600 !important;
+      border-radius: 8px !important; font-weight: 700 !important;
+      font-size: .8rem !important;
       padding: 8px 20px !important; font-family: 'DM Sans',sans-serif !important;
-      box-shadow: 0 2px 10px rgba(36,231,143,.25) !important;
+      box-shadow: 0 2px 12px rgba(42,152,99,.10) !important;
       transition: all .2s;
     }
-    .btn-success:hover { transform: translateY(-1px); }
+    .btn-primary:hover,
+    .btn-success:hover { filter: brightness(1.1); color: #fff !important; }
 
     /* Manager's Office button */
+    .btn-toolbar, a.btn-success.btn-sm { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px !important; border-radius: 8px !important; font-size: .8rem !important; }
     a.btn-success.btn-sm {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 14px !important; border-radius: 8px !important;
@@ -641,14 +645,14 @@ while ($row = $result->fetch_assoc()) {
     .section-head-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid var(--sm-border); }
     .default-head-avatar {
       width: 38px; height: 38px; border-radius: 50%;
-      background: linear-gradient(135deg,#e8f8f0,#c8e6d4);
+      background: #e8f8f0;
       display: flex; align-items: center; justify-content: center;
       color: var(--sm-accent); font-size: .85rem; border: 2px solid var(--sm-border);
     }
     .employee-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--sm-border); }
     .default-avatar {
       width: 32px; height: 32px; border-radius: 50%;
-      background: linear-gradient(135deg,#e8f8f0,#c8e6d4);
+      background: #e8f8f0;
       display: flex; align-items: center; justify-content: center;
       color: var(--sm-accent); font-size: .75rem; border: 2px solid var(--sm-border);
     }
@@ -662,7 +666,7 @@ while ($row = $result->fetch_assoc()) {
     .unit-section-item {
       padding: 10px 14px; border-left: 3px solid var(--sm-accent2);
       margin-bottom: 10px; position: relative;
-      background: linear-gradient(to right,#ecfeff22,transparent);
+      background: transparent;
       border-radius: 0 8px 8px 0;
     }
     .unit-name { font-weight: 600; font-size: .85rem; color: var(--sm-primary); }
@@ -690,7 +694,7 @@ while ($row = $result->fetch_assoc()) {
     .employee-info { flex-grow: 1; }
 
     /* Table action buttons in unit employees modal */
-    .btn-primary.btn-sm { background: linear-gradient(135deg,#2a9863,#1a5c38) !important; color: #fff !important; }
+    .btn-primary.btn-sm { background: var(--sm-accent) !important; color: #fff !important; }
 
     /* Modals */
     .modal-content { border: none !important; border-radius: 16px !important; box-shadow: 0 20px 60px rgba(0,0,0,.15) !important; font-family: 'DM Sans', sans-serif; }
@@ -704,16 +708,150 @@ while ($row = $result->fetch_assoc()) {
     .modal .form-control { border: 1.5px solid var(--sm-border) !important; border-radius: 10px !important; }
     .modal .form-control:focus { border-color: var(--sm-accent) !important; box-shadow: 0 0 0 3px rgba(26,92,56,.12) !important; }
 
-    .btn-modal-cancel { background: var(--sm-surface2) !important; color: var(--sm-muted) !important; border: none !important; border-radius: 10px !important; padding: 8px 18px !important; font-weight: 600 !important; }
-    .btn-modal-save   { background: linear-gradient(135deg,#2a9863,#1a5c38) !important; color: #fff !important; border: none !important; border-radius: 10px !important; padding: 8px 18px !important; font-weight: 600 !important; box-shadow: 0 2px 10px rgba(26,92,56,.25) !important; }
+    .btn-modal-cancel { background: var(--sm-surface2) !important; color: var(--sm-muted) !important; border: 1px solid var(--sm-border) !important; border-radius: 8px !important; padding: 8px 18px !important; font-weight: 600 !important; }
+    .btn-modal-save   { background: var(--sm-accent) !important; color: #fff !important; border: none !important; border-radius: 8px !important; padding: 8px 18px !important; font-weight: 700 !important; box-shadow: 0 2px 12px rgba(42,152,99,.10) !important; }
     .btn-modal-cancel:hover { background: var(--sm-border) !important; }
     .btn-modal-save:hover   { filter: brightness(.9); }
-    .btn-secondary { background: var(--sm-surface2) !important; color: var(--sm-muted) !important; border: none !important; border-radius: 10px !important; }
+    .btn-secondary { background: var(--sm-surface2) !important; color: var(--sm-muted) !important; border: 1px solid var(--sm-border) !important; border-radius: 8px !important; font-weight: 600 !important; }
 
-    /* Select2 */
-    .select2-container--default .select2-selection--multiple { min-height: 38px; border: 1.5px solid var(--sm-border) !important; border-radius: 10px !important; }
-    .select2-container--default .select2-selection--multiple .select2-selection__choice { background: var(--sm-accent) !important; border-color: #1a5c38 !important; color: #fff; border-radius: 6px; }
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: rgba(255,255,255,.8); }
+    /* Select2 (theme: 'bootstrap') — same styling as certificate_of_employment.php */
+    .select2-container--bootstrap .select2-selection--single,
+    .select2-container--bootstrap .select2-selection--multiple {
+      background: var(--sm-surface) !important;
+      border: 1.5px solid var(--sm-border) !important;
+      border-radius: 8px !important;
+      min-height: 38px !important;
+    }
+    .select2-container--bootstrap .select2-selection--single {
+      height: 38px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+    .select2-container--bootstrap .select2-selection--single .select2-selection__rendered {
+      color: var(--sm-text) !important;
+      line-height: normal !important;
+      padding: 0 30px 0 12px !important;
+      flex: 1 1 auto !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+    .select2-container--bootstrap .select2-selection--single .select2-selection__arrow {
+      height: 36px !important;
+      top: 0 !important;
+      right: 4px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+    .select2-container--bootstrap .select2-selection--single .select2-selection__clear {
+      height: auto !important;
+      line-height: normal !important;
+      margin-top: 0 !important;
+      position: absolute !important;
+      right: 26px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+    }
+    .select2-container--bootstrap .select2-selection__placeholder { color: var(--sm-muted) !important; }
+    .select2-container--bootstrap.select2-container--focus .select2-selection--single,
+    .select2-container--bootstrap.select2-container--focus .select2-selection--multiple,
+    .select2-container--bootstrap.select2-container--open .select2-selection--single,
+    .select2-container--bootstrap.select2-container--open .select2-selection--multiple {
+      border-color: var(--sm-accent) !important;
+      box-shadow: 0 0 0 3px rgba(42,152,99,.13) !important;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-selection__choice {
+      background: var(--sm-accent) !important;
+      border: none !important;
+      color: #fff !important;
+      border-radius: 6px !important;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-selection__choice__remove { color: rgba(255,255,255,.85) !important; }
+
+    /* Multi-select layout: chips wrap inline (flex) instead of stacking one per line */
+    .select2-container--bootstrap .select2-selection--multiple {
+      position: relative !important;
+      height: auto !important;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-selection__rendered {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 4px !important;
+      margin: 0 !important;
+      padding: 4px 30px 4px 8px !important;
+      list-style: none !important;
+      min-height: 34px;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-selection__choice {
+      float: none !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      margin: 0 !important;
+      padding: 3px 10px 3px 6px !important;
+      font-size: .85rem !important;
+      line-height: 1.3 !important;
+      max-width: 100%;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-selection__choice__remove {
+      float: none !important;
+      position: static !important;
+      margin: 0 6px 0 0 !important;
+      font-weight: 700;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-selection__clear {
+      position: absolute !important;
+      top: 8px !important;
+      right: 10px !important;
+      margin: 0 !important;
+      float: none !important;
+      line-height: 1 !important;
+      color: var(--sm-muted) !important;
+      cursor: pointer;
+      z-index: 1;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-search--inline {
+      float: none !important;
+      flex: 1 1 80px;
+      margin: 0 !important;
+    }
+    .select2-container--bootstrap .select2-selection--multiple .select2-search--inline .select2-search__field {
+      width: 100% !important;
+      height: 26px !important;
+      margin: 0 !important;
+      padding: 0 4px !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: var(--sm-text) !important;
+    }
+    .select2-dropdown {
+      background: var(--sm-surface) !important;
+      border: 1px solid var(--sm-border) !important;
+      color: var(--sm-text) !important;
+      border-radius: 8px !important;
+      box-shadow: var(--sm-shadow) !important;
+    }
+    .select2-container--bootstrap .select2-search--dropdown .select2-search__field {
+      background: var(--sm-surface2) !important;
+      border: 1px solid var(--sm-border) !important;
+      color: var(--sm-text) !important;
+      border-radius: 6px !important;
+    }
+    .select2-container--bootstrap .select2-results__option {
+      color: var(--sm-text) !important;
+      background: transparent !important;
+    }
+    .select2-container--bootstrap .select2-results__option--highlighted[aria-selected] {
+      background: var(--sm-accent) !important;
+      color: #fff !important;
+    }
+    .select2-container--bootstrap .select2-results__option[aria-selected="true"] {
+      background: var(--sm-surface2) !important;
+      color: var(--sm-muted) !important;
+    }
 
     /* DataTables */
     .dataTables_wrapper .dataTables_filter input { border: 1.5px solid var(--sm-border) !important; border-radius: 8px !important; padding: 5px 12px !important; }
@@ -754,11 +892,7 @@ while ($row = $result->fetch_assoc()) {
         }
         .pg-hero-mesh {
             position:absolute; inset:-50%; width:200%; height:200%;
-            background:
-                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
-                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
-                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
-                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+            background:#0f2d1e;
             animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
             z-index:0;
         }
@@ -770,8 +904,7 @@ while ($row = $result->fetch_assoc()) {
         .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
         .pg-hero-dots {
             position:absolute; inset:0; z-index:0; pointer-events:none;
-            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
-            background-size:36px 36px;
+            
         }
         .pg-hero-hex {
             position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
@@ -793,7 +926,7 @@ while ($row = $result->fetch_assoc()) {
         .pg-hero-arc {
             position:absolute; top:-50px; right:-50px;
             width:200px; height:200px; border-radius:50%;
-            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+            background:rgba(36,231,143,.10);
             pointer-events:none; z-index:0;
         }
         .pg-hero::after {
@@ -810,7 +943,7 @@ while ($row = $result->fetch_assoc()) {
         .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
         .pg-hero-divider {
             width:48px; height:2px; border-radius:2px; margin:0 0 12px;
-            background:linear-gradient(90deg,transparent,#24e78f,transparent);
+            background:#24e78f;
         }
         .pg-hero-actions {
             position:relative; z-index:2;
@@ -880,96 +1013,23 @@ while ($row = $result->fetch_assoc()) {
     <section class="content">
       <div class="container-fluid">
         <div class="row">
-          <div class="col-md-4">
+          <div class="col-12">
             <div class="card card-primary">
               <div class="card-header">
-                <h3 class="card-title">Add New Section</h3>
-              </div>
-              <form method="POST">
-                <div class="card-body">
-                    <div class="form-group">
-                        <label for="office_id">Office</label>
-                        <select class="form-control" id="office_id" name="office_id" required>
-                            <option value="">-- Select Office --</option>
-                            <?php foreach ($offices as $office): ?>
-                                <option value="<?= $office['office_id'] ?>"><?= htmlspecialchars($office['office_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="section_name">Section Name</label>
-                        <input type="text" class="form-control" id="section_name" name="section_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="section_code">Section Code (2-3 letters)</label>
-                        <input type="text" class="form-control" id="section_code" name="section_code" required maxlength="3" pattern="[A-Za-z]{2,3}" title="2-3 letter code">
-                    </div>
-                  <div class="form-group">
-                    <label for="section_head_emp_id">Section Head</label>
-                    <select class="form-control select2" id="section_head_emp_id" name="head_emp_id" multiple="multiple">
-                      <option value="">-- Select Head --</option>
-                      <?php foreach ($employees as $employee): ?>
-                        <option value="<?= $employee['emp_id'] ?>"><?= htmlspecialchars($employee['full_name']) ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <button type="submit" name="add_section" class="btn btn-primary">Add Section</button>
-                </div>
-              </form>
-            </div>
-            
-            <div class="card card-success">
-              <div class="card-header">
-                <h3 class="card-title">Add New Unit Section</h3>
-              </div>
-              <form method="POST">
-                <div class="card-body">
-                  <div class="form-group">
-                    <label for="section_id">Parent Section</label>
-                    <select class="form-control" id="section_id" name="section_id" required>
-                      <?php foreach ($sections as $section): ?>
-                        <option value="<?= $section['section_id'] ?>"><?= htmlspecialchars($section['section_name']) ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                        <label for="unit_name">Unit Name</label>
-                        <input type="text" class="form-control" id="unit_name" name="unit_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="unit_code">Unit Code (2-3 letters)</label>
-                        <input type="text" class="form-control" id="unit_code" name="unit_code" required maxlength="3" pattern="[A-Za-z]{2,3}" title="2-3 letter code">
-                    </div>
-                  <div class="form-group">
-                    <label for="head_emp_id">Unit Head</label>
-                    <select class="form-control select2" id="head_emp_id" name="head_emp_id" multiple="multiple">
-                      <option value="">-- Select Head --</option>
-                      <?php foreach ($employees as $employee): ?>
-                        <option value="<?= $employee['emp_id'] ?>"><?= htmlspecialchars($employee['full_name']) ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <button type="submit" name="add_unit_section" class="btn btn-success">Add Unit Section</button>
-                </div>
-              </form>
-            </div>
-          </div>
-          
-          <div class="col-md-8">
-            <div class="card card-primary">
-              <div class="card-header">
-                <h3 class="card-title">Manage Sections & Units</h3>
+                <h3 class="card-title">Manage Sections &amp; Units</h3>
                 <div class="card-tools">
-                <a href="managers_office.php" class="btn btn-success btn-sm">
+                  <button type="button" class="btn btn-primary btn-sm btn-toolbar" data-toggle="modal" data-target="#addSectionModal">
+                    <i class="fas fa-plus"></i> Add Section
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm btn-toolbar ml-1" data-toggle="modal" data-target="#addUnitModal">
+                    <i class="fas fa-plus"></i> Add Unit Section
+                  </button>
+                  <a href="managers_office.php" class="btn btn-success btn-sm ml-1">
                     <i class="fas fa-user-tie"></i> Manager's Office
-                </a>
-            </div>
+                  </a>
+                </div>
               </div>
-              
+
               <div class="card-body">
                 <table id="sectable" class="table table-bordered table-striped">
                   <thead>
@@ -980,6 +1040,7 @@ while ($row = $result->fetch_assoc()) {
                     </tr>
                   </thead>
                   <tbody>
+                    <?php $deferred_modals = ''; ?>
                     <?php foreach ($sections as $section): ?>
                     <tr>
                       <td>
@@ -1083,7 +1144,6 @@ while ($row = $result->fetch_assoc()) {
                             return $unit['section_id'] == $section['section_id'];
                         });
                         if (empty($section_units)): ?>
-                        <div class="flex-grow-1">
                               <small class="text-muted">No unit sections</small>
                             <?php else: ?>
                               <?php foreach ($section_units as $unit): ?>
@@ -1115,6 +1175,7 @@ while ($row = $result->fetch_assoc()) {
                                     </button>
                                   </div>
                                
+                                  <?php ob_start(); ?>
                                   <div class="modal fade" id="employeeModal<?= $unit['unit_id'] ?>">
                                       <div class="modal-dialog modal-lg">
                                           <div class="modal-content">
@@ -1204,6 +1265,7 @@ while ($row = $result->fetch_assoc()) {
                                           </div>
                                       </div>
                                   </div>
+                                  <?php $deferred_modals .= ob_get_clean(); ?>
                                   <div class="unit-actions btn-group">
                                     <button type="button" class="btn btn-xs btn-info" data-toggle="modal" 
                                             data-target="#editUnitModal<?= $unit['unit_id'] ?>">
@@ -1216,6 +1278,7 @@ while ($row = $result->fetch_assoc()) {
                                     </button>
                                   </div>
                                   
+                                  <?php ob_start(); ?>
                                   <div class="modal fade" id="editUnitModal<?= $unit['unit_id'] ?>">
                                       <div class="modal-dialog">
                                         <div class="modal-content">
@@ -1230,7 +1293,7 @@ while ($row = $result->fetch_assoc()) {
                                                   <input type="hidden" name="unit_id" value="<?= $unit['unit_id'] ?>">
                                                   <div class="form-group">
                                                       <label>Parent Section</label>
-                                                      <select class="form-control" name="section_id" required>
+                                                      <select class="form-control select2-single" name="section_id" required>
                                                           <?php foreach ($sections as $sec): ?>
                                                               <option value="<?= $sec['section_id'] ?>" 
                                                                   <?= $sec['section_id'] == $unit['section_id'] ? 'selected' : '' ?>>
@@ -1251,8 +1314,8 @@ while ($row = $result->fetch_assoc()) {
                                                     </div>
                                                   <div class="form-group">
                                                       <label>Unit Head</label>
-                                                      <select class="form-control" name="head_emp_id">
-                                                          <option value="">-- Select Head --</option>
+                                                      <select class="form-control select2-single" name="head_emp_id" data-placeholder="-- Select Head --" data-allow-clear="true">
+                                                          <option value=""></option>
                                                           <?php foreach ($employees as $employee): ?>
                                                               <option value="<?= $employee['emp_id'] ?>" 
                                                                   <?= $employee['emp_id'] == $unit['head_emp_id'] ? 'selected' : '' ?>>
@@ -1292,10 +1355,10 @@ while ($row = $result->fetch_assoc()) {
                                         </div>
                                       </div>
                                     </div>
+                                  <?php $deferred_modals .= ob_get_clean(); ?>
                                 </div>
                               <?php endforeach; ?>
                             <?php endif; ?>
-                        </div>
                       </td>
                       <td>
                         <div class="btn-group">
@@ -1311,6 +1374,7 @@ while ($row = $result->fetch_assoc()) {
                         </div>
                         
                         <!-- Edit Section Modal -->
+                        <?php ob_start(); ?>
                         <div class="modal fade" id="editModal<?= $section['section_id'] ?>">
                           <div class="modal-dialog">
                             <div class="modal-content">
@@ -1325,8 +1389,8 @@ while ($row = $result->fetch_assoc()) {
                                   <input type="hidden" name="id" value="<?= $section['section_id'] ?>">
                                 <div class="form-group">
                                     <label>Office</label>
-                                    <select class="form-control" name="office_id" required>
-                                        <option value="">-- Select Office --</option>
+                                    <select class="form-control select2-single" name="office_id" required data-placeholder="-- Select Office --" data-allow-clear="true">
+                                        <option value=""></option>
                                         <?php foreach ($offices as $office): ?>
                                             <option value="<?= $office['office_id'] ?>" 
                                                 <?= $office['office_id'] == $section['office_id'] ? 'selected' : '' ?>>
@@ -1347,8 +1411,8 @@ while ($row = $result->fetch_assoc()) {
                                 </div>
                                   <div class="form-group">
                                     <label>Section Head</label>
-                                    <select class="form-control select2" name="head_emp_id" multiple="multiple">
-                                      <option value="">-- Select Head --</option>
+                                    <select class="form-control select2-single" name="head_emp_id" data-placeholder="-- Select Head --" data-allow-clear="true">
+                                      <option value=""></option>
                                       <?php foreach ($employees as $employee): ?>
                                         <option value="<?= $employee['emp_id'] ?>" 
                                           <?= $employee['emp_id'] == $section['head_emp_id'] ? 'selected' : '' ?>>
@@ -1389,14 +1453,108 @@ while ($row = $result->fetch_assoc()) {
                             </div>
                           </div>
                         </div>
+                        <?php $deferred_modals .= ob_get_clean(); ?>
                       </td>
                     </tr>
                     <?php endforeach; ?>
                   </tbody>
                 </table>
-
               </div>
             </div>
+
+                <!-- Modals are rendered outside the table (invalid HTML inside <table>) and moved to <body> by JS -->
+                <?= $deferred_modals ?>
+
+                <!-- Add Section Modal -->
+                <div class="modal fade" id="addSectionModal" tabindex="-1">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h4 class="modal-title"><i class="fas fa-layer-group mr-2"></i>Add New Section</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                      </div>
+                      <form method="POST">
+                        <div class="modal-body">
+                          <div class="form-group">
+                            <label for="office_id">Office</label>
+                            <select class="form-control select2-single" id="office_id" name="office_id" required data-placeholder="-- Select Office --" data-allow-clear="true">
+                              <option value=""></option>
+                              <?php foreach ($offices as $office): ?>
+                                <option value="<?= $office['office_id'] ?>"><?= htmlspecialchars($office['office_name']) ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+                          <div class="form-group">
+                            <label for="section_name">Section Name</label>
+                            <input type="text" class="form-control" id="section_name" name="section_name" required>
+                          </div>
+                          <div class="form-group">
+                            <label for="section_code">Section Code (2-3 letters)</label>
+                            <input type="text" class="form-control" id="section_code" name="section_code" required maxlength="3" pattern="[A-Za-z]{2,3}" title="2-3 letter code">
+                          </div>
+                          <div class="form-group">
+                            <label for="section_head_emp_id">Section Head</label>
+                            <select class="form-control select2-single" id="section_head_emp_id" name="head_emp_id" data-placeholder="-- Select Head --" data-allow-clear="true">
+                              <option value=""></option>
+                              <?php foreach ($employees as $employee): ?>
+                                <option value="<?= $employee['emp_id'] ?>"><?= htmlspecialchars($employee['full_name']) ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-modal-cancel" data-dismiss="modal">Cancel</button>
+                          <button type="submit" name="add_section" class="btn btn-modal-save">Add Section</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Add Unit Section Modal -->
+                <div class="modal fade" id="addUnitModal" tabindex="-1">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h4 class="modal-title"><i class="fas fa-sitemap mr-2"></i>Add New Unit Section</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                      </div>
+                      <form method="POST">
+                        <div class="modal-body">
+                          <div class="form-group">
+                            <label for="section_id">Parent Section</label>
+                            <select class="form-control select2-single" id="section_id" name="section_id" required>
+                              <?php foreach ($sections as $section): ?>
+                                <option value="<?= $section['section_id'] ?>"><?= htmlspecialchars($section['section_name']) ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+                          <div class="form-group">
+                            <label for="unit_name">Unit Name</label>
+                            <input type="text" class="form-control" id="unit_name" name="unit_name" required>
+                          </div>
+                          <div class="form-group">
+                            <label for="unit_code">Unit Code (2-3 letters)</label>
+                            <input type="text" class="form-control" id="unit_code" name="unit_code" required maxlength="3" pattern="[A-Za-z]{2,3}" title="2-3 letter code">
+                          </div>
+                          <div class="form-group">
+                            <label for="head_emp_id">Unit Head</label>
+                            <select class="form-control select2-single" id="head_emp_id" name="head_emp_id" data-placeholder="-- Select Head --" data-allow-clear="true">
+                              <option value=""></option>
+                              <?php foreach ($employees as $employee): ?>
+                                <option value="<?= $employee['emp_id'] ?>"><?= htmlspecialchars($employee['full_name']) ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-modal-cancel" data-dismiss="modal">Cancel</button>
+                          <button type="submit" name="add_unit_section" class="btn btn-modal-save">Add Unit Section</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
           </div>
         </div>
       </div>
@@ -1616,18 +1774,34 @@ $('#sectable').DataTable({
 });
 </script>
 <script>
-// Initialize Select2 for secretaries dropdown
-$('.select2').select2({
-    placeholder: "-- Please Select --",
-    allowClear: true,
-    maximumSelectionLength: 1
+// Move every modal to <body> so it isn't trapped inside .content's stacking
+// context (position:relative; z-index:3). Otherwise Bootstrap's backdrop
+// (appended to body, z-index 1040) renders ON TOP of the modal and swallows clicks.
+$('.modal').appendTo('body');
+$('#addSectionModal, #addUnitModal').on('hidden.bs.modal', function () {
+    var f = $(this).find('form')[0]; if (f) f.reset();
+    // Sync every Select2 with the native reset state
+    $(this).find('select.select2-single, select.select2-sec, select.select2-unit-employees').trigger('change');
 });
-$('.select2-sec').select2({
+
+// Initialize Select2 (dropdownParent keeps dropdowns usable inside modals)
+function initSelect2(selector, options) {
+    $(selector).each(function () {
+        var $el = $(this);
+        var $modal = $el.closest('.modal');
+        var opts = $.extend({ theme: 'bootstrap', width: '100%' }, options);
+        if ($modal.length) { opts.dropdownParent = $modal; }
+        $el.select2(opts);
+    });
+}
+// Single selects (same setup as certificate_of_employment.php's Employee select).
+// Placeholder / allowClear come from data-placeholder / data-allow-clear on each <select>.
+initSelect2('.select2-single');
+initSelect2('.select2-sec', {
     placeholder: "-- Please Select --",
     allowClear: true
 });
-// Initialize Select2 for unit employees dropdown
-$('.select2-unit-employees').select2({
+initSelect2('.select2-unit-employees', {
     placeholder: "Select employees...",
     allowClear: true
 });

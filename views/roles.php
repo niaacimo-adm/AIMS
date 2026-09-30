@@ -157,6 +157,45 @@ $allPermissions = getAllPermissions();
   <title>Role Management | NIA-ACIMO</title>
   <?php include '../includes/header.php'; ?>
   <style>
+    :root {
+      --h-bg:       #eef7f2;
+      --h-card:     #ffffff;
+      --h-card-alt: #f0faf5;
+      --h-surface3: #e2f3ea;
+      --h-border:   rgba(42,152,99,0.18);
+      --h-text:     #0f2d1e;
+      --h-muted:    #4a7a5e;
+      --h-primary:  #2a9863;
+      --h-primary-dim: rgba(42,152,99,.10);
+      --h-accent:   #24e78f;
+      --h-success:  #2a9863;
+      --h-warning:  #e67700;
+      --h-danger:   #c92a2a;
+      --h-blue:     #2a9863;
+      --h-shadow:   0 4px 24px rgba(42,152,99,.12);
+      --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
+    }
+    body.dark-mode {
+      --h-bg:       #0b1f17;
+      --h-card:     #102f22;
+      --h-card-alt: #0e2619;
+      --h-surface3: #16352a;
+      --h-border:   rgba(36,231,143,0.12);
+      --h-text:     #d4f5e5;
+      --h-muted:    #6aad8a;
+      --h-primary:  #24e78f;
+      --h-primary-dim: rgba(36,231,143,.12);
+      --h-accent:   #2a9863;
+      --h-success:  #24e78f;
+      --h-warning:  #ffd43b;
+      --h-danger:   #ff6b6b;
+      --h-blue:     #24e78f;
+      --h-shadow:   0 4px 24px rgba(0,0,0,.35);
+      --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
+    }
+
+    .content-wrapper { background: var(--h-bg) !important; }
+
     .content { padding:0 20px; margin-top:-50px; position:relative; z-index:3; }
     .role-card {
         border: none;
@@ -172,7 +211,7 @@ $allPermissions = getAllPermissions();
     }
     
     .role-header {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        background: linear-gradient(135deg, var(--h-primary), var(--h-accent));
         color: white;
         border-radius: 12px 12px 0 0 !important;
         padding: 15px 20px;
@@ -187,21 +226,21 @@ $allPermissions = getAllPermissions();
     }
     
     .permission-item {
-        background:dark;
-        border: 1px solid #e9ecef;
+        background: var(--h-card);
+        border: 1px solid var(--h-border);
         border-radius: 8px;
         padding: 12px 15px;
         transition: all 0.2s ease;
     }
     
     .permission-item:hover {
-        background: #303438;
-        border-color: #4361ee;
+        background: var(--h-card-alt);
+        border-color: var(--h-primary);
     }
     
     .permission-item .form-check-label {
         font-weight: 500;
-        color: #2d3748;
+        color: var(--h-text);
     }
     
     .permission-item .text-muted {
@@ -223,7 +262,7 @@ $allPermissions = getAllPermissions();
     }
     
     .stats-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--h-primary) 0%, var(--h-accent) 100%);
         color: white;
         border-radius: 12px;
         padding: 20px;
@@ -246,24 +285,24 @@ $allPermissions = getAllPermissions();
         border: none;
         padding: 15px 20px;
         font-weight: 600;
-        color: #2d3748;
+        color: var(--h-text);
     }
     
     .accordion-button:not(.collapsed) {
-        background: rgba(67, 97, 238, 0.1);
-        color: #4361ee;
+        background: var(--h-primary-dim);
+        color: var(--h-primary);
     }
     
     .modern-form .form-control {
         border-radius: 8px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--h-border);
         padding: 10px 15px;
         transition: all 0.2s ease;
     }
     
     .modern-form .form-control:focus {
-        border-color: #4361ee;
-        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        border-color: var(--h-primary);
+        box-shadow: 0 0 0 3px var(--h-primary-dim);
     }
     
     .btn-modern {
@@ -274,31 +313,43 @@ $allPermissions = getAllPermissions();
     }
     
     .btn-modern-primary {
-        background: linear-gradient(135deg, #4361ee, #3f37c9);
+        background: linear-gradient(135deg, var(--h-primary), var(--h-accent));
         border: none;
         color: white;
     }
     
     .btn-modern-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+        box-shadow: var(--h-shadow);
     }
     
     .section-title {
-        color: #2d3748;
+        color: var(--h-text);
         font-weight: 700;
         margin-bottom: 20px;
         padding-bottom: 10px;
-        border-bottom: 2px solid #4361ee;
+        border-bottom: 2px solid var(--h-primary);
     }
     
     .role-badge {
-        background: rgba(67, 97, 238, 0.1);
-        color: #4361ee;
+        background: var(--h-primary-dim);
+        color: var(--h-primary);
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 600;
+    }
+
+    .role-actions .btn-info {
+        background: var(--h-primary) !important;
+        border-color: var(--h-primary) !important;
+        color: #fff !important;
+    }
+    .role-actions .btn-info:hover { filter: brightness(1.1) !important; }
+    #editRoleModal .modal-header.bg-primary,
+    .modal-header.bg-primary {
+        background: var(--h-primary) !important;
+        border: none !important;
     }
   
 /* =========================================================
