@@ -84,6 +84,18 @@ if ($employee_id) {
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="delivery_entry.php" class="nav-link <?= $current_page == 'delivery_entry.php' ? 'active' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-truck-loading"></i>
+                        <p>Delivery Entry</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="rsmi_report.php" class="nav-link <?= $current_page == 'rsmi_report.php' ? 'active' : 'text-white' ?>">
+                        <i class="nav-icon fas fa-file-invoice"></i>
+                        <p>RSMI Report</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="request_supplies.php" class="nav-link <?= $current_page == 'request_supplies.php' ? 'active' : 'text-white' ?>">
                         <i class="nav-icon fas fa-clipboard-check"></i>
                         <p>Request Supplies</p>

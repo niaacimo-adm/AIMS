@@ -1,6 +1,6 @@
 <!-- Main Footer -->
 <footer class="main-footer" id="mainFooter">
-    <strong>NIA - ACIMO Intelligent Management Solution (AIMS)</strong>
+    <strong>NIA - ACIMO Integrated Management Solution (AIMS)</strong>
     <div class="float-right d-none d-sm-inline-block">
         <b>MDO</b>(2024)
     </div>
@@ -21,6 +21,7 @@
         <div class="cw-popover-header">
             <span class="cw-popover-title">Messages</span>
             <div class="cw-popover-actions">
+                <button class="cw-action-btn cw-new-group-btn" title="New group message"><i class="fas fa-users"></i></button>
                 <button class="cw-action-btn" id="cwOpenInbox" title="Open Inbox"><i class="fas fa-expand-alt"></i></button>
                 <button class="cw-action-btn" id="cwClosePopover" title="Close"><i class="fas fa-times"></i></button>
             </div>
@@ -81,6 +82,7 @@
         <div class="cw-inbox-sidebar">
             <div class="cw-inbox-sidebar-header">
                 <h4>Messages</h4>
+                <button class="cw-action-btn cw-new-group-btn" title="New group message"><i class="fas fa-users"></i></button>
                 <button class="cw-action-btn cw-inbox-close-btn" id="cwInboxClose"><i class="fas fa-times"></i></button>
             </div>
             <div class="cw-inbox-search-wrap">
@@ -135,6 +137,51 @@
                     <textarea class="cw-msg-input cw-inbox-msg-input" id="cwInboxMsgInput" placeholder="Type a message…" rows="1"></textarea>
                     <button class="cw-send-btn cw-inbox-send-btn" id="cwInboxSendBtn"><i class="fas fa-paper-plane"></i></button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     GROUP MESSAGE COMPOSER (send to everyone / 2+ people)
+     ═══════════════════════════════════════════════════════ -->
+<div class="cw-gm-overlay" id="cwGmOverlay" style="display:none;">
+    <div class="cw-gm" role="dialog" aria-label="New group message">
+        <div class="cw-gm-header">
+            <div class="cw-gm-title"><i class="fas fa-users"></i> New Group Message</div>
+            <button class="cw-action-btn" id="cwGmClose" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="cw-gm-modes">
+            <button type="button" class="cw-gm-mode active" data-mode="selected"><i class="fas fa-user-check"></i> Select people</button>
+            <button type="button" class="cw-gm-mode" data-mode="all"><i class="fas fa-bullhorn"></i> Everyone</button>
+        </div>
+
+        <div class="cw-gm-picker" id="cwGmPicker">
+            <div class="cw-gm-chips" id="cwGmChips"></div>
+            <div class="cw-gm-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="cwGmSearch" placeholder="Search people…" autocomplete="off">
+                <button type="button" class="cw-gm-link" id="cwGmSelectVisible">Select all</button>
+                <button type="button" class="cw-gm-link" id="cwGmClear">Clear</button>
+            </div>
+            <ul class="cw-gm-list" id="cwGmList"></ul>
+        </div>
+
+        <div class="cw-gm-all-note" id="cwGmAllNote" style="display:none;">
+            <i class="fas fa-bullhorn"></i>
+            <div>This message will be sent to <b id="cwGmAllCount">0</b> people.</div>
+        </div>
+
+        <div class="cw-gm-compose">
+            <textarea id="cwGmMessage" placeholder="Write your message…" rows="3"></textarea>
+        </div>
+
+        <div class="cw-gm-footer">
+            <span class="cw-gm-summary" id="cwGmSummary">Select at least 2 people</span>
+            <div>
+                <button type="button" class="cw-gm-btn secondary" id="cwGmCancel">Cancel</button>
+                <button type="button" class="cw-gm-btn primary" id="cwGmSend" disabled><i class="fas fa-paper-plane"></i> Send</button>
             </div>
         </div>
     </div>
@@ -1246,12 +1293,14 @@ function updateUnreadCounts() {
         if (total > 0) $badge.text(total > 99 ? '99+' : total).show();
         else $badge.hide();
 
+        const prevCounts = new Map(state.userUnreadCounts);
         state.userUnreadCounts.clear();
         if (r.user_unread_counts) {
             Object.entries(r.user_unread_counts).forEach(([uid, cnt]) => {
                 state.userUnreadCounts.set(parseInt(uid), cnt);
             });
         }
+        detectNewChatMessages(prevCounts);   // pop up a toast for new incoming messages
         if (state.popover.open && !state.popover.chatOpen) {
             renderUserList(state.allUsers, '#cwUserList', openPopoverChat);
         }
@@ -1266,6 +1315,147 @@ function startUnreadTimer() {
 }
 
 // ── Heartbeat ────────────────────────────────────────────
+// ═══════════════ CHAT TOAST ALERTS (bottom-right) ═══════════════
+
+const toastState = { first: true, toasts: new Map(), roomByUser: new Map(), ctx: null };
+const TOAST_MS = 8000;
+
+function ensureToastHost() {
+    let $h = $('#cwToastHost');
+    if (!$h.length) $h = $('<div id="cwToastHost" class="cw-toast-host"></div>').appendTo('body');
+    return $h;
+}
+
+// Short two-note ping (no sound file needed). Browsers may keep it silent
+// until the user has clicked somewhere on the page once.
+function chatPing() {
+    try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!toastState.ctx) toastState.ctx = new AC();
+        const ctx = toastState.ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+        const t = ctx.currentTime;
+        [[880, 0], [1175, 0.12]].forEach(function (n) {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = 'sine'; o.frequency.value = n[0];
+            g.gain.setValueAtTime(0.0001, t + n[1]);
+            g.gain.exponentialRampToValueAtTime(0.25, t + n[1] + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + n[1] + 0.25);
+            o.connect(g); g.connect(ctx.destination);
+            o.start(t + n[1]); o.stop(t + n[1] + 0.28);
+        });
+    } catch (e) {}
+}
+
+function ensureUsers(cb) {
+    if (state.allUsers.length) cb(); else loadUsers().done(cb);
+}
+
+// Get the newest message the other person sent us (for the preview text)
+function fetchLatestFrom(uid, cb) {
+    function loadMsgs(roomId) {
+        post({ action: 'get_messages', room_id: roomId, last_message_id: 0 }).done(function (m) {
+            if (!m.success) return cb(null);
+            const theirs = m.messages.filter(function (x) { return x.sender_id == uid && x.is_deleted != 1; });
+            cb(theirs.length ? theirs[theirs.length - 1] : null);
+        }).fail(function () { cb(null); });
+    }
+    if (toastState.roomByUser.has(uid)) return loadMsgs(toastState.roomByUser.get(uid));
+    post({ action: 'get_private_room', recipient_id: uid }).done(function (r) {
+        if (!r.success) return cb(null);
+        toastState.roomByUser.set(uid, r.room_id);
+        loadMsgs(r.room_id);
+    }).fail(function () { cb(null); });
+}
+
+function toastPreview(msg) {
+    if (!msg) return 'Sent you a message';
+    if (msg.message_type === 'image') return '📷 Sent a photo';
+    if (msg.message_type === 'file')  return '📎 ' + (msg.message || 'Sent a file');
+    const t = String(msg.message || '');
+    return t.length > 90 ? t.slice(0, 90) + '…' : t;
+}
+
+function dismissToast(uid) {
+    const $t = toastState.toasts.get(uid);
+    if (!$t) return;
+    clearTimeout($t.data('timer'));
+    toastState.toasts.delete(uid);
+    $t.addClass('out');
+    setTimeout(function () { $t.remove(); }, 220);
+}
+
+function showChatToast(uid, count) {
+    ensureUsers(function () {
+        const user = state.allUsers.find(function (u) { return parseInt(u.emp_id) === uid; });
+        if (!user) return;
+        fetchLatestFrom(uid, function (msg) {
+            let $t = toastState.toasts.get(uid);
+            const isNew = !$t;
+            if (isNew) {
+                $t = $('<div class="cw-toast" role="status">' +
+                         '<img class="cw-toast-avatar" alt="">' +
+                         '<div class="cw-toast-body">' +
+                           '<div class="cw-toast-top"><span class="cw-toast-name"></span><span class="cw-toast-count"></span></div>' +
+                           '<div class="cw-toast-text"></div>' +
+                         '</div>' +
+                         '<button type="button" class="cw-toast-close" title="Dismiss">&times;</button>' +
+                       '</div>');
+                $t.find('.cw-toast-avatar').attr('src', avatarSrc(user.picture))
+                    .on('error', function () { this.src = '../dist/img/nialogo.png'; });
+                $t.on('click', function (e) {
+                    dismissToast(uid);
+                    if ($(e.target).closest('.cw-toast-close').length) return;
+                    if (state.inbox.open) openInboxChat(user); else openPopoverChat(user);
+                });
+                toastState.toasts.set(uid, $t);
+                ensureToastHost().append($t);
+            }
+            $t.find('.cw-toast-name').text(user.first_name + ' ' + user.last_name);
+            $t.find('.cw-toast-count').text(count > 1 ? count + ' new' : '').toggle(count > 1);
+            $t.find('.cw-toast-text').text(toastPreview(msg));
+            clearTimeout($t.data('timer'));
+            $t.data('timer', setTimeout(function () { dismissToast(uid); }, TOAST_MS));
+            chatPing();
+        });
+    });
+}
+
+// Compare unread counts with the previous poll; toast anything that went up.
+function detectNewChatMessages(prev) {
+    const first = toastState.first;
+    toastState.first = false;
+
+    function viewingPopover(uid) {
+        return state.popover.chatOpen && state.popover.recipient && parseInt(state.popover.recipient.emp_id) === uid;
+    }
+    function viewingInbox(uid) {
+        return state.inbox.open && parseInt(state.inbox.activeUserId) === uid;
+    }
+
+    let list = [];
+    state.userUnreadCounts.forEach(function (cnt, uid) {
+        if (cnt <= 0) return;
+        if (viewingPopover(uid) || viewingInbox(uid)) {
+            // Already reading this conversation: no toast, just mark it read
+            const rid = viewingPopover(uid) ? state.popover.roomId : state.inbox.roomId;
+            if (rid) post({ action: 'mark_read', room_id: rid });
+            return;
+        }
+        if (first || cnt > (prev.get(uid) || 0)) list.push([uid, cnt]);
+    });
+
+    if (first) {
+        // On page load: remind about waiting messages once per browser session (max 3 people)
+        let already = false;
+        try { already = sessionStorage.getItem('cwInitToast') === '1'; sessionStorage.setItem('cwInitToast', '1'); } catch (e) {}
+        if (already) return;
+        list = list.slice(0, 3);
+    }
+    list.forEach(function (p) { showChatToast(p[0], p[1]); });
+}
+
 function startHeartbeat() {
     post({ action: 'update_online_status' });
     state.heartbeat = setInterval(() => post({ action: 'update_online_status' }), 60000);
@@ -1818,6 +2008,105 @@ $(document).on('click', '.cw-delete-btn', function(e) {
     handleDeleteMessage(msgId, $row);
 });
 
+// ═══════════════ GROUP MESSAGE (everyone / 2+ users) ═══════════════
+
+const gm = { mode: 'selected', selected: new Map(), sending: false };
+
+function gmVisibleUsers() {
+    const q = $('#cwGmSearch').val().toLowerCase().trim();
+    return state.allUsers.filter(u =>
+        !q || (u.first_name + ' ' + u.last_name).toLowerCase().includes(q));
+}
+
+function gmRenderList() {
+    const $l = $('#cwGmList').empty();
+    const users = gmVisibleUsers();
+    if (!users.length) { $l.html('<li class="cw-gm-empty">No users found</li>'); return; }
+    users.forEach(u => {
+        const id = parseInt(u.emp_id);
+        const online = u.is_online == 1;
+        const $li = $(`
+            <li class="cw-gm-item ${gm.selected.has(id) ? 'selected' : ''}" data-uid="${id}">
+                <img src="${avatarSrc(u.picture)}" alt="" onerror="this.src='../dist/img/nialogo.png'">
+                <span class="cw-gm-name">${escHtml(u.first_name + ' ' + u.last_name)}</span>
+                <span class="cw-gm-state ${online ? 'on' : ''}">${online ? 'Online' : 'Offline'}</span>
+                <span class="cw-gm-check"><i class="fas fa-check"></i></span>
+            </li>`);
+        $li.on('click', () => gmToggle(u));
+        $l.append($li);
+    });
+}
+
+function gmRenderChips() {
+    const $c = $('#cwGmChips').empty();
+    gm.selected.forEach((u, id) => {
+        $(`<span class="cw-gm-chip">${escHtml(u.first_name + ' ' + u.last_name)}
+              <button type="button" title="Remove" aria-label="Remove">&times;</button></span>`)
+            .find('button').on('click', () => gmToggle(u)).end()
+            .appendTo($c);
+    });
+}
+
+function gmUpdateFooter() {
+    const n = gm.mode === 'all' ? state.allUsers.length : gm.selected.size;
+    const ok = gm.mode === 'all' ? n > 0 : n >= 2;
+    const hasText = $('#cwGmMessage').val().trim().length > 0;
+    $('#cwGmSummary').text(
+        gm.mode === 'all' ? `Sending to everyone (${n})`
+        : n < 2 ? 'Select at least 2 people' : `${n} recipients selected`);
+    $('#cwGmSend').prop('disabled', !(ok && hasText) || gm.sending);
+}
+
+function gmToggle(u) {
+    const id = parseInt(u.emp_id);
+    if (gm.selected.has(id)) gm.selected.delete(id); else gm.selected.set(id, u);
+    gmRenderList(); gmRenderChips(); gmUpdateFooter();
+}
+
+function gmSetMode(mode) {
+    gm.mode = mode;
+    $('.cw-gm-mode').removeClass('active').filter(`[data-mode="${mode}"]`).addClass('active');
+    $('#cwGmPicker').toggle(mode === 'selected');
+    $('#cwGmAllNote').toggle(mode === 'all');
+    $('#cwGmAllCount').text(state.allUsers.length);
+    gmUpdateFooter();
+}
+
+function openGroupMessage() {
+    gm.selected.clear(); gm.sending = false;
+    $('#cwGmSearch, #cwGmMessage').val('');
+    closePopover();
+    $('#cwGmOverlay').show();
+    const ready = () => { gmSetMode('selected'); gmRenderChips(); gmRenderList(); gmUpdateFooter(); };
+    if (state.allUsers.length) ready();
+    loadUsers().done(ready);
+}
+function closeGroupMessage() { $('#cwGmOverlay').hide(); }
+
+function sendGroupMessage() {
+    const msg = $('#cwGmMessage').val().trim();
+    if (!msg || gm.sending) return;
+    const data = { action: 'send_broadcast', message: msg, mode: gm.mode };
+    if (gm.mode === 'selected') data.recipient_ids = Array.from(gm.selected.keys());
+
+    gm.sending = true;
+    $('#cwGmSend').prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin"></i> Sending…');
+    post(data).done(r => {
+        if (r.success) {
+            const txt = `Message sent to ${r.sent} ${r.sent === 1 ? 'person' : 'people'}` + (r.failed ? ` (${r.failed} failed)` : '');
+            if (window.toastr) (r.failed ? toastr.warning : toastr.success)(txt);
+            closeGroupMessage();
+            if (state.popover.roomId) loadPopoverMessages(false);
+            if (state.inbox.roomId)   loadInboxMessages(false);
+        } else if (window.toastr) toastr.error(r.error || 'Failed to send');
+    }).fail(() => { if (window.toastr) toastr.error('Network error'); })
+      .always(() => {
+        gm.sending = false;
+        $('#cwGmSend').html('<i class="fas fa-paper-plane"></i> Send');
+        gmUpdateFooter();
+    });
+}
+
 // ═══════════════ EVENTS ══════════════════════════════════
 
 $(document).ready(function() {
@@ -1825,6 +2114,27 @@ $(document).ready(function() {
 
     startHeartbeat();
     startUnreadTimer();
+
+    // Group message composer
+    $('.cw-new-group-btn').on('click', function(e) { e.stopPropagation(); openGroupMessage(); });
+    $('#cwGmClose, #cwGmCancel').on('click', closeGroupMessage);
+    $('#cwGmOverlay').on('mousedown', function(e) { if (e.target === this) closeGroupMessage(); });
+    $('.cw-gm-mode').on('click', function() { gmSetMode($(this).data('mode')); });
+    $('#cwGmSearch').on('input', gmRenderList);
+    $('#cwGmSelectVisible').on('click', function() {
+        gmVisibleUsers().forEach(u => gm.selected.set(parseInt(u.emp_id), u));
+        gmRenderList(); gmRenderChips(); gmUpdateFooter();
+    });
+    $('#cwGmClear').on('click', function() {
+        gm.selected.clear(); gmRenderList(); gmRenderChips(); gmUpdateFooter();
+    });
+    $('#cwGmMessage').on('input', gmUpdateFooter).on('keydown', function(e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendGroupMessage(); }
+    });
+    $('#cwGmSend').on('click', sendGroupMessage);
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $('#cwGmOverlay').is(':visible')) closeGroupMessage();
+    });
 
     // FAB toggle
     $('#cwFab').on('click', function(e) { e.stopPropagation(); togglePopover(); });
@@ -2030,6 +2340,142 @@ window.chatSystem = {
 </script>
 
 <style>
+
+/* ── Group message composer ────────────────────────────── */
+.cw-gm-overlay {
+    position: fixed; inset: 0; z-index: 2100;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.cw-gm {
+    width: 100%; max-width: 480px; max-height: 90vh;
+    background: var(--chat-bg, #fff);
+    border: 1px solid var(--card-border, rgba(0,0,0,.08));
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    display: flex; flex-direction: column; overflow: hidden;
+    animation: cwSlideUp .2s ease;
+}
+.cw-gm-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--card-border, rgba(0,0,0,.08));
+}
+.cw-gm-title { font-weight: 700; font-size: 16px; color: var(--text-primary,#111); }
+.cw-gm-title i { color: #4361ee; margin-right: 6px; }
+.cw-gm-modes { display: flex; gap: 8px; padding: 12px 16px 4px; }
+.cw-gm-mode {
+    flex: 1; padding: 8px 10px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid var(--card-border, rgba(0,0,0,.12));
+    background: transparent; color: var(--text-muted,#6c757d);
+    font-size: 13px; font-weight: 600; transition: all .15s;
+}
+.cw-gm-mode:hover { color: var(--text-primary,#111); }
+.cw-gm-mode.active { background: #4361ee; border-color: #4361ee; color: #fff; }
+.cw-gm-picker { padding: 8px 16px 0; display: flex; flex-direction: column; min-height: 0; }
+.cw-gm-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 76px; overflow-y: auto; }
+.cw-gm-chips:empty { display: none; }
+.cw-gm-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(67,97,238,.12); color: #4361ee;
+    border-radius: 14px; padding: 3px 6px 3px 10px; font-size: 12px; font-weight: 600;
+}
+.cw-gm-chip button {
+    background: none; border: none; color: inherit; cursor: pointer;
+    width: 16px; height: 16px; padding: 0; line-height: 16px; border-radius: 50%; font-size: 11px;
+}
+.cw-gm-chip button:hover { background: rgba(67,97,238,.25); }
+.cw-gm-search {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    background: var(--table-stripe, #f1f3f5); border-radius: 20px; padding: 6px 12px;
+}
+.cw-gm-search i { color: var(--text-muted,#888); font-size: 12px; }
+.cw-gm-search input {
+    flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+    font-size: 13px; color: var(--text-primary,#222);
+}
+.cw-gm-link {
+    background: none; border: none; color: #4361ee; font-size: 12px; font-weight: 600;
+    cursor: pointer; padding: 0 2px; white-space: nowrap;
+}
+.cw-gm-list { list-style: none; margin: 8px 0 0; padding: 0; overflow-y: auto; max-height: 200px; }
+.cw-gm-item {
+    display: flex; align-items: center; gap: 10px; padding: 7px 8px;
+    border-radius: 10px; cursor: pointer; transition: background .12s;
+}
+.cw-gm-item:hover { background: var(--table-stripe, #f5f5f5); }
+.cw-gm-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.cw-gm-item .cw-gm-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary,#222); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw-gm-item .cw-gm-state { font-size: 11px; color: var(--text-muted,#888); }
+.cw-gm-item .cw-gm-state.on { color: #2dc653; }
+.cw-gm-check {
+    width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+    border: 2px solid var(--card-border, #ced4da); display: flex; align-items: center; justify-content: center;
+    color: transparent; font-size: 11px; transition: all .12s;
+}
+.cw-gm-item.selected .cw-gm-check { background: #4361ee; border-color: #4361ee; color: #fff; }
+.cw-gm-empty { text-align: center; padding: 16px; color: var(--text-muted,#888); font-size: 13px; }
+.cw-gm-all-note {
+    display: flex; gap: 12px; align-items: center; margin: 12px 16px 0; padding: 14px;
+    background: rgba(67,97,238,.1); border-radius: 12px; color: var(--text-primary,#222); font-size: 13.5px;
+}
+.cw-gm-all-note i { font-size: 22px; color: #4361ee; }
+.cw-gm-compose { padding: 12px 16px 0; }
+.cw-gm-compose textarea {
+    width: 100%; resize: none; outline: none; font-size: 14px;
+    background: var(--table-stripe, #f1f3f5); color: var(--text-primary,#222);
+    border: 1.5px solid transparent; border-radius: 12px; padding: 10px 12px;
+}
+.cw-gm-compose textarea:focus { border-color: #4361ee; }
+.cw-gm-footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 16px 14px;
+}
+.cw-gm-summary { font-size: 12px; color: var(--text-muted,#888); }
+.cw-gm-btn {
+    border: none; border-radius: 10px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: opacity .15s, transform .1s;
+}
+.cw-gm-btn.primary { background: linear-gradient(135deg,#4361ee,#3f37c9); color: #fff; }
+.cw-gm-btn.secondary { background: transparent; color: var(--text-muted,#6c757d); }
+.cw-gm-btn:disabled { opacity: .45; cursor: not-allowed; }
+.cw-gm-btn:not(:disabled):active { transform: scale(.97); }
+body.dark-mode .cw-gm { background: var(--chat-bg) !important; border-color: var(--card-border) !important; }
+body.dark-mode .cw-gm-chip { background: rgba(120,140,255,.2); color: #a9b7ff; }
+/* ── Chat toast alerts (bottom-right) ──────────────────── */
+.cw-toast-host {
+    position: fixed; right: 24px; bottom: 160px; z-index: 1052;
+    display: flex; flex-direction: column-reverse; gap: 8px;
+    pointer-events: none;
+}
+.cw-toast {
+    pointer-events: auto; cursor: pointer;
+    width: 310px; display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--chat-bg, #fff); color: var(--text-primary, #222);
+    border: 1px solid var(--card-border, rgba(0,0,0,.08));
+    border-left: 4px solid #4361ee; border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.22);
+    animation: cwToastIn .25s ease;
+    transition: opacity .2s, transform .2s;
+}
+.cw-toast:hover { box-shadow: 0 10px 32px rgba(67,97,238,.35); }
+.cw-toast.out { opacity: 0; transform: translateX(30px); }
+@keyframes cwToastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+.cw-toast-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.cw-toast-body { flex: 1; min-width: 0; }
+.cw-toast-top { display: flex; align-items: center; gap: 6px; }
+.cw-toast-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw-toast-count { background: #e63946; color: #fff; border-radius: 10px; padding: 0 7px; font-size: 10px; font-weight: 700; line-height: 16px; flex-shrink: 0; }
+.cw-toast-text { font-size: 12.5px; color: var(--text-muted, #6c757d); margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.cw-toast-close { background: none; border: none; outline: none; color: var(--text-muted, #999); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; align-self: flex-start; }
+.cw-toast-close:hover { color: #e63946; }
+body.dark-mode .cw-toast { background: var(--chat-bg) !important; border-color: var(--card-border) !important; border-left-color: #4361ee !important; }
+@media (max-width: 768px) {
+    .cw-toast-host { right: 12px; bottom: 145px; }
+    .cw-toast { width: calc(100vw - 24px); }
+}
+
 /* Ensure chat widget clears the footer */
 .cw-wrapper { z-index: 1051 !important; }
 @media (max-width: 768px) {

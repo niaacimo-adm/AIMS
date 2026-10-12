@@ -16,6 +16,71 @@ if (!isset($_SESSION['user_id'])) {
 $database = new Database();
 $db = $database->getConnection();
 
+$flash_success = '';
+$flash_error = '';
+if (isset($_SESSION['flash_success'])) { $flash_success = $_SESSION['flash_success']; unset($_SESSION['flash_success']); }
+if (isset($_SESSION['flash_error']))   { $flash_error   = $_SESSION['flash_error'];   unset($_SESSION['flash_error']); }
+
+// Delete a RIS: put the issued quantities back into stock, remove the 'out' stock movements,
+// then remove the RIS items and the RIS record itself.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_ris'])) {
+    $ris_id = intval($_POST['ris_id'] ?? 0);
+
+    $db->begin_transaction();
+    try {
+        $ris_stmt = $db->prepare("SELECT ris_number FROM ris_records WHERE id = ?");
+        $ris_stmt->bind_param("i", $ris_id);
+        $ris_stmt->execute();
+        $ris_row = $ris_stmt->get_result()->fetch_assoc();
+        $ris_stmt->close();
+        if (!$ris_row) {
+            throw new Exception("RIS record not found.");
+        }
+
+        $items_stmt = $db->prepare("SELECT item_id, quantity, movement_id FROM ris_items WHERE ris_id = ?");
+        $items_stmt->bind_param("i", $ris_id);
+        $items_stmt->execute();
+        $ris_items = $items_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $items_stmt->close();
+
+        foreach ($ris_items as $ri) {
+            // Return the issued quantity to stock
+            $restore_stmt = $db->prepare("UPDATE items SET current_stock = current_stock + ? WHERE id = ?");
+            $restore_stmt->bind_param("ii", $ri['quantity'], $ri['item_id']);
+            $restore_stmt->execute();
+            $restore_stmt->close();
+
+            // Remove the matching stock movement
+            if (!empty($ri['movement_id'])) {
+                $mov_stmt = $db->prepare("DELETE FROM stock_movements WHERE id = ?");
+                $mov_stmt->bind_param("i", $ri['movement_id']);
+                $mov_stmt->execute();
+                $mov_stmt->close();
+            }
+        }
+
+        $del_items = $db->prepare("DELETE FROM ris_items WHERE ris_id = ?");
+        $del_items->bind_param("i", $ris_id);
+        $del_items->execute();
+        $del_items->close();
+
+        $del_ris = $db->prepare("DELETE FROM ris_records WHERE id = ?");
+        $del_ris->bind_param("i", $ris_id);
+        $del_ris->execute();
+        $del_ris->close();
+
+        $db->commit();
+        $_SESSION['flash_success'] = "RIS " . $ris_row['ris_number'] . " deleted and stock restored.";
+    } catch (Exception $e) {
+        $db->rollback();
+        $_SESSION['flash_error'] = "Error deleting RIS: " . $e->getMessage();
+    }
+
+    // Post/Redirect/Get so a refresh doesn't resubmit the delete
+    header('Location: ' . basename($_SERVER['PHP_SELF']));
+    exit();
+}
+
 // Fetch RIS records
 $ris_records = [];
 $ris_query = "SELECT r.*, u.user as created_by_name, COUNT(ri.id) as item_count 
@@ -169,6 +234,9 @@ if ($ris_result) {
         .action-buttons .btn.btn-info {
             background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important;
         }
+        .action-buttons .btn.btn-danger {
+            background: rgba(201,34,46,.10) !important; color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.25) !important; border-radius: 7px !important;
+        }
         .action-buttons .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
         /* Alerts */
@@ -203,13 +271,7 @@ if ($ris_result) {
 
         <div class="content">
             <div class="container-fluid">
-                <?php if (isset($_GET['success']) && $_GET['success'] == 1): ?>
-                    <div class="alert alert-success">RIS created successfully!</div>
-                <?php endif; ?>
-
-                <?php if (isset($_GET['error'])): ?>
-                    <div class="alert alert-danger"><?= htmlspecialchars($_GET['error']) ?></div>
-                <?php endif; ?>
+                <?php /* Success / error messages are shown as SweetAlert toasts (see script at bottom) */ ?>
 
                 <div class="card">
                     <div class="card-header" style="display:flex !important; justify-content:space-between !important; align-items:center !important;">
@@ -249,6 +311,11 @@ if ($ris_result) {
                                             <a href="ris_view.php?id=<?= $record['id'] ?>" class="btn btn-info btn-sm" title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            <button type="button" class="btn btn-danger btn-sm delete-ris-btn" title="Delete RIS"
+                                                    data-id="<?= $record['id'] ?>"
+                                                    data-ris="<?= htmlspecialchars($record['ris_number']) ?>">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -263,9 +330,66 @@ if ($ris_result) {
 
     <?php include '../includes/mainfooter.php'; ?>
 </div>
+<form method="POST" action="" id="deleteRisForm" style="display:none;">
+    <input type="hidden" name="delete_ris" value="1">
+    <input type="hidden" name="ris_id" id="delete_ris_id" value="">
+</form>
 <?php include '../includes/footer.php'; ?>
 <script>
     $(document).ready(function() {
+    // SweetAlert2 popup helper (success / error) - centered modal so it is always visible
+    function showAlert(icon, message) {
+        Swal.fire({
+            icon: icon,
+            title: icon === 'success' ? 'Success!' : 'Error!',
+            text: message,
+            confirmButtonText: 'OK',
+            confirmButtonColor: icon === 'success' ? '#2a9863' : '#c92a2a',
+            allowOutsideClick: false
+        });
+    }
+
+        <?php if (isset($_GET['success']) && $_GET['success'] == 1): ?>
+        showAlert('success', 'RIS created successfully!');
+        <?php endif; ?>
+        <?php if (isset($_GET['error']) && $_GET['error'] !== ''): ?>
+        showAlert('error', <?= json_encode($_GET['error']) ?>);
+        <?php endif; ?>
+
+        <?php if ($flash_success !== ''): ?>
+        showAlert('success', <?= json_encode($flash_success) ?>);
+        <?php endif; ?>
+        <?php if ($flash_error !== ''): ?>
+        showAlert('error', <?= json_encode($flash_error) ?>);
+        <?php endif; ?>
+
+        // Remove ?success / ?error from the URL so a refresh doesn't show the toast again
+        if (window.history.replaceState) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('success');
+            url.searchParams.delete('error');
+            window.history.replaceState({}, document.title, url.pathname + (url.search || ''));
+        }
+        // Delete RIS (delegated because DataTables redraws rows)
+        $('#risTable').on('click', '.delete-ris-btn', function() {
+            const id = $(this).data('id');
+            const ris = $(this).data('ris');
+            Swal.fire({
+                title: 'Delete RIS ' + ris + '?',
+                text: 'The issued quantities will be returned to stock and the stock movements removed. This cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#c92a2a',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#delete_ris_id').val(id);
+                    $('#deleteRisForm').submit();
+                }
+            });
+        });
+
         $('#risTable').DataTable({
             "responsive": true,
             "autoWidth": false,

@@ -587,3 +587,44 @@
 [2026-09-07 05:29:31] mem=8MB peak=8MB Writer created, calling save()...
 [2026-09-07 05:29:33] mem=230MB peak=236MB Save complete. Exiting.
 [2026-09-07 05:29:33] mem=230MB peak=236MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:18] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=92
+[2026-10-06 08:14:18] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:18] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=92&crop_year=&season=&sector=
+[2026-10-06 08:14:18] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:25] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=80&crop_year=&season=&sector=
+[2026-10-06 08:14:25] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:26] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=80
+[2026-10-06 08:14:26] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:33] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=92
+[2026-10-06 08:14:33] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:33] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=92&crop_year=&season=&sector=
+[2026-10-06 08:14:33] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:41] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=7
+[2026-10-06 08:14:41] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:14:41] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=7&crop_year=&season=&sector=
+[2026-10-06 08:14:41] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:15:01] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=90
+[2026-10-06 08:15:01] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-06 08:15:01] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=90&crop_year=&season=&sector=
+[2026-10-06 08:15:01] mem=4MB peak=4MB Request ended normally (or connection closed by client).
+[2026-10-06 08:15:11] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=export&ia_profile_id=90&crop_year=&season=&sector=
+[2026-10-06 08:15:11] mem=4MB peak=4MB Fetched 511 row(s) from DB.
+[2026-10-06 08:15:11] mem=4MB peak=4MB Will generate 9 sheet(s).
+[2026-10-06 08:15:11] mem=8MB peak=8MB Template loaded.
+[2026-10-06 08:15:11] mem=8MB peak=8MB Built sheet 1/9: '2025 WET - Sector 1' (47 rows).
+[2026-10-06 08:15:11] mem=8MB peak=8MB Built sheet 2/9: '2025 WET - Sector 2' (34 rows).
+[2026-10-06 08:15:11] mem=10MB peak=10MB Built sheet 3/9: '2025 WET - Sector 3' (98 rows).
+[2026-10-06 08:15:11] mem=10MB peak=10MB Built sheet 4/9: '2025 WET - Sector 4' (24 rows).
+[2026-10-06 08:15:11] mem=10MB peak=10MB Built sheet 5/9: '2025 WET - Sector 5' (52 rows).
+[2026-10-06 08:15:11] mem=12MB peak=12MB Built sheet 6/9: '2025 WET - Sector 6' (33 rows).
+[2026-10-06 08:15:11] mem=12MB peak=12MB Built sheet 7/9: '2025 WET - Sector 7' (91 rows).
+[2026-10-06 08:15:11] mem=14MB peak=14MB Built sheet 8/9: '2025 WET - Sector 8' (75 rows).
+[2026-10-06 08:15:11] mem=14MB peak=14MB Built sheet 9/9: '2025 WET - Sector 9' (57 rows).
+[2026-10-06 08:15:11] mem=14MB peak=14MB All sheets built. Starting write...
+[2026-10-06 08:15:11] mem=16MB peak=16MB Writer created, calling save()...
+[06-Oct-2026 08:15:17 Europe/Berlin] PHP Fatal error:  Allowed memory size of 1073741824 bytes exhausted (tried to allocate 41943040 bytes) in C:\xampp\htdocs\AIMS\vendor\phpoffice\phpspreadsheet\src\PhpSpreadsheet\Worksheet\Worksheet.php on line 1362
+[2026-10-06 08:15:17] mem=998MB peak=998MB FATAL: Allowed memory size of 1073741824 bytes exhausted (tried to allocate 41943040 bytes) in C:\xampp\htdocs\AIMS\vendor\phpoffice\phpspreadsheet\src\PhpSpreadsheet\Worksheet\Worksheet.php on line 1362
+[2026-10-07 09:00:42] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=89
+[2026-10-07 09:00:42] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-07 09:00:42] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=89&crop_year=&season=&sector=
+[2026-10-07 09:00:42] mem=2MB peak=2MB Request ended normally (or connection closed by client).

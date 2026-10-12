@@ -151,14 +151,12 @@ if ($employee_id) {
             </a>
           </li>
           <?php endif; ?>
-          <?php if (hasPermission('process_attachment')): ?>
           <li class="nav-item">
             <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-paperclip"></i>
               <p>Attachment Monitoring</p>
             </a>
           </li>
-          <?php endif; ?>
           <?php if (hasPermission('view_calendar')): ?>
           <li class="nav-item">
             <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active' : 'text-white' ?>">
@@ -223,6 +221,12 @@ if ($employee_id) {
                   <i class="fas fa-users nav-icon"></i>
                   <p>Employee List</p>
                 </a>
+              </li>
+              <li class="nav-item">
+                  <a href="../views/certificate_of_appearance.php" class="nav-link <?= $current_page == 'certificate_of_appearance.php' ? 'active' : 'text-white' ?>">
+                      <i class="fas fa-file-signature nav-icon"></i>
+                      <p>Certificate of Appearance</p>
+                  </a>
               </li>
               <li class="nav-item">
                   <a href="../views/personal_locator_monitoring.php" class="nav-link <?= $current_page == 'personal_locator_monitoring.php' ? 'active' : 'text-white' ?>">

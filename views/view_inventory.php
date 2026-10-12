@@ -31,11 +31,6 @@ if ($unit_result) {
     }
 }
 
-// ---------------------------------------------------------------------
-// AJAX endpoint: create / get / update / delete an item.
-// This replaces the separate new_stock.php and edit_item.php pages —
-// their logic now lives here and is driven from the modals below.
-// ---------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
@@ -523,9 +518,6 @@ $items = $result->fetch_all(MYSQLI_ASSOC);
                                     </select>
                                 </div>
                             </form>
-                            <a href="delivery_entry.php" class="btn btn-outline-secondary btn-sm">
-                                <i class="fas fa-truck"></i> Delivery Entry
-                            </a>
                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addItemModal">
                                 <i class="fas fa-plus"></i> Add Item
                             </button>

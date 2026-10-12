@@ -2,9 +2,11 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once __DIR__ . '/attachments_helpers.php';
 
 $database = new Database();
 $db = $database->getConnection();
+$is_admin = hasPermission('manage_appointment');
 
 require_once '../includes/module_guard.php';
 checkModuleMaintenance($db);
@@ -33,17 +35,24 @@ if ($result->num_rows > 0) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_attachment'])) {
         // Update attachment status
-        $monitoring_id = $_POST['monitoring_id'];
-        $status = $_POST['status'];
-        $filing_status = $_POST['filing_status'];
-        $submission_date = !empty($_POST['submission_date']) ? $_POST['submission_date'] : null;
-        $remarks = $_POST['remarks'];
+        $monitoring_id = (int)$_POST['monitoring_id'];
+        $status = am_post_status($_POST['status'] ?? '', 'FOR REVIEW');
+        $filing_status = am_post_filing($_POST['filing_status'] ?? '');
+        $submission_date = am_post_date($_POST['submission_date'] ?? '');
+        $remarks = $_POST['remarks'] ?? '';
+        $date_informed = am_post_date($_POST['date_informed'] ?? '');
+        $compliance_status = am_post_compliance($_POST['compliance_status'] ?? '');
+        $date_complied = am_post_date($_POST['date_complied'] ?? '');
+        $payroll_status = am_post_status($_POST['payroll_status'] ?? '', null);   // empty = same as Status
         
         $query = "UPDATE attachments_monitoring 
-                 SET status = ?, filing_status = ?, submission_date = ?, remarks = ?, updated_at = NOW() 
+                 SET status = ?, filing_status = ?, submission_date = ?, remarks = ?,
+                     date_informed = ?, compliance_status = ?, date_complied = ?, payroll_status = ?,
+                     updated_at = NOW() 
                  WHERE monitoring_id = ?";
         $stmt = $db->prepare($query);
-        $stmt->bind_param("ssssi", $status, $filing_status, $submission_date, $remarks, $monitoring_id);
+        $stmt->bind_param("ssssssssi", $status, $filing_status, $submission_date, $remarks,
+                          $date_informed, $compliance_status, $date_complied, $payroll_status, $monitoring_id);
         
         if ($stmt->execute()) {
             $_SESSION['toast'] = [
@@ -62,50 +71,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
         
     } elseif (isset($_POST['add_record'])) {
-        // Add new monitoring record
-        $emp_id = $_POST['emp_id'];
-        $period_start = $_POST['period_start'];
-        $period_end = $_POST['period_end'];
-        $payroll_period = date('M j', strtotime($period_start)) . ' - ' . date('M j', strtotime($period_end));
-        $status = $_POST['status'];
-        $filing_status = $_POST['filing_status'];
-        $submission_date = !empty($_POST['submission_date']) ? $_POST['submission_date'] : null;
-        $remarks = $_POST['remarks'];
+        // Add new monitoring record (or update the existing one for the same employee + period)
+        $emp_id = (int)$_POST['emp_id'];
+        $period_start = am_post_date($_POST['period_start'] ?? '');
+        $period_end = am_post_date($_POST['period_end'] ?? '');
         
-        // Use INSERT ... ON DUPLICATE KEY UPDATE to handle duplicates gracefully
-        $query = "INSERT INTO attachments_monitoring 
-                (emp_id, payroll_period, period_start, period_end, status, filing_status, submission_date, remarks) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                status = VALUES(status),
-                filing_status = VALUES(filing_status),
-                submission_date = VALUES(submission_date),
-                remarks = VALUES(remarks),
-                period_start = VALUES(period_start),
-                period_end = VALUES(period_end),
-                updated_at = NOW()";
-        
-        $stmt = $db->prepare($query);
-        $stmt->bind_param("isssssss", $emp_id, $payroll_period, $period_start, $period_end, $status, $filing_status, $submission_date, $remarks);
-        
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) {
-                // New record inserted or existing record updated
-                $_SESSION['toast'] = [
-                    'type' => 'success',
-                    'message' => 'Monitoring record saved successfully!'
-                ];
-            } else {
-                $_SESSION['toast'] = [
-                    'type' => 'warning',
-                    'message' => 'No changes made to the record.'
-                ];
+        try {
+            if (!$emp_id || !$period_start || !$period_end || $period_end < $period_start) {
+                throw new Exception('Please choose an employee and a valid payroll period.');
             }
-        } else {
-            $_SESSION['toast'] = [
-                'type' => 'error',
-                'message' => 'Failed to save monitoring record.'
-            ];
+            $result = am_upsert_record($db, $emp_id, $period_start, $period_end, [
+                'status'            => am_post_status($_POST['status'] ?? '', 'FOR REVIEW'),
+                'filing_status'     => am_post_filing($_POST['filing_status'] ?? ''),
+                'submission_date'   => am_post_date($_POST['submission_date'] ?? ''),
+                'remarks'           => $_POST['remarks'] ?? '',
+                'date_informed'     => am_post_date($_POST['date_informed'] ?? ''),
+                'compliance_status' => am_post_compliance($_POST['compliance_status'] ?? ''),
+                'date_complied'     => am_post_date($_POST['date_complied'] ?? ''),
+                'payroll_status'    => am_post_status($_POST['payroll_status'] ?? '', null),
+            ]);
+            $_SESSION['toast'] = ($result === 'unchanged')
+                ? ['type' => 'warning', 'message' => 'No changes made to the record.']
+                : ['type' => 'success', 'message' => 'Monitoring record saved successfully!'];
+        } catch (Exception $e) {
+            $_SESSION['toast'] = ['type' => 'error', 'message' => 'Failed to save monitoring record. ' . $e->getMessage()];
         }
         
         // Redirect to prevent form resubmission
@@ -716,6 +705,32 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
         color: #64748b; 
     }
     body.dark-mode .status-for-review { background:#1e2030; color:#8892a4; }
+
+    .status-on-time-compliance { 
+        background: #e6f9ec; 
+        color: #1e7e34; 
+    }
+    body.dark-mode .status-on-time-compliance { background:#0f2d1a; color:#69db7c; }
+
+    .status-late-compliance { 
+        background: #fff0f0; 
+        color: #c92a2a; 
+    }
+    body.dark-mode .status-late-compliance { background:#3d0f0f; color:#ff8787; }
+
+    /* View record modal */
+    .view-head { margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; }
+    .view-name { font-size: 18px; font-weight: 700; color: #1e293b; }
+    .view-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
+    .view-item { margin-bottom: 14px; }
+    .view-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin-bottom: 3px; }
+    .view-value { font-size: 14px; color: #1e293b; word-break: break-word; }
+    .view-remarks { white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; min-height: 42px; }
+    body.dark-mode .view-head { border-color: var(--table-border); }
+    body.dark-mode .view-name, body.dark-mode .view-value { color: var(--text-primary); }
+    body.dark-mode .view-sub, body.dark-mode .view-label { color: var(--text-muted); }
+    body.dark-mode .view-remarks { background: var(--table-stripe); border-color: var(--table-border); }
+    .table-actions .btn { margin-right: 2px; }
 
   /* Update the export dropdown styles */
   .export-dropdown {
@@ -1437,7 +1452,6 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
                         <th>Payroll Period</th>
                         <th>Status</th>
                         <th>Filing Status</th>
-                        <th>Submission Date</th>
                         <th>Remarks</th>
                         <th>Last Updated</th>
                         <th>Actions</th>
@@ -1488,16 +1502,43 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
                               <?= htmlspecialchars($record['filing_status']) ?>
                             </span>
                           </td>
-                          <td><?= $record['submission_date'] ? htmlspecialchars($record['submission_date']) : 'N/A' ?></td>
                           <td><?= htmlspecialchars($record['remarks']) ?: 'N/A' ?></td>
                           <td><?= htmlspecialchars($record['updated_at']) ?></td>
                           <td>
                             <div class="table-actions">
+                              <?php
+                                $viewCompliance = !empty($record['compliance_status'])
+                                    ? (AM_COMPLIANCE_LABELS[$record['compliance_status']] ?? $record['compliance_status']) : '';
+                                $viewPayroll = !empty($record['payroll_status']) ? $record['payroll_status'] : $record['status'];
+                              ?>
+                              <button type="button" class="btn btn-sm btn-info view-record" title="View details"
+                                      data-id="<?= (int)$record['monitoring_id'] ?>"
+                                      data-employee="<?= htmlspecialchars((string)$record['employee_name']) ?>"
+                                      data-id_number="<?= htmlspecialchars((string)$record['id_number']) ?>"
+                                      data-appointment="<?= htmlspecialchars((string)$employeeAppointment) ?>"
+                                      data-position="<?= htmlspecialchars((string)$employeePosition) ?>"
+                                      data-period="<?= htmlspecialchars((string)$record['payroll_period']) ?>"
+                                      data-status="<?= htmlspecialchars((string)$record['status']) ?>"
+                                      data-filing="<?= htmlspecialchars((string)$record['filing_status']) ?>"
+                                      data-submitted="<?= htmlspecialchars((string)($record['submission_date'] ?? '')) ?>"
+                                      data-informed="<?= htmlspecialchars((string)($record['date_informed'] ?? '')) ?>"
+                                      data-compliance="<?= htmlspecialchars((string)($record['compliance_status'] ?? '')) ?>"
+                                      data-compliance_label="<?= htmlspecialchars((string)$viewCompliance) ?>"
+                                      data-complied="<?= htmlspecialchars((string)($record['date_complied'] ?? '')) ?>"
+                                      data-payroll="<?= htmlspecialchars((string)$viewPayroll) ?>"
+                                      data-remarks="<?= htmlspecialchars((string)$record['remarks']) ?>"
+                                      data-updated="<?= htmlspecialchars((string)$record['updated_at']) ?>">
+                                <i class="fas fa-eye"></i>
+                              </button>
                               <button class="btn btn-sm btn-warning edit-record" 
                                       data-id="<?= $record['monitoring_id'] ?>"
                                       data-status="<?= $record['status'] ?>"
                                       data-filing_status="<?= $record['filing_status'] ?>"
                                       data-date="<?= $record['submission_date'] ?>"
+                                      data-date_informed="<?= htmlspecialchars((string)($record['date_informed'] ?? '')) ?>"
+                                      data-compliance_status="<?= htmlspecialchars((string)($record['compliance_status'] ?? '')) ?>"
+                                      data-date_complied="<?= htmlspecialchars((string)($record['date_complied'] ?? '')) ?>"
+                                      data-payroll_status="<?= htmlspecialchars((string)($record['payroll_status'] ?? '')) ?>"
                                       data-remarks="<?= htmlspecialchars($record['remarks']) ?>">
                                 <i class="fas fa-edit"></i>
                               </button>
@@ -1581,6 +1622,47 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             <label>Submission Date</label>
             <input type="date" name="submission_date" class="form-control">
           </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Date Informed</label>
+                <input type="date" name="date_informed" id="add_date_informed" class="form-control">
+                <small class="form-text text-muted">Date the employee was informed of the missing/incomplete attachments</small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Status of Compliance</label>
+                <select name="compliance_status" id="add_compliance_status" class="form-control">
+                  <option value="">— None —</option>
+                  <option value="ON-TIME COMPLIANCE">On-Time Compliance</option>
+                  <option value="LATE COMPLIANCE">Late Compliance</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Date Complied</label>
+                <input type="date" name="date_complied" id="add_date_complied" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>For Payroll (final status)</label>
+                <select name="payroll_status" id="add_payroll_status" class="form-control">
+                  <option value="">Same as Status</option>
+                  <option value="COMPLETE">Complete</option>
+                  <option value="COMPLETE AND LATE">Complete and Late</option>
+                  <option value="LACKING INFORMATION">Lacking Information</option>
+                  <option value="FOR REVIEW">For Review</option>
+                  <option value="NO ATTACHMENTS">No Attachments</option>
+                </select>
+                <small class="form-text text-muted">Status after compliance, shown in the FOR PAYROLL column</small>
+              </div>
+            </div>
+          </div>
           <div class="form-group">
             <label>Remarks</label>
             <textarea name="remarks" class="form-control" rows="3" placeholder="Enter remarks..."></textarea>
@@ -1594,6 +1676,42 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
           <button type="submit" name="add_record" class="btn btn-primary"><i class="fas fa-plus mr-1"></i>Add Record</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- View Record Modal -->
+<div class="modal fade scrum-style-modal" id="viewRecordModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-eye"></i>View Monitoring Record</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="view-head">
+          <div class="view-name" id="view_employee"></div>
+          <div class="view-sub" id="view_sub"></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 view-item"><div class="view-label">Payroll Period</div><div class="view-value" id="view_period"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Last Updated</div><div class="view-value" id="view_updated"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Status</div><div class="view-value" id="view_status"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Filing Status</div><div class="view-value" id="view_filing"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Date Submitted</div><div class="view-value" id="view_submitted"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Date Informed</div><div class="view-value" id="view_informed"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Status of Compliance</div><div class="view-value" id="view_compliance"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">Date Complied</div><div class="view-value" id="view_complied"></div></div>
+          <div class="col-md-6 view-item"><div class="view-label">For Payroll (final status)</div><div class="view-value" id="view_payroll"></div></div>
+          <div class="col-12 view-item"><div class="view-label">Remarks</div><div class="view-value view-remarks" id="view_remarks"></div></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-warning" id="viewEditBtn"><i class="fas fa-edit mr-1"></i>Edit</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1638,6 +1756,47 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             <label>Submission Date</label>
             <input type="date" name="submission_date" id="edit_submission_date" class="form-control">
           </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Date Informed</label>
+                <input type="date" name="date_informed" id="edit_date_informed" class="form-control">
+                <small class="form-text text-muted">Date the employee was informed of the missing/incomplete attachments</small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Status of Compliance</label>
+                <select name="compliance_status" id="edit_compliance_status" class="form-control">
+                  <option value="">— None —</option>
+                  <option value="ON-TIME COMPLIANCE">On-Time Compliance</option>
+                  <option value="LATE COMPLIANCE">Late Compliance</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Date Complied</label>
+                <input type="date" name="date_complied" id="edit_date_complied" class="form-control">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>For Payroll (final status)</label>
+                <select name="payroll_status" id="edit_payroll_status" class="form-control">
+                  <option value="">Same as Status</option>
+                  <option value="COMPLETE">Complete</option>
+                  <option value="COMPLETE AND LATE">Complete and Late</option>
+                  <option value="LACKING INFORMATION">Lacking Information</option>
+                  <option value="FOR REVIEW">For Review</option>
+                  <option value="NO ATTACHMENTS">No Attachments</option>
+                </select>
+                <small class="form-text text-muted">Status after compliance, shown in the FOR PAYROLL column</small>
+              </div>
+            </div>
+          </div>
           <div class="form-group">
             <label>Remarks</label>
             <textarea name="remarks" id="edit_remarks" class="form-control" rows="3" placeholder="Enter remarks..."></textarea>
@@ -1668,14 +1827,26 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             <label>Select Excel File (.xlsx)</label>
             <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
             <small class="form-text text-muted">
-                File must use the <a href="../public/templates/ATTACHMENTS-MONITORING-SHEET.xlsx" download>template format</a>. Required columns: NO. | NAMES | STATUS | REMARKS | DATE | PAYROLL PERIOD
+                File must use the <a href="../public/templates/STATUS_OF_ATTACHMENTS_2026.xlsx" download>template format</a>
+                (NO. | NAMES | DATE SUBMITTED | STATUS | REMARKS | DATE INFORMED | STATUS OF COMPLIANCE | DATE COMPLIED | FOR PAYROLL).
+            </small>
+          </div>
+          <div class="form-group">
+            <label>Payroll Period <small class="text-muted">(optional)</small></label>
+            <div class="row">
+              <div class="col-6"><input type="date" name="period_start" class="form-control"></div>
+              <div class="col-6"><input type="date" name="period_end" class="form-control"></div>
+            </div>
+            <small class="form-text text-muted">
+              Leave empty to read the period from the FOR PAYROLL header (e.g. 10/1-15/2026) or the title. If filled in, it is used for every sheet in the file.
             </small>
             <div class="alert alert-warning mt-3" role="alert">
                 <strong>Note:</strong> 
                 <ul class="mb-0 pl-3">
-                    <li>Valid Status values: NOT SUBMITTED, COMPLETE, INCOMPLETE, COMPLETE AND LATE</li>
-                    <li>Employee names must match exactly with database records</li>
-                    <li>Submission Date should be in YYYY-MM-DD format</li>
+                    <li>Status values: Complete, Lacking Information, For Review, No Attachment, Complete and Late</li>
+                    <li>Names are matched as <em>LASTNAME, First M.</em> (the template format)</li>
+                    <li>Rows with only a name are skipped; existing records for the same employee and period are updated</li>
+                    <li>Filing Status is not part of the template and is kept as is</li>
                 </ul>
             </div>
           </div>
@@ -1690,6 +1861,63 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
 </div>
 
 <?php include '../includes/footer.php'; ?>
+
+<script>
+// ---- Attachments Monitoring: DataTable ----------------------------------
+// Uses DataTables if the layout already loads it, otherwise loads it from the CDN.
+var monitoringDT = null;
+
+(function() {
+  function loadCss(href) {
+    var l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    document.head.appendChild(l);
+  }
+  function loadScript(src, done) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = done;
+    s.onerror = function() { console.warn('Could not load ' + src); };
+    document.head.appendChild(s);
+  }
+  function ensureDataTables(cb) {
+    if ($.fn && $.fn.DataTable) { cb(); return; }
+    loadCss('https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css');
+    loadScript('https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js', function() {
+      loadScript('https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js', cb);
+    });
+  }
+
+  function initMonitoringDataTable() {
+    var $t = $('#monitoringTable');
+    if (!$t.length || !$.fn.DataTable || $.fn.DataTable.isDataTable($t)) { return; }
+    monitoringDT = $t.DataTable({
+      pageLength: 25,
+      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+      order: [],                                   // keep the server's order until a header is clicked
+      autoWidth: false,
+      // no built-in search box: the filter bar above the table is used instead
+      dom: "<'row mb-2'<'col-sm-6'l>>rt<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
+      columnDefs: [
+        { targets: [0, -1], orderable: false, searchable: false }   // checkbox + actions
+      ],
+      language: {
+        lengthMenu: 'Show _MENU_ records',
+        info: 'Showing _START_ to _END_ of _TOTAL_ records',
+        infoEmpty: 'No records to show',
+        infoFiltered: '(filtered from _MAX_ records)',
+        zeroRecords: 'No matching records found',
+        emptyTable: 'No monitoring records yet'
+      }
+    });
+    // the "Select all" box follows the current page/filter
+    monitoringDT.on('draw', function() { $('#selectAll').prop('checked', false); });
+  }
+
+  $(function() { ensureDataTables(initMonitoringDataTable); });
+})();
+</script>
 
 <script>
 $(document).ready(function() {
@@ -1735,7 +1963,7 @@ $(document).ready(function() {
   });
   
   // Edit record modal
-  $('.edit-record').on('click', function() {
+  $('#monitoringTable').on('click', '.edit-record', function() {
     const id = $(this).data('id');
     const status = $(this).data('status');
     const filingStatus = $(this).data('filing_status');
@@ -1747,18 +1975,75 @@ $(document).ready(function() {
     $('#edit_filing_status').val(filingStatus);
     $('#edit_submission_date').val(date);
     $('#edit_remarks').val(remarks);
+    $('#edit_date_informed').val($(this).data('date_informed'));
+    $('#edit_compliance_status').val($(this).data('compliance_status'));
+    $('#edit_date_complied').val($(this).data('date_complied'));
+    $('#edit_payroll_status').val($(this).data('payroll_status'));
     
     $('#editRecordModal').modal('show');
   });
   
-  // Select all records
+  // View record modal
+  $('#monitoringTable').on('click', '.view-record', function() {
+    const b = $(this);
+    const fmtDate = function(v) {
+      if (!v) { return '<span class="text-muted">N/A</span>'; }
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+      if (!m) { return $('<div>').text(v).html(); }
+      const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return names[parseInt(m[2], 10) - 1] + ' ' + parseInt(m[3], 10) + ', ' + m[1];
+    };
+    const badge = function(value, cls) {
+      if (!value) { return '<span class="text-muted">N/A</span>'; }
+      const c = 'status-' + String(cls || value).toLowerCase().replace(/ /g, '-');
+      return $('<span>').addClass('status-badge ' + c).text(value).prop('outerHTML');
+    };
+    const filingBadge = function(value) {
+      if (!value) { return '<span class="text-muted">N/A</span>'; }
+      return $('<span>').addClass('filing-badge filing-' + String(value).toLowerCase().replace(/ /g, '-')).text(value).prop('outerHTML');
+    };
+    const sub = [b.attr('data-id_number'), b.attr('data-appointment'), b.attr('data-position')]
+      .filter(function(x) { return x; }).join('  •  ');
+
+    $('#view_employee').text(b.attr('data-employee'));
+    $('#view_sub').text(sub);
+    $('#view_period').text(b.attr('data-period'));
+    $('#view_updated').text(b.attr('data-updated') || 'N/A');
+    $('#view_status').html(badge(b.attr('data-status')));
+    $('#view_filing').html(filingBadge(b.attr('data-filing')));
+    $('#view_submitted').html(fmtDate(b.attr('data-submitted')));
+    $('#view_informed').html(fmtDate(b.attr('data-informed')));
+    $('#view_compliance').html(badge(b.attr('data-compliance_label'), b.attr('data-compliance')));
+    $('#view_complied').html(fmtDate(b.attr('data-complied')));
+    $('#view_payroll').html(badge(b.attr('data-payroll')));
+    const remarks = b.attr('data-remarks');
+    $('#view_remarks').text(remarks ? remarks : 'N/A');
+    $('#viewEditBtn').data('id', b.attr('data-id'));
+
+    $('#viewRecordModal').modal('show');
+  });
+
+  // Edit from inside the View modal
+  $('#viewEditBtn').on('click', function() {
+    const id = $(this).data('id');
+    $('#viewRecordModal').one('hidden.bs.modal', function() {
+      $('#monitoringTable .edit-record[data-id="' + id + '"]').first().trigger('click');
+    }).modal('hide');
+  });
+
+  // Select all records (every page of the current filter, not just the visible page)
   $('#selectAll').on('change', function() {
-    $('.record-checkbox').prop('checked', this.checked);
+    const checked = this.checked;
+    if (monitoringDT) {
+      $(monitoringDT.rows({ search: 'applied' }).nodes()).find('.record-checkbox').prop('checked', checked);
+    } else {
+      $('.record-checkbox').prop('checked', checked);
+    }
     updateBulkDeleteButton();
   });
   
   // Update bulk delete button state
-  $('.record-checkbox').on('change', function() {
+  $('#monitoringTable').on('change', '.record-checkbox', function() {
     updateBulkDeleteButton();
   });
   
@@ -1770,7 +2055,7 @@ $(document).ready(function() {
         action: ''
       });
       
-      $('.record-checkbox:checked').each(function() {
+      checkedRecordBoxes().each(function() {
         form.append($('<input>').attr({
           type: 'hidden',
           name: 'record_ids[]',
@@ -1837,7 +2122,7 @@ $(document).ready(function() {
 
   // Template download
   $('#templateBtn').on('click', function() {
-    window.location.href = '../public/templates/ATTACHMENTS-MONITORING-SHEET.xlsx';
+    window.location.href = '../public/templates/STATUS_OF_ATTACHMENTS_2026.xlsx';
   });
 
   // Export all
@@ -1858,29 +2143,43 @@ $(document).ready(function() {
     form.submit();
   });
   
+  // Checked record boxes on ALL pages (DataTables keeps the other pages' rows out of the DOM)
+  function checkedRecordBoxes() {
+    return monitoringDT ? monitoringDT.$('.record-checkbox:checked') : $('.record-checkbox:checked');
+  }
+
   function filterTable() {
-    const period = $('#periodFilter').val().toLowerCase();
-    const status = $('#statusFilter').val().toLowerCase();
-    const filing = $('#filingFilter').val().toLowerCase();
-    const search = $('#searchFilter').val().toLowerCase();
-    
+    const period = $('#periodFilter').val();
+    const status = $('#statusFilter').val();
+    const filing = $('#filingFilter').val();
+    const search = $('#searchFilter').val();
+
+    if (monitoringDT) {
+      // exact match, so "COMPLETE" no longer matches "COMPLETE AND LATE"
+      // and "FORWARDED" no longer matches "NOT FORWARDED"
+      const exact = function(v) {
+        return v ? '^\\s*' + $.fn.dataTable.util.escapeRegex(v) + '\\s*$' : '';
+      };
+      monitoringDT.column(5).search(exact(period), true, false, true);
+      monitoringDT.column(6).search(exact(status), true, false, true);
+      monitoringDT.column(7).search(exact(filing), true, false, true);
+      monitoringDT.search(search).draw();
+      return;
+    }
+
+    // Fallback when DataTables could not be loaded (plain table filtering)
+    const p = period.toLowerCase(), st = status.toLowerCase(), f = filing.toLowerCase(), q = search.toLowerCase();
     $('#monitoringTable tbody tr').each(function() {
-      const rowPeriod = $(this).find('td:eq(5)').text().toLowerCase();
-      const rowStatus = $(this).find('td:eq(6)').text().toLowerCase();
-      const rowFiling = $(this).find('td:eq(7)').text().toLowerCase();
+      const rowPeriod = $(this).find('td:eq(5)').text().trim().toLowerCase();
+      const rowStatus = $(this).find('td:eq(6)').text().trim().toLowerCase();
+      const rowFiling = $(this).find('td:eq(7)').text().trim().toLowerCase();
       const rowText = $(this).text().toLowerCase();
-      
-      const periodMatch = !period || rowPeriod.includes(period);
-      const statusMatch = !status || rowStatus.includes(status);
-      const filingMatch = !filing || rowFiling.includes(filing);
-      const searchMatch = !search || rowText.includes(search);
-      
-      $(this).toggle(periodMatch && statusMatch && filingMatch && searchMatch);
+      $(this).toggle((!p || rowPeriod === p) && (!st || rowStatus === st) && (!f || rowFiling === f) && (!q || rowText.includes(q)));
     });
   }
   
   function updateBulkDeleteButton() {
-    const checkedCount = $('.record-checkbox:checked').length;
+    const checkedCount = checkedRecordBoxes().length;
     $('#bulkDeleteBtn').prop('disabled', checkedCount === 0);
     if (checkedCount > 0) {
       $('#bulkDeleteBtn').html('<i class="fas fa-trash"></i> Delete Selected (' + checkedCount + ')');

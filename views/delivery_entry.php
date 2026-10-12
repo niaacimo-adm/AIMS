@@ -38,8 +38,24 @@ try {
 $database = new Database();
 $db = $database->getConnection();;
 
+// Partial-delivery columns (added automatically the first time this page runs)
+$chk = $db->query("SHOW COLUMNS FROM iar_items LIKE 'ordered_quantity'");
+if ($chk && $chk->num_rows === 0) {
+    $db->query("ALTER TABLE iar_items ADD COLUMN ordered_quantity INT NULL AFTER quantity");
+}
+$chk = $db->query("SHOW COLUMNS FROM iar_records LIKE 'delivery_status'");
+if ($chk && $chk->num_rows === 0) {
+    $db->query("ALTER TABLE iar_records ADD COLUMN delivery_status VARCHAR(10) NOT NULL DEFAULT 'Complete'");
+}
+
 // Initialize variables
 $error = $success = "";
+
+// Flash message set before a redirect (Post/Redirect/Get) - shown once, then cleared
+if (isset($_SESSION['flash_success'])) {
+    $success = $_SESSION['flash_success'];
+    unset($_SESSION['flash_success']);
+}
 $delivery_data = [
     'po_number' => '',
     'po_date' => date('Y-m-d'),
@@ -58,6 +74,121 @@ if ($item_result) {
     }
 }
 
+// Categories & units of measure (used by the "Add New Item" quick-add modal)
+$categories = [];
+$category_result = $db->query("SELECT id, name FROM categories ORDER BY name");
+if ($category_result) {
+    while ($row = $category_result->fetch_assoc()) {
+        $categories[$row['id']] = $row['name'];
+    }
+}
+$units = [];
+$unit_result = $db->query("SELECT id, name, abbreviation FROM unit_of_measure ORDER BY name");
+if ($unit_result) {
+    while ($row = $unit_result->fetch_assoc()) {
+        $units[] = $row;
+    }
+}
+
+// AJAX: quickly add a brand-new item from inside the Delivery Entry modal
+// (same insert as view_inventory.php, but returns the new item so the form is NOT reloaded)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_add_item'])) {
+    header('Content-Type: application/json');
+    $name = trim($_POST['name'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $unit_of_measure = trim($_POST['unit_of_measure'] ?? '');
+    $category_id = intval($_POST['category_id'] ?? 0);
+
+    if ($name === '') {
+        echo json_encode(['success' => false, 'message' => 'Item name is required.']);
+        exit();
+    }
+    if ($unit_of_measure === '') {
+        echo json_encode(['success' => false, 'message' => 'Unit of measure is required.']);
+        exit();
+    }
+
+    // Prevent duplicate item names
+    $dup = $db->prepare("SELECT id FROM items WHERE LOWER(name) = LOWER(?) LIMIT 1");
+    $dup->bind_param("s", $name);
+    $dup->execute();
+    $dup->store_result();
+    if ($dup->num_rows > 0) {
+        $dup->close();
+        echo json_encode(['success' => false, 'message' => 'An item with this name already exists. Please select it from the Item list.']);
+        exit();
+    }
+    $dup->close();
+
+    $stmt = $db->prepare("INSERT INTO items (category_id, name, description, unit_of_measure) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("isss", $category_id, $name, $description, $unit_of_measure);
+    if ($stmt->execute()) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Item added successfully!',
+            'item' => ['id' => $db->insert_id, 'name' => $name, 'description' => $description]
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Error adding item: ' . $db->error]);
+    }
+    $stmt->close();
+    exit();
+}
+
+// AJAX: what is still owed on the PO of a partial IAR (used for the follow-up delivery)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['get_po_balance'])) {
+    header('Content-Type: application/json');
+    $po_iar_id = intval($_POST['iar_id'] ?? 0);
+    $st = $db->prepare("SELECT po_number, po_date, supplier, requisition_office FROM iar_records WHERE id = ?");
+    $st->bind_param("i", $po_iar_id);
+    $st->execute();
+    $po = $st->get_result()->fetch_assoc();
+    $st->close();
+    if (!$po) {
+        echo json_encode(['success' => false, 'message' => 'IAR not found']);
+        exit();
+    }
+
+    $q = $db->prepare("SELECT di.item_id, MAX(ii.ordered_quantity) AS ordered, SUM(ii.quantity) AS delivered, MAX(ii.unit_price) AS unit_price
+                       FROM iar_items ii
+                       JOIN delivery_items di ON di.id = ii.delivery_item_id
+                       JOIN iar_records ir ON ir.id = ii.iar_id
+                       WHERE ir.po_number = ?
+                       GROUP BY di.item_id");
+    $q->bind_param("s", $po['po_number']);
+    $q->execute();
+    $balance = [];
+    foreach ($q->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+        $remaining = (int)$r['ordered'] - (int)$r['delivered'];
+        if ($remaining > 0) {
+            $balance[] = [
+                'item_id'    => (int)$r['item_id'],
+                'ordered'    => (int)$r['ordered'],
+                'delivered'  => (int)$r['delivered'],
+                'remaining'  => $remaining,
+                'unit_price' => (float)$r['unit_price'],
+            ];
+        }
+    }
+    $q->close();
+
+    // Next free IAR number for this PO: IAR-YYYY-MM-####-2, -3, ...
+    $base_iar = str_replace('PO-', 'IAR-', $po['po_number']);
+    $n = 2;
+    do {
+        $iar_no = $base_iar . '-' . $n++;
+        $c = $db->prepare("SELECT id FROM iar_records WHERE iar_number = ?");
+        $c->bind_param("s", $iar_no);
+        $c->execute();
+        $c->store_result();
+        $exists = $c->num_rows > 0;
+        $c->close();
+    } while ($exists);
+
+    echo json_encode(['success' => true, 'iar_number' => $iar_no, 'items' => $balance] + $po);
+    exit();
+}
+
 // Get sections for dropdown
 $sections = [];
 $section_query = "SELECT section_id, section_name FROM section ORDER BY section_name";
@@ -68,98 +199,90 @@ if ($section_result) {
     }
 }
 
-// Generate next IAR number
-// $current_year = date('Y');
-// $current_month = date('m');
-// $iar_query = "SELECT iar_number FROM iar_records WHERE iar_number LIKE 'IAR-$current_year-$current_month-%' ORDER BY id DESC LIMIT 1";
-// $iar_result = $db->query($iar_query);
-// $next_iar_number = "IAR-$current_year-$current_month-0001";
-
-// if ($iar_result && $iar_result->num_rows > 0) {
-//     $last_iar = $iar_result->fetch_assoc();
-//     $last_number = intval(substr($last_iar['iar_number'], -4));
-//     $next_number = str_pad($last_number + 1, 4, '0', STR_PAD_LEFT);
-//     $next_iar_number = "IAR-$current_year-$current_month-$next_number";
-// }
-
 // Process form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Handle delete action
     if (isset($_POST['delete_iar'])) {
         $iar_id = intval($_POST['iar_id']);
-        
+
         $db->begin_transaction();
         try {
-            // Get delivery_item_ids and movement_ids for cleanup
-            $get_items_query = "SELECT ii.delivery_item_id, di.delivery_id 
-                               FROM iar_items ii 
-                               JOIN delivery_items di ON ii.delivery_item_id = di.id 
-                               WHERE ii.iar_id = ?";
-            $get_items_stmt = $db->prepare($get_items_query);
-            $get_items_stmt->bind_param("i", $iar_id);
-            $get_items_stmt->execute();
-            $items_result = $get_items_stmt->get_result();
-            
-            // Reverse stock movements and update inventory
-            while ($item = $items_result->fetch_assoc()) {
-                $delivery_item_id = $item['delivery_item_id'];
-                $movement_id = $item['delivery_id'];
-                
-                // Get item details to reverse stock
-                $get_item_details = "SELECT di.item_id, di.quantity 
-                                    FROM delivery_items di 
-                                    WHERE di.id = ?";
-                $details_stmt = $db->prepare($get_item_details);
-                $details_stmt->bind_param("i", $delivery_item_id);
-                $details_stmt->execute();
-                $details = $details_stmt->get_result()->fetch_assoc();
-                $details_stmt->close();
-                
-                // Reverse stock
-                $reverse_stock = "UPDATE items SET current_stock = current_stock - ? WHERE id = ?";
-                $reverse_stmt = $db->prepare($reverse_stock);
-                $reverse_stmt->bind_param("ii", $details['quantity'], $details['item_id']);
-                $reverse_stmt->execute();
-                $reverse_stmt->close();
-                
-                // Delete movement record
-                $delete_movement = "DELETE FROM stock_movements WHERE id = ?";
-                $movement_stmt = $db->prepare($delete_movement);
-                $movement_stmt->bind_param("i", $movement_id);
-                $movement_stmt->execute();
-                $movement_stmt->close();
+            // 1. Refuse to delete a delivery that already has RIS issued from it
+            $ris_chk = $db->prepare("SELECT ris_number FROM ris_records WHERE iar_id = ?");
+            $ris_chk->bind_param("i", $iar_id);
+            $ris_chk->execute();
+            $ris_rows = $ris_chk->get_result()->fetch_all(MYSQLI_ASSOC);
+            $ris_chk->close();
+            if (!empty($ris_rows)) {
+                $ris_list = implode(', ', array_column($ris_rows, 'ris_number'));
+                throw new Exception("this delivery already has RIS issued from it ($ris_list). Delete those RIS first (RIS Records page), then delete the delivery.");
             }
-            $get_items_stmt->close();
-            
-            // Delete iar_items records
-            $delete_items = "DELETE FROM iar_items WHERE iar_id = ?";
-            $items_stmt = $db->prepare($delete_items);
-            $items_stmt->bind_param("i", $iar_id);
-            $items_stmt->execute();
-            $items_stmt->close();
-            
-            // Delete delivery_items records
-            $delete_delivery_items = "DELETE di FROM delivery_items di 
-                                     JOIN iar_items ii ON di.id = ii.delivery_item_id 
-                                     WHERE ii.iar_id = ?";
-            $delivery_items_stmt = $db->prepare($delete_delivery_items);
-            $delivery_items_stmt->bind_param("i", $iar_id);
-            $delivery_items_stmt->execute();
-            $delivery_items_stmt->close();
-            
-            // Delete IAR record
-            $delete_iar = "DELETE FROM iar_records WHERE id = ?";
-            $iar_stmt = $db->prepare($delete_iar);
-            $iar_stmt->bind_param("i", $iar_id);
-            $iar_stmt->execute();
-            $iar_stmt->close();
-            
+
+            // 2. Collect everything that belongs to this IAR
+            $get_stmt = $db->prepare("SELECT ii.id AS iar_item_id, di.id AS delivery_item_id, di.delivery_id AS movement_id,
+                                             di.item_id, di.quantity
+                                      FROM iar_items ii
+                                      JOIN delivery_items di ON ii.delivery_item_id = di.id
+                                      WHERE ii.iar_id = ?");
+            $get_stmt->bind_param("i", $iar_id);
+            $get_stmt->execute();
+            $rows = $get_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $get_stmt->close();
+
+            // 3. Make sure removing these quantities will not push any item's stock below zero
+            $per_item = [];
+            foreach ($rows as $r) {
+                $per_item[$r['item_id']] = ($per_item[$r['item_id']] ?? 0) + $r['quantity'];
+            }
+            foreach ($per_item as $chk_item_id => $chk_qty) {
+                $st = $db->prepare("SELECT name, current_stock FROM items WHERE id = ?");
+                $st->bind_param("i", $chk_item_id);
+                $st->execute();
+                $it = $st->get_result()->fetch_assoc();
+                $st->close();
+                if ($it && $it['current_stock'] < $chk_qty) {
+                    throw new Exception("not enough stock to reverse this delivery for " . $it['name'] . " (in stock: " . $it['current_stock'] . ", delivered: $chk_qty). Part of it was already issued.");
+                }
+            }
+
+            // 4. Delete child rows first, then parents
+            $d1 = $db->prepare("DELETE FROM iar_items WHERE iar_id = ?");
+            $d1->bind_param("i", $iar_id);
+            if (!$d1->execute()) { throw new Exception($d1->error); }
+            $d1->close();
+
+            foreach ($rows as $r) {
+                // delivery_items row
+                $d2 = $db->prepare("DELETE FROM delivery_items WHERE id = ?");
+                $d2->bind_param("i", $r['delivery_item_id']);
+                if (!$d2->execute()) { throw new Exception($d2->error); }
+                $d2->close();
+
+                // take the delivered quantity back out of stock
+                $d3 = $db->prepare("UPDATE items SET current_stock = current_stock - ? WHERE id = ?");
+                $d3->bind_param("ii", $r['quantity'], $r['item_id']);
+                if (!$d3->execute()) { throw new Exception($d3->error); }
+                $d3->close();
+
+                // the 'in' stock movement
+                $d4 = $db->prepare("DELETE FROM stock_movements WHERE id = ?");
+                $d4->bind_param("i", $r['movement_id']);
+                if (!$d4->execute()) { throw new Exception($d4->error); }
+                $d4->close();
+            }
+
+            // 5. The IAR record itself
+            $d5 = $db->prepare("DELETE FROM iar_records WHERE id = ?");
+            $d5->bind_param("i", $iar_id);
+            if (!$d5->execute()) { throw new Exception($d5->error); }
+            $d5->close();
+
             $db->commit();
             $success = "IAR record deleted successfully!";
-            
+
         } catch (Exception $e) {
             $db->rollback();
-            $error = "Error deleting IAR record: " . $e->getMessage();
+            $error = "Cannot delete IAR record: " . $e->getMessage();
         }
     }
     // Handle save delivery action
@@ -177,6 +300,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $item_ids = $_POST['item_id'] ?? [];
         $quantities = $_POST['quantity'] ?? [];
         $unit_costs = $_POST['unit_cost'] ?? [];
+        $ordered_quantities = $_POST['ordered_quantity'] ?? [];
 
         // Validate required fields
         if (empty($po_number) || empty($supplier) || empty($delivery_date) || empty($requisition_office)) {
@@ -200,7 +324,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $iar_stmt->close();
                 
                 $total_amount = 0;
-                
+                $is_partial = false;      // becomes true when any item is still short of the PO quantity
+                $partial_items = 0;
+
                 // Process each item
                 foreach ($item_ids as $index => $item_id) {
                     $quantity = intval($quantities[$index]);
@@ -209,6 +335,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $total_amount += $total_cost;
                     
                     if ($quantity > 0 && $item_id > 0) {
+                        // --- Complete / Partial check against the PO quantity ---
+                        // Earlier deliveries of the same item on the same PO count toward the ordered quantity.
+                        $ordered_qty = intval($ordered_quantities[$index] ?? 0);
+                        if ($ordered_qty <= 0) {
+                            $ordered_qty = $quantity;   // no PO quantity given: treat as fully delivered
+                        }
+                        $prior_stmt = $db->prepare("SELECT COALESCE(SUM(ii.quantity), 0) AS delivered
+                                                    FROM iar_items ii
+                                                    JOIN delivery_items di ON di.id = ii.delivery_item_id
+                                                    JOIN iar_records ir ON ir.id = ii.iar_id
+                                                    WHERE ir.po_number = ? AND di.item_id = ?");
+                        $prior_stmt->bind_param("si", $po_number, $item_id);
+                        $prior_stmt->execute();
+                        $already_delivered = intval($prior_stmt->get_result()->fetch_assoc()['delivered']);
+                        $prior_stmt->close();
+
+                        $cumulative = $already_delivered + $quantity;
+                        if ($cumulative > $ordered_qty) {
+                            throw new Exception("Delivered quantity for " . $items[$item_id]['name'] . " exceeds the ordered quantity (Ordered: $ordered_qty, Already delivered: $already_delivered, This delivery: $quantity).");
+                        }
+                        if ($cumulative < $ordered_qty) {
+                            $is_partial = true;
+                            $partial_items++;
+                        }
+
                         // Record stock movement
                         $movement_query = "INSERT INTO stock_movements (item_id, movement_type, quantity, reference, unit_cost) 
                                            VALUES (?, 'in', ?, ?, ?)";
@@ -229,10 +380,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         
                         // Add to iar_items
                         $item_info = $items[$item_id];
-                        $iar_item_query = "INSERT INTO iar_items (iar_id, delivery_item_id, description, unit, quantity, unit_price, total_price) 
-                                          VALUES (?, ?, ?, ?, ?, ?, ?)";
+                        $iar_item_query = "INSERT INTO iar_items (iar_id, delivery_item_id, description, unit, quantity, ordered_quantity, unit_price, total_price) 
+                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
                         $iar_item_stmt = $db->prepare($iar_item_query);
-                        $iar_item_stmt->bind_param("iissidd", $iar_id, $delivery_item_id, $item_info['name'], $item_info['unit_of_measure'], $quantity, $unit_cost, $total_cost);
+                        $iar_item_stmt->bind_param("iissiidd", $iar_id, $delivery_item_id, $item_info['name'], $item_info['unit_of_measure'], $quantity, $ordered_qty, $unit_cost, $total_cost);
                         $iar_item_stmt->execute();
                         $iar_item_stmt->close();
                         
@@ -246,14 +397,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
                 
                 // Update total amount in IAR record
-                $update_iar_query = "UPDATE iar_records SET total_amount = ? WHERE id = ?";
+                // Status is PO-wide: Partial while ANY item on this PO (across all its IARs) is still short
+                $short = $db->prepare("SELECT COUNT(*) AS n FROM (
+                                           SELECT di.item_id, MAX(ii.ordered_quantity) AS ordered, SUM(ii.quantity) AS delivered
+                                           FROM iar_items ii
+                                           JOIN delivery_items di ON di.id = ii.delivery_item_id
+                                           JOIN iar_records ir ON ir.id = ii.iar_id
+                                           WHERE ir.po_number = ?
+                                           GROUP BY di.item_id
+                                           HAVING delivered < ordered) t");
+                $short->bind_param("s", $po_number);
+                $short->execute();
+                $partial_items = (int)$short->get_result()->fetch_assoc()['n'];
+                $short->close();
+                $is_partial = $partial_items > 0;
+                $delivery_status = $is_partial ? 'Partial' : 'Complete';
+                $update_iar_query = "UPDATE iar_records SET total_amount = ?, delivery_status = ? WHERE id = ?";
                 $update_iar_stmt = $db->prepare($update_iar_query);
-                $update_iar_stmt->bind_param("di", $total_amount, $iar_id);
+                $update_iar_stmt->bind_param("dsi", $total_amount, $delivery_status, $iar_id);
                 $update_iar_stmt->execute();
                 $update_iar_stmt->close();
                 
                 $db->commit();
-                $success = "Delivery entry recorded successfully! IAR Number: $iar_number";
+                $success = "Delivery entry recorded successfully! IAR Number: $iar_number" . ($is_partial ? " - PARTIAL delivery ($partial_items item(s) still short of the PO quantity)." : " - Complete delivery.");
                 
                 // Reset form
                 $delivery_data = [
@@ -275,6 +441,54 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $iar_id = $_POST['iar_id'];
         generateIARExcel($db, $iar_id);
         exit();
+    }
+
+    // Load the items of a RIS for the PAR modal (JSON)
+    elseif (isset($_POST['get_ris_items'])) {
+        header('Content-Type: application/json');
+        $data = fetchRisParItems($db, intval($_POST['ris_id'] ?? 0));
+        echo json_encode($data ? ['success' => true] + $data : ['success' => false, 'message' => 'RIS not found']);
+        exit();
+    }
+
+    // Download a Property Acknowledgment Receipt (PAR) built from a RIS
+    elseif (isset($_POST['print_par'])) {
+        $par_ris_id = intval($_POST['par_ris_id'] ?? 0);
+        $par_selected = array_map('intval', $_POST['par_items'] ?? []);
+        if ($par_ris_id <= 0 || empty($par_selected)) {
+            $error = "Select a RIS and at least one item for the PAR.";
+        } else {
+            generateParExcel(
+                $db,
+                $par_ris_id,
+                $par_selected,
+                $_POST['par_property_no'] ?? [],
+                trim($_POST['par_no'] ?? ''),
+                trim($_POST['par_fund_cluster'] ?? ''),
+                trim($_POST['par_issued_by'] ?? ''),
+                trim($_POST['par_issued_position'] ?? '')
+            );
+            exit();
+        }
+    }
+
+    // Download a Stock Card (SC) for one item
+    elseif (isset($_POST['print_stock_card'])) {
+        $stock_item_id = intval($_POST['stock_item_id'] ?? 0);
+        if ($stock_item_id <= 0) {
+            $error = "Please select an item for the Stock Card.";
+        } else {
+            generateStockCardExcel(
+                $db,
+                $stock_item_id,
+                trim($_POST['stock_fund_cluster'] ?? ''),
+                trim($_POST['stock_no'] ?? ''),
+                trim($_POST['stock_reorder_point'] ?? ''),
+                trim($_POST['stock_date_from'] ?? ''),
+                trim($_POST['stock_date_to'] ?? '')
+            );
+            exit();
+        }
     }
 }
 
@@ -390,6 +604,14 @@ if (isset($_POST['save_ris'])) {
     }
 }
 
+// Post/Redirect/Get: after a successful save / delete / RIS creation, redirect so that
+// refreshing the page does not trigger the "Confirm Form Resubmission" prompt.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $success !== '' && $error === '') {
+    $_SESSION['flash_success'] = $success;
+    header('Location: ' . basename($_SERVER['PHP_SELF']));
+    exit();
+}
+
 function generateIARExcel($db, $iar_id) {
     try {
         // Fetch IAR details with related information
@@ -501,17 +723,55 @@ function generateIARExcel($db, $iar_id) {
         $total = $iar['total_amount'] ?? array_sum(array_column($items, 'total_price'));
         $sheet->setCellValue('M' . $total_row, number_format($total, 2));
         
-        // Adjust the inspection and acceptance details rows based on the number of items
-        $inspection_row = $total_row + 4;
-        
-        // Fill in inspection and acceptance details
-        $sheet->setCellValue('B' . $inspection_row, '');
-        $sheet->setCellValue('B' . ($inspection_row + 1), '');
-        $sheet->setCellValue('B' . ($inspection_row + 2), '');
-        
-        $sheet->setCellValue('D' . $inspection_row, '');
-        $sheet->setCellValue('D' . ($inspection_row + 1), '');
-        $sheet->setCellValue('D' . ($inspection_row + 2), '');
+        // ---- Complete / Partial marks on the IAR ----
+        // Template boxes (row 18 + any rows inserted for extra items):
+        //   Received/Inspected: B18 = Complete, B19 = Partial     Acceptance: H18 = Complete, J18 = Partial
+        $shift = max(0, $item_count - 1);
+        $is_partial_iar = (($iar['delivery_status'] ?? 'Complete') === 'Partial');
+        $mark_cells = $is_partial_iar
+            ? ['B' . (19 + $shift), 'J' . (18 + $shift)]
+            : ['B' . (18 + $shift), 'H' . (18 + $shift)];
+        foreach ($mark_cells as $cell) {
+            $sheet->setCellValue($cell, "\u{2713}");
+            $sheet->getStyle($cell)->getFont()->setBold(true)->setSize(12);
+            $sheet->getStyle($cell)->getAlignment()
+                  ->setHorizontal(PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
+                  ->setVertical(PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        }
+
+        // For a partial delivery, list the short items on the "(please specify quantity)" lines (L19:M21)
+        if ($is_partial_iar) {
+            $spec_lines = [];
+            foreach ($items as $item) {
+                $ordered = intval($item['ordered_quantity'] ?? 0);
+                if ($ordered <= 0) continue;
+                // Quantity delivered so far on this PO for this item, up to and including this IAR
+                $cum_stmt = $db->prepare("SELECT COALESCE(SUM(ii2.quantity), 0) AS delivered
+                                          FROM iar_items ii2
+                                          JOIN delivery_items di2 ON di2.id = ii2.delivery_item_id
+                                          JOIN iar_records ir2 ON ir2.id = ii2.iar_id
+                                          WHERE ir2.po_number = ? AND di2.item_id = ? AND ir2.id <= ?");
+                $cum_stmt->bind_param("sii", $iar['po_number'], $item['item_id'], $iar_id);
+                $cum_stmt->execute();
+                $delivered_so_far = intval($cum_stmt->get_result()->fetch_assoc()['delivered']);
+                $cum_stmt->close();
+                if ($delivered_so_far < $ordered) {
+                    $spec_lines[] = ($item['item_name'] ?? $item['description']) . ': ' . $delivered_so_far . ' of ' . $ordered;
+                }
+            }
+            $max_lines = 3;
+            if (count($spec_lines) > $max_lines) {
+                $extra = count($spec_lines) - ($max_lines - 1);
+                $spec_lines = array_slice($spec_lines, 0, $max_lines - 1);
+                $spec_lines[] = '+' . $extra . ' more item(s)';
+            }
+            foreach ($spec_lines as $i => $line) {
+                $cell = 'L' . (19 + $shift + $i);
+                $sheet->setCellValue($cell, $line);
+                $sheet->getStyle($cell)->getAlignment()->setShrinkToFit(true);
+                $sheet->getStyle($cell)->getFont()->setSize(8);
+            }
+        }
         
         // Set filename
         $filename = "IAR_" . ($iar['iar_number'] ?? $iar_id) . ".xlsx";
@@ -533,6 +793,412 @@ function generateIARExcel($db, $iar_id) {
     } catch (Exception $e) {
         error_log($e->getMessage());
         echo "Error generating IAR Excel: " . $e->getMessage();
+    }
+}
+
+function buildStockCardLines($db, $item_id, $current_stock, $date_from = '', $date_to = '') {
+    $query = "SELECT sm.id, sm.movement_type, sm.quantity, sm.reference,
+                     COALESCE(ir.delivery_date, DATE(sm.created_at)) AS movement_date,
+                     ir.iar_number, rr.ris_number, rr.requisition_office
+              FROM stock_movements sm
+              LEFT JOIN delivery_items di ON sm.movement_type = 'in'  AND di.delivery_id = sm.id
+              LEFT JOIN iar_items ii      ON ii.delivery_item_id = di.id
+              LEFT JOIN iar_records ir    ON ir.id = ii.iar_id
+              LEFT JOIN ris_items ri      ON sm.movement_type = 'out' AND ri.movement_id = sm.id
+              LEFT JOIN ris_records rr    ON rr.id = ri.ris_id
+              WHERE sm.item_id = ? AND sm.movement_type IN ('in', 'out')
+              ORDER BY movement_date ASC, sm.id ASC";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param("i", $item_id);
+    $stmt->execute();
+    $movements = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $total_in = 0;
+    $total_out = 0;
+    foreach ($movements as $m) {
+        if ($m['movement_type'] === 'in') { $total_in += (int)$m['quantity']; }
+        else { $total_out += (int)$m['quantity']; }
+    }
+    // Stock that existed before any recorded movement
+    $opening = (int)$current_stock - $total_in + $total_out;
+
+    $entries = [];
+    $running = $opening;
+    foreach ($movements as $m) {
+        $qty = (int)$m['quantity'];
+        $is_in = ($m['movement_type'] === 'in');
+        $running += $is_in ? $qty : -$qty;
+        $reference = $is_in
+            ? ($m['iar_number'] ?: $m['reference'])
+            : ($m['ris_number'] ?: $m['reference']);
+        // Show IAR-YYYY-MM-#### as YYYY-#### (same style as the RIS numbers)
+        if (preg_match('/^IAR-(\d{4})-\d{2}-(\d{4})$/', (string)$reference, $ref_parts)) {
+            $reference = $ref_parts[1] . '-' . $ref_parts[2];
+        }
+        $entries[] = [
+            'ts'      => strtotime($m['movement_date']),
+            'date'    => date('m/d/Y', strtotime($m['movement_date'])),
+            'ref'     => (string)$reference,
+            'in'      => $is_in ? $qty : null,
+            'out'     => $is_in ? null : $qty,
+            'office'  => $is_in ? '' : (string)($m['requisition_office'] ?? ''),
+            'balance' => $running,
+        ];
+    }
+
+    $from_ts = $date_from !== '' ? strtotime($date_from) : false;
+    $to_ts   = $date_to   !== '' ? strtotime($date_to)   : false;
+
+    $forward = $opening;
+    $lines = [];
+    foreach ($entries as $e) {
+        if ($from_ts !== false && $e['ts'] < $from_ts) { $forward = $e['balance']; continue; }
+        if ($to_ts !== false && $e['ts'] > $to_ts) { break; }
+        $lines[] = $e;
+    }
+    if ($forward != 0) {
+        array_unshift($lines, [
+            'ts' => 0, 'date' => '',
+            'ref' => ($from_ts !== false ? 'Balance forwarded' : 'Beginning balance'),
+            'in' => null, 'out' => null, 'office' => '', 'balance' => $forward,
+        ]);
+    }
+    return $lines;
+}
+
+function generateStockCardExcel($db, $item_id, $fund_cluster = '', $stock_no = '', $reorder_point = '', $date_from = '', $date_to = '') {
+    try {
+        $stmt = $db->prepare("SELECT id, name, description, unit_of_measure, current_stock FROM items WHERE id = ?");
+        $stmt->bind_param("i", $item_id);
+        $stmt->execute();
+        $item = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$item) {
+            throw new Exception("Item not found");
+        }
+
+        $lines = buildStockCardLines($db, $item_id, $item['current_stock'], $date_from, $date_to);
+
+        $template_path = "../public/templates/STOCK_CARD.xlsx";
+        if (!file_exists($template_path)) {
+            throw new Exception("Stock Card template not found (public/templates/STOCK_CARD.xlsx)");
+        }
+        $spreadsheet = PhpOffice\PhpSpreadsheet\IOFactory::load($template_path);
+        $base = $spreadsheet->getSheetByName('Form') ?: $spreadsheet->getSheet(0);
+
+        // The template form has 36 data rows (16-51). Longer histories continue on copies of the form.
+        $first_row = 16;
+        $rows_per_page = 36;
+        $pages = max(1, (int)ceil(count($lines) / $rows_per_page));
+        $sheets = [$base];
+        for ($p = 1; $p < $pages; $p++) {
+            $copy = clone $base;
+            $copy->setTitle('Form (' . ($p + 1) . ')');
+            $spreadsheet->addSheet($copy, $spreadsheet->getIndex($base) + $p);
+            $sheets[] = $copy;
+        }
+
+        $text = PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+        $description = trim((string)($item['description'] ?? ''));
+        $is_numeric_reorder = ($reorder_point !== '' && is_numeric($reorder_point));
+
+        foreach ($sheets as $page => $sheet) {
+            // Header block
+            foreach (['G9:H9', 'G11:H11', 'G12:H12', 'B11:E11', 'B12:E12', 'B13:E13'] as $range) {
+                $sheet->mergeCells($range);
+            }
+            $sheet->setCellValueExplicit('G9', $fund_cluster, $text);
+            $sheet->setCellValueExplicit('B11', (string)$item['name'], $text);
+            $sheet->setCellValueExplicit('B12', $description, $text);
+            $sheet->setCellValueExplicit('B13', (string)($item['unit_of_measure'] ?? ''), $text);
+            $sheet->setCellValueExplicit('G11', $stock_no, $text);
+            if ($is_numeric_reorder) {
+                $sheet->setCellValue('G12', $reorder_point + 0);
+            } else {
+                $sheet->setCellValueExplicit('G12', $reorder_point, $text);
+            }
+            foreach (['G9', 'G11', 'G12', 'B11', 'B12', 'B13'] as $cell) {
+                $sheet->getStyle($cell)->getAlignment()
+                    ->setHorizontal(PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT)
+                    ->setVertical(PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            }
+            $sheet->getStyle('B12')->getAlignment()->setWrapText(true);
+            $sheet->getRowDimension(12)->setRowHeight(min(90, max(15, 15 * (int)ceil(strlen($description) / 60))));
+
+            // Data rows
+            $last_row = $first_row + $rows_per_page - 1;
+            $range = $sheet->getStyle("A{$first_row}:F{$last_row}")->getAlignment();
+            $range->setVertical(PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            foreach (['A', 'B', 'C', 'D', 'F'] as $col) {
+                $sheet->getStyle("{$col}{$first_row}:{$col}{$last_row}")->getAlignment()
+                    ->setHorizontal(PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            }
+            $sheet->getStyle("A{$first_row}:B{$last_row}")->getAlignment()->setShrinkToFit(true);
+            $sheet->getStyle("E{$first_row}:E{$last_row}")->getAlignment()
+                ->setHorizontal(PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT)
+                ->setShrinkToFit(true);
+            $sheet->getStyle("C{$first_row}:D{$last_row}")->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle("F{$first_row}:F{$last_row}")->getNumberFormat()->setFormatCode('#,##0');
+
+            $row = $first_row;
+            foreach (array_slice($lines, $page * $rows_per_page, $rows_per_page) as $line) {
+                $sheet->setCellValueExplicit('A' . $row, $line['date'], $text);
+                $sheet->setCellValueExplicit('B' . $row, $line['ref'], $text);
+                if ($line['in'] !== null)  { $sheet->setCellValue('C' . $row, $line['in']); }
+                if ($line['out'] !== null) { $sheet->setCellValue('D' . $row, $line['out']); }
+                $sheet->setCellValueExplicit('E' . $row, $line['office'], $text);
+                $sheet->setCellValue('F' . $row, $line['balance']);
+                // "No. of Days to Consume" (G:H) is an estimate by the Supply Unit - left blank
+                $row++;
+            }
+        }
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $safe_name = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string)$item['name']);
+        $filename = "STOCK_CARD_" . trim(substr($safe_name, 0, 40), '_') . ".xlsx";
+
+        if (ob_get_length()) { ob_end_clean(); }
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        header('Pragma: public');
+
+        $writer = PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save('php://output');
+
+    } catch (Exception $e) {
+        error_log($e->getMessage());
+        echo "Error generating Stock Card: " . $e->getMessage();
+    }
+}
+
+/**
+ * Header + line items of a RIS, with unit cost and date acquired taken from the
+ * IAR the RIS was created from (falls back to the item's latest receipt).
+ */
+function fetchRisParItems($db, $ris_id) {
+    $stmt = $db->prepare("SELECT id, ris_number, iar_id, requisition_office, requested_by, designation, created_at
+                          FROM ris_records WHERE id = ?");
+    $stmt->bind_param("i", $ris_id);
+    $stmt->execute();
+    $ris = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$ris) {
+        return null;
+    }
+
+    $stmt = $db->prepare("SELECT ri.id AS ris_item_id, ri.item_id, ri.description AS name, ri.unit, ri.quantity,
+                                 i.description AS item_description
+                          FROM ris_items ri
+                          LEFT JOIN items i ON i.id = ri.item_id
+                          WHERE ri.ris_id = ? ORDER BY ri.id");
+    $stmt->bind_param("i", $ris_id);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $items = [];
+    foreach ($rows as $row) {
+        $unit_price = null;
+        $acquired = null;
+
+        if (!empty($ris['iar_id'])) {
+            $q = $db->prepare("SELECT ii.unit_price, ir.delivery_date
+                               FROM iar_items ii
+                               JOIN delivery_items di ON di.id = ii.delivery_item_id
+                               JOIN iar_records ir    ON ir.id = ii.iar_id
+                               WHERE ii.iar_id = ? AND di.item_id = ? LIMIT 1");
+            $q->bind_param("ii", $ris['iar_id'], $row['item_id']);
+            $q->execute();
+            $hit = $q->get_result()->fetch_assoc();
+            $q->close();
+            if ($hit) {
+                $unit_price = $hit['unit_price'];
+                $acquired = $hit['delivery_date'];
+            }
+        }
+        if ($unit_price === null) {
+            $q = $db->prepare("SELECT sm.unit_cost AS unit_price, COALESCE(ir.delivery_date, DATE(sm.created_at)) AS delivery_date
+                               FROM stock_movements sm
+                               LEFT JOIN delivery_items di ON di.delivery_id = sm.id
+                               LEFT JOIN iar_items ii      ON ii.delivery_item_id = di.id
+                               LEFT JOIN iar_records ir    ON ir.id = ii.iar_id
+                               WHERE sm.item_id = ? AND sm.movement_type = 'in'
+                               ORDER BY sm.id DESC LIMIT 1");
+            $q->bind_param("i", $row['item_id']);
+            $q->execute();
+            $hit = $q->get_result()->fetch_assoc();
+            $q->close();
+            if ($hit) {
+                $unit_price = $hit['unit_price'];
+                $acquired = $hit['delivery_date'];
+            }
+        }
+
+        $qty = (int)$row['quantity'];
+        $items[] = [
+            'ris_item_id'   => (int)$row['ris_item_id'],
+            'item_id'       => (int)$row['item_id'],
+            'name'          => (string)$row['name'],
+            'item_description' => (string)($row['item_description'] ?? ''),
+            'unit'          => (string)$row['unit'],
+            'quantity'      => $qty,
+            'unit_price'    => $unit_price !== null ? (float)$unit_price : null,
+            'amount'        => $unit_price !== null ? round($qty * (float)$unit_price, 2) : null,
+            'date_acquired' => $acquired ? date('m/d/Y', strtotime($acquired)) : '',
+        ];
+    }
+    return ['ris' => $ris, 'items' => $items];
+}
+
+function generateParExcel($db, $ris_id, array $selected_ids, $property_nos, $par_no = '', $fund_cluster = '', $issued_by = '', $issued_position = '') {
+    try {
+        $data = fetchRisParItems($db, $ris_id);
+        if (!$data) {
+            throw new Exception("RIS record not found");
+        }
+        $ris = $data['ris'];
+        $lines = array_values(array_filter($data['items'], function ($it) use ($selected_ids) {
+            return in_array($it['ris_item_id'], $selected_ids, true);
+        }));
+        if (empty($lines)) {
+            throw new Exception("No items selected");
+        }
+
+        $template_path = "../public/templates/PAR.xlsx";
+        if (!file_exists($template_path)) {
+            throw new Exception("PAR template not found (public/templates/PAR.xlsx)");
+        }
+        $spreadsheet = PhpOffice\PhpSpreadsheet\IOFactory::load($template_path);
+        $base = $spreadsheet->getSheetByName('PAR (2)') ?: $spreadsheet->getSheet(0);
+
+        // Keep only the PAR form; the other sheets are lookup tables for property numbers.
+        foreach (array_reverse($spreadsheet->getSheetNames()) as $name) {
+            if ($name !== $base->getTitle()) {
+                $spreadsheet->removeSheetByIndex($spreadsheet->getIndex($spreadsheet->getSheetByName($name)));
+            }
+        }
+        $base->setTitle('PAR');
+
+        // The form has 29 item rows (13-41); longer lists continue on copies of the form.
+        $first_row = 13;
+        $rows_per_page = 29;
+        $pages = max(1, (int)ceil(count($lines) / $rows_per_page));
+        $sheets = [$base];
+        for ($p = 1; $p < $pages; $p++) {
+            $copy = clone $base;
+            $copy->setTitle('PAR ' . ($p + 1));
+            $spreadsheet->addSheet($copy);
+            $sheets[] = $copy;
+        }
+
+        $text = PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+        $align = PhpOffice\PhpSpreadsheet\Style\Alignment::class;
+        $received_position = trim($ris['designation'] . ($ris['requisition_office'] !== '' ? ' / ' . $ris['requisition_office'] : ''), ' /');
+
+        foreach ($sheets as $page => $sheet) {
+            if ($fund_cluster !== '') {
+                $sheet->setCellValueExplicit('A9', 'Fund Cluster:  ' . $fund_cluster, $text);
+            }
+            if ($par_no !== '') {
+                $sheet->setCellValueExplicit('H9', 'PAR No.: ' . $par_no, $text);
+            }
+
+            $row = $first_row;
+            foreach (array_slice($lines, $page * $rows_per_page, $rows_per_page) as $line) {
+                $sheet->mergeCells("C{$row}:E{$row}");
+
+                $description = $line['name'];
+                if ($line['item_description'] !== '' && stripos($line['item_description'], $line['name']) !== 0) {
+                    $description .= ', ' . $line['item_description'];
+                }
+                if (mb_strlen($description) > 150) {
+                    $description = mb_substr($description, 0, 147) . '...';
+                }
+                $property_no = trim((string)($property_nos[$line['ris_item_id']] ?? ''));
+
+                $sheet->setCellValue("A{$row}", $line['quantity']);
+                $sheet->setCellValueExplicit("B{$row}", $line['unit'], $text);
+                $sheet->setCellValueExplicit("C{$row}", $description, $text);
+                $sheet->setCellValueExplicit("F{$row}", $property_no, $text);
+                $sheet->setCellValueExplicit("H{$row}", $line['date_acquired'], $text);
+                if ($line['amount'] !== null) {
+                    $sheet->setCellValue("I{$row}", $line['amount']);
+                }
+
+                $sheet->getStyle("A{$row}:I{$row}")->getAlignment()->setVertical($align::VERTICAL_CENTER);
+                foreach (['A', 'B', 'F', 'H'] as $col) {
+                    $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal($align::HORIZONTAL_CENTER);
+                }
+                $sheet->getStyle("F{$row}")->getAlignment()->setShrinkToFit(true);
+                $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal($align::HORIZONTAL_LEFT)->setWrapText(true);
+                $sheet->getStyle("I{$row}")->getAlignment()->setHorizontal($align::HORIZONTAL_RIGHT);
+                $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getRowDimension($row)->setRowHeight(min(63, max(15.75, 15.75 * (int)ceil(mb_strlen($description) / 55))));
+                $row++;
+            }
+
+            // Signatories (the date lines are left for hand signing)
+            $sheet->setCellValueExplicit('A43', (string)$ris['requested_by'], $text);
+            $sheet->setCellValueExplicit('A45', $received_position, $text);
+            $sheet->setCellValueExplicit('F43', $issued_by, $text);
+            $sheet->setCellValueExplicit('F45', $issued_position, $text);
+            foreach (['A43', 'A45', 'F43', 'F45'] as $cell) {
+                $sheet->getStyle($cell)->getAlignment()->setHorizontal($align::HORIZONTAL_CENTER)
+                    ->setVertical(substr($cell, 1) === '43' ? $align::VERTICAL_BOTTOM : $align::VERTICAL_CENTER)
+                    ->setShrinkToFit(true);
+            }
+        }
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $filename = "PAR_" . preg_replace('/[^A-Za-z0-9_-]+/', '_', $par_no !== '' ? $par_no : $ris['ris_number']) . ".xlsx";
+
+        if (ob_get_length()) { ob_end_clean(); }
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        header('Pragma: public');
+
+        $writer = PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save('php://output');
+
+    } catch (Exception $e) {
+        error_log($e->getMessage());
+        echo "Error generating PAR: " . $e->getMessage();
+    }
+}
+
+// Logged-in employee (default "Issued by" on the PAR) and RIS list for the PAR modal
+$current_emp = ['name' => '', 'position' => ''];
+$cur_emp_id = intval($_SESSION['emp_id'] ?? 0);
+if ($cur_emp_id) {
+    $cur_stmt = $db->prepare("SELECT CONCAT(e.first_name, ' ', e.last_name) AS full_name, p.position_name, e.section_id
+                              FROM employee e LEFT JOIN position p ON e.position_id = p.position_id
+                              WHERE e.emp_id = ?");
+    $cur_stmt->bind_param("i", $cur_emp_id);
+    $cur_stmt->execute();
+    $cur_row = $cur_stmt->get_result()->fetch_assoc();
+    $cur_stmt->close();
+    if ($cur_row) {
+        $current_emp['name'] = $cur_row['full_name'];
+        $current_emp['position'] = trim(($cur_row['position_name'] ?? '') . ' / ' . ($sections[$cur_row['section_id']] ?? ''), ' /');
+    }
+}
+// PPE threshold by salary grade / job grade (from the PAR template's "Threshold" sheet).
+// Items costing up to the threshold are semi-expendable (ICS); only items above it go on a PAR.
+$par_thresholds = [
+    ['label' => 'SG 1-7 / JG 2-5 — up to ₱70,000',      'max' => 70000],
+    ['label' => 'SG 8-10 / JG 6-7 — up to ₱500,000',    'max' => 500000],
+    ['label' => 'SG 11-17 / JG 8-10 — up to ₱1M',       'max' => 1000000],
+    ['label' => 'SG 18-21 / JG 11 — up to ₱10M',        'max' => 10000000],
+    ['label' => 'SG 22-30 / JG 12-18 — ₱10M above',     'max' => 10000000],
+];
+$ris_list = [];
+$ris_list_result = $db->query("SELECT id, ris_number, requested_by, requisition_office, created_at FROM ris_records ORDER BY id DESC");
+if ($ris_list_result) {
+    while ($row = $ris_list_result->fetch_assoc()) {
+        $ris_list[] = $row;
     }
 }
 
@@ -580,245 +1246,11 @@ if ($employee_result) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Delivery Management - Inventory Management</title>
     <?php include '../includes/header.php'; ?>
+    <link rel="stylesheet" type="text/css" href="../css/delivery_entry.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap4.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer">
-    <style>
-        :root {
-            --h-bg:       #eef7f2;
-            --h-card:     #ffffff;
-            --h-card-alt: #f0faf5;
-            --h-surface3: #e2f3ea;
-            --h-border:   rgba(42,152,99,0.18);
-            --h-text:     #0f2d1e;
-            --h-muted:    #4a7a5e;
-            --h-primary:  #2a9863;
-            --h-primary-dim: rgba(42,152,99,.10);
-            --h-accent:   #24e78f;
-            --h-success:  #2a9863;
-            --h-warning:  #e67700;
-            --h-danger:   #c92a2a;
-            --h-blue:     #2a9863;
-            --h-shadow:   0 4px 24px rgba(42,152,99,.12);
-            --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
-        }
-        body.dark-mode {
-            --h-bg:       #0b1f17;
-            --h-card:     #102f22;
-            --h-card-alt: #0e2619;
-            --h-surface3: #16352a;
-            --h-border:   rgba(36,231,143,0.12);
-            --h-text:     #d4f5e5;
-            --h-muted:    #6aad8a;
-            --h-primary:  #24e78f;
-            --h-primary-dim: rgba(36,231,143,.12);
-            --h-accent:   #2a9863;
-            --h-success:  #24e78f;
-            --h-warning:  #ffd43b;
-            --h-danger:   #ff6b6b;
-            --h-blue:     #24e78f;
-            --h-shadow:   0 4px 24px rgba(0,0,0,.35);
-            --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
-        }
-
-        .content-wrapper { background: var(--h-bg) !important; }
-
-        .main-header.navbar, .main-header, nav.main-header, header.main-header { z-index: 1000 !important; }
-        .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
-        .main-sidebar, aside.main-sidebar { z-index: 999 !important; }
-        .modal-backdrop { z-index: 1040 !important; }
-        .modal { z-index: 1050 !important; }
-        .modal-dialog { z-index: 1051 !important; }
-        .modal-content { z-index: 1052 !important; }
-        .select2-container, .select2-dropdown { z-index: 1055 !important; }
-
-        /* ══ HERO ══ */
-        @keyframes pgHeroMeshDrift {
-            0%   { transform:translate(0,0)   rotate(0deg); }
-            100% { transform:translate(3%,2%) rotate(2deg); }
-        }
-        @keyframes pgHeroOrbFloat {
-            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
-            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
-            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
-        }
-        .pg-hero { background:#0b1f17; padding:36px 28px 66px; position:relative; overflow:hidden; }
-        .pg-hero-mesh {
-            position:absolute; inset:-50%; width:200%; height:200%;
-            background:
-                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
-                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
-                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
-                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
-            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
-            z-index:0;
-        }
-        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
-        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
-        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
-        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
-        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
-        .pg-hero-dots {
-            position:absolute; inset:0; z-index:0; pointer-events:none;
-            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
-            background-size:36px 36px;
-        }
-        .pg-hero-arc {
-            position:absolute; top:-50px; right:-50px; width:200px; height:200px; border-radius:50%;
-            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
-            pointer-events:none; z-index:0;
-        }
-        .pg-hero::after {
-            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
-            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
-        }
-        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
-        .pg-hero-inner { position:relative; z-index:2; }
-        .pg-hero-title {
-            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
-            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
-            display:flex; align-items:center; gap:10px;
-        }
-        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
-        .pg-hero-divider {
-            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
-            background:linear-gradient(90deg,transparent,#24e78f,transparent);
-        }
-        .pg-hero-layout { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:14px; position:relative; z-index:2; }
-
-        /* ── Card ── */
-        .card { background: var(--h-card) !important; border: 1px solid var(--h-border) !important; border-radius: 12px !important; box-shadow: var(--h-shadow-sm) !important; }
-        .card-header { background: var(--h-card) !important; border-bottom: 1px solid var(--h-border) !important; padding: 14px 20px !important; display:flex !important; align-items:center !important; justify-content:space-between !important; flex-wrap:wrap !important; gap:10px !important; }
-        .card-title { font-weight: 700 !important; font-size: .9rem !important; color: var(--h-text) !important; letter-spacing: -.2px; margin-right: auto !important; }
-        .card-body { background: var(--h-card) !important; padding: 18px !important; }
-        .card-tools { display:flex !important; align-items:center !important; justify-content:flex-end !important; gap:8px !important; flex-wrap:wrap !important; margin-left: auto !important; }
-        .card-tools .btn-primary {
-            background: var(--h-primary) !important; border: none !important; border-radius: 8px !important;
-            font-weight: 700 !important; font-size: .8rem !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important;
-        }
-        .card-tools .btn-primary:hover { filter: brightness(1.1) !important; }
-        .card-tools .btn-success {
-            background: var(--h-card-alt) !important; color: var(--h-primary) !important; border: 1px solid var(--h-border) !important;
-            border-radius: 8px !important; font-weight: 700 !important; font-size: .8rem !important;
-        }
-        .card-tools .btn-success:hover { background: var(--h-surface3) !important; }
-
-        /* ── Table ── */
-        #deliveryTable.table, #risTable.table { color: var(--h-text) !important; }
-        #deliveryTable.table thead th, #risTable.table thead th {
-            background: var(--h-card-alt) !important; border: none !important; border-bottom: 1px solid var(--h-border) !important;
-            color: var(--h-muted) !important; font-size: .68rem !important; font-weight: 700 !important;
-            text-transform: uppercase !important; letter-spacing: .6px !important; padding: 10px 14px !important;
-        }
-        #deliveryTable.table tbody tr, #risTable.table tbody tr { transition: background .12s; }
-        #deliveryTable.table tbody tr:hover, #risTable.table tbody tr:hover { background: var(--h-card-alt) !important; }
-        #deliveryTable.table tbody td, #risTable.table tbody td {
-            border-top: 1px solid var(--h-border) !important; border-left: none !important; border-right: none !important;
-            padding: 12px 14px !important; vertical-align: middle !important; font-size: .85rem !important; color: var(--h-text) !important;
-        }
-        #deliveryTable.table-bordered, #risTable.table-bordered { border: none !important; }
-        .table-responsive { border-radius: 8px; overflow: hidden; }
-
-        /* Row action buttons */
-        .action-buttons { display: flex; gap: 5px; }
-        .action-buttons .btn.btn-info    { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
-        .action-buttons .btn.btn-secondary { background: var(--h-card-alt) !important; color: var(--h-muted) !important; border: 1px solid var(--h-border) !important; border-radius: 7px !important; }
-        .action-buttons .btn.btn-success { background: rgba(42,152,99,.12) !important; color: var(--h-primary) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
-        .action-buttons .btn.btn-danger  { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.25) !important; border-radius: 7px !important; }
-        .action-buttons .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
-
-        /* ── Scrum-style modal (mirrors Applicant Databank modals) ── */
-        .scrum-style-modal .modal-content { background: var(--h-card) !important; border: 1px solid var(--h-border) !important; border-radius: 14px !important; box-shadow: 0 24px 80px rgba(0,0,0,.25) !important; color: var(--h-text) !important; }
-        .scrum-style-modal .modal-header { background: var(--h-card-alt) !important; border-bottom: 1px solid var(--h-border) !important; border-radius: 14px 14px 0 0 !important; padding: 16px 20px !important; }
-        .scrum-style-modal .modal-title { font-weight: 700 !important; font-size: .95rem !important; color: var(--h-text) !important; }
-        .scrum-style-modal .modal-title i { color: var(--h-primary) !important; margin-right: 8px; }
-        .scrum-style-modal .modal-header .close { color: var(--h-muted) !important; text-shadow: none !important; opacity: 1 !important; }
-        .scrum-style-modal .modal-header .close:hover { opacity: .7 !important; }
-        .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
-        .scrum-style-modal .modal-footer { border-top: 1px solid var(--h-border) !important; padding: 14px 20px !important; background: var(--h-card-alt) !important; border-radius: 0 0 14px 14px !important; }
-        .scrum-style-modal label { color: var(--h-muted) !important; font-size: .72rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: .5px !important; margin-bottom: 5px !important; }
-        .scrum-style-modal .form-control, .scrum-style-modal .form-control:focus {
-            background: var(--h-card-alt) !important; border: 1.5px solid var(--h-border) !important; color: var(--h-text) !important;
-            border-radius: 8px !important; font-size: .875rem !important;
-        }
-        .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
-        .scrum-style-modal .form-control:focus { border-color: var(--h-primary) !important; box-shadow: 0 0 0 3px var(--h-primary-dim) !important; }
-        .scrum-style-modal .form-control[readonly] { opacity: .8; }
-        .scrum-style-modal select.form-control option { background: var(--h-card) !important; color: var(--h-text) !important; }
-        .scrum-style-modal .form-text.text-muted { color: var(--h-muted) !important; }
-        .scrum-style-modal h4 { color: var(--h-text) !important; font-size: .95rem !important; font-weight: 700 !important; }
-        .scrum-style-modal .btn-secondary { background: var(--h-card-alt) !important; color: var(--h-muted) !important; border: 1px solid var(--h-border) !important; border-radius: 8px !important; font-weight: 600 !important; }
-        .scrum-style-modal .btn-primary { background: var(--h-primary) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important; }
-        .scrum-style-modal .btn-primary:hover { filter: brightness(1.1) !important; color: #fff !important; }
-        .scrum-style-modal .btn-success { background: var(--h-primary) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important; }
-        .scrum-style-modal .btn-success:hover { filter: brightness(1.1) !important; color: #fff !important; }
-
-        /* Info panels inside modals */
-        .iar-info, .ris-info {
-            background: var(--h-card-alt) !important; border: 1px solid var(--h-border) !important;
-            border-radius: 10px !important; padding: 16px 18px !important; margin-bottom: 20px !important;
-        }
-        .iar-info h4, .ris-info h4 { margin-bottom: 14px !important; }
-
-        /* Delivery / RIS line-item rows */
-        .delivery-item, .ris-item {
-            background: var(--h-card-alt) !important; border: 1px solid var(--h-border) !important;
-            border-radius: 10px !important; padding: 15px !important; margin-bottom: 15px !important;
-        }
-        .btn-add-item {
-            background: var(--h-primary) !important; border: none !important; color: #fff !important;
-            border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important;
-        }
-        .btn-add-item:hover { filter: brightness(1.1) !important; color: #fff !important; }
-        .btn-remove-item,
-        .scrum-style-modal .btn-remove-item {
-            background: var(--h-danger) !important; border: 1px solid var(--h-danger) !important; color: #fff !important;
-            border-radius: 8px !important; font-weight: 700 !important;
-        }
-        .btn-remove-item:hover,
-        .scrum-style-modal .btn-remove-item:hover { background: #a82530 !important; border-color: #a82530 !important; }
-        .btn-remove-item i,
-        .scrum-style-modal .btn-remove-item i { margin-right: 4px; color: #fff !important; }
-        .ris-remove-item { border-radius: 8px !important; }
-
-        .status-badge { font-size: 0.9rem; padding: 8px 15px; border-radius: 20px; }
-        .btn-excel { background: var(--h-primary) !important; color: #fff !important; border: none !important; }
-
-        /* Select2 (default theme) */
-        .select2-container--default .select2-selection--multiple {
-            background: var(--h-card-alt) !important; border: 1.5px solid var(--h-border) !important; border-radius: 8px !important; min-height: 38px !important;
-        }
-        .select2-container--default .select2-selection--multiple .select2-selection__choice {
-            background: var(--h-primary-dim) !important; border: 1px solid var(--h-primary) !important; color: var(--h-text) !important; border-radius: 5px !important;
-        }
-        .select2-container--default .select2-selection__choice__remove { color: var(--h-muted) !important; }
-        .select2-container--default .select2-selection__choice__remove:hover { color: var(--h-danger) !important; }
-        .select2-container--default.select2-container--focus .select2-selection--multiple {
-            border-color: var(--h-primary) !important; box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
-        }
-        .select2-dropdown {
-            background: var(--h-card-alt) !important; border: 1px solid var(--h-border) !important; color: var(--h-text) !important;
-            border-radius: 8px !important; box-shadow: var(--h-shadow) !important;
-        }
-        .select2-search--dropdown .select2-search__field {
-            background: var(--h-card) !important; border: 1px solid var(--h-border) !important; color: var(--h-text) !important; border-radius: 6px !important;
-        }
-        .select2-results__option { color: var(--h-text) !important; background: transparent !important; }
-        .select2-results__option--highlighted[aria-selected] { background: var(--h-primary) !important; color: #fff !important; }
-
-        /* Item dropdown rows: name + short description preview, not the full spec sheet */
-        .item-option { padding: 2px 0; }
-        .item-option-name { font-weight: 600; font-size: .85rem; color: inherit; }
-        .item-option-desc {
-            font-weight: 400; font-size: .74rem; color: var(--h-muted) !important;
-            white-space: normal; line-height: 1.35; margin-top: 2px;
-        }
-        .select2-results__option--highlighted .item-option-desc { color: rgba(255,255,255,.85) !important; }
-        .select2-selection--multiple .select2-selection__choice {
-            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-theme/0.1.0-beta.10/select2-bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -849,13 +1281,7 @@ if ($employee_result) {
 
         <div class="content">
             <div class="container-fluid">
-                <?php if ($error): ?>
-                    <div class="alert alert-danger"><?= $error ?></div>
-                <?php endif; ?>
-                
-                <?php if ($success): ?>
-                    <div class="alert alert-success"><?= $success ?></div>
-                <?php endif; ?>
+                <?php /* Success / error messages are shown as SweetAlert toasts (see script at bottom) */ ?>
 
                 <div class="card">
                     <div class="card-header" style="display:flex !important; justify-content:space-between !important; align-items:center !important;">
@@ -863,6 +1289,12 @@ if ($employee_result) {
                         <div class="card-tools" style="display:flex !important; justify-content:flex-end !important; margin-left:auto !important;">
                             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#deliveryModal">
                                 <i class="fas fa-plus"></i> New Delivery Entry
+                            </button>
+                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#stockCardModal">
+                                <i class="fas fa-clipboard-list"></i> Stock Card
+                            </button>
+                            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#parModal">
+                                <i class="fas fa-file-signature"></i> PAR
                             </button>
                             <a href="ris_records.php" class="btn btn-success">
                                 <i class="fas fa-external-link-alt"></i> View RIS Records
@@ -880,6 +1312,7 @@ if ($employee_result) {
                                         <th>Requisition Office</th>
                                         <th>Delivery Date</th>
                                         <th>Items</th>
+                                        <th>Status</th>
                                         <th>Total Amount</th>
                                         <th>Created By</th>
                                         <th>Date Created</th>
@@ -895,6 +1328,13 @@ if ($employee_result) {
                                         <td><?= htmlspecialchars($record['requisition_office']) ?></td>
                                         <td><?= date('M j, Y', strtotime($record['delivery_date'])) ?></td>
                                         <td class="text-center"><?= $record['item_count'] ?></td>
+                                        <td class="text-center">
+                                            <?php if (($record['delivery_status'] ?? 'Complete') === 'Partial'): ?>
+                                                <span class="badge badge-warning">Partial</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-success">Complete</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>₱<?= number_format($record['total_amount'], 2) ?></td>
                                         <td><?= htmlspecialchars($record['created_by_name']) ?></td>
                                         <td><?= date('M j, Y g:i A', strtotime($record['created_at'])) ?></td>
@@ -905,12 +1345,18 @@ if ($employee_result) {
                                             <button class="btn btn-secondary btn-sm print-iar" data-id="<?= $record['id'] ?>" title="Generate IAR">
                                                 <i class="fas fa-print"></i>
                                             </button>
+                                            <?php if (($record['delivery_status'] ?? 'Complete') === 'Partial'): ?>
+                                                <button class="btn btn-warning btn-sm complete-delivery" data-id="<?= $record['id'] ?>" title="Record the remaining delivery">
+                                                    <i class="fas fa-truck-loading"></i>
+                                                </button>
+                                            <?php endif; ?>
                                             <!-- Add this Create RIS button -->
                                             <button class="btn btn-success btn-sm create-ris" data-id="<?= $record['id'] ?>" title="Create RIS">
                                                 <i class="fas fa-file-export"></i> RIS
                                             </button>
                                             <form method="POST" action="" style="display: inline;" class="delete-iar-form">
                                                 <input type="hidden" name="iar_id" value="<?= $record['id'] ?>">
+                                                <input type="hidden" name="delete_iar" value="1">
                                                 <button type="submit" name="delete_iar" class="btn btn-danger btn-sm" title="Delete">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -929,7 +1375,7 @@ if ($employee_result) {
 
     <!-- Delivery Entry Modal -->
     <div class="modal fade scrum-style-modal" id="deliveryModal" tabindex="-1" role="dialog" aria-labelledby="deliveryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="deliveryModalLabel"><i class="fas fa-truck"></i>New Delivery Entry</h5>
@@ -1029,13 +1475,14 @@ if ($employee_result) {
                         </div>
 
                         <h4 class="mt-4 mb-3">Items Delivered</h4>
+                        <div id="deliveryStatusPreview" class="mb-3" style="display:none;"></div>
                         <div id="deliveryItems">
                             <div class="delivery-item">
                                 <div class="row">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="form-group">
                                             <label>Item *</label>
-                                            <select class="form-control select22 item-select" multiple="multiple" name="item_id[]" required>
+                                            <select class="form-control select22 item-select" name="item_id[]" required>
                                                 <option value="">-- Select Item --</option>
                                                 <?php foreach ($items as $id => $item): ?>
                                                     <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
@@ -1045,7 +1492,13 @@ if ($employee_result) {
                                     </div>
                                     <div class="col-md-2">
                                         <div class="form-group">
-                                            <label>Quantity *</label>
+                                            <label>Ordered Qty (PO) *</label>
+                                            <input type="number" class="form-control" name="ordered_quantity[]" min="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Delivered Qty *</label>
                                             <input type="number" class="form-control" name="quantity[]" min="1" required>
                                         </div>
                                     </div>
@@ -1061,11 +1514,11 @@ if ($employee_result) {
                                             <input type="text" class="form-control total-cost" readonly>
                                         </div>
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-1">
                                         <div class="form-group">
                                             <label>Actions</label>
                                             <button type="button" class="form-control btn btn-sm btn-remove-item" onclick="removeItem(this)">
-                                                <i class="fas fa-trash"></i> Remove
+                                                <i class="fas fa-trash" title="Remove"></i>
                                             </button>
                                         </div>
                                     </div>
@@ -1076,6 +1529,9 @@ if ($employee_result) {
                         <div class="form-group">
                             <button type="button" id="addItem" class="btn btn-add-item">
                                 <i class="fas fa-plus"></i> Add Another Item
+                            </button>
+                            <button type="button" id="openQuickAddItem" class="btn btn-outline-success ml-2" title="Item not in the list? Add it to the inventory without leaving this form">
+                                <i class="fas fa-box-open"></i> Item not in list? Add New Item
                             </button>
                         </div>
                     </div>
@@ -1089,6 +1545,54 @@ if ($employee_result) {
             </div>
         </div>
     </div>
+    <!-- Quick Add Item Modal (opens on top of the Delivery Entry modal, so the delivery form keeps its data) -->
+    <div class="modal fade scrum-style-modal" id="quickAddItemModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="quickAddItemForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Item</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Item Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category_id" class="form-control">
+                                <option value="0">-- Select Category --</option>
+                                <?php foreach ($categories as $cid => $cname): ?>
+                                    <option value="<?= $cid ?>"><?= htmlspecialchars($cname) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea name="description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Unit of Measure <span class="text-danger">*</span></label>
+                            <select name="unit_of_measure" class="form-control" required>
+                                <option value="">-- Select Unit of Measure --</option>
+                                <?php foreach ($units as $unit): ?>
+                                    <option value="<?= htmlspecialchars($unit['name']) ?>">
+                                        <?= htmlspecialchars($unit['name']) ?><?= $unit['abbreviation'] ? ' (' . htmlspecialchars($unit['abbreviation']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary" id="quickAddItemSubmit"><i class="fas fa-plus-circle"></i> Add Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
         <!-- RIS Entry Modal -->
     <div class="modal fade scrum-style-modal" id="risModal" tabindex="-1" role="dialog" aria-labelledby="risModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
@@ -1122,7 +1626,7 @@ if ($employee_result) {
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="ris_requested_by">Requested By *</label>
-                                        <select class="form-control select22" multiple="multiple" id="ris_requested_by" name="ris_requested_by" required>
+                                        <select class="form-control select22" id="ris_requested_by" name="ris_requested_by" required>
                                             <option value="">-- Select Employee --</option>
                                             <?php foreach ($employees as $employee): ?>
                                                 <option value="<?= $employee['emp_id'] ?>" 
@@ -1155,7 +1659,7 @@ if ($employee_result) {
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label>Item *</label>
-                                            <select class="form-control ris-item-select select22" multiple="multiple" name="ris_item_id[]" required>
+                                            <select class="form-control ris-item-select select22" name="ris_item_id[]" required>
                                                 <option value="">-- Select Item --</option>
                                                 <!-- Items will be populated dynamically via JavaScript -->
                                             </select>
@@ -1207,13 +1711,185 @@ if ($employee_result) {
             </div>
         </div>
     </div>
+    <!-- PAR Modal -->
+    <div class="modal fade scrum-style-modal" id="parModal" tabindex="-1" role="dialog" aria-labelledby="parModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="parModalLabel"><i class="fas fa-file-signature"></i>Generate Property Acknowledgment Receipt (PAR)</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="" id="parForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="par_ris_id">Requisition and Issue Slip (RIS) *</label>
+                                    <select class="form-control select22" id="par_ris_id" name="par_ris_id" required>
+                                        <option value="">-- Select RIS --</option>
+                                        <?php foreach ($ris_list as $r): ?>
+                                            <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['ris_number'] . ' — ' . $r['requested_by'] . ' (' . $r['requisition_office'] . ')') ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="par_no">PAR No.</label>
+                                    <input type="text" class="form-control" id="par_no" name="par_no" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="par_fund_cluster">Fund Cluster</label>
+                                    <input type="text" class="form-control" id="par_fund_cluster" name="par_fund_cluster" autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="par_issued_by">Issued By</label>
+                                    <input type="text" class="form-control" id="par_issued_by" name="par_issued_by" value="<?= htmlspecialchars($current_emp['name']) ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="par_issued_position">Issuer Position/Office</label>
+                                    <input type="text" class="form-control" id="par_issued_position" name="par_issued_position" value="<?= htmlspecialchars($current_emp['position']) ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="par_threshold">PPE Threshold (SG / JG)</label>
+                                    <select class="form-control" id="par_threshold">
+                                        <option value="">-- No threshold check --</option>
+                                        <?php foreach ($par_thresholds as $t): ?>
+                                            <option value="<?= $t['max'] ?>"><?= htmlspecialchars($t['label']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4 class="mt-3 mb-3">Items to include</h4>
+                        <div id="parItems"><p class="text-muted mb-0">Select a RIS to load its items.</p></div>
+                        <small class="form-text text-muted">Items whose unit cost is within the selected threshold are semi-expendable (ICS) and are unticked. The end user (Received by) is taken from the RIS. Date lines are left blank for signing. Amount = quantity × unit cost from the delivery.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="print_par" class="btn btn-primary">
+                            <i class="fas fa-file-excel"></i> Download PAR
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Stock Card Modal -->
+    <div class="modal fade scrum-style-modal" id="stockCardModal" tabindex="-1" role="dialog" aria-labelledby="stockCardModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="stockCardModalLabel"><i class="fas fa-clipboard-list"></i>Generate Stock Card</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="" id="stockCardForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="stock_item_id">Item *</label>
+                                    <select class="form-control select22" id="stock_item_id" name="stock_item_id" required>
+                                        <option value="">-- Select Item --</option>
+                                        <?php foreach ($items as $id => $item): ?>
+                                            <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="stock_fund_cluster">Fund Cluster</label>
+                                    <input type="text" class="form-control" id="stock_fund_cluster" name="stock_fund_cluster" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="stock_no">Stock No.</label>
+                                    <input type="text" class="form-control" id="stock_no" name="stock_no" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="stock_reorder_point">Re-order Point</label>
+                                    <input type="number" class="form-control" id="stock_reorder_point" name="stock_reorder_point" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="stock_date_from">Date From</label>
+                                    <input type="date" class="form-control" id="stock_date_from" name="stock_date_from">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="stock_date_to">Date To</label>
+                                    <input type="date" class="form-control" id="stock_date_to" name="stock_date_to">
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Leave the dates blank to include every receipt and issue of the item. Earlier transactions are rolled into a "Balance forwarded" line.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" name="print_stock_card" class="btn btn-primary">
+                            <i class="fas fa-file-excel"></i> Download Stock Card
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <?php include '../includes/mainfooter.php'; ?>
 </div>
 <?php include '../includes/footer.php'; ?>
 <script>
-    // Renders each dropdown row as the item name plus a short, truncated
-    // preview of its (often very long) description, instead of dumping the
-    // whole spec sheet into the row/selected chip.
+    // <option> list for every Item dropdown in the delivery form
+    var deliveryItemOptions = <?php
+        $__opts = '<option value="">-- Select Item --</option>';
+        foreach ($items as $id => $item) {
+            $__opts .= '<option value="' . $id . '" data-description="' . htmlspecialchars($item['description'] ?? '') . '">' . htmlspecialchars($item['name']) . '</option>';
+        }
+        echo json_encode($__opts);
+    ?>;
+
+    function showAlert(icon, message) {
+        Swal.fire({
+            icon: icon,
+            title: icon === 'success' ? 'Success!' : 'Error!',
+            text: message,
+            confirmButtonText: 'OK',
+            confirmButtonColor: icon === 'success' ? '#2a9863' : '#c92a2a',
+            allowOutsideClick: false
+        });
+    }
+
+    <?php if ($success): ?>
+    showAlert('success', <?= json_encode(strip_tags($success)) ?>);
+    <?php endif; ?>
+    <?php if ($error): ?>
+    showAlert('error', <?= json_encode(strip_tags($error)) ?>);
+    <?php endif; ?>
+    // Renders each dropdown row as the item name plus a short, truncated preview of its (often very long) description, instead of dumping the hole spec sheet into the row/selected chip.
     function formatItemOption(option) {
         if (!option.id) {
             return option.text;
@@ -1228,8 +1904,25 @@ if ($employee_result) {
         return $result;
     }
 
+    function initSelect2($els) {
+        $els.each(function() {
+            var $el = $(this);
+            if ($el.hasClass('select2-hidden-accessible')) {
+                return; 
+            }
+            var $modal = $el.closest('.modal');
+            $el.select2({
+                theme: 'bootstrap',
+                width: '100%',
+                placeholder: '-- Please Select --',
+                allowClear: true,
+                dropdownParent: $modal.length ? $modal : $(document.body),
+                templateResult: formatItemOption
+            });
+        });
+    }
+
     $(document).ready(function() {
-        // Delete IAR confirmation (SweetAlert2 instead of the native confirm())
         $('.delete-iar-form').on('submit', function(e) {
             let form = this;
             if ($(form).data('confirmed')) {
@@ -1252,8 +1945,7 @@ if ($employee_result) {
             });
         });
 
-        // Auto-format PO Number like a landline-style masked input:
-        // fixed "PO-" prefix, digits auto-grouped as YYYY-MM-####
+        // Auto-format PO Number like a landline-style masked input: fixed "PO-" prefix, digits auto-grouped as YYYY-MM-####
         function formatPoNumber(raw) {
             // Strip everything except digits (ignore any existing "PO" / dashes the user typed)
             var digits = raw.replace(/\D/g, '').substring(0, 10); // 4 (year) + 2 (month) + 4 (seq)
@@ -1316,23 +2008,135 @@ if ($employee_result) {
             }
             return true;
         });
-        $('.select22').select2({
-            placeholder: "-- Please Select --",
-            allowClear: true,
-            maximumSelectionLength: 1,
-            templateResult: formatItemOption
-        });
+        initSelect2($('.select22'));
         // Initialize DataTable with export buttons
         $('#deliveryTable').DataTable({
             "responsive": true,
             "autoWidth": false,
-            "order": [[8, 'desc']]
+            "order": [[9, 'desc']]
         });
 
         $('#risTable').DataTable({
             "responsive": true,
             "autoWidth": false,
             "order": [[6, 'desc']]
+        });
+
+        // ---- Live Complete / Partial preview for the delivery being entered ----
+        // (The saved status also counts earlier deliveries of the same items on the same PO.)
+        function updateDeliveryStatusPreview() {
+            let hasData = false, shortItems = 0, over = 0;
+            $('#deliveryItems .delivery-item').each(function() {
+                const ordered = parseInt($(this).find('input[name="ordered_quantity[]"]').val(), 10);
+                const $qty = $(this).find('input[name="quantity[]"]');
+                const prior = parseInt($qty.data('prior'), 10) || 0;   // delivered on earlier IARs of this PO
+                const delivered = prior + parseInt($qty.val(), 10);
+                if (!isNaN(ordered) && !isNaN(delivered)) {
+                    hasData = true;
+                    if (delivered < ordered) shortItems++;
+                    if (delivered > ordered) over++;
+                }
+            });
+            const $box = $('#deliveryStatusPreview');
+            if (!hasData) { $box.hide().empty(); return; }
+            if (over > 0) {
+                $box.html('<span class="badge badge-danger">Check quantities</span> Delivered quantity is more than the ordered quantity on ' + over + ' item(s).').show();
+            } else if (shortItems > 0) {
+                $box.html('<span class="badge badge-warning">Partial delivery</span> ' + shortItems + ' item(s) are short of the PO quantity.').show();
+            } else {
+                $box.html('<span class="badge badge-success">Complete delivery</span> All items match the PO quantity.').show();
+            }
+        }
+        $('#deliveryItems').on('input', 'input[name="ordered_quantity[]"], input[name="quantity[]"]', updateDeliveryStatusPreview);
+        $(document).on('click', '.btn-remove-item', function() { setTimeout(updateDeliveryStatusPreview, 0); });
+        $('#deliveryModal').on('hidden.bs.modal', function() { setTimeout(updateDeliveryStatusPreview, 0); });
+
+        // ---- Complete a PARTIAL delivery: open the delivery form pre-filled with what is still owed ----
+        $(document).on('click', '.complete-delivery', function() {
+            $.post('delivery_entry.php', {get_po_balance: 1, iar_id: $(this).data('id')}, function(res) {
+                if (!res.success) { showAlert('error', res.message); return; }
+
+                $('#deliveryModal').one('shown.bs.modal', function() {
+                    $('#po_number').val(res.po_number).prop('readonly', true);
+                    $('#po_date').val(res.po_date);
+                    $('#supplier').val(res.supplier).prop('readonly', true);
+                    $('#requisition_office').val(res.requisition_office);
+                    $('#iar_number').val(res.iar_number);
+                    $('#hidden_iar_number').val(res.iar_number);
+
+                    $('#deliveryItems').empty();
+                    $.each(res.items, function(i, it) {
+                        $('#addItem').trigger('click');
+                        var $row = $('#deliveryItems .delivery-item').last();
+                        $row.find('.item-select').val(String(it.item_id)).trigger('change');
+                        $row.find('input[name="ordered_quantity[]"]').val(it.ordered).prop('readonly', true);
+                        $row.find('input[name="quantity[]"]').val(it.remaining).attr('max', it.remaining).data('prior', it.delivered);
+                        $row.find('input[name="unit_cost[]"]').val(it.unit_price);
+                        $row.find('input[name="quantity[]"]').trigger('input');
+                    });
+                    updateDeliveryStatusPreview();
+                });
+                $('#deliveryModal').modal('show');
+            }, 'json').fail(function() {
+                showAlert('error', 'Could not load the remaining items for this PO.');
+            });
+        });
+
+        // ---- Quick "Add New Item" (does not reload the page, delivery form keeps its data) ----
+        $('#openQuickAddItem').on('click', function() {
+            $('#quickAddItemForm')[0].reset();
+            $('#quickAddItemModal').modal('show');
+        });
+
+        // Stack the quick-add modal above the delivery modal
+        $('#quickAddItemModal').on('shown.bs.modal', function() {
+            $(this).css('z-index', 1070);
+            $('.modal-backdrop').last().css('z-index', 1065);
+            $(this).find('input[name="name"]').trigger('focus');
+        });
+        // Closing the 2nd modal makes Bootstrap drop "modal-open" from <body>, which kills
+        // scrolling in the delivery modal. Put it back while the delivery modal is still open.
+        $('#quickAddItemModal').on('hidden.bs.modal', function() {
+            if ($('#deliveryModal').hasClass('show')) {
+                $('body').addClass('modal-open');
+            }
+        });
+
+        $('#quickAddItemForm').on('submit', function(e) {
+            e.preventDefault();
+            var $btn = $('#quickAddItemSubmit').prop('disabled', true);
+            $.ajax({
+                url: 'delivery_entry.php',
+                type: 'POST',
+                data: $(this).serialize() + '&quick_add_item=1',
+                dataType: 'json'
+            }).done(function(res) {
+                if (!res.success) {
+                    Swal.fire({icon: 'error', title: 'Error!', text: res.message, customClass: {container: 'swal-above-modal'}});
+                    return;
+                }
+                var item = res.item;
+                var $opt = $('<option></option>').val(item.id).attr('data-description', item.description || '').text(item.name);
+
+                // Make the new item available in every Item dropdown + in future rows
+                $('.item-select').each(function() { $(this).append($opt.clone()); });
+                deliveryItemOptions += $('<div>').append($opt.clone()).html();
+
+                // Select it in the first empty row (or add a new row if all are filled)
+                var $target = $('#deliveryItems .item-select').filter(function() { return !$(this).val(); }).first();
+                if (!$target.length) {
+                    $('#addItem').trigger('click');
+                    $target = $('#deliveryItems .item-select').last();
+                }
+                $target.val(String(item.id)).trigger('change');
+
+                $('#quickAddItemModal').modal('hide');
+                Swal.fire({icon: 'success', title: 'Item added', text: item.name + ' was added to the inventory and selected.', timer: 1800, showConfirmButton: false});
+            }).fail(function() {
+                Swal.fire({icon: 'error', title: 'Error!', text: 'An error occurred while adding the item.'});
+            }).always(function() {
+                $btn.prop('disabled', false);
+            });
         });
 
         let itemCount = 1;
@@ -1343,20 +2147,23 @@ if ($employee_result) {
             const newItem = `
                 <div class="delivery-item">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control select22 item-select" multiple="multiple" name="item_id[]" required>
-                                    <option value="">-- Select Item --</option>
-                                    <?php foreach ($items as $id => $item): ?>
-                                        <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
-                                    <?php endforeach; ?>
+                                <select class="form-control select22 item-select" name="item_id[]" required>
+                                    ${deliveryItemOptions}
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
-                                <label>Quantity *</label>
+                                <label>Ordered Qty (PO) *</label>
+                                <input type="number" class="form-control" name="ordered_quantity[]" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Delivered Qty *</label>
                                 <input type="number" class="form-control" name="quantity[]" min="1" required>
                             </div>
                         </div>
@@ -1372,11 +2179,11 @@ if ($employee_result) {
                                 <input type="text" class="form-control total-cost" readonly>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <div class="form-group">
                                 <label>Actions</label>
                                 <button type="button" class="form-control btn btn-sm btn-remove-item">
-                                    <i class="fas fa-trash"></i> Remove
+                                    <i class="fas fa-trash" title="Remove"></i>
                                 </button>
                             </div>
                         </div>
@@ -1385,12 +2192,7 @@ if ($employee_result) {
             `;
             $('#deliveryItems').append(newItem);
             attachCalculationEvents();
-            $('.select22').select2({
-            placeholder: "-- Please Select --",
-            allowClear: true,
-            maximumSelectionLength: 1,
-            templateResult: formatItemOption
-        });
+            initSelect2($('.select22'));
         });
         
         // Attach calculation events to existing elements
@@ -1415,23 +2217,27 @@ if ($employee_result) {
         // Reset form when modal is closed
         $('#deliveryModal').on('hidden.bs.modal', function () {
             document.getElementById("deliveryForm").reset();
+            $('#po_number, #supplier').prop('readonly', false);   // unlocked again after a "complete delivery" entry
             $('#deliveryItems').html(`
                 <div class="delivery-item">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control select22 item-select" multiple="multiple" name="item_id[]" required>
-                                    <option value="">-- Select Item --</option>
-                                    <?php foreach ($items as $id => $item): ?>
-                                        <option value="<?= $id ?>" data-description="<?= htmlspecialchars($item['description']) ?>"><?= htmlspecialchars($item['name']) ?></option>
-                                    <?php endforeach; ?>
+                                <select class="form-control select22 item-select" name="item_id[]" required>
+                                    ${deliveryItemOptions}
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="form-group">
-                                <label>Quantity *</label>
+                                <label>Ordered Qty (PO) *</label>
+                                <input type="number" class="form-control" name="ordered_quantity[]" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Delivered Qty *</label>
                                 <input type="number" class="form-control" name="quantity[]" min="1" required>
                             </div>
                         </div>
@@ -1447,11 +2253,11 @@ if ($employee_result) {
                                 <input type="text" class="form-control total-cost" readonly>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <div class="form-group">
                                 <label>Actions</label>
                                 <button type="button" class="btn btn-sm btn-remove-item mt-1">
-                                    <i class="fas fa-trash"></i> Remove
+                                    <i class="fas fa-trash" title="Remove"></i>
                                 </button>
                             </div>
                         </div>
@@ -1459,11 +2265,7 @@ if ($employee_result) {
                 </div>
             `);
             attachCalculationEvents();
-            $('.select22').select2({
-                placeholder: "-- Please Select --",
-                allowClear: true,
-                maximumSelectionLength: 1
-            });
+            initSelect2($('.select22'));
         });
 
        // Handle IAR print button click
@@ -1544,12 +2346,7 @@ if ($employee_result) {
         });
         
         // Reinitialize Select2
-        $select.select2({
-            placeholder: "-- Please Select --",
-            allowClear: true,
-            maximumSelectionLength: 1,
-            templateResult: formatItemOption
-        });
+        initSelect2($select);
     }
 
     // Move removeItem function outside the document ready scope
@@ -1572,7 +2369,7 @@ if ($employee_result) {
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Item *</label>
-                                <select class="form-control ris-item-select select21" multiple="multiple" name="ris_item_id[]" required>
+                                <select class="form-control ris-item-select select21" name="ris_item_id[]" required>
                                     <option value="">-- Select Item --</option>
                                 </select>
                             </div>
@@ -1614,29 +2411,22 @@ if ($employee_result) {
             
             attachRisItemEvents();
 
-            $('.select21').select2({
-                placeholder: "-- Please Select --",
-                allowClear: true,
-                maximumSelectionLength: 1,
-                templateResult: formatItemOption
-            });
+            initSelect2($('.select21'));
         });
 
         
-        // Attach events to RIS item elements
         function attachRisItemEvents() {
-            // Item selection change event
-            $('.ris-item-select').off('change').on('change', function() {
+            $('.ris-item-select').off('change.risItem').on('change.risItem', function() {
                 const selectedOption = $(this).find('option:selected');
                 const stock = selectedOption.data('stock') || 0;
                 const unit = selectedOption.data('unit') || '';
-                
+
                 $(this).closest('.row').find('.ris-available-stock').val(stock);
                 $(this).closest('.row').find('.ris-unit').val(unit);
             });
-            
+
             // Remove item event
-            $('.ris-remove-item').off('click').on('click', function() {
+            $('.ris-remove-item').off('click.risItem').on('click.risItem', function() {
                 if ($('.ris-item').length > 1) {
                     $(this).closest('.ris-item').remove();
                 } else {
@@ -1669,82 +2459,140 @@ if ($employee_result) {
             $('#ris_requisition_office').val(section);
         });
 
+        // PAR: load the items of the selected RIS
+        // Untick items that fall within the selected PPE threshold (semi-expendable, not for PAR)
+        function applyParThreshold() {
+            var max = parseFloat($('#par_threshold').val());
+            $('#parItems .par-item').each(function() {
+                var $row = $(this);
+                var price = $row.data('unitPrice');
+                var $flag = $row.find('.par-flag').empty();
+                if (!isNaN(max) && price !== null && price !== undefined && price <= max) {
+                    $row.find('.par-use').prop('checked', false);
+                    $flag.text('Unit cost ₱' + parseFloat(price).toLocaleString(undefined, {minimumFractionDigits: 2}) +
+                        ' is within the threshold: semi-expendable (ICS), not PAR');
+                } else {
+                    $row.find('.par-use').prop('checked', true);
+                }
+            });
+        }
+        $('#par_threshold').on('change', applyParThreshold);
+
+        function renderParItems(items) {
+            var $wrap = $('#parItems').empty();
+            if (!items.length) {
+                $wrap.append('<p class="text-muted mb-0">This RIS has no items.</p>');
+                return;
+            }
+            $.each(items, function(i, it) {
+                var desc = it.name + (it.item_description ? ', ' + it.item_description : '');
+                if (desc.length > 110) { desc = desc.substring(0, 110) + '…'; }
+                var $row = $(
+                    '<div class="par-item"><div class="row">' +
+                    '<div class="col-md-1"><div class="form-group"><label>Use</label>' +
+                    '<input type="checkbox" class="form-control par-use" name="par_items[]" checked style="height:20px;"></div></div>' +
+                    '<div class="col-md-4"><div class="form-group"><label>Item</label><input type="text" class="form-control par-desc" readonly><small class="par-flag" style="color:var(--h-warning);display:block;margin-top:3px;"></small></div></div>' +
+                    '<div class="col-md-3"><div class="form-group"><label>Property Number</label><input type="text" class="form-control par-prop" autocomplete="off"></div></div>' +
+                    '<div class="col-md-2"><div class="form-group"><label>Date Acquired</label><input type="text" class="form-control par-date" readonly></div></div>' +
+                    '<div class="col-md-2"><div class="form-group"><label>Amount</label><input type="text" class="form-control par-amount" readonly></div></div>' +
+                    '</div></div>'
+                );
+                $row.data('unitPrice', it.unit_price);
+                $row.find('.par-use').val(it.ris_item_id);
+                $row.find('.par-desc').val(it.quantity + ' ' + it.unit + ' — ' + desc).attr('title', desc);
+                $row.find('.par-prop').attr('name', 'par_property_no[' + it.ris_item_id + ']');
+                $row.find('.par-date').val(it.date_acquired);
+                $row.find('.par-amount').val(it.amount !== null ? parseFloat(it.amount).toLocaleString(undefined, {minimumFractionDigits: 2}) : '');
+                $wrap.append($row);
+            });
+            applyParThreshold();
+        }
+
+        $('#par_ris_id').on('change', function() {
+            var risId = $(this).val();
+            if (!risId) {
+                $('#parItems').html('<p class="text-muted mb-0">Select a RIS to load its items.</p>');
+                return;
+            }
+            $('#parItems').html('<p class="text-muted mb-0"><i class="fas fa-spinner fa-spin"></i> Loading items…</p>');
+            $.post('delivery_entry.php', {get_ris_items: 1, ris_id: risId}, function(res) {
+                if (res.success) {
+                    renderParItems(res.items);
+                } else {
+                    $('#parItems').html('<p class="text-danger mb-0"></p>').find('p').text(res.message || 'Could not load items.');
+                }
+            }, 'json').fail(function() {
+                $('#parItems').html('<p class="text-danger mb-0">Could not load items.</p>');
+            });
+        });
+
+        $('#parModal').on('hidden.bs.modal', function() {
+            $('#parForm')[0].reset();
+            $('#par_ris_id').val(null).trigger('change');
+        });
+
+        // Reset Stock Card form when modal is closed
+        $('#stockCardModal').on('hidden.bs.modal', function() {
+            $('#stockCardForm')[0].reset();
+            $('#stock_item_id').val(null).trigger('change');
+        });
+
         // Reset RIS form when modal is closed
         $('#risModal').on('hidden.bs.modal', function() {
             $('#risForm')[0].reset();
             iarItems = []; // Clear the global items array
-            
-            // Reset RIS form when modal is closed
-            $('#risModal').on('hidden.bs.modal', function() {
-                $('#risForm')[0].reset();
-                iarItems = []; // Clear the global items array
-                
-                // Reset to single item row
-                $('#risItems').html(`
-                    <div class="ris-item">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label>Item *</label>
-                                    <select class="form-control ris-item-select select21" multiple="multiple" name="ris_item_id[]" required>
+            $('#ris_requested_by').val(null).trigger('change');
+
+            // Reset to single item row
+            $('#risItems').html(`
+                <div class="ris-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Item *</label>
+                                <select class="form-control ris-item-select select21" name="ris_item_id[]" required>
                                     <option value="">-- Select Item --</option>
-                                    </select>
-                                </div>
+                                </select>
                             </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>Available Stock</label>
-                                    <input type="text" class="form-control ris-available-stock" readonly>
-                                </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Available Stock</label>
+                                <input type="text" class="form-control ris-available-stock" readonly>
                             </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>Quantity *</label>
-                                    <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
-                                </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Quantity *</label>
+                                <input type="number" class="form-control" name="ris_quantity[]" min="1" required>
                             </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>Unit</label>
-                                    <input type="text" class="form-control ris-unit" readonly>
-                                </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Unit</label>
+                                <input type="text" class="form-control ris-unit" readonly>
                             </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label>Actions</label>
-                                    <button type="button" class="btn btn-sm btn-danger mt-1 ris-remove-item">
-                                        <i class="fas fa-trash"></i> Remove
-                                    </button>
-                                </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Actions</label>
+                                <button type="button" class="form-control btn btn-sm btn-danger ris-remove-item">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
                             </div>
                         </div>
                     </div>
-                `);
-                
-                // Reattach events to the reset form
-                attachRisItemEvents();
-            });
-            $('.select21').select2({
-                placeholder: "-- Please Select --",
-                allowClear: true,
-                maximumSelectionLength: 1,
-                templateResult: formatItemOption
-            });
-            // Populate the new select with existing items
-            const $newSelect = $('#risItems .ris-item-select').last();
-                populateRisItemSelect($newSelect);
-                // Reattach events
-                attachRisItemEvents();
+                </div>
+            `);
+            initSelect2($('#risItems .ris-item-select'));
+            attachRisItemEvents();
         });
-            // Reinitialize Select2 for elements inside the modal
-            $('.select21').select2({
-                placeholder: "-- Please Select --",
-                allowClear: true,
-                maximumSelectionLength: 1,
-                width: '100%',
-                templateResult: formatItemOption
-            });
-        
+
+        // Searchable employee select inside the RIS modal
+        initSelect2($('#ris_requested_by'));
+        // RIS item selects are initialised when populated (populateRisItemSelect)
+        initSelect2($('.ris-item-select'));
+
 </script>
 </body>
 </html>

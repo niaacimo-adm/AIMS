@@ -528,8 +528,6 @@ $uploads_url = '../dist/img/employees/';
 
     <div class="content-wrapper" style="background:var(--bg,#f0f2f7);">
 
-
-
         <div class="content" style="padding:20px 0 0;">
             <div class="container-fluid">
 

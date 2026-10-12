@@ -109,6 +109,55 @@ try {
             echo json_encode(['success' => true, 'reactions' => $reactions]);
             break;
 
+        case 'send_broadcast':
+            // Send the same message to everyone, or to 2+ selected users.
+            // Delivered into each recipient's existing private room (no schema change).
+            $message = trim($_POST['message'] ?? '');
+            $mode    = $_POST['mode'] ?? 'selected';   // 'all' | 'selected'
+
+            if ($message === '') {
+                echo json_encode(['success' => false, 'error' => 'Message cannot be empty']);
+                break;
+            }
+
+            if ($mode === 'all') {
+                $recipients = [];
+                foreach ($chat->getOnlineUsers($current_user_id) as $u) {
+                    $recipients[] = (int)$u['emp_id'];
+                }
+            } else {
+                $raw = $_POST['recipient_ids'] ?? [];
+                if (!is_array($raw)) { $raw = explode(',', (string)$raw); }
+                $recipients = array_map('intval', $raw);
+            }
+
+            // de-duplicate, drop self and invalid ids
+            $recipients = array_values(array_unique(array_filter($recipients, function ($id) use ($current_user_id) {
+                return $id > 0 && $id != $current_user_id;
+            })));
+
+            if ($mode !== 'all' && count($recipients) < 2) {
+                echo json_encode(['success' => false, 'error' => 'Select at least 2 recipients']);
+                break;
+            }
+            if (!$recipients) {
+                echo json_encode(['success' => false, 'error' => 'No recipients found']);
+                break;
+            }
+
+            $sent = 0; $failed = 0;
+            foreach ($recipients as $rid) {
+                $room_id = $chat->getPrivateRoom($current_user_id, $rid);
+                if ($room_id && $chat->sendMessage($room_id, $current_user_id, $message)) {
+                    $sent++;
+                } else {
+                    $failed++;
+                }
+            }
+            echo json_encode(['success' => $sent > 0, 'sent' => $sent, 'failed' => $failed,
+                              'error' => $sent > 0 ? null : 'Failed to send message']);
+            break;
+
         case 'delete_message':
             $message_id = intval($_POST['message_id'] ?? 0);
             if ($message_id) {

@@ -32,7 +32,7 @@
 <script src="../plugins/moment/moment.min.js"></script>
 <!-- jQuery UI - COMMENT OUT IF CAUSING ISSUES -->
 <!-- <script src="../plugins/jquery-ui/jquery-ui.min.js"></script> -->
-
+<script src="../includes/queue_alert.js"></script>  
 <script>
 // Footer scripts — sidebar toggle is handled exclusively in mainheader.php
 $(document).ready(function() {

@@ -411,6 +411,21 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 .sticky-panel { position:sticky;top:16px; }
 .divider { height:1px;background:var(--rr-border-sub);margin:16px 0; }
 
+/* Hero logo watermark */
+.mh-logo-watermark { position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:90px;height:90px;object-fit:contain;opacity:.12;filter:grayscale(1) brightness(2); }
+.pg-hero-title i { font-size:1.5rem;color:#24e78f; }
+/* Detail panel */
+.rd-desc { font-size:.82rem;color:var(--rr-text-muted);margin-bottom:8px; }
+.rd-meta { display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--rr-text-2);margin-bottom:10px; }
+.rc-legend { display:flex;gap:6px;margin-left:auto; }
+.lg-pill { font-size:.7rem;font-weight:700;border-radius:20px;padding:.25em .75em; }
+.lg-free { background:var(--av-free);color:var(--av-free-txt); }
+.lg-busy { background:var(--av-busy);color:var(--av-busy-txt); }
+.res-feed-item .badge { flex-shrink:0; }
+.sched-fill { width:100%; }
+.sched-fill.sf-free { font-weight:600; }
+.stat-row { position:relative;z-index:3; }
+.content-wrapper > .content { padding-bottom:24px; }
 /* Availability check inline spinner */
 @keyframes spin { to{transform:rotate(360deg)} }
 .spin-icon { animation:spin 1s linear infinite;display:inline-block; }
@@ -457,10 +472,22 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 
       <!-- Stat row -->
       <div class="stat-row mt-4">
-        <div class="stat-chip"><span class="sc-label">My Pending</span><span class="sc-val sc-pending" id="stat-pending">–</span></div>
-        <div class="stat-chip"><span class="sc-label">My Approved</span><span class="sc-val sc-approved" id="stat-approved">–</span></div>
-        <div class="stat-chip"><span class="sc-label">Total Rooms</span><span class="sc-val sc-total" id="stat-rooms">–</span></div>
-        <div class="stat-chip"><span class="sc-label">Today's Bookings</span><span class="sc-val sc-total" id="stat-today">–</span></div>
+        <div class="stat-card">
+          <div class="stat-card-icon stat-ic-pending"><i class="fas fa-hourglass-half"></i></div>
+          <div class="stat-card-body"><div class="stat-card-label">My Pending</div><div class="stat-card-val stat-val-pending" id="stat-pending">–</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon stat-ic-approved"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-card-body"><div class="stat-card-label">My Approved</div><div class="stat-card-val stat-val-approved" id="stat-approved">–</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon stat-ic-rooms"><i class="fas fa-door-open"></i></div>
+          <div class="stat-card-body"><div class="stat-card-label">Total Rooms</div><div class="stat-card-val stat-val-rooms" id="stat-rooms">–</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon stat-ic-today"><i class="fas fa-calendar-day"></i></div>
+          <div class="stat-card-body"><div class="stat-card-label">Today's Bookings</div><div class="stat-card-val stat-val-today" id="stat-today">–</div></div>
+        </div>
       </div>
 
       <div class="row">
@@ -472,9 +499,9 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
           <div class="card mb-3">
             <div class="card-header">
               <h3 class="card-title">Available Rooms</h3>
-              <div class="ml-auto d-flex align-items-center gap-2">
-                <span class="badge badge-success" style="font-size:.7rem;">● Available</span>
-                <span class="badge badge-danger ml-1" style="font-size:.7rem;">● Occupied Now</span>
+              <div class="rc-legend">
+                <span class="lg-pill lg-free">● Available</span>
+                <span class="lg-pill lg-busy">● Occupied Now</span>
               </div>
             </div>
             <div class="card-body">
@@ -505,24 +532,37 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
         <div class="col-lg-4">
 
           <!-- Room detail panel -->
-          <div class="card mb-3 sticky-top" id="room-detail-panel">
+          <div class="card mb-3" id="room-detail-panel">
             <div class="card-header">
               <h3 class="card-title" id="rd-name">Room Details</h3>
             </div>
             <div class="card-body">
-              <p class="mb-1" style="font-size:.82rem;color:var(--text-muted);" id="rd-desc">–</p>
-              <div class="d-flex align-items-center gap-2 mb-2" style="gap:8px;">
-                <span style="font-size:.82rem;"><i class="fas fa-users text-primary mr-1"></i><strong id="rd-cap">–</strong> capacity</span>
-                <span class="ml-2" style="font-size:.82rem;"><i class="fas fa-map-marker-alt text-danger mr-1"></i><span id="rd-floor">–</span></span>
+              <p class="rd-desc" id="rd-desc">Select a room to see its details.</p>
+              <div class="rd-meta">
+                <span><i class="fas fa-users text-primary mr-1"></i><strong id="rd-cap">–</strong> capacity</span>
+                <span><i class="fas fa-map-marker-alt text-danger mr-1"></i><span id="rd-floor">–</span></span>
               </div>
               <div id="rd-amenities" class="mb-3"></div>
-              <div class="section-title">Today's Schedule</div>
-              <div class="timeline-wrap" id="rd-timeline">
+              <div class="divider"></div>
+              <div class="section-label">Today's Schedule</div>
+              <div class="sched-wrap" id="rd-timeline">
                 <div class="empty-state"><p>Select a room to view today's schedule.</p></div>
               </div>
               <button class="btn btn-primary btn-block mt-3" id="btn-reserve-room">
                 <i class="fas fa-calendar-plus mr-1"></i> Reserve This Room
               </button>
+            </div>
+          </div>
+
+          <!-- My reservations -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h3 class="card-title">My Reservations</h3>
+            </div>
+            <div class="card-body p-0" style="max-height:340px;overflow-y:auto;">
+              <div class="res-feed" id="my-reservations-list">
+                <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading…</p></div>
+              </div>
             </div>
           </div>
 
@@ -778,6 +818,7 @@ $(document).ready(function() {
   function fmtDate(d)  { return d ? moment(d).format('MMM D, YYYY') : '–'; }
   function fmtTime(t)  { return t ? moment(t,'HH:mm:ss').format('h:mm A') : '–'; }
   function fmtDT(d,t)  { return fmtDate(d) + ' &nbsp;' + fmtTime(t); }
+  function esc(s) { return $('<div>').text(s == null ? '' : s).html(); }
 
   /* ─────────────────────────────────────────────────────────
      LOAD ROOMS
@@ -799,12 +840,15 @@ $(document).ready(function() {
         var colorClass = r.color || 'rc-icon-blue';
         var icon = icons[colorClass] || 'fas fa-door-open';
         var occupied = r.is_occupied == 1;
-        var card = $('<div class="room-card" data-room-id="'+r.room_id+'" data-room-name="'+r.room_name+'">'+
-          '<div class="rc-status '+(occupied?'rc-status-occupied':'rc-status-available')+'"></div>'+
+        var dot = r.status === 'maintenance' ? 'rc-dot-maint' : (occupied ? 'rc-dot-busy' : 'rc-dot-free');
+        var card = $('<div class="room-card" data-room-id="'+r.room_id+'"></div>').attr('data-room-name', r.room_name);
+        card.html(
+          '<span class="rc-dot '+dot+'"></span>'+
           '<div class="rc-icon '+colorClass+'"><i class="'+icon+'"></i></div>'+
-          '<div class="rc-name">'+r.room_name+'</div>'+
-          '<div class="rc-cap"><i class="fas fa-users mr-1"></i>'+r.capacity+' pax &nbsp;|&nbsp; <i class="fas fa-map-marker-alt mr-1"></i>'+(r.floor_location||'N/A')+'</div>'+
-        '</div>');
+          '<div class="rc-name">'+esc(r.room_name)+'</div>'+
+          '<div class="rc-cap"><i class="fas fa-users mr-1"></i>'+esc(r.capacity)+' pax &nbsp;|&nbsp; <i class="fas fa-map-marker-alt mr-1"></i>'+esc(r.floor_location||'N/A')+'</div>'
+        );
+        if (selectedRoomId == r.room_id) card.addClass('selected');
         grid.append(card);
       });
 
@@ -843,7 +887,7 @@ $(document).ready(function() {
       if (r.amenities) {
         r.amenities.split(',').forEach(function(a) {
           a = a.trim();
-          if (a) am.append('<span class="amenity-chip"><i class="fas fa-check-circle"></i>'+a+'</span>');
+          if (a) am.append('<span class="am-chip"><i class="fas fa-check-circle"></i>'+esc(a)+'</span>');
         });
       }
       // Timeline
@@ -864,13 +908,12 @@ $(document).ready(function() {
         return;
       }
       res.slots.forEach(function(slot) {
-        var pct = Math.min(100, ((slot.duration||60) / 60) * 8); // visual width hint
-        var cls = slot.status === 'approved' ? 'tl-fill-approved' : (slot.status==='pending'?'tl-fill-pending':'tl-fill-free');
-        var label = slot.status === 'free' ? 'Free' : slot.title;
+        var cls = slot.status === 'approved' ? 'sf-approved' : (slot.status==='pending'?'sf-pending':'sf-free');
+        var label = slot.status === 'free' ? 'Free' : esc(slot.title);
         tl.append(
-          '<div class="tl-slot">'+
-            '<div class="tl-time">'+fmtTime(slot.start_time)+'</div>'+
-            '<div class="tl-bar"><div class="tl-bar-fill '+cls+'" style="width:'+pct+'%">'+label+'</div></div>'+
+          '<div class="sched-slot">'+
+            '<div class="sched-time">'+fmtTime(slot.start_time)+'</div>'+
+            '<div class="sched-bar"><div class="sched-fill '+cls+'">'+label+'</div></div>'+
           '</div>'
         );
       });
@@ -933,24 +976,18 @@ $(document).ready(function() {
       }
       res.data.forEach(function(r) {
         wrap.append(
-          '<div class="p-3" style="border-bottom:1px solid var(--border-subtle);cursor:pointer;" class="my-res-item" data-res-id="'+r.reservation_id+'">'+
-            '<div class="d-flex justify-content-between align-items-start">'+
-              '<div>'+
-                '<div style="font-weight:700;font-size:.88rem;">'+r.purpose+'</div>'+
-                '<div style="font-size:.78rem;color:var(--text-muted);">'+
-                  '<i class="fas fa-door-open mr-1"></i>'+r.room_name+
-                '</div>'+
-                '<div style="font-size:.78rem;color:var(--text-muted);">'+
-                  '<i class="fas fa-calendar mr-1"></i>'+fmtDate(r.reservation_date)+' &nbsp;'+
-                  fmtTime(r.start_time)+' – '+fmtTime(r.end_time)+
-                '</div>'+
-              '</div>'+
-              statusBadge(r.status)+
+          '<div class="res-feed-item" data-res-id="'+r.reservation_id+'">'+
+            '<div>'+
+              '<div class="res-feed-title">'+esc(r.purpose)+'</div>'+
+              '<div class="res-feed-meta"><i class="fas fa-door-open"></i>'+esc(r.room_name)+'</div>'+
+              '<div class="res-feed-meta"><i class="fas fa-calendar"></i>'+fmtDate(r.reservation_date)+' &nbsp;'+
+                fmtTime(r.start_time)+' – '+fmtTime(r.end_time)+'</div>'+
             '</div>'+
+            statusBadge(r.status)+
           '</div>'
         );
       });
-      wrap.find('> div').on('click', function() {
+      wrap.find('.res-feed-item').on('click', function() {
         openViewModal($(this).data('res-id'));
       });
     }, 'json');
@@ -969,7 +1006,7 @@ $(document).ready(function() {
 
       $('#view-res-body').html(
         '<table class="table table-sm table-borderless mb-0">'+
-          '<tr><th style="width:35%;color:var(--text-muted)">Room</th><td><strong>'+r.room_name+'</strong></td></tr>'+
+          '<tr><th style="width:35%;color:var(--rr-text-muted)">Room</th><td><strong>'+r.room_name+'</strong></td></tr>'+
           '<tr><th>Reserved By</th><td>'+r.full_name+'</td></tr>'+
           '<tr><th>Purpose</th><td>'+r.purpose+'</td></tr>'+
           '<tr><th>Description</th><td>'+(r.description||'–')+'</td></tr>'+
