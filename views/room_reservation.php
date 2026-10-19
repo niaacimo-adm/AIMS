@@ -14,36 +14,27 @@ checkPermission('view_calendar'); // reuse calendar permission or create 'view_r
   <title>NIA-ACIMO | Room Reservation</title>
   <?php include '../includes/header.php'; ?>
   <link rel="stylesheet" href="../plugins/fullcalendar/main.css">
-<style>
+<link rel="stylesheet" href="../css/module-theme.css">
+<style>body {
+  /* page tokens now follow the shared green theme (css/module-theme.css) */
+  --rr-bg:var(--h-bg); --rr-surface:var(--h-card); --rr-surface-2:var(--h-card-alt);
+  --rr-border:var(--h-border); --rr-border-sub:var(--h-border);
+  --rr-text:var(--h-text); --rr-text-2:var(--h-muted); --rr-text-muted:var(--h-muted);
+  --rr-primary:var(--h-primary); --rr-primary-dk:#1c7a4d; --rr-primary-lt:var(--h-primary-dim);
+  --rr-accent:var(--h-accent); --rr-success:var(--h-success); --rr-warning:var(--h-warning);
+  --rr-danger:var(--h-danger); --rr-cyan:#0d9488;
+  --rr-shadow-sm:var(--h-shadow-sm); --rr-shadow:var(--h-shadow); --rr-shadow-lg:0 12px 40px rgba(0,0,0,.18);
+  --rr-font:"Source Sans Pro",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --rr-font-h:var(--rr-font);
+}
+
 /* ═══════════════════════════════════════════════════
    DESIGN TOKENS — Light Mode
 ═══════════════════════════════════════════════════ */
-:root {
-  --rr-bg:          #f0f4f8;
-  --rr-surface:     #ffffff;
-  --rr-surface-2:   #f8fafc;
-  --rr-border:      #e2e8f0;
-  --rr-border-sub:  #f1f5f9;
-  --rr-text:        #0f172a;
-  --rr-text-2:      #475569;
-  --rr-text-muted:  #94a3b8;
-  --rr-primary:     #2563eb;
-  --rr-primary-dk:  #1d4ed8;
-  --rr-primary-lt:  #eff6ff;
-  --rr-accent:      #06b6d4;
-  --rr-success:     #10b981;
-  --rr-warning:     #f59e0b;
-  --rr-danger:      #ef4444;
+body {
   --rr-purple:      #7c3aed;
-  --rr-cyan:        #0891b2;
-  --rr-shadow-sm:   0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-  --rr-shadow:      0 4px 16px rgba(0,0,0,.08);
-  --rr-shadow-lg:   0 12px 40px rgba(0,0,0,.14);
   --rr-radius-sm:   6px;
   --rr-radius:      12px;
   --rr-radius-lg:   18px;
-  --rr-font:        'DM Sans',sans-serif;
-  --rr-font-h:      'Syne',sans-serif;
   /* icon bg light */
   --ic-blue-bg:#dbeafe; --ic-blue-fg:var(--rr-primary);
   --ic-green-bg:#d1fae5;--ic-green-fg:var(--rr-success);
@@ -60,19 +51,7 @@ checkPermission('view_calendar'); // reuse calendar permission or create 'view_r
    DARK MODE — detect body.dark-mode (AdminLTE pattern)
 ═══════════════════════════════════════════════════ */
 body.dark-mode {
-  --rr-bg:         #0f172a;
-  --rr-surface:    #1e293b;
-  --rr-surface-2:  #162032;
-  --rr-border:     #334155;
-  --rr-border-sub: #1e293b;
-  --rr-text:       #f1f5f9;
-  --rr-text-2:     #94a3b8;
-  --rr-text-muted: #64748b;
-  --rr-primary-lt: rgba(37,99,235,.18);
-  --rr-shadow-sm:  0 1px 3px rgba(0,0,0,.3);
-  --rr-shadow:     0 4px 20px rgba(0,0,0,.4);
-  --rr-shadow-lg:  0 12px 40px rgba(0,0,0,.5);
-  --ic-blue-bg:rgba(37,99,235,.18);  --ic-blue-fg:#93c5fd;
+  --ic-blue-bg:rgba(42,152,99,.18);  --ic-blue-fg:#6ee7b7;
   --ic-green-bg:rgba(16,185,129,.15);--ic-green-fg:#6ee7b7;
   --ic-yellow-bg:rgba(245,158,11,.15);--ic-yellow-fg:#fcd34d;
   --ic-purple-bg:rgba(124,58,237,.15);--ic-purple-fg:#c4b5fd;
@@ -91,46 +70,6 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
 /* ═══════════════════════════════════════════════════
    HERO
 ═══════════════════════════════════════════════════ */
-@keyframes meshDrift  { 0%{transform:translate(0,0) rotate(0)} 100%{transform:translate(3%,2%) rotate(2deg)} }
-@keyframes orbFloat   { 0%,100%{opacity:.4;transform:translate(0,0) scale(1)} 33%{opacity:.7;transform:translate(18px,-26px) scale(1.05)} 66%{opacity:.5;transform:translate(-12px,16px) scale(.95)} }
-@keyframes ringPulse  { 0%,100%{opacity:.45;transform:scale(1)} 50%{opacity:.85;transform:scale(1.04)} }
-
-.pg-hero { background:#0b1f17;padding:36px 28px 66px;position:relative;overflow:hidden; }
-.pg-hero-mesh { position:absolute;inset:-50%;width:200%;height:200%;z-index:0;
-  background:radial-gradient(ellipse 60% 55% at 18% 28%,rgba(36,231,143,.16) 0%,transparent 58%),
-             radial-gradient(ellipse 55% 60% at 82% 72%,rgba(42,152,99,.13) 0%,transparent 58%),
-             linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
-  animation:meshDrift 22s ease-in-out infinite alternate; }
-.pg-hero-orbs { position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden; }
-.pg-orb { position:absolute;border-radius:50%;filter:blur(60px);animation:orbFloat 18s ease-in-out infinite; }
-.pg-orb-1 { width:280px;height:280px;background:rgba(36,231,143,.11);top:-80px;left:-60px;animation-duration:21s; }
-.pg-orb-2 { width:220px;height:220px;background:rgba(42,152,99,.10);bottom:-50px;right:-40px;animation-delay:-7s;animation-duration:17s; }
-.pg-hero-dots { position:absolute;inset:0;z-index:0;pointer-events:none;
-  background-image:radial-gradient(circle,rgba(36,231,143,.06) 1px,transparent 1px);background-size:36px 36px; }
-.pg-hero-rings { position:absolute;top:50%;right:6%;transform:translateY(-50%);width:240px;height:240px;pointer-events:none;z-index:0; }
-.pg-ring { position:absolute;inset:0;border-radius:50%;border:1px solid rgba(36,231,143,.10);animation:ringPulse 4s ease-in-out infinite; }
-.pg-ring:nth-child(2){inset:28px;animation-delay:.8s;opacity:.7;}
-.pg-ring:nth-child(3){inset:56px;animation-delay:1.6s;opacity:.5;}
-.pg-hero::after { content:'';position:absolute;bottom:-32px;left:0;right:0;height:64px;
-  background:var(--rr-bg);clip-path:ellipse(58% 100% at 50% 100%);z-index:1; }
-.pg-hero-inner { position:relative;z-index:2; }
-.pg-hero-title { color:#fff;font-size:1.75rem;font-weight:800;margin:0 0 6px;letter-spacing:-.3px;
-  text-shadow:0 2px 14px rgba(0,0,0,.45);display:flex;align-items:center;gap:10px; }
-.pg-hero-sub   { color:rgba(212,245,229,.75);margin:0 0 14px;font-size:.9rem; }
-.pg-hero-divider { width:48px;height:2px;border-radius:2px;margin:0 0 12px;
-  background:linear-gradient(90deg,transparent,#24e78f,transparent); }
-.pg-hero-actions { position:relative;z-index:2;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:4px; }
-.pg-hero-btn {
-  background:rgba(36,231,143,.1);backdrop-filter:blur(8px);
-  border:1px solid rgba(36,231,143,.3);color:#d4f5e5;
-  border-radius:10px;padding:8px 18px;font-size:.84rem;font-weight:700;cursor:pointer;
-  display:inline-flex;align-items:center;gap:7px;transition:all .2s;text-decoration:none;
-}
-.pg-hero-btn:hover { background:rgba(36,231,143,.22);border-color:rgba(36,231,143,.55);
-  transform:translateY(-2px);box-shadow:0 4px 16px rgba(36,231,143,.2);color:#d4f5e5;text-decoration:none; }
-.pg-hero-bc-link { color:rgba(212,245,229,.65);text-decoration:none;font-size:.8rem; }
-.pg-hero-bc-link:hover { color:#24e78f; }
-.pg-hero-bc-active { color:rgba(212,245,229,.9);font-size:.8rem; }
 
 /* ═══════════════════════════════════════════════════
    STAT CARDS
@@ -187,7 +126,7 @@ body,.content-wrapper { background:var(--rr-bg)!important; font-family:var(--rr-
 }
 .room-card:hover { border-color:var(--rr-primary);box-shadow:var(--rr-shadow);transform:translateY(-2px);background:var(--rr-surface); }
 .room-card.selected { border-color:var(--rr-primary);background:var(--rr-primary-lt); }
-body.dark-mode .room-card.selected { background:rgba(37,99,235,.12); }
+body.dark-mode .room-card.selected { background:rgba(42,152,99,.12); }
 .rc-icon { width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;margin-bottom:10px; }
 .rc-icon-blue   { background:var(--ic-blue-bg);color:var(--ic-blue-fg); }
 .rc-icon-green  { background:var(--ic-green-bg);color:var(--ic-green-fg); }
@@ -238,7 +177,7 @@ body.dark-mode .room-card.selected { background:rgba(37,99,235,.12); }
 }
 .res-feed-item:last-child { border-bottom:none; }
 .res-feed-item:hover { background:var(--rr-primary-lt); }
-body.dark-mode .res-feed-item:hover { background:rgba(37,99,235,.1); }
+body.dark-mode .res-feed-item:hover { background:rgba(42,152,99,.1); }
 .res-feed-title { font-weight:700;font-size:.86rem;color:var(--rr-text);margin-bottom:2px; }
 .res-feed-meta  { font-size:.74rem;color:var(--rr-text-muted); }
 .res-feed-meta i { margin-right:3px; }
@@ -282,7 +221,7 @@ body.dark-mode .res-feed-item:hover { background:rgba(37,99,235,.1); }
 }
 .rm-table tbody td { padding:.7rem 1rem;border-bottom:1px solid var(--rr-border-sub);vertical-align:middle;color:var(--rr-text); }
 .rm-table tbody tr:hover td { background:var(--rr-primary-lt); }
-body.dark-mode .rm-table tbody tr:hover td { background:rgba(37,99,235,.1); }
+body.dark-mode .rm-table tbody tr:hover td { background:rgba(42,152,99,.1); }
 
 /* ═══════════════════════════════════════════════════
    AMENITY CHIPS
@@ -291,7 +230,7 @@ body.dark-mode .rm-table tbody tr:hover td { background:rgba(37,99,235,.1); }
   display:inline-flex;align-items:center;gap:4px;background:var(--rr-primary-lt);
   color:var(--rr-primary);border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:600;margin:2px;
 }
-body.dark-mode .am-chip { background:rgba(37,99,235,.18);color:#93c5fd; }
+body.dark-mode .am-chip { background:rgba(42,152,99,.18);color:#6ee7b7; }
 
 /* ═══════════════════════════════════════════════════
    BADGES
@@ -322,7 +261,7 @@ body.dark-mode .badge-maintenance{ background:rgba(245,158,11,.2)!important;colo
   font-family:var(--rr-font)!important;font-size:.875rem!important;padding:.5rem .75rem!important;
   transition:border-color .15s,box-shadow .15s;
 }
-.form-control:focus { border-color:var(--rr-primary)!important;box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;background:var(--rr-surface)!important; }
+.form-control:focus { border-color:var(--rr-primary)!important;box-shadow:0 0 0 3px rgba(42,152,99,.12)!important;background:var(--rr-surface)!important; }
 textarea.form-control { resize:vertical;min-height:80px; }
 select.form-control option { background:var(--rr-surface);color:var(--rr-text); }
 
@@ -330,8 +269,8 @@ select.form-control option { background:var(--rr-surface);color:var(--rr-text); 
    BUTTONS
 ═══════════════════════════════════════════════════ */
 .btn { font-family:var(--rr-font)!important;font-weight:600!important;font-size:.84rem!important;border-radius:var(--rr-radius-sm)!important;transition:all .18s!important; }
-.btn-primary   { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;color:#fff!important;box-shadow:0 2px 8px rgba(37,99,235,.3)!important; }
-.btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,.4)!important; }
+.btn-primary   { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;color:#fff!important;box-shadow:0 2px 8px rgba(42,152,99,.3)!important; }
+.btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 14px rgba(42,152,99,.4)!important; }
 .btn-success   { background:linear-gradient(135deg,var(--rr-success),#059669)!important;border:none!important;color:#fff!important; }
 .btn-danger    { background:linear-gradient(135deg,var(--rr-danger),#dc2626)!important;border:none!important;color:#fff!important; }
 .btn-warning   { background:linear-gradient(135deg,var(--rr-warning),#d97706)!important;border:none!important;color:#fff!important; }
@@ -374,13 +313,6 @@ select.form-control option { background:var(--rr-surface);color:var(--rr-text); 
 /* ═══════════════════════════════════════════════════
    MODALS
 ═══════════════════════════════════════════════════ */
-.modal-content { border:none!important;border-radius:var(--rr-radius-lg)!important;box-shadow:var(--rr-shadow-lg)!important;overflow:hidden;background:var(--rr-surface)!important; }
-.modal-header { background:linear-gradient(135deg,var(--rr-primary),var(--rr-primary-dk))!important;border:none!important;padding:1.1rem 1.5rem!important; }
-.modal-title  { font-family:var(--rr-font-h)!important;font-weight:700!important;font-size:1rem!important;color:#fff!important; }
-.modal-header .close { color:rgba(255,255,255,.8)!important;text-shadow:none!important;font-size:1.4rem; }
-.modal-body  { padding:1.5rem!important;background:var(--rr-surface)!important; }
-.modal-footer { padding:1rem 1.5rem!important;border-top:1px solid var(--rr-border-sub)!important;background:var(--rr-surface-2)!important;display:flex;gap:.5rem;flex-wrap:wrap; }
-
 /* ═══════════════════════════════════════════════════
    TABLES
 ═══════════════════════════════════════════════════ */
@@ -388,7 +320,7 @@ select.form-control option { background:var(--rr-surface);color:var(--rr-text); 
 .table thead th { background:var(--rr-surface-2)!important;border-bottom:2px solid var(--rr-border)!important;font-weight:700;font-size:.73rem;text-transform:uppercase;letter-spacing:.07em;color:var(--rr-text-muted)!important;padding:.75rem 1rem;white-space:nowrap; }
 .table tbody td { padding:.65rem 1rem;border-color:var(--rr-border-sub)!important;vertical-align:middle;color:var(--rr-text); }
 .table-hover tbody tr:hover td { background:var(--rr-primary-lt)!important; }
-body.dark-mode .table-hover tbody tr:hover td { background:rgba(37,99,235,.1)!important; }
+body.dark-mode .table-hover tbody tr:hover td { background:rgba(42,152,99,.1)!important; }
 div.dataTables_wrapper div.dataTables_length select,
 div.dataTables_wrapper div.dataTables_filter input {
   border:1.5px solid var(--rr-border)!important;border-radius:var(--rr-radius-sm)!important;
@@ -412,8 +344,6 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 .divider { height:1px;background:var(--rr-border-sub);margin:16px 0; }
 
 /* Hero logo watermark */
-.mh-logo-watermark { position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:90px;height:90px;object-fit:contain;opacity:.12;filter:grayscale(1) brightness(2); }
-.pg-hero-title i { font-size:1.5rem;color:#24e78f; }
 /* Detail panel */
 .rd-desc { font-size:.82rem;color:var(--rr-text-muted);margin-bottom:8px; }
 .rd-meta { display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--rr-text-2);margin-bottom:10px; }
@@ -445,13 +375,17 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
       <div class="pg-hero-orbs">
         <div class="pg-orb pg-orb-1"></div>
         <div class="pg-orb pg-orb-2"></div>
+        <div class="pg-orb pg-orb-3"></div>
+        <div class="pg-orb pg-orb-4"></div>
     </div>
       <div class="pg-hero-dots"></div>
+      <div class="pg-hero-hex"></div>
       <div class="pg-hero-rings">
         <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
     </div>
+      <div class="pg-hero-arc"></div>
       <div class="pg-hero-inner">
-        <h1 class="pg-hero-title"><i class="fas fa-door-open"></i> Room Reservation</h1>
+        <div class="pg-hero-title"><i class="fas fa-door-open"></i>Room Reservation</div>
         <p class="pg-hero-sub">Book conference rooms &amp; venues — check availability in real time.</p>
         <div class="pg-hero-divider"></div>
         <div class="pg-hero-actions">
@@ -612,7 +546,7 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 <!-- ══════════════════════════════════════════════════════════ -->
 <!--  RESERVATION MODAL                                         -->
 <!-- ══════════════════════════════════════════════════════════ -->
-<div class="modal fade" id="reservationModal" tabindex="-1">
+<div class="modal fade scrum-style-modal" id="reservationModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
@@ -692,7 +626,7 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 <!-- ══════════════════════════════════════════════════════════ -->
 <!--  VIEW RESERVATION MODAL                                    -->
 <!-- ══════════════════════════════════════════════════════════ -->
-<div class="modal fade" id="viewReservationModal" tabindex="-1">
+<div class="modal fade scrum-style-modal" id="viewReservationModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -713,7 +647,7 @@ div.dataTables_wrapper .dataTables_filter label { font-size:.8rem;color:var(--rr
 <!--  MANAGE ROOMS MODAL (admin only)                          -->
 <!-- ══════════════════════════════════════════════════════════ -->
 <?php if (hasPermission('manage_employees')): ?>
-<div class="modal fade" id="manageRoomsModal" tabindex="-1">
+<div class="modal fade scrum-style-modal" id="manageRoomsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">

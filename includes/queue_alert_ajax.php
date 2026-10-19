@@ -1,10 +1,22 @@
 <?php
 // includes/queue_alert_ajax.php
-// Polled by queue_alert.js from every AIMS page.
-//   GET  ?action=get   -> unacknowledged visitors for the logged-in employee
-//   POST ?action=ack   -> acknowledge one visitor (id)
+// One endpoint for ALL "alert me" events: waiting queue visitors and new chat messages.
+//   GET  ?action=get[&v=2][&token=...]  -> alerts for the logged-in employee
+//                                          (v=2 clients also receive chat alerts)
+//   POST ?action=ack  key=q123 | c31    -> acknowledge (q = queue visitor id, c = chat sender emp_id)
 
 require_once '../config/database.php';
+
+// Chat support is optional: queue alerts keep working even if chat is missing
+$chatOk = false;
+try {
+    if (file_exists(__DIR__ . '/chat_functions.php')) {
+        require_once __DIR__ . '/chat_functions.php';
+        $chatOk = class_exists('ChatFunctions');
+    }
+} catch (Throwable $e) {
+    $chatOk = false;
+}
 
 // Browser: identified by the PHP session (only start one if a session cookie exists)
 $emp_id = null;
@@ -46,18 +58,34 @@ if (!$emp_id) {
 
 $action = $_GET['action'] ?? 'get';
 
+// ---------------------------------------------------------------- ACK
 if ($action === 'ack') {
-    $id = intval($_POST['id'] ?? 0);
-    $stmt = $db->prepare("UPDATE visitor_queue
-                          SET alert_ack_at = NOW(), alert_ack_by = ?
-                          WHERE id = ? AND alert_ack_at IS NULL");
-    $stmt->bind_param("ii", $emp_id, $id);
-    $stmt->execute();
+    $key = (string)($_POST['key'] ?? ($_POST['id'] ?? ''));
+
+    if ($chatOk && preg_match('/^c(\d+)$/', $key, $m)) {
+        // Chat: remember how many unread messages from this sender were dismissed
+        try {
+            $sid  = (int)$m[1];
+            $chat = new ChatFunctions();
+            $u    = $chat->getUnreadCounts($emp_id);
+            $cnt  = (int)($u['user_unread_counts'][$sid] ?? 0);
+            $stmt = $db->prepare("REPLACE INTO chat_alert_ack (emp_id, sender_id, acked_count) VALUES (?, ?, ?)");
+            $stmt->bind_param("iii", $emp_id, $sid, $cnt);
+            $stmt->execute();
+        } catch (Throwable $e) {}
+    } else {
+        $id = intval(preg_replace('/^q/', '', $key));
+        $stmt = $db->prepare("UPDATE visitor_queue
+                              SET alert_ack_at = NOW(), alert_ack_by = ?
+                              WHERE id = ? AND alert_ack_at IS NULL");
+        $stmt->bind_param("ii", $emp_id, $id);
+        $stmt->execute();
+    }
     echo json_encode(['success' => true]);
     exit;
 }
 
-// ---- build "who should see this visitor" condition ----
+// ---------------------------------------------------------------- QUEUE ALERTS
 $cond   = "vq.person_to_visit = ?";
 $params = [$emp_id];
 $types  = "i";
@@ -107,6 +135,9 @@ $stmt->execute();
 $alerts = [];
 foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
     $alerts[] = [
+        'key'          => 'q' . (int)$r['id'],
+        'type'         => 'queue',
+        'version'      => 1,
         'id'           => (int)$r['id'],
         'queue_number' => $r['is_priority'] ? $r['priority_number'] : $r['queue_number'],
         'is_priority'  => (int)$r['is_priority'],
@@ -117,6 +148,83 @@ foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
         'status'       => $r['status'],
         'time_in'      => $r['time_in'],
     ];
+}
+
+// ---------------------------------------------------------------- CHAT ALERTS (v=2 clients only)
+if ($chatOk && ($_GET['v'] ?? '') === '2') {
+    try {
+        $chat   = new ChatFunctions();
+        $unread = $chat->getUnreadCounts($emp_id);
+        $counts = $unread['user_unread_counts'] ?? [];
+
+        // previously dismissed counts
+        $acked = [];
+        $q = $db->prepare("SELECT sender_id, acked_count FROM chat_alert_ack WHERE emp_id = ?");
+        $q->bind_param("i", $emp_id);
+        $q->execute();
+        foreach ($q->get_result()->fetch_all(MYSQLI_ASSOC) as $a) {
+            $acked[(int)$a['sender_id']] = (int)$a['acked_count'];
+        }
+
+        $stillUnread = [];
+        foreach ($counts as $sid => $cnt) {
+            $sid = (int)$sid;
+            $cnt = (int)$cnt;
+            if ($cnt <= 0 || $sid === (int)$emp_id) continue;
+            $stillUnread[] = $sid;
+
+            // already dismissed and nothing new since
+            if (isset($acked[$sid]) && $cnt <= $acked[$sid]) continue;
+
+            // sender details
+            $s = $db->prepare("SELECT first_name, last_name, picture FROM employee WHERE emp_id = ?");
+            $s->bind_param("i", $sid);
+            $s->execute();
+            $emp = $s->get_result()->fetch_assoc();
+            if (!$emp) continue;
+
+            // newest message from that sender (for the preview)
+            $preview = 'Sent you a message';
+            $when    = date('Y-m-d H:i:s');
+            $room = $chat->getPrivateRoom($emp_id, $sid);
+            if ($room) {
+                $msgs = $chat->getMessages($room, 0);
+                for ($i = count($msgs) - 1; $i >= 0; $i--) {
+                    $m = $msgs[$i];
+                    if ((int)$m['sender_id'] === $sid && empty($m['is_deleted'])) {
+                        if (($m['message_type'] ?? '') === 'image')      $preview = 'Sent a photo';
+                        elseif (($m['message_type'] ?? '') === 'file')   $preview = 'Sent a file: ' . $m['message'];
+                        else                                             $preview = (string)$m['message'];
+                        if (mb_strlen($preview) > 140) $preview = mb_substr($preview, 0, 140) . '...';
+                        $when = $m['created_at'] ?? $when;
+                        break;
+                    }
+                }
+            }
+
+            $alerts[] = [
+                'key'         => 'c' . $sid,
+                'type'        => 'chat',
+                'version'     => $cnt,
+                'sender_id'   => $sid,
+                'sender_name' => trim($emp['first_name'] . ' ' . $emp['last_name']),
+                'picture'     => $emp['picture'],
+                'preview'     => $preview,
+                'count'       => $cnt,
+                'time_in'     => $when,
+            ];
+        }
+
+        // forget dismissals for senders who no longer have unread messages
+        if ($stillUnread) {
+            $in = implode(',', array_map('intval', $stillUnread));
+            $db->query("DELETE FROM chat_alert_ack WHERE emp_id = " . (int)$emp_id . " AND sender_id NOT IN ($in)");
+        } else {
+            $db->query("DELETE FROM chat_alert_ack WHERE emp_id = " . (int)$emp_id);
+        }
+    } catch (Throwable $e) {
+        // chat problems must never break queue alerts
+    }
 }
 
 echo json_encode(['success' => true, 'alerts' => $alerts]);

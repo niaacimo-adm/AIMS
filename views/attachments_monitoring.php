@@ -208,80 +208,22 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
   <title>Attachments Monitoring</title>
   <?php include '../includes/header.php'; ?>
   
+  <link rel="stylesheet" href="../css/module-theme.css">
   <style>
-    :root {
-      --primary: #2a9863;
-      --secondary: #24e78f;
-      --success: #2a9863;
-      --info: #0d9488;
-      --warning: #e67700;
-      --danger: #c92a2a;
-      --light: #f8f9fa;
-      --dark: #212529;
-      --gray: #6c757d;
-      --card-shadow: 0 2px 8px rgba(42,152,99,.07);
-      --hover-shadow: 0 4px 24px rgba(42,152,99,.12);
-
-      /* ══ TOKENS — green forest theme (aligned with HR Leave Monitoring) ══ */
-      --h-bg:       #eef7f2;
-      --h-card:     #ffffff;
-      --h-card-alt: #f0faf5;
-      --h-border:   rgba(42,152,99,0.18);
-      --h-text:     #0f2d1e;
-      --h-muted:    #4a7a5e;
-      --h-primary:  #2a9863;
-      --h-primary-dim: rgba(42,152,99,.10);
-      --h-accent:   #24e78f;
-      --h-success:  #2a9863;
-      --h-warning:  #e67700;
-      --h-danger:   #c92a2a;
-      --h-shadow:   0 4px 24px rgba(42,152,99,.12);
-      --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
-    }
-    body.dark-mode {
-      --h-bg:       #0b1f17;
-      --h-card:     #102f22;
-      --h-card-alt: #0e2619;
-      --h-border:   rgba(36,231,143,0.12);
-      --h-text:     #d4f5e5;
-      --h-muted:    #6aad8a;
-      --h-primary:  #24e78f;
-      --h-primary-dim: rgba(36,231,143,.12);
-      --h-accent:   #2a9863;
-      --h-success:  #24e78f;
-      --h-warning:  #ffd43b;
-      --h-danger:   #ff6b6b;
-      --h-shadow:   0 4px 24px rgba(0,0,0,.35);
-      --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
-    }
-
-    body {
-      background-color: var(--h-bg);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    .content-wrapper {
-      background-color: var(--h-bg);
-    }
-
+    /* Page-specific styles — tokens, hero, cards, modals, tables and form controls
+       come from assets/css/module-theme.css */
     .am-content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
 
-    /* Stat cards — matches HR Leave Monitoring .stats-row/.stat-card */
-    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+    /* Stat cards */
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
     @media(max-width:1100px){ .stats-row{ grid-template-columns:repeat(2,1fr); } }
-    @media(max-width:600px){ .stats-row{ grid-template-columns:repeat(2,1fr); } }
     .stat-card {
-        background:var(--h-card); border:1px solid var(--h-border);
-        border-radius:14px; padding:18px 20px;
-        display:flex; align-items:center; gap:14px;
-        box-shadow:var(--h-shadow-sm); transition:transform .2s,box-shadow .2s;
+        background:var(--h-card); border:1px solid var(--h-border); border-radius:14px; padding:18px 20px;
+        display:flex; align-items:center; gap:14px; box-shadow:var(--h-shadow-sm);
+        transition:transform .2s, box-shadow .2s;
     }
     .stat-card:hover { transform:translateY(-3px); box-shadow:var(--h-shadow); }
-    .stat-ico {
-        width:48px; height:48px; border-radius:12px;
-        display:flex; align-items:center; justify-content:center;
-        font-size:18px; color:#fff; flex-shrink:0;
-    }
+    .stat-ico { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; flex-shrink:0; }
     .si-tot  { background:linear-gradient(135deg,#2a9863,#24e78f); }
     .si-appr { background:linear-gradient(135deg,#099268,#20c997); }
     .si-pend { background:linear-gradient(135deg,#e67700,#f59f00); }
@@ -289,863 +231,113 @@ $payrollPeriods = $periodsResult->fetch_all(MYSQLI_ASSOC);
     .stat-val { font-size:1.8rem; font-weight:800; color:var(--h-text); line-height:1; }
     .stat-lbl { font-size:.72rem; color:var(--h-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
 
-    /* General card — matches HR Leave Monitoring .h-card */
-    .h-card {
-        background:var(--h-card); border:1px solid var(--h-border);
-        border-radius:14px; overflow:hidden; box-shadow:var(--h-shadow-sm);
-        transition:box-shadow .2s;
-    }
-    .h-card:hover { box-shadow:var(--h-shadow); }
-    .h-card-head {
-        padding:16px 22px; border-bottom:1px solid var(--h-border);
-        background:var(--h-card-alt); display:flex; align-items:center;
-        justify-content:space-between; flex-wrap:wrap; gap:8px;
-    }
-    .h-card-head-left { display:flex; align-items:center; gap:12px; }
-    .h-card-ico {
-        width:36px; height:36px; border-radius:9px;
-        background:linear-gradient(135deg,#2a9863,#24e78f);
-        display:flex; align-items:center; justify-content:center;
-        color:#fff; font-size:14px; flex-shrink:0;
-    }
-    .h-card-head h5, .h-card-head h3 { margin:0; font-size:1rem; font-weight:700; color:var(--h-text); }
-    .h-rec-count {
-        font-size:.74rem; color:var(--h-muted);
-        background:var(--h-bg); border-radius:20px;
-        padding:3px 10px; border:1px solid var(--h-border);
-    }
-
-    /* Filter bar — matches HR Leave Monitoring .filter-bar */
+    /* Filter bar */
     .filter-bar {
-        background:var(--h-card); border:1px solid var(--h-border);
-        border-radius:14px; padding:16px 20px; margin-bottom:20px;
-        display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;
-        box-shadow:var(--h-shadow-sm);
+        background:var(--h-card); border:1px solid var(--h-border); border-radius:14px; padding:16px 20px;
+        margin-bottom:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; box-shadow:var(--h-shadow-sm);
     }
     .filter-bar .fg { margin:0; flex:1; min-width:140px; }
-    .filter-bar .fg label {
-        font-size:.7rem; font-weight:700; color:var(--h-muted);
-        text-transform:uppercase; letter-spacing:.5px;
-        margin-bottom:5px; display:block;
-    }
+    .filter-bar .fg label { font-size:.7rem; font-weight:700; color:var(--h-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; display:block; }
     .filter-bar .h-ctrl {
-        width:100%; background:var(--h-card); border:1.5px solid var(--h-border);
-        border-radius:8px; padding:8px 12px; font-size:.85rem; color:var(--h-text);
-        transition:border-color .18s, box-shadow .18s; box-sizing:border-box; height:calc(1.5em + 0.75rem + 2px);
+        width:100%; background:var(--h-card-alt); border:1.5px solid var(--h-border); border-radius:8px;
+        padding:8px 12px; font-size:.85rem; color:var(--h-text); height:calc(1.5em + .75rem + 2px); box-sizing:border-box;
+        transition:border-color .18s, box-shadow .18s;
     }
-    .filter-bar .h-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px rgba(42,152,99,.13); }
+    .filter-bar .h-ctrl:focus { outline:none; border-color:var(--h-primary); box-shadow:0 0 0 3px var(--h-primary-dim); }
+    .filter-bar select.h-ctrl option { background:var(--h-card); color:var(--h-text); }
     .btn-am-reset {
-        background:var(--h-card); color:var(--h-muted);
-        border:1.5px solid var(--h-border); border-radius:8px;
-        padding:9px 14px; font-size:.85rem; cursor:pointer;
-        text-decoration:none; display:inline-flex; align-items:center; gap:6px;
-        transition:background .15s; white-space:nowrap;
+        background:var(--h-card-alt); color:var(--h-muted); border:1.5px solid var(--h-border); border-radius:8px;
+        padding:9px 14px; font-size:.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
     }
-    .btn-am-reset:hover { background:var(--h-bg); color:var(--h-text); }
+    .btn-am-reset:hover { color:var(--h-text); filter:brightness(.97); }
 
-    /* Bulk actions bar */
-    .bulk-bar {
-        background:var(--h-card-alt); border:1px solid var(--h-border);
-        border-radius:10px; padding:10px 16px; margin-bottom:16px;
-    }
+    /* Card toolbar buttons */
+    .card-header .card-tools .btn { border:none; border-radius:8px; font-weight:600; font-size:.8rem; }
+    .card-header .card-tools .btn-success { background:#099268; color:#fff; }
+    .card-header .card-tools .btn-info    { background:#0d9488; color:#fff; }
+    .card-header .card-tools .btn-warning { background:#e67700; color:#fff; }
+    .card-header .card-tools .btn:hover { filter:brightness(1.1); }
 
-    .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
-    .card {
-      border: 1px solid var(--h-border);
-      border-radius: 14px;
-      box-shadow: var(--card-shadow);
-      transition: box-shadow 0.2s ease;
-      margin-bottom: 20px;
-      background: var(--h-card);
-    }
-    
-    .card:hover {
-      box-shadow: var(--hover-shadow);
-    }
-    
-    .card-header {
-      background: var(--h-card-alt);
-      color: var(--h-text);
-      border-radius: 14px 14px 0 0 !important;
-      padding: 16px 22px;
-      border-bottom: 1px solid var(--h-border);
-    }
-    
-    .card-header h3,
-    .card-header .card-title {
-      margin: 0;
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--h-text);
-    }
-    
-    .small-box {
-      border-radius: 14px;
-      box-shadow: var(--card-shadow);
-      transition: all 0.2s ease;
-      border: 1px solid var(--h-border);
-      overflow: hidden;
-      background: var(--h-card);
-    }
-    
-    .small-box:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--hover-shadow);
-    }
-    
-    .small-box .inner {
-      padding: 20px;
-      color: var(--h-text);
-    }
-    
-    .small-box h3 {
-      font-size: 1.8rem;
-      font-weight: 800;
-      margin: 0 0 6px 0;
-    }
-    
-    .small-box .icon {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      z-index: 0;
-      font-size: 70px;
-      opacity: 0.15;
-      transition: all 0.3s ease;
-    }
-    
-    .small-box:hover .icon {
-      transform: scale(1.1);
-      opacity: 0.22;
-    }
+    /* Bulk actions */
+    .bulk-actions-card { background:var(--h-card-alt); border:1px solid var(--h-border); border-radius:10px; padding:12px 16px; margin-bottom:16px; color:var(--h-text); }
+    .bulk-actions-card .form-check-label { color:var(--h-text); font-weight:600; font-size:.85rem; }
+    .bulk-actions-card .btn { border-radius:8px; font-weight:600; font-size:.8rem; }
+    .bulk-actions-card .btn-danger { background:var(--h-danger); border:none; color:#fff; }
+    .bulk-actions-card .btn-outline-danger { color:var(--h-danger); border:1.5px solid var(--h-danger); background:transparent; }
+    .bulk-actions-card .btn-outline-danger:hover { background:var(--h-danger); color:#fff; }
+    .form-check-input, .record-checkbox, #selectAll { accent-color:var(--h-primary); cursor:pointer; }
 
-    .small-box.bg-info    { background:linear-gradient(135deg,#0d9488,#2a9863) !important; }
-    .small-box.bg-success { background:linear-gradient(135deg,#099268,#20c997) !important; }
-    .small-box.bg-warning { background:linear-gradient(135deg,#e67700,#f59f00) !important; color:#fff; }
-    .small-box.bg-danger  { background:linear-gradient(135deg,#c92a2a,#e03131) !important; }
-    .small-box.bg-info .inner, .small-box.bg-success .inner,
-    .small-box.bg-warning .inner, .small-box.bg-danger .inner { color:#fff; }
-    
-    .btn {
-      border-radius: 8px;
-      font-weight: 500;
-      padding: 8px 16px;
-      transition: all 0.2s ease;
-      border: none;
-    }
-    
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(42,152,99,.18);
-    }
-    
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 0.875rem;
-    }
-    
-    .btn-primary {
-      background: linear-gradient(135deg, #2a9863, #24e78f);
-    }
-    
-    .btn-success {
-      background: linear-gradient(135deg, #099268, #20c997);
-    }
-    
-    .btn-info {
-      background: linear-gradient(135deg, #0d9488, #2a9863);
-      color: #fff;
-    }
-    
-    .btn-warning {
-      background: linear-gradient(135deg, #e67700, #f59f00);
-      color:white;  
-    }
-    
-    .btn-danger {
-      background: linear-gradient(135deg, #c92a2a, #e03131);
-    }
-    
-    .table-container {
-      max-height: 600px;
-      overflow-y: auto;
-      border-radius: 8px;
-    }
-    
-    .monitoring-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-    
-    .monitoring-table th {
-      background: var(--h-card-alt);
-      color: var(--h-muted);
-      font-weight: 700;
-      font-size: .7rem;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      padding: 12px 15px;
-      border-bottom: 2px solid var(--h-border);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    
-    .monitoring-table td {
-      padding: 12px 15px;
-      border-bottom: 1px solid var(--h-border);
-      vertical-align: middle;
-      color: var(--h-text);
-      font-size: .87rem;
-    }
-    
-    .monitoring-table tbody tr {
-      transition: all 0.15s ease;
-    }
-    
-    .monitoring-table tbody tr:hover {
-      background-color: var(--h-card-alt);
-    }
-    
-    .status-badge {
-      font-size: 0.72rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-weight: 600;
-      display: inline-block;
-    }
-    
-    .status-complete { 
-      background: #e6fbf4; 
-      color: #087f5b; 
-    }
-    body.dark-mode .status-complete { background:#0d3d2c; color:#63e6be; }
-    
-    .status-incomplete { 
-      background: #fff8e1; 
-      color: #b45309; 
-    }
-    body.dark-mode .status-incomplete { background:#3d2e00; color:#ffd43b; }
-    
-    .status-complete-late { 
-      background: #e6f7ef; 
-      color: #1c4d38; 
-    }
-    body.dark-mode .status-complete-late { background:#0e2619; color:#b8f0d4; }
-    
-    .status-not-submitted { 
-      background: #fff0f0; 
-      color: #c92a2a; 
-    }
-    body.dark-mode .status-not-submitted { background:#3d0f0f; color:#ff8787; }
-    
-    .filing-badge {
-      font-size: 0.72rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-weight: 600;
-      display: inline-block;
-    }
-    
-    .filing-forwarded { 
-      background: #e6fbf4; 
-      color: #087f5b; 
-    }
-    body.dark-mode .filing-forwarded { background:#0d3d2c; color:#63e6be; }
-    
-    .filing-not-forwarded { 
-      background: #f1f5f9; 
-      color: #64748b; 
-    }
-    body.dark-mode .filing-not-forwarded { background:#1e2030; color:#8892a4; }
-    
-    .appointment-badge {
-      font-size: 0.7rem;
-      padding: 4px 8px;
-      border-radius: 12px;
-      background-color: var(--h-card-alt);
-      color: var(--h-muted);
-      border: 1px solid var(--h-border);
-    }
-    
-    .form-control {
-      border-radius: 8px;
-      border: 1.5px solid var(--h-border);
-      padding: 0px 12px;
-      transition: all 0.2s ease;
-      background: var(--h-card);
-      color: var(--h-text);
-    }
-    
-    .form-control:focus {
-      border-color: var(--h-primary);
-      box-shadow: 0 0 0 3px rgba(42,152,99,.13);
-    }
-    
-    .modal-content {
-      border: none;
-      border-radius: 14px;
-      box-shadow: var(--hover-shadow);
-      overflow: hidden;
-    }
-    
-    .modal-header {
-      background: linear-gradient(135deg,#0f2d1e,#2a9863);
-      color: white;
-      border-radius: 14px 14px 0 0;
-      border-bottom: none;
-      padding: 18px 24px;
-    }
-    .modal-header .close { color:#fff; opacity:.7; text-shadow:none; }
-    .modal-header .close:hover { opacity:1; color:#fff; }
-    
-    .modal-title {
-      font-weight: 700;
-      font-size: 1rem;
-    }
-    
-    .modal-footer {
-      border-top: 1px solid var(--h-border);
-      padding: 14px 24px;
-      background: var(--h-card-alt);
-    }
+    /* Table */
+    .table-container { max-height:600px; overflow-y:auto; border-radius:8px; }
+    .monitoring-table thead th { position:sticky; top:0; z-index:10; white-space:nowrap; }
+    .table-actions { display:flex; gap:6px; justify-content:center; }
+    @media (max-width:768px) { .table-container { overflow-x:auto; } }
 
-    .modal-title i { margin-right: 8px; }
-
-    .info-box {
-      background: var(--h-card-alt);
-      border: 1px solid var(--h-border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: .8rem;
-      color: var(--h-muted);
-      margin-top: 4px;
-    }
-    .info-box i { color: var(--h-primary); margin-right: 4px; }
-    
-    .breadcrumb {
-      background-color: transparent;
-      padding: 0;
-      margin-bottom: 0;
-    }
-    
-    .content-header h1 {
-      font-weight: 700;
-      color: var(--h-text);
-      margin-bottom: 5px;
-    }
-    
-    /* .export-dropdown {
-      min-width: 250px;
-    } */
-
-    /* .export-period {
-      font-size: 0.9rem;
-      padding: 8px 15px;
-      border-radius: 6px;
-      margin: 2px 0;
-      transition: all 0.2s ease;
-    }
-
-    .export-period:hover {
-      background-color: #f8f9fa;
-      transform: translateX(5px);
-    } */
-    
-    .bulk-actions-card {
-      background: var(--h-card-alt);
-      border: 1px solid var(--h-border);
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 20px;
-      color: var(--h-text);
-    }
-    
-    .table-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-    }
-    
-    .table-actions .btn {
-      border-radius: 6px;
-      padding: 5px 10px;
-    }
-    
-    @media (max-width: 768px) {
-      .card-header .card-tools {
-        margin-top: 10px;
-        width: 100%;
-      }
-      
-      .card-header .card-tools .btn {
-        margin-bottom: 5px;
-      }
-      
-      .table-container {
-        overflow-x: auto;
-      }
-    }
-
-    .status-no-attachments { 
-        background: #fff0f0; 
-        color: #c92a2a; 
-    }
-    body.dark-mode .status-no-attachments { background:#3d0f0f; color:#ff8787; }
-
-    .status-lacking-information { 
-        background: #fff8e1; 
-        color: #b45309; 
-    }
-    body.dark-mode .status-lacking-information { background:#3d2e00; color:#ffd43b; }
-
-    .status-for-review { 
-        background: #f1f5f9; 
-        color: #64748b; 
-    }
-    body.dark-mode .status-for-review { background:#1e2030; color:#8892a4; }
-
-    .status-on-time-compliance { 
-        background: #e6f9ec; 
-        color: #1e7e34; 
-    }
+    /* Status / filing / appointment badges */
+    .status-badge, .filing-badge { font-size:.72rem; padding:3px 10px; border-radius:20px; font-weight:600; display:inline-block; }
+    .appointment-badge { font-size:.7rem; padding:4px 8px; border-radius:12px; background:var(--h-surface3); color:var(--h-muted); border:1px solid var(--h-border); }
+    .status-complete, .filing-forwarded                { background:#e6fbf4; color:#087f5b; }
+    .status-complete-and-late, .status-complete-late   { background:#e6f7ef; color:#1c4d38; }
+    .status-incomplete, .status-lacking-information    { background:#fff8e1; color:#b45309; }
+    .status-not-submitted, .status-no-attachments, .status-late-compliance { background:#fff0f0; color:#c92a2a; }
+    .status-for-review, .filing-not-forwarded          { background:#f1f5f9; color:#64748b; }
+    .status-on-time-compliance                         { background:#e6f9ec; color:#1e7e34; }
+    body.dark-mode .status-complete, body.dark-mode .filing-forwarded { background:#0d3d2c; color:#63e6be; }
+    body.dark-mode .status-complete-and-late, body.dark-mode .status-complete-late { background:#0e2619; color:#b8f0d4; }
+    body.dark-mode .status-incomplete, body.dark-mode .status-lacking-information { background:#3d2e00; color:#ffd43b; }
+    body.dark-mode .status-not-submitted, body.dark-mode .status-no-attachments, body.dark-mode .status-late-compliance { background:#3d0f0f; color:#ff8787; }
+    body.dark-mode .status-for-review, body.dark-mode .filing-not-forwarded { background:#1e2030; color:#8892a4; }
     body.dark-mode .status-on-time-compliance { background:#0f2d1a; color:#69db7c; }
 
-    .status-late-compliance { 
-        background: #fff0f0; 
-        color: #c92a2a; 
-    }
-    body.dark-mode .status-late-compliance { background:#3d0f0f; color:#ff8787; }
-
     /* View record modal */
-    .view-head { margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; }
-    .view-name { font-size: 18px; font-weight: 700; color: #1e293b; }
-    .view-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
-    .view-item { margin-bottom: 14px; }
-    .view-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin-bottom: 3px; }
-    .view-value { font-size: 14px; color: #1e293b; word-break: break-word; }
-    .view-remarks { white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; min-height: 42px; }
-    body.dark-mode .view-head { border-color: var(--table-border); }
-    body.dark-mode .view-name, body.dark-mode .view-value { color: var(--text-primary); }
-    body.dark-mode .view-sub, body.dark-mode .view-label { color: var(--text-muted); }
-    body.dark-mode .view-remarks { background: var(--table-stripe); border-color: var(--table-border); }
-    .table-actions .btn { margin-right: 2px; }
+    .view-head { margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--h-border); }
+    .view-name { font-size:18px; font-weight:700; color:var(--h-text); }
+    .view-sub { font-size:13px; color:var(--h-muted); margin-top:2px; }
+    .view-item { margin-bottom:14px; }
+    .view-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--h-muted); margin-bottom:3px; }
+    .view-value { font-size:14px; color:var(--h-text); word-break:break-word; }
+    .view-remarks { white-space:pre-wrap; background:var(--h-card-alt); border:1px solid var(--h-border); border-radius:8px; padding:10px 12px; min-height:42px; }
+    .scrum-style-modal .btn-warning { background:var(--h-warning) !important; color:#fff !important; border:none !important; border-radius:8px !important; font-weight:700 !important; }
+    .scrum-style-modal .alert-warning { background:rgba(230,119,0,.10); border:1px solid rgba(230,119,0,.25); color:var(--h-text); border-radius:8px; font-size:.82rem; }
+    .scrum-style-modal a { color:var(--h-primary); }
+    .scrum-style-modal input[type="file"].form-control { height:auto; padding:6px 10px; }
+    .scrum-style-modal .form-text, .scrum-style-modal small.text-muted { color:var(--h-muted) !important; }
 
-  /* Update the export dropdown styles */
-  .export-dropdown {
-    min-width: 300px !important;
-    padding: 0;
-  }
+    /* Export dropdown */
+    .dropdown-menu.export-dropdown {
+        min-width:300px !important; padding:0; background:var(--h-card); border:1px solid var(--h-border);
+        border-radius:12px; box-shadow:var(--h-shadow); overflow:hidden;
+    }
+    .export-dropdown .dropdown-header { color:var(--h-muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; }
+    .export-dropdown label { color:var(--h-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; }
+    .export-dropdown .form-control-sm { font-size:.8rem; }
+    .year-filter-section { border-bottom:1px solid var(--h-border); }
+    .export-periods-container { max-height:200px; overflow-y:auto; }
+    .export-period { padding:8px 15px 8px 25px !important; display:block; color:var(--h-text); text-decoration:none; border-bottom:1px solid var(--h-border); transition:background .15s; }
+    .export-period:hover { background:var(--h-primary-dim); color:var(--h-text); text-decoration:none; }
+    .export-period:last-child { border-bottom:none; }
+    .export-dropdown .year-header { background:var(--h-card-alt) !important; border-bottom:1px solid var(--h-border); padding:8px 15px !important; font-size:.8rem !important; color:var(--h-primary) !important; }
+    .no-results-message { padding:15px; text-align:center; color:var(--h-muted); font-style:italic; }
+    .year-buttons { display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
+    .year-btn { padding:4px 8px; font-size:.75rem; border-radius:6px; border:1px solid var(--h-border); background:var(--h-card-alt); color:var(--h-text); cursor:pointer; transition:all .2s; }
+    .year-btn:hover { border-color:var(--h-primary); }
+    .year-btn.active { background:var(--h-primary); color:#fff; border-color:var(--h-primary); }
 
-  .export-periods-container {
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .export-period {
-    padding: 8px 15px;
-    border-bottom: 1px solid #f8f9fa;
-    transition: all 0.2s ease;
-    display: block;
-    color: #495057;
-    text-decoration: none;
-  }
-
-  .export-period:hover {
-    background-color: #f8f9fa;
-    text-decoration: none;
-    transform: translateX(3px);
-    color: #495057;
-  }
-
-  .export-period:last-child {
-    border-bottom: none;
-  }
-
-  .no-results-message {
-    padding: 15px;
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
-  }
-
-  /* Style the filter inputs */
-  .export-dropdown .form-control-sm {
-    border-radius: 4px;
-    font-size: 0.8rem;
-  }
-
-  .export-dropdown .form-group {
-    margin-bottom: 10px;
-  }
-
-  .export-dropdown .form-group:last-child {
-    margin-bottom: 0;
-  }
-
-  .export-dropdown .small {
-    font-size: 0.75rem;
-  }
-
-  /* Year filter section */
-  .year-filter-section {
-    border-bottom: 1px solid #e9ecef;
-    margin-bottom: 10px;
-  }
-
-  .year-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 5px;
-  }
-
-  .year-btn {
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-    background: white;
-    color: #495057;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .year-btn:hover {
-    background: #e9ecef;
-    border-color: #adb5bd;
-  }
-
-  .year-btn.active {
-    background: #2a9863;
-    color: white;
-    border-color: #2a9863;
-  }
-
-  .period-with-year {
-    font-weight: 500;
-  }
-
-  .period-without-year {
-    color: #6c757d;
-    font-style: italic;
-  }
-  .year-header {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
-    border-bottom: 1px solid #dee2e6;
-    margin-top: 5px;
-    padding: 8px 15px !important;
-    font-size: 0.8rem !important;
-  }
-
-  .year-header:first-child {
-    margin-top: 0;
-  }
-
-  .export-period {
-    padding-left: 25px !important;
-  }
-
-  .export-period .text-muted {
-    font-size: 0.75rem;
-  }
-  
-/* =========================================================
-   DARK MODE OVERRIDES — applied via body.dark-mode
-   ========================================================= */
-body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; border-color: var(--card-border) !important; }
-body.dark-mode .card-body { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-footer { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .modal-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
-body.dark-mode .modal-body { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .modal-footer { background: var(--modal-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .table { background: var(--table-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
-body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
-body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
-body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
-body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
-body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
-body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
-body.dark-mode .text-muted { color: var(--text-muted) !important; }
-body.dark-mode .text-dark { color: var(--text-primary) !important; }
-body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 { color: var(--text-primary) !important; }
-body.dark-mode p, body.dark-mode span:not(.badge) { color: var(--text-primary); }
-body.dark-mode .breadcrumb { background: var(--card-bg) !important; }
-body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
-body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
-body.dark-mode .nav-tabs .nav-link { color: var(--text-muted) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs .nav-link.active { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs { border-color: var(--card-border) !important; }
-body.dark-mode .tab-content, body.dark-mode .tab-pane { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .accordion .card { background: var(--card-bg) !important; }
-body.dark-mode .accordion .card-header { background: var(--table-stripe) !important; }
-body.dark-mode .list-group-item { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
-body.dark-mode .dropdown-item { color: var(--dropdown-color) !important; }
-body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
-body.dark-mode .alert { border-color: var(--card-border) !important; }
-body.dark-mode .alert-info { background: #1e2f3e !important; color: #93c5fd !important; }
-body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
-body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
-body.dark-mode .alert-danger { background: #2e1515 !important; color: #fca5a5 !important; }
-body.dark-mode .page-item .page-link { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .page-item.active .page-link { background: var(--sidebar-active-bg) !important; border-color: var(--sidebar-active-bg) !important; }
-body.dark-mode hr { border-color: var(--card-border) !important; }
-body.dark-mode .dataTables_wrapper { color: var(--text-primary) !important; }
-body.dark-mode .dataTables_filter input, body.dark-mode .dataTables_length select { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .dataTables_info { color: var(--text-muted) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection__rendered { color: var(--input-color) !important; }
-body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
-body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
-
-/* Select2 (theme: bootstrap4) — Employee picker in Add Monitoring Record modal.
-   Matches the form-control look/rounded corners used elsewhere on this page. */
-.select2-container--bootstrap4 .select2-selection--single {
-  height: calc(2.25rem + 2px) !important;
-  border: 1px solid var(--h-border, #ced4da) !important;
-  border-radius: .25rem !important;
-  display: flex !important;
-  align-items: center !important;
-  background: var(--h-card, #fff) !important;
-}
-.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
-  padding-left: .75rem !important;
-  color: var(--h-text, #495057) !important;
-  line-height: normal !important;
-}
-.select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
-  height: calc(2.25rem) !important;
-  right: 6px !important;
-}
-.select2-container--bootstrap4.select2-container--focus .select2-selection--single,
-.select2-container--bootstrap4.select2-container--open .select2-selection--single {
-  border-color: var(--h-primary) !important;
-  box-shadow: 0 0 0 3px rgba(42,152,99,.13) !important;
-}
-.select2-container--bootstrap4 .select2-dropdown {
-  border-color: var(--h-border, #ced4da) !important;
-}
-.select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] {
-  background-color: var(--h-primary) !important;
-  color: #fff !important;
-}
-/* Ensure the dropdown isn't clipped/misaligned inside the Bootstrap modal */
-#addRecordModal .select2-container { width: 100% !important; }
-
-body.dark-mode .monitoring-table th { background: var(--table-stripe) !important; color: var(--text-primary) !important; }
-body.dark-mode .monitoring-table td { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .monitoring-table tbody tr:hover { background: var(--notification-unread-bg) !important; }
-body.dark-mode .content-header { background: var(--card-bg) !important; }
-body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
-
-        .pg-hero-breadcrumb {
-            background:transparent; padding:0; margin:0;
-            display:flex; flex-wrap:wrap; gap:2px;
-        }
-        .pg-hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color:rgba(212,245,229,.45); }
-        .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
-        .pg-hero-bc-link:hover { color:#24e78f; }
-        .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
-
-        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
-        @keyframes pgHeroMeshDrift {
-            0%   { transform:translate(0,0)   rotate(0deg); }
-            100% { transform:translate(3%,2%) rotate(2deg); }
-        }
-        @keyframes pgHeroOrbFloat {
-            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
-            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
-            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
-        }
-        @keyframes pgHeroRingPulse {
-            0%,100% { opacity:.45; transform:scale(1);    }
-            50%      { opacity:.85; transform:scale(1.04); }
-        }
-        .pg-hero {
-            background:#0b1f17;
-            padding:36px 28px 66px; position:relative; overflow:hidden;
-        }
-        .pg-hero-mesh {
-            position:absolute; inset:-50%; width:200%; height:200%;
-            background:
-                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
-                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
-                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
-                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
-            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
-            z-index:0;
-        }
-        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
-        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
-        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
-        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
-        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
-        .pg-hero-dots {
-            position:absolute; inset:0; z-index:0; pointer-events:none;
-            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
-            background-size:36px 36px;
-        }
-        .pg-hero-hex {
-            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
-            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
-            background-size:56px 100px;
-        }
-        .pg-hero-rings {
-            position:absolute; top:50%; right:6%;
-            transform:translateY(-50%);
-            width:240px; height:240px; pointer-events:none; z-index:0;
-        }
-        .pg-ring {
-            position:absolute; inset:0; border-radius:50%;
-            border:1px solid rgba(36,231,143,.10);
-            animation:pgHeroRingPulse 4s ease-in-out infinite;
-        }
-        .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
-        .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
-        .pg-hero-arc {
-            position:absolute; top:-50px; right:-50px;
-            width:200px; height:200px; border-radius:50%;
-            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
-            pointer-events:none; z-index:0;
-        }
-        .pg-hero::after {
-            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
-            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
-        }
-        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
-        .pg-hero-inner { position:relative; z-index:2; }
-        .pg-hero-title {
-            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
-            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
-            display:flex; align-items:center; gap:10px;
-        }
-        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
-        .pg-hero-divider {
-            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
-            background:linear-gradient(90deg,transparent,#24e78f,transparent);
-        }
-        .pg-hero-actions {
-            position:relative; z-index:2;
-            display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
-        }
-        .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
-        .pg-hero-btn {
-            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
-            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
-            border-radius:10px; padding:8px 16px;
-            font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
-            display:inline-flex; align-items:center; gap:7px;
-            transition:background .2s, transform .18s, box-shadow .2s;
-        }
-        .pg-hero-btn:hover {
-            background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
-            transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
-            color:#d4f5e5; text-decoration:none;
-        }
-        .pg-hero-layout {
-            display:flex; align-items:flex-start; justify-content:space-between;
-            flex-wrap:wrap; gap:14px; position:relative; z-index:2;
-        }
-        .mh-logo-watermark {
-            position:absolute; top:50%; right:3%;
-            transform:translateY(-50%);
-            width:180px; height:auto; pointer-events:none; z-index:0;
-            opacity:0.50;
-        }
-
-        /* ── Scrum-style modal (mirrors the "Create New Project" modal in
-           Scrum > Projects) — applied to Add/Edit Monitoring Record ── */
-        .scrum-style-modal .modal-content {
-            background: var(--h-card) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 14px !important;
-            box-shadow: 0 24px 80px rgba(0,0,0,.25) !important;
-            color: var(--h-text) !important;
-        }
-        .scrum-style-modal .modal-header {
-            background: var(--h-card-alt) !important;
-            border-bottom: 1px solid var(--h-border) !important;
-            border-radius: 14px 14px 0 0 !important;
-            padding: 16px 20px !important;
-        }
-        .scrum-style-modal .modal-title {
-            font-weight: 700 !important;
-            font-size: .95rem !important;
-            color: var(--h-text) !important;
-        }
-        .scrum-style-modal .modal-title i { color: var(--h-primary) !important; }
-        .scrum-style-modal .modal-header .close {
-            color: var(--h-muted) !important;
-            text-shadow: none !important;
-            opacity: 1 !important;
-        }
-        .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
-        .scrum-style-modal .modal-footer {
-            border-top: 1px solid var(--h-border) !important;
-            padding: 14px 20px !important;
-            background: var(--h-card-alt) !important;
-            border-radius: 0 0 14px 14px !important;
-        }
-        .scrum-style-modal label {
-            color: var(--h-muted) !important;
-            font-size: .72rem !important;
-            font-weight: 600 !important;
-            text-transform: uppercase !important;
-            letter-spacing: .5px !important;
-            margin-bottom: 5px !important;
-        }
-        .scrum-style-modal .form-control,
-        .scrum-style-modal .form-control:focus {
-            background: var(--h-card-alt) !important;
-            border: 1.5px solid var(--h-border) !important;
-            color: var(--h-text) !important;
-            border-radius: 8px !important;
-            font-size: .875rem !important;
-        }
-        .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
-        .scrum-style-modal .form-control:focus {
-            border-color: var(--h-primary) !important;
-            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
-        }
-        .scrum-style-modal .btn-secondary {
-            background: var(--h-card-alt) !important;
-            color: var(--h-muted) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 8px !important;
-            font-weight: 600 !important;
-        }
-        .scrum-style-modal .btn-primary {
-            background: var(--h-primary) !important;
-            color: #fff !important;
-            border: none !important;
-            border-radius: 8px !important;
-            font-weight: 700 !important;
-            box-shadow: 0 2px 12px var(--h-primary-dim) !important;
-        }
-        .scrum-style-modal .btn-primary:hover { filter: brightness(1.1) !important; }
-        .scrum-style-modal .info-box {
-            background: var(--h-card-alt) !important;
-            border: 1px solid var(--h-border) !important;
-            color: var(--h-text) !important;
-        }
-        /* Select2 employee picker (Add Monitoring Record) — match the
-           rounded, flat input look used across the rest of this modal */
-        #addRecordModal.scrum-style-modal .select2-container--bootstrap4 .select2-selection--single {
-            border-radius: 8px !important;
-        }
-</style>
+    /* Select2 (bootstrap4 theme) employee picker */
+    .select2-container--bootstrap4 .select2-selection--single {
+        height:calc(2.25rem + 2px) !important; border:1.5px solid var(--h-border) !important; border-radius:8px !important;
+        display:flex !important; align-items:center !important; background:var(--h-card-alt) !important;
+    }
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered { padding-left:.75rem !important; color:var(--h-text) !important; line-height:normal !important; }
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow { height:calc(2.25rem) !important; right:6px !important; }
+    .select2-container--bootstrap4.select2-container--focus .select2-selection--single,
+    .select2-container--bootstrap4.select2-container--open .select2-selection--single { border-color:var(--h-primary) !important; box-shadow:0 0 0 3px var(--h-primary-dim) !important; }
+    .select2-container--bootstrap4 .select2-dropdown { background:var(--h-card-alt) !important; border:1px solid var(--h-border) !important; border-radius:8px !important; box-shadow:var(--h-shadow) !important; }
+    .select2-container--bootstrap4 .select2-search--dropdown .select2-search__field { background:var(--h-card) !important; border:1px solid var(--h-border) !important; color:var(--h-text) !important; border-radius:6px !important; }
+    .select2-container--bootstrap4 .select2-results__option { color:var(--h-text) !important; background:transparent !important; }
+    .select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] { background:var(--h-primary) !important; color:#fff !important; }
+    #addRecordModal .select2-container { width:100% !important; }
+  </style>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -1171,7 +363,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
             <div class="pg-hero-arc"></div>
             <div class="pg-hero-layout">
                 <div class="pg-hero-inner">
-                    <div class="pg-hero-title">Attachments Monitoring</div>
+                    <div class="pg-hero-title"><i class="fas fa-paperclip"></i>Attachments Monitoring</div>
                     <div class="pg-hero-divider"></div>
                     <p class="pg-hero-sub">Track and manage employee document attachments</p>
                 </div>
@@ -1269,7 +461,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
           <div class="col-12">
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title">Attachments Monitoring</h3>
+                <h3 class="card-title">Monitoring Records</h3>
                 <div class="card-tools">
                   <div class="btn-group">
                     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addRecordModal">
@@ -1441,7 +633,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
                 </div>
 
                 <div class="table-container">
-                  <table id="monitoringTable" class="table table-bordered table-striped monitoring-table">
+                  <table id="monitoringTable" class="table table-striped mod-table monitoring-table">
                     <thead>
                       <tr>
                         <th width="30"></th>
@@ -1812,7 +1004,7 @@ body.dark-mode .breadcrumb-item { color: var(--text-primary) !important; }
 </div>
 
 <!-- In the Import Modal -->
-<div class="modal fade" id="importModal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade scrum-style-modal" id="importModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -2189,28 +1381,16 @@ $(document).ready(function() {
   }
   
   function showToast(type, message) {
-    // Create toast element
-    const toast = $(`
-      <div class="toast align-items-center text-white bg-${type} border-0 position-fixed" 
-           style="top: 20px; right: 20px; z-index: 9999;" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            ${message}
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
-    `);
-    
-    $('body').append(toast);
-    
-    // Initialize and show toast
-    const bsToast = new bootstrap.Toast(toast[0]);
-    bsToast.show();
-    
-    // Remove toast from DOM after it's hidden
-    toast.on('hidden.bs.toast', function() {
-      $(this).remove();
+    // Themed SweetAlert toast (the page uses Bootstrap 4, which has no bootstrap.Toast)
+    var icon = ['success', 'error', 'warning', 'info'].indexOf(type) !== -1 ? type : 'info';
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: icon,
+      title: message,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true
     });
   }
 
@@ -2241,7 +1421,7 @@ $(document).ready(function() {
                             title: 'Success!',
                             html: `<strong>${response.message}</strong><br><br>${response.details}`,
                             confirmButtonText: 'OK',
-                            confirmButtonColor: '#3085d6'
+                            confirmButtonColor: '#2a9863'
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 location.reload();
@@ -2253,7 +1433,7 @@ $(document).ready(function() {
                             title: 'Completed with Issues',
                             html: `<strong>${response.message}</strong><br><br>${response.details}`,
                             confirmButtonText: 'OK, Reload',
-                            confirmButtonColor: '#3085d6',
+                            confirmButtonColor: '#2a9863',
                             showCancelButton: true,
                             cancelButtonText: 'View Errors'
                         }).then((result) => {

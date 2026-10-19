@@ -321,6 +321,108 @@ $result = $db->query($query);
   <title>Intern Databank</title>
   <?php include '../includes/header.php'; ?>
   <link rel="stylesheet" href="../css/intern.css">
+  <style>
+    /* ── View modal ── */
+    #viewInternModal .modal-header { padding: 10px 20px !important; }
+    #viewInternModal .modal-footer { padding: 10px 20px !important; gap: 8px; }
+    #viewInternModal .modal-footer .btn { margin: 0; }
+
+    /* Hero */
+    #viewInternModal .vi-hero {
+      background: linear-gradient(160deg,#0f2d1e 0%,#1c4d38 100%);
+      padding: 16px 20px 14px; color: #fff; text-align: center;
+    }
+    #viewInternModal .vi-avatar {
+      width: 76px !important; height: 76px !important; max-width: 76px; border-radius: 50%; object-fit: cover; background: #fff;
+      border: 3px solid var(--h-accent);
+      box-shadow: 0 0 0 4px rgba(36,231,143,.18), 0 4px 12px rgba(0,0,0,.3);
+    }
+    #viewInternModal .vi-avatar-empty { display: inline-flex; align-items: center; justify-content: center; background: #16352a; }
+    #viewInternModal .vi-avatar-empty i { font-size: 30px; color: #6aad8a; }
+    #viewInternModal .vi-name { margin: 8px 0 4px; font-size: 1.15rem; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: -.2px; }
+    #viewInternModal .vi-status {
+      display: inline-flex; align-items: center; gap: 6px; padding: 2px 12px; border-radius: 999px;
+      font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    }
+    #viewInternModal .vi-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    #viewInternModal .vi-status.success   { background: #d9f7e8; color: #146c43; }
+    #viewInternModal .vi-status.primary   { background: #dbeafe; color: #1d4ed8; }
+    #viewInternModal .vi-status.danger    { background: #fde2e2; color: #b42318; }
+    #viewInternModal .vi-status.warning   { background: #fff1cc; color: #92600a; }
+    #viewInternModal .vi-status.secondary { background: #e5e7eb; color: #374151; }
+
+    #viewInternModal .vi-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    #viewInternModal .vi-stat { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 5px 8px; min-width: 0; }
+    #viewInternModal .vi-stat small { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .6px; color: rgba(255,255,255,.7); line-height: 1.3; }
+    #viewInternModal .vi-stat strong { display: block; font-size: .8rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Tabs (same approach as before: !important colours beat the global .nav-tabs rules) */
+    #viewInternModal .intern-detail-tabs {
+      display: flex !important; flex-wrap: nowrap; justify-content: flex-start; gap: 2px;
+      margin: 0 !important; padding: 0 14px !important;
+      border-bottom: 1px solid var(--h-border) !important;
+      background: var(--h-card);
+    }
+    #viewInternModal .intern-detail-tabs .nav-item { flex: 0 0 auto; width: auto !important; margin: 0; }
+    #viewInternModal .intern-detail-tabs .nav-link {
+      display: inline-flex !important; align-items: center; gap: 6px; width: auto !important;
+      border: none !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important;
+      background: transparent !important; box-shadow: none !important; outline: none !important;
+      color: var(--h-muted) !important; -webkit-text-fill-color: var(--h-muted);
+      font-size: .82rem !important; font-weight: 700 !important; line-height: 1.2;
+      padding: 10px 14px !important; margin: 0 0 -1px; white-space: nowrap;
+      transition: color .15s, border-color .15s;
+    }
+    #viewInternModal .intern-detail-tabs .nav-link i { color: var(--h-primary) !important; -webkit-text-fill-color: var(--h-primary); margin: 0 !important; }
+    #viewInternModal .intern-detail-tabs .nav-link:hover { color: var(--h-text) !important; -webkit-text-fill-color: var(--h-text); }
+    #viewInternModal .intern-detail-tabs .nav-link.active {
+      color: var(--h-primary) !important; -webkit-text-fill-color: var(--h-primary);
+      border-bottom-color: var(--h-primary) !important;
+    }
+    .scrum-style-modal .tab-content, .scrum-style-modal .tab-pane { background: transparent !important; color: var(--h-text) !important; }
+
+    /* Panels */
+    #viewInternModal .vi-panels { padding: 14px 16px; }
+    #viewInternModal .vi-card { background: var(--h-card-alt); border: 1px solid var(--h-border); border-radius: 10px; padding: 0 16px; }
+    #viewInternModal .vi-card-title {
+      margin: 0; padding: 10px 0 8px; display: flex; align-items: center; gap: 8px;
+      font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+      color: var(--h-muted); border-bottom: 1px solid var(--h-border);
+    }
+    #viewInternModal .vi-card-title i { color: var(--h-primary); }
+    #viewInternModal .vi-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--h-border); align-items: start; }
+    #viewInternModal .vi-row:last-child { border-bottom: 0; }
+    #viewInternModal .vi-label { font-size: .8rem; font-weight: 700; color: var(--h-muted); }
+    #viewInternModal .vi-value { font-size: .85rem; color: var(--h-text); word-break: break-word; }
+    #viewInternModal .vi-value a { color: var(--h-primary); }
+    #viewInternModal .vi-value.empty { color: var(--h-muted); font-style: italic; opacity: .7; }
+    #viewInternModal .vi-bar { height: 6px; border-radius: 99px; background: var(--h-border); overflow: hidden; margin-top: 4px; max-width: 200px; }
+    #viewInternModal .vi-bar > span { display: block; height: 100%; background: var(--h-primary); }
+
+    /* Documents */
+    #viewInternModal .vi-doc { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--h-border); }
+    #viewInternModal .vi-doc:last-child { border-bottom: 0; }
+    #viewInternModal .vi-doc-icon {
+      width: 34px; height: 34px; flex: 0 0 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--h-primary-dim); color: var(--h-primary); font-size: .85rem;
+    }
+    #viewInternModal .vi-doc.missing .vi-doc-icon { background: var(--h-surface3); color: var(--h-muted); }
+    #viewInternModal .vi-doc-info { flex: 1; min-width: 0; }
+    #viewInternModal .vi-doc-name { font-size: .84rem; font-weight: 600; color: var(--h-text); line-height: 1.2; }
+    #viewInternModal .vi-doc-status { font-size: .72rem; color: var(--h-muted); }
+    #viewInternModal .vi-doc:not(.missing) .vi-doc-status { color: var(--h-primary); font-weight: 600; }
+    #viewInternModal .vi-doc-btn {
+      font-size: .75rem; font-weight: 600; padding: 4px 10px; border-radius: 8px; white-space: nowrap;
+      border: 1px solid var(--h-primary); color: var(--h-primary) !important; background: transparent; text-decoration: none;
+    }
+    #viewInternModal .vi-doc-btn:hover { background: var(--h-primary); color: #fff !important; text-decoration: none; }
+
+    @media (max-width: 576px) {
+      #viewInternModal .vi-row { grid-template-columns: 1fr; gap: 2px; }
+      #viewInternModal .vi-stats { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body class="hold-transition sidebar-mini">
   <div class="wrapper">
@@ -1079,10 +1181,10 @@ $result = $db->query($query);
           </div>
           <div class="modal-footer">
             <a href="#" id="viewModalCertBtn" class="btn btn-success" target="_blank">
-              <i class="fas fa-certificate mr-2"></i>Generate Certificate
+              <i class="fas fa-certificate mr-1"></i>Generate Certificate
             </a>
             <button type="button" class="btn btn-secondary" data-dismiss="modal">
-              <i class="fas fa-times mr-2"></i>Close
+              <i class="fas fa-times mr-1"></i>Close
             </button>
           </div>
         </div>
@@ -1432,194 +1534,104 @@ $(document).on('click', '.view-btn', function() {
       if (response.success) {
         let data = response.data;
         
-        // Status badge colors
-        const statusColors = {
-          'Active': 'success',
-          'Completed': 'primary',
-          'Terminated': 'danger',
-          'On Hold': 'warning'
-        };
+        // ---- helpers ----
+        const esc = (v) => $('<div>').text(v == null ? '' : v).html();
+        const val = (v) => (v === null || v === undefined || String(v).trim() === '')
+          ? '<span class="vi-value empty">Not provided</span>' : esc(v);
+        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        const row = (label, html) => `
+          <div class="vi-row">
+            <div class="vi-label">${label}</div>
+            <div class="vi-value">${html}</div>
+          </div>`;
+        const doc = (icon, name, file) => `
+          <div class="vi-doc ${file ? '' : 'missing'}">
+            <div class="vi-doc-icon"><i class="fas ${icon}"></i></div>
+            <div class="vi-doc-info">
+              <div class="vi-doc-name">${name}</div>
+              <div class="vi-doc-status">${file ? 'Uploaded' : 'Not uploaded'}</div>
+            </div>
+            ${file ? `<a class="vi-doc-btn" href="../uploads/interns/${encodeURI(file)}" target="_blank"><i class="fas fa-download mr-1"></i>Download</a>` : ''}
+          </div>`;
+
+        const statusColors = { 'Active': 'success', 'Completed': 'primary', 'Terminated': 'danger', 'On Hold': 'warning' };
         const statusClass = statusColors[data.status] || 'secondary';
-        
-        // Profile picture
-        const profilePic = data.profile_picture 
-          ? `<img src="../uploads/interns/${data.profile_picture}" class="intern-profile-pic" alt="Profile">`
-          : `<div class="intern-profile-pic intern-profile-pic-empty">
-              <i class="fas fa-user"></i>
-            </div>`;
-        
+
+        const fullName = [data.first_name, data.middle_name, data.last_name]
+          .filter(p => p && String(p).trim()).join(' ');
+
+        const profilePic = data.profile_picture
+          ? `<img src="../uploads/interns/${encodeURI(data.profile_picture)}" class="vi-avatar" alt="Profile">`
+          : `<div class="vi-avatar vi-avatar-empty"><i class="fas fa-user"></i></div>`;
+
+        const rating = parseFloat(data.performance_rating);
+        const performanceHtml = isNaN(rating)
+          ? '<span class="vi-value empty">Not rated</span>'
+          : `${rating}/100<div class="vi-bar"><span style="width:${Math.max(0, Math.min(100, rating))}%"></span></div>`;
+
+        const duration = data.start_date
+          ? `${fmtDate(data.start_date)} &ndash; ${data.end_date ? fmtDate(data.end_date) : 'Ongoing'}`
+          : '';
+
         let content = `
-          <div class="intern-profile-header">
+          <div class="vi-hero">
             ${profilePic}
-            <div class="intern-profile-name">${data.first_name} ${data.middle_name || ''} ${data.last_name}</div>
-            <div class="intern-profile-status">
-              <span class="badge badge-${statusClass}">${data.status}</span>
+            <div class="vi-name">${esc(fullName)}</div>
+            <span class="vi-status ${statusClass}">${esc(data.status)}</span>
+            <div class="vi-stats">
+              <div class="vi-stat"><small>Department</small><strong>${esc(data.department_assigned) || '&mdash;'}</strong></div>
+              <div class="vi-stat"><small>Start Date</small><strong>${fmtDate(data.start_date) || '&mdash;'}</strong></div>
+              <div class="vi-stat"><small>Required Hours</small><strong>${data.number_of_hours ? esc(data.number_of_hours) + ' hrs' : '&mdash;'}</strong></div>
             </div>
           </div>
-          
-          <div class="px-4 pb-4">
-            <!-- Nav Tabs -->
-            <ul class="nav nav-tabs intern-detail-tabs" id="internTab" role="tablist">
-              <li class="nav-item ">
-                <a class="nav-link active" id="personal-tab" data-toggle="tab" href="#personal" role="tab">
-                  <i class="fas fa-user mr-1 "></i> Personal
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" id="academic-tab" data-toggle="tab" href="#academic" role="tab">
-                  <i class="fas fa-graduation-cap mr-1"></i> Academic
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" id="internship-tab" data-toggle="tab" href="#internship" role="tab">
-                  <i class="fas fa-briefcase mr-1"></i> Internship
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" id="documents-tab" data-toggle="tab" href="#documents" role="tab">
-                  <i class="fas fa-paperclip mr-1"></i> Documents
-                </a>
-              </li>
-            </ul>
-            
-            <!-- Tab Content -->
-            <div class="tab-content pt-3" id="internTabContent">
-              
-              <!-- Personal Information Tab -->
-              <div class="tab-pane fade show active" id="personal" role="tabpanel">
-                <div class="info-card">
-                  <h6><i class="fas fa-user mr-2"></i>Personal Information</h6>
-                  <div class="info-row">
-                    <div class="info-label">Full Name</div>
-                    <div class="info-value">${data.first_name} ${data.middle_name || ''} ${data.last_name}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Gender</div>
-                    <div class="info-value">${data.gender || 'N/A'}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Email</div>
-                    <div class="info-value">${data.email}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Phone</div>
-                    <div class="info-value">${data.phone_number}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Address</div>
-                    <div class="info-value">${data.address}</div>
-                  </div>
-                </div>
+
+          <ul class="nav nav-tabs intern-detail-tabs" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#vi-personal" role="tab"><i class="fas fa-user mr-1"></i> Personal</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#vi-academic" role="tab"><i class="fas fa-graduation-cap mr-1"></i> Academic</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#vi-internship" role="tab"><i class="fas fa-briefcase mr-1"></i> Internship</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#vi-documents" role="tab"><i class="fas fa-paperclip mr-1"></i> Documents</a></li>
+          </ul>
+
+          <div class="tab-content vi-panels">
+            <div class="tab-pane fade show active" id="vi-personal" role="tabpanel">
+              <div class="vi-card">
+                <h6 class="vi-card-title"><i class="fas fa-user"></i>Personal Information</h6>
+                ${row('Full Name', val(fullName))}
+                ${row('Gender', val(data.gender))}
+                ${row('Email', data.email ? `<a href="mailto:${esc(data.email)}">${esc(data.email)}</a>` : val(''))}
+                ${row('Phone', val(data.phone_number))}
+                ${row('Address', val(data.address))}
               </div>
-              
-              <!-- Academic Information Tab -->
-              <div class="tab-pane fade" id="academic" role="tabpanel">
-                <div class="info-card">
-                  <h6><i class="fas fa-graduation-cap mr-2"></i>Academic Information</h6>
-                  <div class="info-row">
-                    <div class="info-label">School</div>
-                    <div class="info-value">${data.school}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Course</div>
-                    <div class="info-value">${data.course}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Year Level</div>
-                    <div class="info-value">${data.year_level}</div>
-                  </div>
-                </div>
+            </div>
+
+            <div class="tab-pane fade" id="vi-academic" role="tabpanel">
+              <div class="vi-card">
+                <h6 class="vi-card-title"><i class="fas fa-graduation-cap"></i>Academic Information</h6>
+                ${row('School', val(data.school))}
+                ${row('Course', val(data.course))}
+                ${row('Year Level', val(data.year_level))}
               </div>
-              
-              <!-- Internship Details Tab -->
-              <div class="tab-pane fade" id="internship" role="tabpanel">
-                <div class="info-card">
-                  <h6><i class="fas fa-briefcase mr-2"></i>Internship Details</h6>
-                  <div class="info-row">
-                    <div class="info-label">Department</div>
-                    <div class="info-value">${data.department_assigned || 'N/A'}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Supervisor</div>
-                    <div class="info-value">${data.supervisor_name || 'N/A'}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Duration</div>
-                    <div class="info-value">${new Date(data.start_date).toLocaleDateString()} - ${data.end_date ? new Date(data.end_date).toLocaleDateString() : 'Ongoing'}</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Required Hours</div>
-                    <div class="info-value">${data.number_of_hours} hours</div>
-                  </div>
-                  <div class="info-row">
-                    <div class="info-label">Performance</div>
-                    <div class="info-value">${data.performance_rating ? data.performance_rating + '/100' : 'Not rated'}</div>
-                  </div>
-                  ${data.remarks ? `
-                  <div class="info-row">
-                    <div class="info-label">Remarks</div>
-                    <div class="info-value">${data.remarks}</div>
-                  </div>` : ''}
-                </div>
+            </div>
+
+            <div class="tab-pane fade" id="vi-internship" role="tabpanel">
+              <div class="vi-card">
+                <h6 class="vi-card-title"><i class="fas fa-briefcase"></i>Internship Details</h6>
+                ${row('Department', val(data.department_assigned))}
+                ${row('Supervisor', val(data.supervisor_name))}
+                ${row('Duration', duration || val(''))}
+                ${row('Required Hours', data.number_of_hours ? esc(data.number_of_hours) + ' hours' : val(''))}
+                ${row('Performance', performanceHtml)}
+                ${data.remarks ? row('Remarks', esc(data.remarks)) : ''}
               </div>
-              
-              <!-- Documents Tab -->
-              <div class="tab-pane fade" id="documents" role="tabpanel">
-                <div class="info-card">
-                  <h6><i class="fas fa-paperclip mr-2"></i>Uploaded Documents</h6>
-                  
-                  <div class="document-item">
-                    <div class="document-icon">
-                      <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div class="document-info">
-                      <div class="document-name">Resume / CV</div>
-                      <div class="document-status">${data.resume_file ? 'Uploaded' : 'Not uploaded'}</div>
-                    </div>
-                    <div class="document-actions">
-                      ${data.resume_file ? `<a href="../uploads/interns/${data.resume_file}" target="_blank"><i class="fas fa-download mr-1"></i>Download</a>` : '<span class="text-muted">-</span>'}
-                    </div>
-                  </div>
-                  
-                  <div class="document-item">
-                    <div class="document-icon">
-                      <i class="fas fa-envelope-open-text"></i>
-                    </div>
-                    <div class="document-info">
-                      <div class="document-name">Recommendation Letter</div>
-                      <div class="document-status">${data.recommendation_letter ? 'Uploaded' : 'Not uploaded'}</div>
-                    </div>
-                    <div class="document-actions">
-                      ${data.recommendation_letter ? `<a href="../uploads/interns/${data.recommendation_letter}" target="_blank"><i class="fas fa-download mr-1"></i>Download</a>` : '<span class="text-muted">-</span>'}
-                    </div>
-                  </div>
-                  
-                  <div class="document-item">
-                    <div class="document-icon">
-                      <i class="fas fa-stamp"></i>
-                    </div>
-                    <div class="document-info">
-                      <div class="document-name">School Endorsement</div>
-                      <div class="document-status">${data.school_endorsement ? 'Uploaded' : 'Not uploaded'}</div>
-                    </div>
-                    <div class="document-actions">
-                      ${data.school_endorsement ? `<a href="../uploads/interns/${data.school_endorsement}" target="_blank"><i class="fas fa-download mr-1"></i>Download</a>` : '<span class="text-muted">-</span>'}
-                    </div>
-                  </div>
-                  
-                  <div class="document-item">
-                    <div class="document-icon">
-                      <i class="fas fa-folder-open"></i>
-                    </div>
-                    <div class="document-info">
-                      <div class="document-name">Other Documents</div>
-                      <div class="document-status">${data.other_documents ? 'Uploaded' : 'Not uploaded'}</div>
-                    </div>
-                    <div class="document-actions">
-                      ${data.other_documents ? `<a href="../uploads/interns/${data.other_documents}" target="_blank"><i class="fas fa-download mr-1"></i>Download</a>` : '<span class="text-muted">-</span>'}
-                    </div>
-                  </div>
-                </div>
+            </div>
+
+            <div class="tab-pane fade" id="vi-documents" role="tabpanel">
+              <div class="vi-card">
+                <h6 class="vi-card-title"><i class="fas fa-paperclip"></i>Uploaded Documents</h6>
+                ${doc('fa-file-alt', 'Resume / CV', data.resume_file)}
+                ${doc('fa-envelope-open-text', 'Recommendation Letter', data.recommendation_letter)}
+                ${doc('fa-stamp', 'School Endorsement', data.school_endorsement)}
+                ${doc('fa-folder-open', 'Other Documents', data.other_documents)}
               </div>
             </div>
           </div>

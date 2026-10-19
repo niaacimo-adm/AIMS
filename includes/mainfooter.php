@@ -1446,6 +1446,9 @@ function detectNewChatMessages(prev) {
         if (first || cnt > (prev.get(uid) || 0)) list.push([uid, cnt]);
     });
 
+    // When queue_alert.js is loaded, its full-screen overlay handles chat alerts instead of toasts
+    if (window.__queueAlertLoaded) return;
+
     if (first) {
         // On page load: remind about waiting messages once per browser session (max 3 people)
         let already = false;
@@ -2334,6 +2337,21 @@ $(document).ready(function() {
 window.chatSystem = {
     openInbox: openInbox,
     openPopover: openPopover,
+    // true if the user is already reading the conversation with this employee
+    isViewing: function (uid) {
+        uid = parseInt(uid);
+        return !!((state.popover.chatOpen && state.popover.recipient && parseInt(state.popover.recipient.emp_id) === uid) ||
+                  (state.inbox.open && parseInt(state.inbox.activeUserId) === uid));
+    },
+    // open the chat with a given employee (used by the "Reply" button on the alert)
+    openChatWith: function (uid) {
+        uid = parseInt(uid);
+        ensureUsers(function () {
+            const user = state.allUsers.find(function (u) { return parseInt(u.emp_id) === uid; });
+            if (!user) return;
+            if (state.inbox.open) openInboxChat(user); else openPopoverChat(user);
+        });
+    },
 };
 
 })();

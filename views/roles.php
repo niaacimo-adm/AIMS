@@ -2,822 +2,521 @@
 require_once '../config/database.php';
 require_once '../includes/auth.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $database = new Database();
 $db = $database->getConnection();
 
 // Check permissions
 checkPermission('manage_roles');
 
-// Handle form submissions
+if (empty($_SESSION['csrf_roles'])) {
+    $_SESSION['csrf_roles'] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION['csrf_roles'];
+
+function rl_reply(bool $ok, string $msg = '', array $extra = []): void {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array_merge(['success' => $ok, 'message' => $msg], $extra));
+    exit;
+}
+
+function rl_plural(int $n, string $word): string {
+    return $n . ' ' . $word . ($n === 1 ? '' : 's');
+}
+
+/* ═══════════════ AJAX actions (POST) ═══════════════ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_role'])) {
-        $name = trim($_POST['name']);
-        $description = trim($_POST['description']);
-        
-        $stmt = $db->prepare("INSERT INTO user_roles (name, description) VALUES (?, ?)");
-        if ($stmt->execute([$name, $description])) {
-            $_SESSION['swal'] = [
-                'type' => 'success',
-                'title' => 'Success!',
-                'text' => 'Role added successfully!'
-            ];
-            header("Location: roles.php");
-            exit();
-        }
+    if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) {
+        http_response_code(419);
+        rl_reply(false, 'Session expired. Please refresh the page and try again.');
     }
-    
-    // Handle role update
-    if (isset($_POST['update_role'])) {
-        $roleId = (int)$_POST['role_id'];
-        $name = trim($_POST['name']);
-        $description = trim($_POST['description']);
-        
-        $stmt = $db->prepare("UPDATE user_roles SET name = ?, description = ? WHERE id = ?");
-        if ($stmt->execute([$name, $description, $roleId])) {
-            $_SESSION['swal'] = [
-                'type' => 'success',
-                'title' => 'Success!',
-                'text' => 'Role updated successfully!'
-            ];
-            header("Location: roles.php");
-            exit();
-        }
-    }
-    
-    // Handle role deletion
-    if (isset($_POST['delete_role'])) {
-        $roleId = (int)$_POST['role_id'];
-        
-        try {
-            // Check if role is assigned to any users
-            $stmt = $db->prepare("SELECT COUNT(*) as user_count FROM users WHERE role_id = ?");
-            $stmt->bind_param("i", $roleId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $count = $result->fetch_assoc()['user_count'];
 
-            if ($count > 0) {
-                $_SESSION['swal'] = [
-                    'type' => 'error',
-                    'title' => 'Error!',
-                    'text' => 'Cannot delete role because it is assigned to users',
-                    'userCount' => $count
-                ];
-                header("Location: roles.php");
-                exit();
+    $action = $_POST['action'] ?? '';
+    $id     = (int)($_POST['id'] ?? 0);
+
+    try {
+        /* Create / update role details */
+        if ($action === 'save') {
+            $name        = trim($_POST['name'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+
+            if ($name === '' || $description === '') rl_reply(false, 'Name and description are required.');
+            if (mb_strlen($name) > 100)               rl_reply(false, 'Name must be 100 characters or fewer.');
+            if (mb_strlen($description) > 500)        rl_reply(false, 'Description must be 500 characters or fewer.');
+
+            // Unique name (ignore the row being edited)
+            $stmt = $db->prepare("SELECT id FROM user_roles WHERE name = ? AND id <> ? LIMIT 1");
+            $stmt->bind_param('si', $name, $id);
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows > 0) {
+                rl_reply(false, 'A role with that name already exists.');
             }
 
-            // Begin transaction
-            $db->begin_transaction();
-            
-            // First delete role permissions
-            $stmt = $db->prepare("DELETE FROM role_permissions WHERE role_id = ?");
-            $stmt->bind_param("i", $roleId);
-            $stmt->execute();
-            
-            // Then delete the role
-            $stmt = $db->prepare("DELETE FROM user_roles WHERE id = ?");
-            $stmt->bind_param("i", $roleId);
-            
-            if ($stmt->execute()) {
-                $db->commit();
-                $_SESSION['swal'] = [
-                    'type' => 'success',
-                    'title' => 'Success!',
-                    'text' => 'Role deleted successfully!'
-                ];
+            if ($id > 0) {
+                $stmt = $db->prepare("UPDATE user_roles SET name = ?, description = ? WHERE id = ?");
+                $stmt->bind_param('ssi', $name, $description, $id);
             } else {
-                throw new Exception("Failed to delete role");
+                $stmt = $db->prepare("INSERT INTO user_roles (name, description) VALUES (?, ?)");
+                $stmt->bind_param('ss', $name, $description);
             }
-        } catch (Exception $e) {
-            $db->rollback();
-            $_SESSION['swal'] = [
-                'type' => 'error',
-                'title' => 'Error!',
-                'text' => 'Failed to delete role: ' . $e->getMessage()
-            ];
-        }
-        
-        header("Location: roles.php");
-        exit();
-    }
-    
-    if (isset($_POST['update_permissions'])) {
-        $roleId = (int)$_POST['role_id'];
-        $permissions = $_POST['permissions'] ?? [];
-        
-        // Begin transaction
-        $db->begin_transaction();
-        
-        try {
-            // Delete existing permissions
-            $stmt = $db->prepare("DELETE FROM role_permissions WHERE role_id = ?");
-            $stmt->bind_param("i", $roleId);
             $stmt->execute();
-            
-            // Add new permissions
+            rl_reply(true, $id > 0 ? 'Role updated.' : 'Role created.');
+        }
+
+        if ($id <= 0) rl_reply(false, 'Invalid role.');
+
+        /* Replace the permission set of a role */
+        if ($action === 'save_permissions') {
+            $stmt = $db->prepare("SELECT id FROM user_roles WHERE id = ? LIMIT 1");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows === 0) rl_reply(false, 'Role not found.');
+
+            $raw  = $_POST['permissions'] ?? [];
+            $perm = is_array($raw) ? array_values(array_unique(array_filter(array_map('intval', $raw), function ($v) { return $v > 0; }))) : [];
+
+            $db->begin_transaction();
+
+            $stmt = $db->prepare("DELETE FROM role_permissions WHERE role_id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+
             $stmt = $db->prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
-            foreach ($permissions as $permId) {
-                $permId = (int)$permId;
-                $stmt->bind_param("ii", $roleId, $permId);
+            foreach ($perm as $permId) {
+                $stmt->bind_param('ii', $id, $permId);
                 $stmt->execute();
             }
-            
+
             $db->commit();
-            
-            $_SESSION['swal'] = [
-                'type' => 'success',
-                'title' => 'Success!',
-                'text' => 'Permissions updated successfully!'
-            ];
-        } catch (Exception $e) {
-            $db->rollback();
-            $_SESSION['swal'] = [
-                'type' => 'error',
-                'title' => 'Error!',
-                'text' => 'Failed to update permissions: ' . $e->getMessage()
-            ];
+            rl_reply(true, 'Permissions updated (' . count($perm) . ' assigned).');
         }
-        
-        header("Location: roles.php");
-        exit();
+
+        /* Delete a role (blocked while users are assigned) */
+        if ($action === 'delete') {
+            $stmt = $db->prepare("SELECT COUNT(*) AS c FROM users WHERE role_id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $count = (int)$stmt->get_result()->fetch_assoc()['c'];
+
+            if ($count > 0) {
+                rl_reply(false, 'Cannot delete this role: it is assigned to ' . rl_plural($count, 'user') . '. Reassign them first.');
+            }
+
+            $db->begin_transaction();
+
+            // First delete role permissions
+            $stmt = $db->prepare("DELETE FROM role_permissions WHERE role_id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+
+            // Then delete the role
+            $stmt = $db->prepare("DELETE FROM user_roles WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+
+            $db->commit();
+            rl_reply(true, 'Role deleted.');
+        }
+
+        rl_reply(false, 'Unknown action.');
+    } catch (Throwable $e) {
+        try { $db->rollback(); } catch (Throwable $ignored) {}
+        http_response_code(500);
+        rl_reply(false, 'Something went wrong. Please try again.');
     }
 }
 
-// Get all roles
-$roles = getAllRoles();
+/* ═══════════════ Page data ═══════════════ */
+$roles          = getAllRoles();
 $allPermissions = getAllPermissions();
+$totalPerms     = count($allPermissions);
+
+// Users per role
+$userCounts = [];
+$res = $db->query("SELECT role_id, COUNT(*) AS c FROM users GROUP BY role_id");
+foreach ($res->fetch_all(MYSQLI_ASSOC) as $u) {
+    $userCounts[(int)$u['role_id']] = (int)$u['c'];
+}
+
+$rows = [];
+$inUse = 0;
+foreach ($roles as $role) {
+    $rid       = (int)$role['id'];
+    $permIds   = array_map('intval', getRolePermissions($rid));
+    $userCount = $userCounts[$rid] ?? 0;
+    if ($userCount > 0) $inUse++;
+    $rows[] = [
+        'id'          => $rid,
+        'name'        => $role['name'],
+        'description' => $role['description'],
+        'perm_ids'    => $permIds,
+        'perm_count'  => count($permIds),
+        'user_count'  => $userCount,
+    ];
+}
+$total  = count($rows);
+$unused = $total - $inUse;
 
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Role Management | NIA-ACIMO</title>
-  <?php include '../includes/header.php'; ?>
-  <style>
-    :root {
-      --h-bg:       #eef7f2;
-      --h-card:     #ffffff;
-      --h-card-alt: #f0faf5;
-      --h-surface3: #e2f3ea;
-      --h-border:   rgba(42,152,99,0.18);
-      --h-text:     #0f2d1e;
-      --h-muted:    #4a7a5e;
-      --h-primary:  #2a9863;
-      --h-primary-dim: rgba(42,152,99,.10);
-      --h-accent:   #24e78f;
-      --h-success:  #2a9863;
-      --h-warning:  #e67700;
-      --h-danger:   #c92a2a;
-      --h-blue:     #2a9863;
-      --h-shadow:   0 4px 24px rgba(42,152,99,.12);
-      --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
-    }
-    body.dark-mode {
-      --h-bg:       #0b1f17;
-      --h-card:     #102f22;
-      --h-card-alt: #0e2619;
-      --h-surface3: #16352a;
-      --h-border:   rgba(36,231,143,0.12);
-      --h-text:     #d4f5e5;
-      --h-muted:    #6aad8a;
-      --h-primary:  #24e78f;
-      --h-primary-dim: rgba(36,231,143,.12);
-      --h-accent:   #2a9863;
-      --h-success:  #24e78f;
-      --h-warning:  #ffd43b;
-      --h-danger:   #ff6b6b;
-      --h-blue:     #24e78f;
-      --h-shadow:   0 4px 24px rgba(0,0,0,.35);
-      --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
-    }
-
-    .content-wrapper { background: var(--h-bg) !important; }
-
-    .content { padding:0 20px; margin-top:-50px; position:relative; z-index:3; }
-    .role-card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .role-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    }
-    
-    .role-header {
-        background: linear-gradient(135deg, var(--h-primary), var(--h-accent));
-        color: white;
-        border-radius: 12px 12px 0 0 !important;
-        padding: 15px 20px;
-        border: none;
-    }
-    
-    .permission-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 12px;
-        margin-top: 15px;
-    }
-    
-    .permission-item {
-        background: var(--h-card);
-        border: 1px solid var(--h-border);
-        border-radius: 8px;
-        padding: 12px 15px;
-        transition: all 0.2s ease;
-    }
-    
-    .permission-item:hover {
-        background: var(--h-card-alt);
-        border-color: var(--h-primary);
-    }
-    
-    .permission-item .form-check-label {
-        font-weight: 500;
-        color: var(--h-text);
-    }
-    
-    .permission-item .text-muted {
-        font-size: 0.85em;
-        display: block;
-        margin-top: 4px;
-    }
-    
-    .role-actions {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-    }
-    
-    .role-actions .btn {
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 0.875rem;
-    }
-    
-    .stats-card {
-        background: linear-gradient(135deg, var(--h-primary) 0%, var(--h-accent) 100%);
-        color: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .stats-number {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 0;
-    }
-    
-    .stats-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    
-    .accordion-button {
-        background: transparent;
-        border: none;
-        padding: 15px 20px;
-        font-weight: 600;
-        color: var(--h-text);
-    }
-    
-    .accordion-button:not(.collapsed) {
-        background: var(--h-primary-dim);
-        color: var(--h-primary);
-    }
-    
-    .modern-form .form-control {
-        border-radius: 8px;
-        border: 1px solid var(--h-border);
-        padding: 10px 15px;
-        transition: all 0.2s ease;
-    }
-    
-    .modern-form .form-control:focus {
-        border-color: var(--h-primary);
-        box-shadow: 0 0 0 3px var(--h-primary-dim);
-    }
-    
-    .btn-modern {
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-modern-primary {
-        background: linear-gradient(135deg, var(--h-primary), var(--h-accent));
-        border: none;
-        color: white;
-    }
-    
-    .btn-modern-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--h-shadow);
-    }
-    
-    .section-title {
-        color: var(--h-text);
-        font-weight: 700;
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--h-primary);
-    }
-    
-    .role-badge {
-        background: var(--h-primary-dim);
-        color: var(--h-primary);
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .role-actions .btn-info {
-        background: var(--h-primary) !important;
-        border-color: var(--h-primary) !important;
-        color: #fff !important;
-    }
-    .role-actions .btn-info:hover { filter: brightness(1.1) !important; }
-    #editRoleModal .modal-header.bg-primary,
-    .modal-header.bg-primary {
-        background: var(--h-primary) !important;
-        border: none !important;
-    }
-  
-/* =========================================================
-   DARK MODE OVERRIDES — applied via body.dark-mode
-   ========================================================= */
-body.dark-mode { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .content-wrapper { background-color: var(--body-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card { background: var(--card-bg) !important; border-color: var(--card-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; border-color: var(--card-border) !important; }
-body.dark-mode .card-body { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-footer { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .modal-content { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .modal-header { background: var(--modal-header-bg) !important; color: var(--modal-header-color) !important; }
-body.dark-mode .modal-body { background: var(--modal-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .modal-footer { background: var(--modal-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .table { background: var(--table-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .table thead th { background: var(--table-stripe) !important; color: var(--text-primary) !important; border-color: var(--table-border) !important; }
-body.dark-mode .table td, body.dark-mode .table th { border-color: var(--table-border) !important; color: var(--text-primary) !important; }
-body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background: var(--table-stripe) !important; }
-body.dark-mode .table-hover tbody tr:hover { background: var(--notification-unread-bg) !important; }
-body.dark-mode .table-bordered { border-color: var(--table-border) !important; }
-body.dark-mode .form-control { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .form-control:focus { border-color: #5a7fa8 !important; box-shadow: 0 0 0 0.2rem rgba(90,127,168,.25) !important; }
-body.dark-mode select.form-control option { background: var(--input-bg) !important; color: var(--input-color) !important; }
-body.dark-mode .input-group-text { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode label, body.dark-mode .form-label { color: var(--text-primary) !important; }
-body.dark-mode .text-muted { color: var(--text-muted) !important; }
-body.dark-mode .text-dark { color: var(--text-primary) !important; }
-body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 { color: var(--text-primary) !important; }
-body.dark-mode p, body.dark-mode span:not(.badge) { color: var(--text-primary); }
-body.dark-mode .breadcrumb { background: var(--card-bg) !important; }
-body.dark-mode .breadcrumb-item a { color: #7aabdf !important; }
-body.dark-mode .breadcrumb-item.active { color: var(--text-muted) !important; }
-body.dark-mode .nav-tabs .nav-link { color: var(--text-muted) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs .nav-link.active { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .nav-tabs { border-color: var(--card-border) !important; }
-body.dark-mode .tab-content, body.dark-mode .tab-pane { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .accordion .card { background: var(--card-bg) !important; }
-body.dark-mode .accordion .card-header { background: var(--table-stripe) !important; }
-body.dark-mode .list-group-item { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .dropdown-menu { background: var(--dropdown-bg) !important; border-color: var(--dropdown-border) !important; }
-body.dark-mode .dropdown-item { color: var(--dropdown-color) !important; }
-body.dark-mode .dropdown-item:hover { background: var(--table-stripe) !important; }
-body.dark-mode .alert { border-color: var(--card-border) !important; }
-body.dark-mode .alert-info { background: #1e2f3e !important; color: #93c5fd !important; }
-body.dark-mode .alert-success { background: #1a2e1e !important; color: #86efac !important; }
-body.dark-mode .alert-warning { background: #2e2412 !important; color: #fcd34d !important; }
-body.dark-mode .alert-danger { background: #2e1515 !important; color: #fca5a5 !important; }
-body.dark-mode .page-item .page-link { background: var(--card-bg) !important; color: var(--text-primary) !important; border-color: var(--card-border) !important; }
-body.dark-mode .page-item.active .page-link { background: var(--sidebar-active-bg) !important; border-color: var(--sidebar-active-bg) !important; }
-body.dark-mode hr { border-color: var(--card-border) !important; }
-body.dark-mode .dataTables_wrapper { color: var(--text-primary) !important; }
-body.dark-mode .dataTables_filter input, body.dark-mode .dataTables_length select { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .dataTables_info { color: var(--text-muted) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
-body.dark-mode .select2-container--bootstrap4 .select2-selection__rendered { color: var(--input-color) !important; }
-body.dark-mode .select2-dropdown { background: var(--dropdown-bg) !important; border-color: var(--card-border) !important; }
-body.dark-mode .select2-results__option { color: var(--dropdown-color) !important; }
-body.dark-mode .select2-results__option--highlighted { background: var(--sidebar-active-bg) !important; color: #fff !important; }
-
-body.dark-mode .role-card { background: var(--card-bg) !important; color: var(--text-primary) !important; }
-body.dark-mode .card-footer.bg-white { background: var(--card-bg) !important; }
-body.dark-mode .card-header.bg-white { background: var(--card-bg) !important; }
-body.dark-mode .permission-check { color: var(--text-primary) !important; }
-body.dark-mode .bg-primary.text-white { background: var(--modal-header-bg) !important; }
-body.dark-mode .close.text-white { color: var(--modal-header-color) !important; }
-
-
-        .pg-hero-breadcrumb {
-            background:transparent; padding:0; margin:0;
-            display:flex; flex-wrap:wrap; gap:2px;
-        }
-        .pg-hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color:rgba(212,245,229,.45); }
-        .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
-        .pg-hero-bc-link:hover { color:#24e78f; }
-        .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
-
-        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
-        @keyframes pgHeroMeshDrift {
-            0%   { transform:translate(0,0)   rotate(0deg); }
-            100% { transform:translate(3%,2%) rotate(2deg); }
-        }
-        @keyframes pgHeroOrbFloat {
-            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
-            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
-            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
-        }
-        @keyframes pgHeroRingPulse {
-            0%,100% { opacity:.45; transform:scale(1);    }
-            50%      { opacity:.85; transform:scale(1.04); }
-        }
-        .pg-hero {
-            background:#0b1f17;
-            padding:36px 28px 66px; position:relative; overflow:hidden;
-        }
-        .pg-hero-mesh {
-            position:absolute; inset:-50%; width:200%; height:200%;
-            background:
-                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
-                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
-                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
-                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
-            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
-            z-index:0;
-        }
-        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
-        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
-        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
-        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
-        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
-        .pg-hero-dots {
-            position:absolute; inset:0; z-index:0; pointer-events:none;
-            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
-            background-size:36px 36px;
-        }
-        .pg-hero-hex {
-            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
-            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
-            background-size:56px 100px;
-        }
-        .pg-hero-rings {
-            position:absolute; top:50%; right:6%;
-            transform:translateY(-50%);
-            width:240px; height:240px; pointer-events:none; z-index:0;
-        }
-        .pg-ring {
-            position:absolute; inset:0; border-radius:50%;
-            border:1px solid rgba(36,231,143,.10);
-            animation:pgHeroRingPulse 4s ease-in-out infinite;
-        }
-        .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
-        .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
-        .pg-hero-arc {
-            position:absolute; top:-50px; right:-50px;
-            width:200px; height:200px; border-radius:50%;
-            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
-            pointer-events:none; z-index:0;
-        }
-        .pg-hero::after {
-            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
-            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
-        }
-        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
-        .pg-hero-inner { position:relative; z-index:2; }
-        .pg-hero-title {
-            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
-            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
-            display:flex; align-items:center; gap:10px;
-        }
-        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
-        .pg-hero-divider {
-            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
-            background:linear-gradient(90deg,transparent,#24e78f,transparent);
-        }
-        .pg-hero-actions {
-            position:relative; z-index:2;
-            display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
-        }
-        .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
-        .pg-hero-btn {
-            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
-            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
-            border-radius:10px; padding:8px 16px;
-            font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
-            display:inline-flex; align-items:center; gap:7px;
-            transition:background .2s, transform .18s, box-shadow .2s;
-        }
-        .pg-hero-btn:hover {
-            background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
-            transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
-            color:#d4f5e5; text-decoration:none;
-        }
-        .pg-hero-layout {
-            display:flex; align-items:flex-start; justify-content:space-between;
-            flex-wrap:wrap; gap:14px; position:relative; z-index:2;
-        }
-        .mh-logo-watermark {
-            position:absolute; top:50%; right:3%;
-            transform:translateY(-50%);
-            width:180px; height:auto; pointer-events:none; z-index:0;
-            opacity:0.50;
-        }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Role Management — NIA ACIMO</title>
+    <!-- <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="../dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="../plugins/datatables-bs4/css/dataTables.bootstrap4.min.css"> -->
+    <?php include '../includes/header.php'; ?>
+    <link rel="stylesheet" href="../css/module-theme.css">
+    <!-- jQuery must load before the sidebar include (it uses $(document).ready) -->
+    <script src="../plugins/jquery/jquery.min.js"></script>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
-    <?php include '../includes/mainheader.php'; ?>
-    <?php include '../includes/sidebar.php'; ?>
-    
-    <div class="content-wrapper">
-        
-        <!-- Page Hero -->
-        <div class="pg-hero">
-            <div class="pg-hero-mesh"></div>
-            <div class="pg-hero-dots"></div>
-            <div class="pg-hero-hex"></div>
-            <div class="pg-hero-orbs">
-                <div class="pg-orb pg-orb-1"></div>
-                <div class="pg-orb pg-orb-2"></div>
-                <div class="pg-orb pg-orb-3"></div>
-                <div class="pg-orb pg-orb-4"></div>
-            </div>
-            <div class="pg-hero-rings">
-                <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
-            </div>
-            <div class="pg-hero-arc"></div>
-            <div class="pg-hero-layout">
-                <div class="pg-hero-inner">
-                    <div class="pg-hero-title"><i class="fas fa-user-shield"></i>Role Management</div>
-                    <div class="pg-hero-divider"></div>
-                    <p class="pg-hero-sub">Define and manage system roles and their permissions</p>
-                </div>
+
+  <?php include '../includes/mainheader.php'; ?>
+  <?php include '../includes/sidebar.php'; ?>
+
+  <div class="content-wrapper">
+
+    <!-- Page Hero -->
+    <div class="pg-hero">
+        <div class="pg-hero-mesh"></div>
+        <div class="pg-hero-dots"></div>
+        <div class="pg-hero-hex"></div>
+        <div class="pg-hero-orbs">
+            <div class="pg-orb pg-orb-1"></div>
+            <div class="pg-orb pg-orb-2"></div>
+            <div class="pg-orb pg-orb-3"></div>
+            <div class="pg-orb pg-orb-4"></div>
+        </div>
+        <div class="pg-hero-rings">
+            <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+        </div>
+        <div class="pg-hero-arc"></div>
+        <div class="pg-hero-layout">
+            <div class="pg-hero-inner">
+                <div class="pg-hero-title"><i class="fas fa-user-shield"></i>Role Management</div>
+                <div class="pg-hero-divider"></div>
+                <p class="pg-hero-sub">Define and manage system roles and their permissions</p>
             </div>
         </div>
-
-        <section class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-lg-4">
-                        <div class="card role-card">
-                            <div class="role-header">
-                                <h3 class="card-title mb-0">
-                                    <i class="fas fa-plus-circle mr-2"></i>Create New Role
-                                </h3>
-                            </div>
-                            <form method="POST" class="modern-form">
-                                <div class="card-body">
-                                    <div class="form-group">
-                                        <label class="font-weight-bold">Role Name</label>
-                                        <input type="text" class="form-control" name="name" placeholder="Enter role name" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="font-weight-bold">Description</label>
-                                        <textarea class="form-control" name="description" rows="3" placeholder="Enter role description" required></textarea>
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-white border-top-0">
-                                    <button type="submit" name="add_role" class="btn btn-modern btn-modern-primary btn-block">
-                                        <i class="fas fa-plus mr-2"></i>Create Role
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-8">
-                        <div class="card role-card">
-                            <div class="role-header">
-                                <h3 class="card-title mb-0">
-                                    <i class="fas fa-cogs mr-2"></i>Manage Roles & Permissions
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <?php if (empty($roles)): ?>
-                                    <div class="text-center py-5">
-                                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                        <h4 class="text-muted">No Roles Found</h4>
-                                        <p class="text-muted">Create your first role to get started.</p>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="accordion" id="rolesAccordion">
-                                        <?php foreach ($roles as $index => $role): ?>
-                                        <div class="card mb-3 border-0">
-                                            <div class="card-header bg-white p-0 border-0" id="heading<?= $role['id'] ?>">
-                                                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
-                                                    <div class="d-flex align-items-center">
-                                                        <button class="btn btn-link text-decoration-none font-weight-bold text-dark p-0 mr-3" 
-                                                                type="button" data-toggle="collapse" 
-                                                                data-target="#collapse<?= $role['id'] ?>" 
-                                                                aria-expanded="<?= $index === 0 ? 'true' : 'false' ?>" 
-                                                                aria-controls="collapse<?= $role['id'] ?>">
-                                                            <i class="fas fa-chevron-down mr-2"></i>
-                                                            <?= htmlspecialchars($role['name']) ?>
-                                                        </button>
-                                                    </div>
-                                                    <div class="role-actions">
-                                                        <button type="button" class="btn btn-info btn-sm" data-toggle="modal" 
-                                                                data-target="#editRoleModal<?= $role['id'] ?>">
-                                                            <i class="fas fa-edit"></i> Edit
-                                                        </button>
-                                                        <button type="button" class="btn btn-danger btn-sm delete-role-btn" 
-                                                                data-id="<?= $role['id'] ?>" 
-                                                                data-name="<?= htmlspecialchars($role['name']) ?>">
-                                                            <i class="fas fa-trash"></i> Delete
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div id="collapse<?= $role['id'] ?>" class="collapse <?= $index === 0 ? 'show' : '' ?>" 
-                                                aria-labelledby="heading<?= $role['id'] ?>" data-parent="#rolesAccordion">
-                                                <div class="card-body">
-                                                    <p class="text-muted mb-4"><?= htmlspecialchars($role['description']) ?></p>
-                                                    
-                                                    <h6 class="font-weight-bold mb-3">Role Permissions</h6>
-                                                    <form method="POST">
-                                                        <input type="hidden" name="role_id" value="<?= $role['id'] ?>">
-                                                        <div class="permission-grid">
-                                                            <?php 
-                                                            $rolePermissions = getRolePermissions($role['id']);
-                                                            foreach ($allPermissions as $permission): 
-                                                            ?>
-                                                            <div class="permission-item">
-                                                                <div class="form-check mb-0">
-                                                                    <input class="form-check-input" type="checkbox" 
-                                                                        name="permissions[]" value="<?= $permission['id'] ?>"
-                                                                        <?= in_array($permission['id'], $rolePermissions) ? 'checked' : '' ?>>
-                                                                    <label class="form-check-label">
-                                                                        <?= htmlspecialchars($permission['name']) ?>
-                                                                        <span class="text-muted"><?= htmlspecialchars($permission['description']) ?></span>
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <?php endforeach; ?>
-                                                        </div>
-                                                        <div class="mt-4">
-                                                            <button type="submit" name="update_permissions" class="btn btn-modern btn-modern-primary">
-                                                                <i class="fas fa-save mr-2"></i>Update Permissions
-                                                            </button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Edit Role Modal -->
-                                        <div class="modal fade" id="editRoleModal<?= $role['id'] ?>">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-primary text-white">
-                                                        <h4 class="modal-title">Edit Role</h4>
-                                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                                            <span aria-hidden="true">&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <form method="POST">
-                                                        <div class="modal-body">
-                                                            <input type="hidden" name="role_id" value="<?= $role['id'] ?>">
-                                                            <div class="form-group">
-                                                                <label class="font-weight-bold">Role Name</label>
-                                                                <input type="text" class="form-control" name="name" 
-                                                                       value="<?= htmlspecialchars($role['name']) ?>" required>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label class="font-weight-bold">Description</label>
-                                                                <textarea class="form-control" name="description" rows="3" required><?= 
-                                                                    htmlspecialchars($role['description']) ?></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                            <button type="submit" name="update_role" class="btn btn-modern btn-modern-primary">
-                                                                Save Changes
-                                                            </button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
-    
-    <?php include '../includes/mainfooter.php'; ?>
+
+    <div class="content">
+      <div class="container-fluid">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Roles &amp; Permissions</h3>
+            <div class="card-tools d-flex align-items-center">
+              <div class="mod-chips">
+                <button type="button" class="mod-chip active" data-status="">All<span class="n"><?= $total ?></span></button>
+                <button type="button" class="mod-chip" data-status="In use">In use<span class="n"><?= $inUse ?></span></button>
+                <button type="button" class="mod-chip" data-status="Unused">Unused<span class="n"><?= $unused ?></span></button>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="btnNew"><i class="fas fa-plus"></i> New Role</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <table id="roleTable" class="table table-striped mod-table">
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Permissions</th>
+                  <th>Users</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+              <?php foreach ($rows as $r): ?>
+                <tr data-id="<?= $r['id'] ?>" data-row="<?= htmlspecialchars(json_encode($r), ENT_QUOTES) ?>">
+                  <td data-order="<?= htmlspecialchars(strtolower($r['name']), ENT_QUOTES) ?>"
+                      data-search="<?= htmlspecialchars($r['name'] . ' ' . $r['description'], ENT_QUOTES) ?>">
+                    <div class="mod-title"><i class="fas fa-user-shield"></i><?= htmlspecialchars($r['name']) ?></div>
+                    <div class="mod-excerpt"><?= htmlspecialchars($r['description']) ?></div>
+                  </td>
+                  <td data-order="<?= $r['perm_count'] ?>">
+                    <span class="mod-count<?= $r['perm_count'] > 0 ? '' : ' none' ?>">
+                      <i class="fas fa-key"></i><?= $r['perm_count'] ?> <small>of <?= $totalPerms ?></small>
+                    </span>
+                  </td>
+                  <td data-order="<?= $r['user_count'] ?>">
+                    <span class="mod-count<?= $r['user_count'] > 0 ? '' : ' none' ?>">
+                      <i class="fas fa-users"></i><?= $r['user_count'] ?>
+                    </span>
+                  </td>
+                  <td><span class="badge badge-<?= $r['user_count'] > 0 ? 'success' : 'secondary' ?>"><?= $r['user_count'] > 0 ? 'In use' : 'Unused' ?></span></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-info js-perms" title="Manage permissions"><i class="fas fa-key"></i></button>
+                    <button type="button" class="btn btn-sm btn-warning js-edit" title="Edit role"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="btn btn-sm btn-danger js-delete" title="Delete role"><i class="fas fa-trash"></i></button>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <?php include '../includes/mainfooter.php'; ?>
 </div>
+
+<!-- Add / Edit Role Modal -->
+<div class="modal fade scrum-style-modal" id="roleModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="roleForm" autocomplete="off">
+        <input type="hidden" name="id" id="f_id" value="0">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-user-shield"></i><span id="roleModalTitle">New Role</span></h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Role Name <span class="text-danger">*</span></label>
+            <input type="text" id="f_name" name="name" class="form-control" maxlength="100" placeholder="e.g. Records Officer" required>
+          </div>
+          <div class="form-group mb-0">
+            <label>Description <span class="text-danger">*</span></label>
+            <textarea id="f_desc" name="description" class="form-control" rows="3" maxlength="500" placeholder="What is this role responsible for?" required></textarea>
+            <div class="char-count"><span id="descCount">0</span> / 500</div>
+          </div>
+          <div class="info-box mt-3 mb-0" id="roleHint">
+            <i class="fas fa-info-circle"></i><span>Permissions are assigned after the role is created.</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSave"><i class="fas fa-save mr-1"></i>Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Permissions Modal -->
+<div class="modal fade scrum-style-modal" id="permModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="permForm" autocomplete="off">
+        <input type="hidden" id="pm_role_id" value="0">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-key"></i>Permissions &mdash; <span id="permRoleName"></span></h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="perm-tools">
+            <input type="text" id="permSearch" class="form-control" placeholder="Search permissions…">
+            <button type="button" class="perm-link" id="permAll" title="Applies to the permissions currently shown">Select all</button>
+            <button type="button" class="perm-link" id="permNone" title="Applies to the permissions currently shown">Clear all</button>
+          </div>
+
+          <div class="perm-grid" id="permGrid">
+            <?php foreach ($allPermissions as $p): ?>
+              <label class="perm-item" data-search="<?= htmlspecialchars(strtolower($p['name'] . ' ' . $p['description']), ENT_QUOTES) ?>">
+                <input type="checkbox" value="<?= (int)$p['id'] ?>">
+                <span>
+                  <span class="pn"><?= htmlspecialchars($p['name']) ?></span>
+                  <span class="pd"><?= htmlspecialchars($p['description']) ?></span>
+                </span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+          <div class="perm-empty" id="permEmpty"><i class="fas fa-search"></i> No matching permissions.</div>
+        </div>
+        <div class="modal-footer">
+          <span class="perm-selected" id="permSelected"></span>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSavePerms"><i class="fas fa-save mr-1"></i>Save Permissions</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <?php include '../includes/footer.php'; ?>
 
-<!-- SweetAlert Notifications -->
-<?php if (isset($_SESSION['swal'])): ?>
+<script src="../plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="../dist/js/adminlte.min.js"></script>
+<script src="../plugins/datatables/jquery.dataTables.min.js"></script>
+<script src="../plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    Swal.fire({
-        icon: '<?= $_SESSION['swal']['type'] ?>',
-        title: '<?= $_SESSION['swal']['title'] ?>',
-        text: '<?= $_SESSION['swal']['text'] ?>',
-        showConfirmButton: true,
-        timer: 3000
-    });
-});
-</script>
-<?php 
-    unset($_SESSION['swal']);
-endif; 
-?>
+(function ($) {
+    var CSRF = <?= json_encode($csrf) ?>;
+    var URL_ = 'roles.php';
+    var STATUS_COL = 3;
 
-<!-- Delete Confirmation Script -->
-<script>
-$(document).on('click', '.delete-role-btn', function(e) {
-    e.preventDefault();
-    const roleId = $(this).data('id');
-    const roleName = $(this).data('name');
-    
-    Swal.fire({
-        title: 'Delete Role?',
-        text: `Are you sure you want to delete "${roleName}"? This action cannot be undone.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Delete',
-        cancelButtonText: 'Cancel',
-        showLoaderOnConfirm: true,
-        preConfirm: () => {
-            return fetch('delete_role.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `role_id=${roleId}`
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .catch(error => {
-                Swal.showValidationMessage(
-                    `Request failed: ${error.message}`
-                );
-                return false;
-            });
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            if (result.value && result.value.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Deleted!',
-                    text: result.value.message,
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    window.location.reload();
-                });
-            } else {
-                let errorMessage = result.value.message;
-                
-                if (result.value.userCount > 0) {
-                    errorMessage += '\n\nAssigned to:';
-                    if (result.value.userList.length > 0) {
-                        errorMessage += '\n- ' + result.value.userList.join('\n- ');
-                    }
-                    if (result.value.userCount > 5) {
-                        errorMessage += `\n...and ${result.value.userCount - 5} more`;
-                    }
-                }
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Cannot Delete',
-                    html: errorMessage.replace(/\n/g, '<br>'),
-                    showConfirmButton: true,
-                    confirmButtonText: 'OK',
-                    width: '600px'
-                });
-            }
+    /* ── DataTable ───────────────────────── */
+    var table = $('#roleTable').DataTable({
+        order: [[0, 'asc']],
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'All']],
+        autoWidth: false,
+        columnDefs: [
+            { orderable: false, searchable: false, targets: 4 },
+            { searchable: false, targets: [1, 2] }
+        ],
+        language: {
+            search: '',
+            searchPlaceholder: 'Search roles…',
+            lengthMenu: 'Show _MENU_',
+            info: 'Showing _START_–_END_ of _TOTAL_ role(s)',
+            infoEmpty: 'No roles',
+            infoFiltered: '(filtered from _MAX_)',
+            emptyTable: 'No roles yet. Click “New Role” to create one.',
+            zeroRecords: 'No matching roles found.'
         }
     });
-});
+
+    /* status chips */
+    $('.mod-chip').on('click', function () {
+        $('.mod-chip').removeClass('active');
+        $(this).addClass('active');
+        var s = $(this).data('status');
+        table.column(STATUS_COL).search(s ? '^' + s + '$' : '', true, false).draw();
+    });
+
+    /* ── Helpers ─────────────────────────── */
+    function toast(msg, type) {
+        Swal.fire({ toast: true, position: 'bottom-end', icon: type || 'success', title: msg,
+                    showConfirmButton: false, timer: 3000, timerProgressBar: true });
+    }
+    function post(data) {
+        data.csrf = CSRF;
+        return $.ajax({ url: URL_, type: 'POST', data: data, dataType: 'json' });
+    }
+    function done(res) {
+        if (res && res.success) {
+            toast(res.message, 'success');
+            setTimeout(function () { location.reload(); }, 800);
+        } else {
+            toast((res && res.message) || 'Please try again.', 'error');
+        }
+    }
+    function fail(xhr) {
+        toast((xhr.responseJSON && xhr.responseJSON.message) || 'Network error. Please try again.', 'error');
+    }
+    function rowData(el) { return $(el).closest('tr').data('row'); }
+    function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+    /* ── Role modal (add / edit) ─────────── */
+    function openRole(d) {
+        d = d || { id:0, name:'', description:'' };
+        $('#roleModalTitle').text(d.id ? 'Edit Role' : 'New Role');
+        $('#btnSave').html('<i class="fas fa-save mr-1"></i>' + (d.id ? 'Update' : 'Save'));
+        $('#roleHint').toggle(!d.id);
+        $('#f_id').val(d.id);
+        $('#f_name').val(d.name);
+        $('#f_desc').val(d.description);
+        $('#descCount').text($('#f_desc').val().length);
+        $('#roleModal').modal('show');
+    }
+    $('#roleModal').on('shown.bs.modal', function () { $('#f_name').trigger('focus'); });
+    $('#btnNew').on('click', function () { openRole(); });
+    $('#roleTable').on('click', '.js-edit', function () { openRole(rowData(this)); });
+    $('#f_desc').on('input', function () { $('#descCount').text(this.value.length); });
+
+    $('#roleForm').on('submit', function (e) {
+        e.preventDefault();
+        var $btn = $('#btnSave').prop('disabled', true);
+        post({
+            action: 'save',
+            id: $('#f_id').val(),
+            name: $('#f_name').val(),
+            description: $('#f_desc').val()
+        }).done(function (r) {
+            if (r && r.success) $('#roleModal').modal('hide');
+            done(r);
+        }).fail(fail).always(function () { $btn.prop('disabled', false); });
+    });
+
+    /* ── Permissions modal ───────────────── */
+    function updatePermCount() {
+        var all = $('#permGrid input').length, on = $('#permGrid input:checked').length;
+        $('#permSelected').text(on + ' of ' + all + ' selected');
+    }
+    function filterPerms() {
+        var q = $.trim($('#permSearch').val()).toLowerCase(), shown = 0;
+        $('#permGrid .perm-item').each(function () {
+            var hit = !q || String($(this).data('search')).indexOf(q) !== -1;
+            $(this).toggle(hit);
+            if (hit) shown++;
+        });
+        $('#permEmpty').toggle(shown === 0);
+    }
+    function openPerms(d) {
+        var sel = {};
+        $.each(d.perm_ids || [], function (_, id) { sel[id] = true; });
+        $('#pm_role_id').val(d.id);
+        $('#permRoleName').text(d.name);
+        $('#permSearch').val('');
+        $('#permGrid input').each(function () {
+            var on = !!sel[this.value];
+            this.checked = on;
+            $(this).closest('.perm-item').toggleClass('checked', on);
+        });
+        filterPerms();
+        updatePermCount();
+        $('#permModal').modal('show');
+    }
+    $('#permModal').on('shown.bs.modal', function () { $('#permSearch').trigger('focus'); });
+    $('#roleTable').on('click', '.js-perms', function () { openPerms(rowData(this)); });
+    $('#permSearch').on('input', filterPerms);
+    $('#permGrid').on('change', 'input', function () {
+        $(this).closest('.perm-item').toggleClass('checked', this.checked);
+        updatePermCount();
+    });
+    function setVisible(on) {
+        $('#permGrid .perm-item:visible input').each(function () {
+            this.checked = on;
+            $(this).closest('.perm-item').toggleClass('checked', on);
+        });
+        updatePermCount();
+    }
+    $('#permAll').on('click', function () { setVisible(true); });
+    $('#permNone').on('click', function () { setVisible(false); });
+
+    $('#permForm').on('submit', function (e) {
+        e.preventDefault();
+        var ids = $('#permGrid input:checked').map(function () { return this.value; }).get();
+        var $btn = $('#btnSavePerms').prop('disabled', true);
+        post({ action: 'save_permissions', id: $('#pm_role_id').val(), permissions: ids })
+            .done(function (r) {
+                if (r && r.success) $('#permModal').modal('hide');
+                done(r);
+            }).fail(fail).always(function () { $btn.prop('disabled', false); });
+    });
+
+    /* ── Delete ──────────────────────────── */
+    $('#roleTable').on('click', '.js-delete', function () {
+        var d = rowData(this);
+        if (+d.user_count > 0) {
+            Swal.fire({
+                icon:'info', title:'Role is in use',
+                html:'<p style="font-size:.88rem;">&ldquo;' + $('<span>').text(d.name).html() + '&rdquo; is assigned to <strong>' + plural(+d.user_count, 'user') + '</strong>.<br>Reassign them to another role before deleting it.</p>',
+                confirmButtonColor:'#2a9863'
+            });
+            return;
+        }
+        Swal.fire({
+            icon:'warning', title:'Delete this role?',
+            html:'<p style="font-size:.88rem;">&ldquo;' + $('<span>').text(d.name).html() + '&rdquo; and its <strong>' + plural(+d.perm_count, 'permission') + '</strong> assignment will be removed <strong>permanently</strong>.</p>',
+            showCancelButton:true, confirmButtonColor:'#c92a2a', cancelButtonColor:'#6c757d',
+            confirmButtonText:'<i class="fas fa-trash-alt"></i> Delete'
+        }).then(function (r) {
+            if (r.isConfirmed) post({ action:'delete', id:d.id }).done(done).fail(fail);
+        });
+    });
+})(jQuery);
 </script>
 </body>
 </html>

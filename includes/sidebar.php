@@ -112,6 +112,14 @@ if ($employee_id) {
 .sidebar::-webkit-scrollbar-thumb:hover {
     background: #24e78f;
 }
+
+/* Collapsible sections */
+.nav-toggle { cursor: pointer; user-select: none; padding-right: 1rem; }
+.nav-toggle:hover { color: #fff !important; }
+.nav-toggle .nav-chevron { transition: transform .2s; font-size: .7rem; margin-top: .25rem; }
+.nav-toggle.collapsed .nav-chevron { transform: rotate(-90deg); }
+.nav-sec.sec-hidden { display: none; }
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link { padding: 0.6rem 1rem; }
 </style>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
@@ -122,68 +130,53 @@ if ($employee_id) {
 
     <!-- Sidebar -->
     <div class="sidebar" style="background-color: var(--sidebar-bg) !important;">
-      <!-- Sidebar user panel (optional) -->
-      <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-        <div class="image">
-          <img src="<?= $employee_picture ?>" class="img-circle elevation-2" alt="User Image">
-        </div>
-        <div class="info">
-          <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="profile.php" class="d-block text-white"><?= $employee_name ?: htmlspecialchars($_SESSION['username']) ?></a>
-            <?php if (isset($_SESSION['role_name'])): ?>
-            <span class="badge badge-primary mt-1">
-                <?= htmlspecialchars($_SESSION['role_name']) ?>
-            </span>
-            <?php endif; ?>
-          <?php endif; ?>
-        </div>
-      </div>
 
       <!-- Sidebar Menu -->
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column nav-flat" data-widget="treeview" role="menu" data-accordion="false">
 
+          <li class="nav-header nav-toggle text-light border-bottom pb-2" data-sec="emp" role="button" tabindex="0">EMPLOYEE MENU <i class="fas fa-chevron-down float-right nav-chevron"></i></li>
           <?php if (hasPermission('view_dashboard')): ?>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-emp">
             <a href="dashboard.php" class="nav-link <?= $current_page == 'dashboard.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>Dashboard</p>
             </a>
           </li>
           <?php endif; ?>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-emp">
             <a href="attachments_monitoring.php" class="nav-link <?= $current_page == 'attachments_monitoring.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-paperclip"></i>
               <p>Attachment Monitoring</p>
             </a>
           </li>
           <?php if (hasPermission('view_calendar')): ?>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-emp">
             <a href="calendar.php" class="nav-link <?= $current_page == 'calendar.php' ? 'active' : 'text-white' ?>">
               <i class="nav-icon fas fa-calendar-alt"></i>
               <p>Calendar</p>
             </a>
           </li>
           <?php endif; ?>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-emp">
                   <a href="../views/coe_request.php" class="nav-link <?= $current_page == 'coe_request.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-certificate nav-icon"></i>
                       <p>Request a COE</p>
                   </a>
               </li>
-          <li class="nav-item"> 
+          <li class="nav-item nav-sec nav-sec-emp"> 
             <a href="leave_request.php" class="nav-link <?= $current_page == 'leave_request.php' ? 'active' : 'text-white' ?>">
               <i class="fas fa-newspaper nav-icon"></i>
               <p>Leave Request</p>
             </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-emp">
               <a href="personal_locator_slip.php" class="nav-link <?= $current_page == 'personal_locator_slip.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-location-arrow nav-icon"></i>
                   <p>Personal Locator Slip</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-emp">
               <a href="my_ict_equipment.php" class="nav-link <?= $current_page == 'my_ict_equipment.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-laptop nav-icon"></i>
                   <p>My ICT Equipment</p>
@@ -191,56 +184,56 @@ if ($employee_id) {
           </li>
           
           <?php if (hasPermission('manage_employees')): ?>
-          <li class="nav-header text-light border-bottom pb-2 mt-3">HR MANAGEMENT</li>
-            <li class="nav-item">
+          <li class="nav-header nav-toggle text-light border-bottom pb-2 mt-3" data-sec="hr" role="button" tabindex="0">HR MANAGEMENT <i class="fas fa-chevron-down float-right nav-chevron"></i></li>
+            <li class="nav-item nav-sec nav-sec-hr">
                 <a href="../views/applicant.php" class="nav-link <?= $current_page == 'applicant.php' ? 'active' : 'text-white' ?>">
                     <i class="fas fa-clipboard-check nav-icon"></i>
                     <p>Applicant Databank</p>
                 </a>
             </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                 <a href="../views/emp.create.php" class="nav-link <?= $current_page == 'emp.create.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-user-plus nav-icon"></i>
                   <p>Create Employee</p>
                 </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                   <a href="../views/hr_leave_monitoring.php" class="nav-link <?= $current_page == 'hr_leave_monitoring.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-list nav-icon"></i>
                       <p>HR Leave Monitoring</p>
                   </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                   <a href="../views/certificate_of_employment.php" class="nav-link <?= $current_page == 'certificate_of_employment.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-certificate nav-icon"></i>
                       <p>Employee COE Request</p>
                   </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                 <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-users nav-icon"></i>
                   <p>Employee List</p>
                 </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                   <a href="../views/certificate_of_appearance.php" class="nav-link <?= $current_page == 'certificate_of_appearance.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-file-signature nav-icon"></i>
                       <p>Certificate of Appearance</p>
                   </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                   <a href="../views/personal_locator_monitoring.php" class="nav-link <?= $current_page == 'personal_locator_monitoring.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-check nav-icon"></i>
                       <p>Slip Monitoring</p>
                   </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                   <a href="../views/intern.php" class="nav-link <?= $current_page == 'intern.php' ? 'active' : 'text-white' ?>">
                       <i class="fas fa-clipboard-check nav-icon"></i>
                       <p>Intern Databank</p>
                   </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item nav-sec nav-sec-hr">
                 <a href="../views/room_reservation.php" class="nav-link <?= $current_page == 'room_reservation.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-bed nav-icon"></i>
                   <p>Room Reservation</p>
@@ -249,51 +242,57 @@ if ($employee_id) {
           <?php endif; ?>
           
           <?php if (hasPermission('manage_settings')): ?>
-          <li class="nav-header text-light border-bottom pb-2 mt-3">SETTINGS</li>
+          <li class="nav-header nav-toggle text-light border-bottom pb-2 mt-3" data-sec="settings" role="button" tabindex="0">SETTINGS <i class="fas fa-chevron-down float-right nav-chevron"></i></li>
           
-          <li class="nav-item">
-              <a href="../maintenance_page.php" class="nav-link <?= $current_page == 'maintenance_page.php' ? 'active' : 'text-white' ?>">
+          <li class="nav-item nav-sec nav-sec-settings">
+              <a href="maintenance_page.php" class="nav-link <?= $current_page == 'maintenance_page.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-tools nav-icon"></i>
                   <p>Module Maintenance</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
               <a href="content_management.php" class="nav-link <?= $current_page == 'content_management.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-tv nav-icon"></i>
                   <p>Content Management</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
+              <a href="announcements.php" class="nav-link <?= $current_page == 'announcements.php' ? 'active' : 'text-white' ?>">
+                  <i class="fas fa-bullhorn nav-icon"></i>
+                  <p>Announcements</p>
+              </a>
+          </li>
+          <li class="nav-item nav-sec nav-sec-settings">
               <a href="types_leaves.php" class="nav-link <?= $current_page == 'types_leaves.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-arrow-circle-right nav-icon"></i>
                   <p>Leave Types</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
               <a href="appointment_status.php" class="nav-link <?= $current_page == 'appointment_status.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-briefcase nav-icon"></i>
                   <p>Appointment Settings</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
             <a href="position.php" class="nav-link <?= $current_page == 'position.php' ? 'active' : 'text-white' ?>">
                 <i class="fas fa-id-card-alt nav-icon"></i>
                 <p>Positions</p>
             </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
               <a href="sections.php" class="nav-link <?= $current_page == 'sections.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-sitemap nav-icon"></i>
                   <p>Sections</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
               <a href="offices.php" class="nav-link <?= $current_page == 'offices.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-building nav-icon"></i>
                   <p>Offices</p>
               </a>
           </li>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-settings">
               <a href="employment_status.php" class="nav-link <?= $current_page == 'employment_status.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-user-check nav-icon"></i>
                   <p>Employment Status</p>
@@ -302,8 +301,8 @@ if ($employee_id) {
           <?php endif; ?>
 
           <?php if (hasPermission('manage_users')): ?>
-          <li class="nav-header text-light border-bottom pb-2 mt-3">USER MANAGEMENT</li>
-          <li class="nav-item">
+          <li class="nav-header nav-toggle text-light border-bottom pb-2 mt-3" data-sec="users" role="button" tabindex="0">USER MANAGEMENT <i class="fas fa-chevron-down float-right nav-chevron"></i></li>
+          <li class="nav-item nav-sec nav-sec-users">
               <a href="users.php" class="nav-link <?= $current_page == 'users.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-user-cog"></i>
                   <p>Users</p>
@@ -312,7 +311,7 @@ if ($employee_id) {
           <?php endif; ?>
 
           <?php if (hasPermission('manage_roles')): ?>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-users">
               <a href="roles.php" class="nav-link <?= $current_page == 'roles.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-user-shield"></i>
                   <p>Roles</p>
@@ -321,7 +320,7 @@ if ($employee_id) {
           <?php endif; ?>
 
           <?php if (hasPermission('manage_permissions')): ?>
-          <li class="nav-item">
+          <li class="nav-item nav-sec nav-sec-users">
               <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-key"></i>
                   <p>Permissions</p>
@@ -332,6 +331,61 @@ if ($employee_id) {
       </nav>
     </div>
 </aside>
+<script>
+(function () {
+    var sb = document.querySelector('.main-sidebar .sidebar');
+    if (!sb) return;
+    var KEY_SCROLL = 'sidebarScrollTop', KEY_SEC = 'sidebarCollapsed';
+    var collapsed = {};
+    try { collapsed = JSON.parse(localStorage.getItem(KEY_SEC) || '{}'); } catch (e) {}
+
+    function apply(sec) {
+        var hide = !!collapsed[sec];
+        var h = sb.querySelector('.nav-toggle[data-sec="' + sec + '"]');
+        if (h) h.classList.toggle('collapsed', hide);
+        sb.querySelectorAll('.nav-sec-' + sec).forEach(function (li) { li.classList.toggle('sec-hidden', hide); });
+    }
+    function save() { try { localStorage.setItem(KEY_SEC, JSON.stringify(collapsed)); } catch (e) {} }
+
+    var toggles = sb.querySelectorAll('.nav-toggle');
+
+    // Find which section holds the current page
+    var activeSec = null;
+    toggles.forEach(function (h) {
+        var sec = h.getAttribute('data-sec');
+        if (sb.querySelector('.nav-sec-' + sec + ' .nav-link.active')) activeSec = sec;
+    });
+
+    toggles.forEach(function (h) {
+        var sec = h.getAttribute('data-sec');
+        // Only the section containing the current page is open; all others start collapsed
+        if (activeSec !== null) collapsed[sec] = (sec !== activeSec);
+        apply(sec);
+        function toggle() { collapsed[sec] = !collapsed[sec]; apply(sec); save(); }
+        h.addEventListener('click', toggle);
+        h.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    });
+
+    // Restore scroll position (runs before paint, so no jump to top)
+    var saved = null;
+    try { saved = sessionStorage.getItem(KEY_SCROLL); } catch (e) {}
+    if (saved !== null) sb.scrollTop = parseInt(saved, 10) || 0;
+
+    // Make sure the active link is visible
+    var active = sb.querySelector('.nav-link.active');
+    if (active) {
+        var r = active.getBoundingClientRect(), b = sb.getBoundingClientRect();
+        if (r.top < b.top || r.bottom > b.bottom) {
+            sb.scrollTop += (r.top - b.top) - (b.height / 2) + (r.height / 2);
+        }
+    }
+
+    function remember() { try { sessionStorage.setItem(KEY_SCROLL, sb.scrollTop); } catch (e) {} }
+    sb.addEventListener('scroll', remember, { passive: true });
+    sb.addEventListener('click', function (e) { if (e.target.closest('a')) remember(); });
+    window.addEventListener('beforeunload', remember);
+})();
+</script>
 <style>
 .sidebar-dark-primary {
     background-color: var(--sidebar-bg) !important;

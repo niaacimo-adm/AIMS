@@ -628,3 +628,7 @@
 [2026-10-07 09:00:42] mem=2MB peak=2MB Request ended normally (or connection closed by client).
 [2026-10-07 09:00:42] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=89&crop_year=&season=&sector=
 [2026-10-07 09:00:42] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-13 07:54:31] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=get_filters&ia_profile_id=52
+[2026-10-13 07:54:31] mem=2MB peak=2MB Request ended normally (or connection closed by client).
+[2026-10-13 07:54:31] mem=2MB peak=2MB --- Request start: /AIMS/includes/ia_lipa_ajax.php?action=list&ia_profile_id=52&crop_year=&season=&sector=
+[2026-10-13 07:54:31] mem=2MB peak=2MB Request ended normally (or connection closed by client).

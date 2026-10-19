@@ -69,7 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="plugins/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="plugins/fullcalendar/main.css">
     <link rel="stylesheet" href="login.css">
     
 </head>
@@ -130,15 +129,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <img src="dist/img/nialogo.png" alt="NIA Logo">
                 </div>
             </div>
-            <h2>National Irrigation Administration</h2>
+            <h2>NATIONAL IRRIGATION ADMINISTRATION</h2>
             <h3>Albay-Catanduanes IMO</h3>
             <div class="divider"></div>
             <div class="panel-badge">
                 <i class="fas fa-shield-alt"></i>
                 ACIMO Integrated Management Solution (AIMS)
             </div>
-            <div class="quick-links">
-                <button type="button" class="panel-badge" id="formsModalTrigger">
+            <div class="quick-links forms-fallback">
+                <button type="button" class="panel-badge js-open-forms">
                     <i class="fas fa-file-alt"></i> Forms
                 </button>
             </div>
@@ -213,25 +212,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- ③ CALENDAR PANEL -->
-        <div class="panel-calendar">
-            <div class="cal-header">
-                <div class="cal-header-title">
-                    <i class="fas fa-calendar-alt"></i> Events Calendar
+        <!-- ③ INFO PANEL: announcements + help -->
+        <div class="panel-info">
+
+            <section class="info-notices" aria-labelledby="noticesTitle">
+                <div class="info-header">
+                    <h4 class="info-title" id="noticesTitle">
+                        <i class="fas fa-bullhorn"></i> Announcements <span class="notice-count" id="noticeCount"></span>
+                    </h4>
+                    <div class="info-date" id="todayLabel"></div>
                 </div>
-                <div class="cal-header-date" id="todayLabel"></div>
-            </div>
-
-            <div id="inCardCalendar"></div>
-
-            <div class="upcoming-strip">
-                <div class="upcoming-strip-title">Upcoming Events</div>
-                <div id="upcomingList">
-                    <div style="font-size:.74rem;color:var(--upcoming-muted);padding:5px 0;">
-                        <i class="fas fa-spinner fa-spin" style="font-size:.7rem;margin-right:5px;"></i>Loading…
+                <div class="notice-list" id="noticeList" aria-live="polite">
+                    <div class="notice-empty">
+                        <i class="fas fa-spinner fa-spin"></i> Loading&hellip;
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="info-help" aria-labelledby="helpTitle">
+                <div class="info-header">
+                    <h4 class="info-title" id="helpTitle">
+                        <i class="fas fa-life-ring"></i> Need help?
+                    </h4>
+                </div>
+                <div class="help-grid">
+                    <button type="button" class="help-tile js-open-forms">
+                        <i class="fas fa-file-alt"></i>
+                        <span class="help-tile-text">
+                            <strong>Forms &amp; Documents</strong>
+                            <small>Browse and download</small>
+                        </span>
+                    </button>
+                    <button type="button" class="help-tile js-open-forgot">
+                        <i class="fas fa-key"></i>
+                        <span class="help-tile-text">
+                            <strong>Can&rsquo;t sign in?</strong>
+                            <small>Request a password reset</small>
+                        </span>
+                    </button>
+                </div>
+            </section>
+
         </div>
 
     </div>
@@ -269,8 +290,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="plugins/jquery/jquery.min.js"></script>
 <script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="plugins/fullcalendar/main.js"></script>
-<script src="plugins/moment/moment.min.js"></script>
 
 <script>
 $(function () {
@@ -283,13 +302,6 @@ $(function () {
         var next = $html.attr('data-theme') === 'dark' ? 'light' : 'dark';
         $html.attr('data-theme', next);
         localStorage.setItem(SKEY, next);
-        /* destroy & rebuild calendar so FullCalendar picks up new CSS vars */
-        if (inCardCal) {
-            inCardCal.destroy();
-            inCardCal = null;
-        }
-        /* small delay lets CSS variable transition settle before render */
-        setTimeout(function() { initCalendar(); }, 50);
     });
 
     /* ── Today label ───────────────────── */
@@ -451,159 +463,96 @@ $(function () {
         $('#formsModalOverlay').removeClass('show');
         $('body').css('overflow','');
     }
-    $('#formsModalTrigger').on('click', showForms);
+    window.showForms = showForms;   /* needed by the inline Retry button */
+    $('.js-open-forms').on('click', showForms);
+    $('.js-open-forgot').on('click', function () { $('#forgotPasswordLink').trigger('click'); });
     $('#closeFormsModal').on('click', hideForms);
     $('#formsModalOverlay').on('click', function (e) { if ($(e.target).is(this)) hideForms(); });
     $(document).on('keydown', function (e) { if (e.key === 'Escape') hideForms(); });
 
     /* ══════════════════════════════════════
-       EVENT COLOUR HELPER
+       ANNOUNCEMENTS
+       Public-safe only. All text is inserted with
+       .text() so titles/bodies can never run script.
     ══════════════════════════════════════ */
-    function evtColor(type) {
-        var m = { holiday:'#f59e0b', meeting:'#06b6d4', birthday:'#ec4899', leave:'#e03131' };
-        return m[type] || '#6366f1';
+    var CAT = {
+        advisory:    { label:'Advisory',    color:'#f59e0b' },
+        maintenance: { label:'Maintenance', color:'#06b6d4' },
+        holiday:     { label:'Holiday',     color:'#ec4899' },
+        policy:      { label:'Policy',      color:'#8b5cf6' },
+        general:     { label:'General',     color:'#24e78f' }
+    };
+    function fmtDate(str) {
+        var d = new Date(String(str).replace(' ', 'T'));
+        if (isNaN(d)) return '';
+        return MO[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    }
+    function noticeEmpty(icon, msg) {
+        return $('<div class="notice-empty"></div>')
+            .append($('<i class="fas ' + icon + '"></i>')).append(document.createTextNode(' ' + msg));
     }
 
-    /* ══════════════════════════════════════
-       NORMALISE EVENT RESPONSE
-       Handles: array, {data:[]}, {success,data:[]},
-                {events:[]}, {success,events:[]}
-    ══════════════════════════════════════ */
-    function extractEvents(res) {
-        if (!res) return [];
-        if (Array.isArray(res)) return res;
-        if (Array.isArray(res.data))   return res.data;
-        if (Array.isArray(res.events)) return res.events;
-        return [];
-    }
-
-    /* ══════════════════════════════════════
-       IN-CARD CALENDAR
-    ══════════════════════════════════════ */
-    var inCardCal = null;
-
-    function initCalendar() {
-        var el = document.getElementById('inCardCalendar');
+    /* show the bottom fade only while there is more to scroll */
+    function updateFade() {
+        var el = document.getElementById('noticeList');
         if (!el) return;
-
-        inCardCal = new FullCalendar.Calendar(el, {
-            initialView:   'dayGridMonth',
-            headerToolbar: { left:'prev,next', center:'title', right:'' },
-            height:        'auto',
-            fixedWeekCount:false,
-            dayMaxEvents:  2,
-            eventDisplay:  'block',
-
-            /* ── Fetch events, birthdays & approved leaves together ── */
-            events: function (info, ok, fail) {
-                $.when(
-                    $.ajax({ url:'views/get_events.php',          type:'GET', dataType:'json' }),
-                    $.ajax({ url:'views/get_birthdays.php',       type:'GET', dataType:'json' }),
-                    $.ajax({ url:'views/get_approved_leaves.php', type:'GET', dataType:'json' })
-                ).then(function (eventsRes, birthdaysRes, leavesRes) {
-                    var raw = extractEvents(eventsRes[0])
-                        .concat(extractEvents(birthdaysRes[0]))
-                        .concat(leavesRes[0] && leavesRes[0].success ? extractEvents(leavesRes[0]) : []);
-
-                    if (raw.length) {
-                        ok(raw.map(function (ev) {
-                            var type = ev.type || 'event';
-                            return {
-                                id:              ev.id,
-                                title:           ev.title,
-                                start:           ev.start,
-                                end:             ev.end   || null,
-                                allDay:          type === 'birthday' || type === 'leave' || !!ev.allDay,
-                                description:     ev.description || '',
-                                type:            type,
-                                emp_name:        ev.emp_name || '',
-                                leave_type:      ev.leave_type || '',
-                                number_of_days:  ev.number_of_days || '',
-                                backgroundColor: evtColor(type),
-                                borderColor:     evtColor(type),
-                                textColor:       '#ffffff'
-                            };
-                        }));
-                        buildUpcoming(raw);
-                    } else {
-                        ok([]);
-                        buildUpcoming([]);
-                    }
-                }, function (jqXHR, textStatus, errorThrown) {
-                    console.warn('[Calendar] fetch error:', textStatus);
-                    fail(textStatus);
-                    buildUpcoming([]);
-                });
-            },
-
-            eventClick: function (info) {
-                var type = info.event.extendedProps.type;
-
-                if (type === 'birthday') {
-                    Swal.fire(sOpts({
-                        title: info.event.title,
-                        icon:  'info',
-                        confirmButtonText: 'Close',
-                        html: '<p style="margin:4px 0"><strong>' + moment(info.event.start).format('MMMM D') + '</strong></p>'
-                    }));
-                    return;
-                }
-
-                if (type === 'leave') {
-                    Swal.fire(sOpts({
-                        title: info.event.extendedProps.emp_name || 'Approved Leave',
-                        icon:  'info',
-                        confirmButtonText: 'Close',
-                        html:
-                            '<p style="margin:4px 0"><strong>Leave Type:</strong> ' + (info.event.extendedProps.leave_type || 'N/A') + '</p>'
-                          + '<p style="margin:4px 0"><strong>Days:</strong> ' + (info.event.extendedProps.number_of_days || '—') + ' day(s)</p>'
-                          + '<p style="margin:4px 0"><strong>From:</strong> ' + moment(info.event.start).format('MMMM D, YYYY') + '</p>'
-                          + '<p style="margin:4px 0"><strong>To:</strong> ' + (info.event.end ? moment(info.event.end).subtract(1,'day').format('MMMM D, YYYY') : moment(info.event.start).format('MMMM D, YYYY')) + '</p>'
-                    }));
-                    return;
-                }
-
-                Swal.fire(sOpts({
-                    title:           info.event.title,
-                    icon:            'info',
-                    confirmButtonText:'Close',
-                    html:
-                        '<p style="margin:4px 0"><strong>Type:</strong> ' + (type || '—') + '</p>'
-                      + '<p style="margin:4px 0"><strong>Description:</strong> ' + (info.event.extendedProps.description || 'No description') + '</p>'
-                      + '<p style="margin:4px 0"><strong>Start:</strong> ' + moment(info.event.start).format('MMMM D, YYYY h:mm A') + '</p>'
-                      + (info.event.end ? '<p style="margin:4px 0"><strong>End:</strong> ' + moment(info.event.end).format('MMMM D, YYYY h:mm A') + '</p>' : '')
-                }));
-            }
-        });
-
-        inCardCal.render();
+        el.classList.toggle('has-more', el.scrollHeight - el.scrollTop - el.clientHeight > 8);
     }
+    $('#noticeList').on('scroll', updateFade);
+    $(window).on('resize', updateFade);
 
-    /* ── Upcoming events list ── */
-    function buildUpcoming(events) {
-        var today = new Date(); today.setHours(0,0,0,0);
-        var list  = events
-            .filter(function (e) { return new Date(e.start) >= today; })
-            .sort(function (a,b) { return new Date(a.start) - new Date(b.start); })
-            .slice(0, 4);
+    function renderNotices(items) {
+        var $list = $('#noticeList').empty();
+        $('#noticeCount').text(items.length ? '(' + items.length + ')' : '');
 
-        if (!list.length) {
-            $('#upcomingList').html('<div style="font-size:.74rem;color:var(--upcoming-muted);padding:5px 0;">No upcoming events.</div>');
+        if (!items.length) {
+            $list.append(noticeEmpty('fa-check-circle', 'No announcements right now.'));
+            updateFade();
             return;
         }
-        var h = '';
-        list.forEach(function (ev) {
-            h += '<div class="upcoming-item">'
-               + '<div class="upcoming-dot" style="background:' + evtColor(ev.type) + '"></div>'
-               + '<div class="upcoming-text">' + ev.title + '</div>'
-               + '<div class="upcoming-date">' + moment(ev.start).format('MMM D') + '</div>'
-               + '</div>';
+
+        items.forEach(function (n) {
+            var cat = CAT[n.category] || CAT.general;
+            var $item = $('<button type="button" class="notice-item"></button>')
+                .css('--notice-color', cat.color);
+
+            var $meta = $('<div class="notice-meta"></div>');
+            if (+n.is_pinned) $meta.append('<i class="fas fa-thumbtack notice-pin" title="Pinned"></i>');
+            $meta.append($('<span class="notice-cat"></span>').text(cat.label));
+            $meta.append($('<span class="notice-when"></span>').text(fmtDate(n.posted_at)));
+
+            $item.append($meta)
+                 .append($('<div class="notice-title"></div>').text(n.title))
+                 .append($('<div class="notice-excerpt"></div>').text(n.body));
+
+            $item.on('click', function () {
+                Swal.fire(sOpts({
+                    title: n.title,
+                    html:  $('<div style="text-align:left;white-space:pre-line;font-size:.92rem;line-height:1.6;"></div>').text(n.body)[0].outerHTML,
+                    footer: $('<span></span>').text(cat.label + ' · ' + fmtDate(n.posted_at))[0].outerHTML,
+                    confirmButtonText: 'Close'
+                }));
+            });
+            $list.append($item);
         });
-        $('#upcomingList').html(h);
+
+        updateFade();
+        setTimeout(updateFade, 300);   /* re-check after web fonts settle */
     }
 
-    /* init */
-    initCalendar();
+    function loadNotices() {
+        /* panel is display:none below 1100px — skip the request there */
+        if (!document.querySelector('.panel-info').offsetParent) return;
+        $.ajax({ url:'includes/ajax_announcements.php', type:'GET', dataType:'json' })
+            .done(function (res) { renderNotices(res && res.success && Array.isArray(res.data) ? res.data : []); })
+            .fail(function (xhr) {
+                /* open DevTools > Console to see why */
+                console.error('[announcements] HTTP ' + xhr.status, (xhr.responseText || '').slice(0, 300));
+                var why = xhr.status === 200 ? 'bad response' : (xhr.status ? 'error ' + xhr.status : 'no connection');
+                $('#noticeList').empty().append(noticeEmpty('fa-exclamation-circle', 'Announcements are unavailable (' + why + ').'));
+            });
+    }
+    loadNotices();
 
 });
 </script>

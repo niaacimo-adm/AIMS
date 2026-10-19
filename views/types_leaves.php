@@ -247,6 +247,10 @@ $res = $db->query("SELECT * FROM leave_type ORDER BY leave_type_id ASC");
 while ($row = $res->fetch_assoc()) {
     $leave_types[] = $row;
 }
+
+$total    = count($leave_types);
+$active   = count(array_filter($leave_types, fn($r) => $r['is_active']));
+$inactive = $total - $active;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -259,397 +263,121 @@ while ($row = $res->fetch_assoc()) {
 <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
 <link rel="stylesheet" href="../dist/css/adminlte.min.css">
 <link rel="stylesheet" href="../plugins/sweetalert2/sweetalert2.min.css">
+<link rel="stylesheet" href="../css/module-theme.css">
+<!-- jQuery must load in <head>: mainheader.php / sidebar.php run inline scripts that use $ before the page footer -->
+<script src="../plugins/jquery/jquery.min.js"></script>
+<!-- toastr: the included header/sidebar call toastr on document-ready -->
+<link rel="stylesheet" href="../plugins/toastr/toastr.min.css">
+<script src="../plugins/toastr/toastr.min.js"></script>
+<script>
+// Fallback so the header/sidebar never crash if the toastr plugin file is missing
+window.toastr = window.toastr || {
+    success: function(m){ console.log('toastr.success:', m); },
+    error:   function(m){ console.error('toastr.error:', m); },
+    info:    function(m){ console.info('toastr.info:', m); },
+    warning: function(m){ console.warn('toastr.warning:', m); },
+    options: {}
+};
+</script>
 
 <style>
-/* ── CSS Variables (AdminLTE dark sidebar palette) ── */
-:root {
-    --primary: #2a9863;
-    --primary-dark: #1e7a4f;
-    --primary-light: #d4f5e5;
-    --danger:  #c92a2a;
-    --warning: #f59f00;
-    --info:    #1c7ed6;
-    --muted:   #6c757d;
-    --border:  #dee2e6;
-    --card-shadow: 0 2px 12px rgba(0,0,0,.08);
-    --radius: 10px;
-}
+/* Page-specific additions on top of assets/css/module-theme.css */
 
-/* ── Layout ── */
-.content-wrapper { background: #f4f6f9; }
+/* card header: title left, tools right */
+.lt-card-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+.lt-card-header::after { display:none; }
+.lt-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.lt-search {
+    width:220px; background:var(--h-card-alt); border:1.5px solid var(--h-border); color:var(--h-text);
+    border-radius:8px; padding:5px 12px; font-size:.82rem; outline:none;
+}
+.lt-search::placeholder { color:var(--h-muted); }
+.lt-search:focus { border-color:var(--h-primary); box-shadow:0 0 0 3px var(--h-primary-dim); }
+.lt-count { font-size:.78rem; color:var(--h-muted); }
 
-/* ── Page Header ── */
-.lt-page-header {
-    background: linear-gradient(135deg, #1a6b42 0%, #2a9863 60%, #3dbf7e 100%);
-    border-radius: var(--radius);
-    color: #fff;
-    padding: 24px 28px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    box-shadow: 0 4px 18px rgba(42,152,99,.35);
-}
-.lt-page-header h4 {
-    margin: 0;
-    font-size: 1.3rem;
-    font-weight: 700;
-    letter-spacing: -.2px;
-}
-.lt-page-header p {
-    margin: 4px 0 0;
-    opacity: .85;
-    font-size: .88rem;
-}
-.lt-page-header .header-icon {
-    width: 56px; height: 56px;
-    background: rgba(255,255,255,.15);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
+/* extra badge colours (same palette as the applicant status badges) */
+.badge-info    { background:#dbeafe !important; color:#1d4ed8 !important; }
+.badge-warning { background:#fff3cd !important; color:#9a6700 !important; }
+.badge-danger  { background:#fee2e2 !important; color:#b91c1c !important; }
+body.dark-mode .badge-info    { background:rgba(96,165,250,.15) !important; color:#93c5fd !important; }
+body.dark-mode .badge-warning { background:rgba(255,212,59,.15) !important; color:#ffd43b !important; }
+body.dark-mode .badge-danger  { background:rgba(255,107,107,.15) !important; color:#ff8787 !important; }
 
-/* ── Toolbar ── */
-.lt-toolbar {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 20px;
-}
-.lt-toolbar input[type="text"] {
-    flex: 1; min-width: 200px; max-width: 320px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: .9rem;
-    outline: none;
-    transition: border-color .2s;
-}
-.lt-toolbar input[type="text"]:focus { border-color: var(--primary); }
+/* name + chips */
+.lt-name { display:flex; align-items:center; gap:8px; font-weight:700; }
+.lt-color-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; background:var(--h-primary); }
+.lt-id { color:var(--h-muted); font-size:.8rem; }
+.lt-desc { max-width:250px; white-space:normal; color:var(--h-muted); }
+.lt-pill { display:inline-block; background:var(--h-primary-dim); color:var(--h-primary); border-radius:6px; padding:2px 10px; font-size:.78rem; font-weight:700; }
+.lt-unlimited { color:var(--h-muted); font-style:italic; font-size:.82rem; }
 
-/* ── Buttons ── */
-.btn-lt {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 8px 18px;
-    border: none; border-radius: 8px; cursor: pointer;
-    font-size: .88rem; font-weight: 600;
-    transition: all .18s;
-}
-.btn-lt-primary   { background: var(--primary); color: #fff; }
-.btn-lt-primary:hover  { background: var(--primary-dark); }
-.btn-lt-secondary { background: #e9ecef; color: #495057; }
-.btn-lt-secondary:hover { background: #dee2e6; }
-.btn-lt-danger    { background: var(--danger); color: #fff; }
-.btn-lt-danger:hover { background: #a61f1f; }
-.btn-lt-info      { background: var(--info); color: #fff; }
-.btn-lt-info:hover { background: #155fa0; }
-.btn-lt-warning   { background: var(--warning); color: #fff; }
-.btn-lt-warning:hover { background: #d48c00; }
-.btn-lt:disabled { opacity: .6; cursor: not-allowed; }
-
-/* ── Stats Bar ── */
-.lt-stats {
-    display: flex; gap: 14px; flex-wrap: wrap;
-    margin-bottom: 22px;
-}
-.lt-stat-card {
-    flex: 1; min-width: 130px;
-    background: #fff;
-    border-radius: var(--radius);
-    padding: 16px 18px;
-    box-shadow: var(--card-shadow);
-    display: flex; align-items: center; gap: 14px;
-}
-.lt-stat-icon {
-    width: 42px; height: 42px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; flex-shrink: 0;
-}
-.lt-stat-icon.green  { background: var(--primary-light); color: var(--primary); }
-.lt-stat-icon.red    { background: #ffe3e3; color: var(--danger); }
-.lt-stat-icon.blue   { background: #d0ebff; color: var(--info); }
-.lt-stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; color: #212529; }
-.lt-stat-label { font-size: .78rem; color: var(--muted); margin-top: 2px; }
-
-/* ── Table Card ── */
-.lt-card {
-    background: #fff;
-    border-radius: var(--radius);
-    box-shadow: var(--card-shadow);
-    overflow: hidden;
-}
-.lt-card-header {
-    padding: 16px 22px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    font-weight: 700; color: #343a40; font-size: .95rem;
-}
-
-/* ── Table ── */
-.lt-table { width: 100%; border-collapse: collapse; }
-.lt-table thead th {
-    background: #f8f9fa;
-    padding: 12px 16px;
-    font-size: .78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    color: var(--muted);
-    border-bottom: 2px solid var(--border);
-    white-space: nowrap;
-}
-.lt-table tbody tr {
-    border-bottom: 1px solid #f1f3f5;
-    transition: background .12s;
-}
-.lt-table tbody tr:hover { background: #f8fff9; }
-.lt-table tbody td {
-    padding: 13px 16px;
-    font-size: .88rem;
-    color: #343a40;
-    vertical-align: middle;
-}
-
-/* ── Badge ── */
-.badge-active   { background: #d3f9d8; color: #2b7a3a; border-radius: 20px; padding: 3px 12px; font-size: .75rem; font-weight: 700; }
-.badge-inactive { background: #ffe3e3; color: #a61f1f; border-radius: 20px; padding: 3px 12px; font-size: .75rem; font-weight: 700; }
-
-/* ── Leave Name Pill ── */
-.lt-name {
-    display: flex; align-items: center; gap: 8px;
-}
-.lt-color-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--primary);
-}
-
-/* ── Action Buttons (table) ── */
-.tbl-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.tbl-btn {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 5px 11px; border: none; border-radius: 6px;
-    font-size: .78rem; font-weight: 600; cursor: pointer;
-    transition: all .15s;
-}
-.tbl-btn-edit    { background: #d0ebff; color: var(--info); }
-.tbl-btn-edit:hover { background: #a5d8ff; }
-.tbl-btn-toggle  { background: #fff3bf; color: #7c5a00; }
-.tbl-btn-toggle.deact { background: #ffe3e3; color: var(--danger); }
-.tbl-btn-toggle:hover { opacity: .8; }
-.tbl-btn-delete  { background: #ffe3e3; color: var(--danger); }
-.tbl-btn-delete:hover { background: #ffc9c9; }
-
-/* ── Max Days display ── */
-.max-days-badge {
-    background: #e7f5ff; color: #1c7ed6;
-    border-radius: 6px; padding: 2px 10px;
-    font-size: .8rem; font-weight: 700;
-}
-.max-days-unlimited {
-    color: var(--muted); font-style: italic; font-size: .82rem;
-}
-
-/* ── Default Credits ── */
-.default-credits-badge {
-    background: #ebfbee; color: #2b8a3e;
-    border-radius: 6px; padding: 2px 10px;
-    font-size: .8rem; font-weight: 700;
-}
-
-/* ── Category Badges ── */
-.badge-main  { background: #d0ebff; color: #1864ab; border-radius: 20px; padding: 3px 12px; font-size: .75rem; font-weight: 700; }
-.badge-other { background: #fff3bf; color: #7c5a00; border-radius: 20px; padding: 3px 12px; font-size: .75rem; font-weight: 700; }
-
-/* ── Group Header Rows ── */
-.lt-group-header td { padding: 0 !important; border-bottom: none !important; }
+/* group header rows */
+.mod-table.table tbody tr.lt-group-header td { padding:0 !important; border-top:none !important; }
+.mod-table.table tbody tr.lt-group-header:hover { background:transparent !important; }
 .lt-group-label {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 16px;
-    background: linear-gradient(90deg, #f0faf5 0%, #f8f9fa 100%);
-    border-top: 2px solid var(--primary);
-    border-bottom: 1px solid #dee2e6;
-    font-size: .78rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .5px; color: var(--primary);
+    display:flex; align-items:center; gap:8px; padding:9px 14px;
+    background:var(--h-card-alt); border-top:2px solid var(--h-primary); border-bottom:1px solid var(--h-border);
+    font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--h-primary);
 }
-.lt-group-others .lt-group-label {
-    background: linear-gradient(90deg, #fffbeb 0%, #f8f9fa 100%);
-    border-top-color: var(--warning);
-    color: #7c5a00;
-}
-.lt-group-count {
-    margin-left: auto;
-    background: rgba(0,0,0,.06);
-    border-radius: 10px; padding: 1px 9px;
-    font-size: .72rem; font-weight: 600; color: inherit;
-}
+.lt-group-others .lt-group-label { border-top-color:var(--h-warning); color:var(--h-warning); }
+.lt-group-count { margin-left:auto; background:var(--h-primary-dim); border-radius:10px; padding:1px 9px; font-size:.7rem; font-weight:600; color:inherit; }
+.lt-empty { text-align:center; padding:50px 20px; color:var(--h-muted); }
+.lt-empty i { font-size:2.5rem; opacity:.3; display:block; margin-bottom:10px; }
 
-/* ── Empty state ── */
-.lt-empty {
-    text-align: center; padding: 60px 20px; color: var(--muted);
+/* bulk init banner */
+.lt-bulk {
+    background:var(--h-card); border:1px solid var(--h-border); border-radius:12px; box-shadow:var(--h-shadow-sm);
+    padding:14px 18px; margin-bottom:18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
 }
-.lt-empty i { font-size: 3rem; opacity: .3; display: block; margin-bottom: 12px; }
+.lt-bulk-icon {
+    width:42px; height:42px; border-radius:10px; flex-shrink:0; background:var(--h-primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:1.05rem;
+}
+body.dark-mode .lt-bulk-icon { color:#0b1f17; }
+.lt-bulk h6 { margin:0 0 2px; font-size:.88rem; font-weight:700; color:var(--h-text); }
+.lt-bulk p  { margin:0; font-size:.78rem; color:var(--h-muted); }
+.lt-bulk-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.lt-bulk select {
+    background:var(--h-card-alt); border:1.5px solid var(--h-border); color:var(--h-text);
+    border-radius:8px; padding:5px 10px; font-size:.82rem; outline:none;
+}
+.lt-bulk .btn-primary {
+    background:var(--h-primary) !important; border:none !important; border-radius:8px !important;
+    font-weight:700 !important; font-size:.8rem !important; box-shadow:0 2px 12px var(--h-primary-dim) !important; color:#fff !important;
+}
+body.dark-mode .lt-bulk .btn-primary { color:#0b1f17 !important; }
 
-/* ══════════════════════════════════════
-   MODAL
-══════════════════════════════════════ */
+/* modal: overlay keeps working without Bootstrap's modal JS, but uses the same scrum-style look */
 .lt-modal-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.45);
-    z-index: 9999;
-    align-items: center; justify-content: center;
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1060;
+    align-items:center; justify-content:center; padding:16px; overflow-y:auto;
 }
-.lt-modal-overlay.open { display: flex; }
-.lt-modal {
-    background: #fff;
-    border-radius: 14px;
-    width: 100%; max-width: 540px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.2);
-    overflow: hidden;
-    animation: ltModalIn .22s ease;
-}
-@keyframes ltModalIn {
-    from { opacity:0; transform:translateY(-18px) scale(.97); }
-    to   { opacity:1; transform:translateY(0)     scale(1);   }
-}
-.lt-modal-header {
-    background: linear-gradient(135deg, #1a6b42, #2a9863);
-    color: #fff;
-    padding: 18px 24px;
-    display: flex; align-items: center; gap: 12px;
-}
-.lt-modal-header h5 { margin: 0; font-size: 1.05rem; font-weight: 700; }
-.lt-modal-header .modal-close {
-    margin-left: auto;
-    background: rgba(255,255,255,.2);
-    border: none; border-radius: 50%;
-    width: 30px; height: 30px;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; cursor: pointer; font-size: 1.1rem; line-height: 1;
-    transition: background .15s;
-}
-.lt-modal-header .modal-close:hover { background: rgba(255,255,255,.35); }
-.lt-modal-body { padding: 24px; }
-.lt-modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid var(--border);
-    display: flex; gap: 10px; justify-content: flex-end;
-}
-
-/* ── Form Fields ── */
-.lt-form-group { margin-bottom: 18px; }
-.lt-form-group label {
-    display: block; font-size: .82rem;
-    font-weight: 700; color: #495057; margin-bottom: 6px;
-    text-transform: uppercase; letter-spacing: .3px;
-}
-.lt-form-group label .required { color: var(--danger); margin-left: 2px; }
-.lt-form-group input[type="text"],
-.lt-form-group input[type="number"],
-.lt-form-group textarea,
-.lt-form-group select {
-    width: 100%; padding: 10px 14px;
-    border: 1.5px solid var(--border); border-radius: 8px;
-    font-size: .9rem; color: #343a40;
-    transition: border-color .2s, box-shadow .2s;
-    outline: none;
-}
-.lt-form-group input:focus,
-.lt-form-group textarea:focus,
-.lt-form-group select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(42,152,99,.12);
-}
-.lt-form-group textarea { resize: vertical; min-height: 80px; }
-.lt-form-row { display: flex; gap: 14px; }
-.lt-form-row .lt-form-group { flex: 1; }
-
-/* Toggle Switch */
+.lt-modal-overlay.open { display:flex; }
+.lt-dialog { width:100%; max-width:560px; margin:auto; }
+.lt-dialog .modal-content { position:relative; display:flex; flex-direction:column; width:100%; }
+.lt-row { display:flex; gap:14px; }
+.lt-row > .form-group { flex:1; }
+.lt-helper { font-size:.75rem; color:var(--h-muted); margin-top:4px; }
 .lt-switch-group {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px;
-    background: #f8f9fa; border-radius: 8px;
-    border: 1.5px solid var(--border);
+    display:flex; align-items:center; gap:12px; padding:8px 12px; flex-wrap:wrap;
+    background:var(--h-card-alt); border:1.5px solid var(--h-border); border-radius:8px;
 }
-.lt-switch { position: relative; display: inline-block; width: 42px; height: 24px; }
-.lt-switch input { opacity: 0; width: 0; height: 0; }
-.lt-switch-slider {
-    position: absolute; inset: 0;
-    background: #ced4da; border-radius: 24px; cursor: pointer;
-    transition: .25s;
-}
+.scrum-style-modal .lt-switch { margin:0 !important; position:relative; display:inline-block; width:42px; height:24px; text-transform:none; }
+.lt-switch input { opacity:0; width:0; height:0; }
+.lt-switch-slider { position:absolute; inset:0; background:#adb5bd; border-radius:24px; cursor:pointer; transition:.25s; }
 .lt-switch-slider::before {
-    content: '';
-    position: absolute;
-    width: 18px; height: 18px;
-    left: 3px; bottom: 3px;
-    background: #fff; border-radius: 50%;
-    transition: .25s;
-    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    content:''; position:absolute; width:18px; height:18px; left:3px; bottom:3px;
+    background:#fff; border-radius:50%; transition:.25s; box-shadow:0 1px 4px rgba(0,0,0,.2);
 }
-.lt-switch input:checked + .lt-switch-slider { background: var(--primary); }
-.lt-switch input:checked + .lt-switch-slider::before { transform: translateX(18px); }
-.lt-switch-label { font-size: .88rem; font-weight: 600; color: #495057; }
+.lt-switch input:checked + .lt-switch-slider { background:var(--h-primary); }
+.lt-switch input:checked + .lt-switch-slider::before { transform:translateX(18px); }
+.lt-switch-label { font-size:.85rem; font-weight:600; color:var(--h-text); }
 
-/* Helper text */
-.lt-helper { font-size: .78rem; color: var(--muted); margin-top: 5px; }
-
-/* ── Bulk Init Section ── */
-.bulk-init-card {
-    background: linear-gradient(135deg, #ebfbee 0%, #d3f9d8 100%);
-    border: 1.5px solid #b2f2bb;
-    border-radius: var(--radius);
-    padding: 18px 22px;
-    margin-bottom: 22px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
+@media (max-width:640px) {
+    .lt-row { flex-direction:column; gap:0; }
+    .lt-search { width:100%; }
+    .lt-bulk-actions { margin-left:0; }
 }
-.bulk-init-card .bulk-icon {
-    width: 46px; height: 46px;
-    background: var(--primary);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 1.2rem; flex-shrink: 0;
-}
-.bulk-init-card h6 { margin: 0 0 2px; font-size: .95rem; font-weight: 700; color: #1a4d2e; }
-.bulk-init-card p  { margin: 0; font-size: .82rem; color: #2d7a50; }
-.bulk-init-card .bulk-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-.bulk-init-card select {
-    padding: 7px 12px;
-    border: 1.5px solid #b2f2bb;
-    border-radius: 8px; background: #fff;
-    font-size: .88rem; outline: none;
-}
-
-/* ── Responsive ── */
-@media (max-width: 640px) {
-    .lt-form-row { flex-direction: column; }
-    .lt-stats .lt-stat-card { min-width: 100%; }
-    .lt-page-header { flex-direction: column; align-items: flex-start; }
-    .bulk-init-card .bulk-actions { margin-left: 0; }
-}
-
-/* ── Toast ── */
-#ltToast {
-    position: fixed; bottom: 24px; right: 24px;
-    padding: 14px 22px; border-radius: 10px;
-    font-size: .88rem; font-weight: 600; color: #fff;
-    z-index: 99999; transform: translateY(80px);
-    opacity: 0; transition: all .3s; pointer-events: none;
-    box-shadow: 0 4px 20px rgba(0,0,0,.2);
-    max-width: 320px;
-}
-#ltToast.show { transform: translateY(0); opacity: 1; }
-#ltToast.success { background: var(--primary); }
-#ltToast.error   { background: var(--danger); }
-#ltToast.info    { background: var(--info); }
 </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -659,99 +387,70 @@ while ($row = $res->fetch_assoc()) {
 <?php include '../includes/sidebar.php'; ?>
 
 <div class="content-wrapper">
-    <div class="content-header">
-        <div class="container-fluid">
-            <ol class="breadcrumb" style="background:none;padding:10px 0 0;font-size:.82rem;">
-                <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                <li class="breadcrumb-item active">Leave Types</li>
-            </ol>
+
+    <!-- Page Hero -->
+    <div class="pg-hero">
+        <div class="pg-hero-mesh"></div>
+        <div class="pg-hero-dots"></div>
+        <div class="pg-hero-hex"></div>
+        <div class="pg-hero-orbs">
+            <div class="pg-orb pg-orb-1"></div>
+            <div class="pg-orb pg-orb-2"></div>
+            <div class="pg-orb pg-orb-3"></div>
+            <div class="pg-orb pg-orb-4"></div>
+        </div>
+        <div class="pg-hero-rings">
+            <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+        </div>
+        <div class="pg-hero-arc"></div>
+        <div class="pg-hero-layout">
+            <div class="pg-hero-inner">
+                <div class="pg-hero-title"><i class="fas fa-tags"></i>Leave Types Management</div>
+                <div class="pg-hero-divider"></div>
+                <p class="pg-hero-sub">Add, edit, and manage leave types. Changes reflect immediately across the system.</p>
+            </div>
         </div>
     </div>
 
-    <section class="content">
+    <div class="content">
     <div class="container-fluid">
 
-        <!-- Page Header -->
-        <div class="lt-page-header">
-            <div>
-                <h4><i class="fas fa-tags" style="margin-right:10px;"></i>Leave Types Management</h4>
-                <p>Add, edit, and manage leave types dynamically. Changes reflect immediately across the system.</p>
-            </div>
-            <div class="header-icon"><i class="fas fa-file-medical-alt"></i></div>
-        </div>
-
-        <!-- Stats Bar -->
-        <?php
-            $total   = count($leave_types);
-            $active  = count(array_filter($leave_types, fn($r) => $r['is_active']));
-            $inactive = $total - $active;
-        ?>
-        <div class="lt-stats">
-            <div class="lt-stat-card">
-                <div class="lt-stat-icon blue"><i class="fas fa-layer-group"></i></div>
-                <div>
-                    <div class="lt-stat-value"><?= $total ?></div>
-                    <div class="lt-stat-label">Total Leave Types</div>
-                </div>
-            </div>
-            <div class="lt-stat-card">
-                <div class="lt-stat-icon green"><i class="fas fa-check-circle"></i></div>
-                <div>
-                    <div class="lt-stat-value"><?= $active ?></div>
-                    <div class="lt-stat-label">Active Types</div>
-                </div>
-            </div>
-            <div class="lt-stat-card">
-                <div class="lt-stat-icon red"><i class="fas fa-times-circle"></i></div>
-                <div>
-                    <div class="lt-stat-value"><?= $inactive ?></div>
-                    <div class="lt-stat-label">Inactive Types</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bulk Init Section -->
-        <div class="bulk-init-card">
-            <div class="bulk-icon"><i class="fas fa-magic"></i></div>
+        <!-- Bulk Init -->
+        <div class="lt-bulk">
+            <div class="lt-bulk-icon"><i class="fas fa-magic"></i></div>
             <div>
                 <h6>Initialize Default Leave Balances</h6>
                 <p>Seeds leave_balance records for all employees using each type's Default Credits value below.</p>
             </div>
-            <div class="bulk-actions">
+            <div class="lt-bulk-actions">
                 <select id="bulkInitYear">
                     <?php for ($y = $current_year + 1; $y >= $current_year - 2; $y--): ?>
                         <option value="<?= $y ?>" <?= $y == $current_year ? 'selected' : '' ?>><?= $y ?></option>
                     <?php endfor; ?>
                 </select>
-                <button class="btn-lt btn-lt-primary" id="btnBulkInit">
+                <button class="btn btn-primary btn-sm" id="btnBulkInit">
                     <i class="fas fa-seedling"></i> Init All Defaults
                 </button>
             </div>
         </div>
 
-        <!-- Toolbar -->
-        <div class="lt-toolbar">
-            <input type="text" id="ltSearch" placeholder="🔍 Search leave types…">
-            <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn-lt btn-lt-secondary" id="btnFilterAll"   onclick="filterStatus('all')"     >All</button>
-                <button class="btn-lt btn-lt-primary"   id="btnFilterActive" onclick="filterStatus('active')"  ><i class="fas fa-check-circle"></i> Active</button>
-                <button class="btn-lt btn-lt-danger"    id="btnFilterInact"  onclick="filterStatus('inactive')"><i class="fas fa-ban"></i> Inactive</button>
-                <button class="btn-lt btn-lt-primary"   onclick="openCreateModal()">
-                    <i class="fas fa-plus"></i> Add Leave Type
-                </button>
+        <div class="card">
+            <div class="card-header lt-card-header">
+                <h3 class="card-title">Leave Types <span class="lt-count ml-2" id="tableCount">Showing <?= $total ?> record(s)</span></h3>
+                <div class="lt-tools">
+                    <input type="text" id="ltSearch" class="lt-search" placeholder="Search leave types…">
+                    <div class="mod-chips">
+                        <button type="button" class="mod-chip active" data-filter="all"      onclick="filterStatus('all', this)">All<span class="n"><?= $total ?></span></button>
+                        <button type="button" class="mod-chip"        data-filter="active"   onclick="filterStatus('active', this)">Active<span class="n"><?= $active ?></span></button>
+                        <button type="button" class="mod-chip"        data-filter="inactive" onclick="filterStatus('inactive', this)">Inactive<span class="n"><?= $inactive ?></span></button>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateModal()">
+                        <i class="fas fa-plus"></i> Add Leave Type
+                    </button>
+                </div>
             </div>
-        </div>
-
-        <!-- Table Card -->
-        <div class="lt-card">
-            <div class="lt-card-header">
-                <span><i class="fas fa-list" style="margin-right:8px;color:var(--primary);"></i>Leave Types</span>
-                <span style="font-size:.78rem;color:var(--muted);font-weight:400;" id="tableCount">
-                    Showing <?= $total ?> record(s)
-                </span>
-            </div>
-            <div style="overflow-x:auto;">
-                <table class="lt-table" id="ltTable">
+            <div class="card-body" style="overflow-x:auto;">
+                <table class="table mod-table" id="ltTable">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -780,62 +479,59 @@ while ($row = $res->fetch_assoc()) {
                         $row_tpl = function($lt) { ?>
                         <tr data-status="<?= $lt['is_active'] ? 'active' : 'inactive' ?>"
                             data-name="<?= htmlspecialchars(strtolower($lt['leave_type_name'])) ?>">
-                            <td style="color:var(--muted);font-size:.8rem;"><?= $lt['leave_type_id'] ?></td>
+                            <td class="lt-id"><?= $lt['leave_type_id'] ?></td>
                             <td>
                                 <div class="lt-name">
                                     <span class="lt-color-dot"></span>
-                                    <strong><?= htmlspecialchars($lt['leave_type_name']) ?></strong>
+                                    <?= htmlspecialchars($lt['leave_type_name']) ?>
                                 </div>
                             </td>
-                            <td style="max-width:250px;white-space:normal;color:#555;">
+                            <td class="lt-desc">
                                 <?= htmlspecialchars($lt['description'] ?? '—') ?>
                             </td>
                             <td>
                                 <?php if (!is_null($lt['max_days'])): ?>
-                                    <span class="max-days-badge"><?= number_format($lt['max_days'], 1) ?> days</span>
+                                    <span class="lt-pill"><?= number_format($lt['max_days'], 1) ?> days</span>
                                 <?php else: ?>
-                                    <span class="max-days-unlimited">Unlimited</span>
+                                    <span class="lt-unlimited">Unlimited</span>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <?php $dc = $lt['default_credits'] ?? null; ?>
                                 <?php if (!is_null($dc)): ?>
-                                    <span class="default-credits-badge"><?= number_format((float)$dc, 3) ?> days</span>
+                                    <span class="lt-pill"><?= number_format((float)$dc, 3) ?> days</span>
                                 <?php else: ?>
-                                    <span class="max-days-unlimited">—</span>
+                                    <span class="lt-unlimited">—</span>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <?php if (($lt['is_main'] ?? 1) == 1): ?>
-                                    <span class="badge-main">Main</span>
+                                    <span class="badge badge-info">Main</span>
                                 <?php else: ?>
-                                    <span class="badge-other">Others</span>
+                                    <span class="badge badge-warning">Others</span>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($lt['is_active']): ?>
-                                    <span class="badge-active">Active</span>
+                                    <span class="badge badge-success">Active</span>
                                 <?php else: ?>
-                                    <span class="badge-inactive">Inactive</span>
+                                    <span class="badge badge-danger">Inactive</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <div class="tbl-actions">
-                                    <button class="tbl-btn tbl-btn-edit"
-                                        onclick="openEditModal(<?= $lt['leave_type_id'] ?>)">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <button class="tbl-btn tbl-btn-toggle <?= $lt['is_active'] ? 'deact' : '' ?>"
-                                        onclick="toggleActive(<?= $lt['leave_type_id'] ?>, this)"
-                                        title="<?= $lt['is_active'] ? 'Deactivate' : 'Activate' ?>">
-                                        <i class="fas fa-<?= $lt['is_active'] ? 'toggle-on' : 'toggle-off' ?>"></i>
-                                        <?= $lt['is_active'] ? 'Deactivate' : 'Activate' ?>
-                                    </button>
-                                    <button class="tbl-btn tbl-btn-delete"
-                                        onclick="deleteType(<?= $lt['leave_type_id'] ?>, '<?= htmlspecialchars(addslashes($lt['leave_type_name'])) ?>')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </div>
+                                <button type="button" class="btn btn-sm btn-warning" title="Edit"
+                                    onclick="openEditModal(<?= $lt['leave_type_id'] ?>)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-info <?= $lt['is_active'] ? 'deact' : '' ?>"
+                                    onclick="toggleActive(<?= $lt['leave_type_id'] ?>, this)"
+                                    title="<?= $lt['is_active'] ? 'Deactivate' : 'Activate' ?>">
+                                    <i class="fas fa-<?= $lt['is_active'] ? 'toggle-on' : 'toggle-off' ?>"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" title="Delete"
+                                    onclick="deleteType(<?= $lt['leave_type_id'] ?>, '<?= htmlspecialchars(addslashes($lt['leave_type_name'])) ?>')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     <?php }; ?>
@@ -850,7 +546,7 @@ while ($row = $res->fetch_assoc()) {
                             </td>
                         </tr>
                         <?php if (empty($main_types)): ?>
-                        <tr data-group="main"><td colspan="8" style="padding:12px 16px;color:var(--muted);font-style:italic;font-size:.85rem;">No main leave types defined.</td></tr>
+                        <tr data-group="main"><td colspan="8" class="lt-unlimited" style="padding:12px 16px;">No main leave types defined.</td></tr>
                         <?php else: foreach ($main_types as $lt) $row_tpl($lt); endif; ?>
 
                         <!-- ── GROUP HEADER: Other Leave Types ── -->
@@ -863,7 +559,7 @@ while ($row = $res->fetch_assoc()) {
                             </td>
                         </tr>
                         <?php if (empty($other_types)): ?>
-                        <tr data-group="others"><td colspan="8" style="padding:12px 16px;color:var(--muted);font-style:italic;font-size:.85rem;">No other leave types defined.</td></tr>
+                        <tr data-group="others"><td colspan="8" class="lt-unlimited" style="padding:12px 16px;">No other leave types defined.</td></tr>
                         <?php else: foreach ($other_types as $lt) $row_tpl($lt); endif; ?>
 
                     <?php endif; ?>
@@ -873,7 +569,7 @@ while ($row = $res->fetch_assoc()) {
         </div>
 
     </div>
-    </section>
+    </div>
 </div><!-- /.content-wrapper -->
 
 </div><!-- /.wrapper -->
@@ -881,76 +577,74 @@ while ($row = $res->fetch_assoc()) {
 <!-- ══════════════════════════════════════
      CREATE / EDIT MODAL
 ══════════════════════════════════════ -->
-<div class="lt-modal-overlay" id="ltModal">
-    <div class="lt-modal">
-        <div class="lt-modal-header">
-            <i class="fas fa-tags"></i>
-            <h5 id="modalTitle">Add Leave Type</h5>
-            <button class="modal-close" onclick="closeModal()">×</button>
-        </div>
-        <div class="lt-modal-body">
-            <input type="hidden" id="editId" value="">
-
-            <div class="lt-form-group">
-                <label>Leave Type Name <span class="required">*</span></label>
-                <input type="text" id="ltName" placeholder="e.g. Vacation Leave" maxlength="100">
+<div class="lt-modal-overlay scrum-style-modal" id="ltModal">
+    <div class="lt-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-tags"></i><span id="modalTitle">Add Leave Type</span></h5>
+                <button type="button" class="close" onclick="closeModal()">&times;</button>
             </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId" value="">
 
-            <div class="lt-form-group">
-                <label>Description</label>
-                <textarea id="ltDesc" placeholder="Brief description of this leave type…"></textarea>
-            </div>
-
-            <div class="lt-form-row">
-                <div class="lt-form-group">
-                    <label>Max Allowable Days / Year</label>
-                    <input type="number" id="ltMaxDays" placeholder="e.g. 15" min="0" step="0.5">
-                    <div class="lt-helper">Leave blank for unlimited.</div>
+                <div class="form-group">
+                    <label>Leave Type Name <span class="text-danger">*</span></label>
+                    <input type="text" id="ltName" class="form-control" placeholder="e.g. Vacation Leave" maxlength="100">
                 </div>
-                <div class="lt-form-group">
-                    <label>Default Credits to Seed</label>
-                    <input type="number" id="ltDefaultCredits" placeholder="e.g. 15.000" min="0" step="0.001">
-                    <div class="lt-helper">Used by "Init All Defaults". Leave blank = 0.</div>
-                </div>
-            </div>
 
-            <div class="lt-form-group">
-                <label>Status</label>
-                <div class="lt-switch-group">
-                    <label class="lt-switch">
-                        <input type="checkbox" id="ltIsActive" checked>
-                        <span class="lt-switch-slider"></span>
-                    </label>
-                    <span class="lt-switch-label" id="ltStatusLabel">Active</span>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="ltDesc" class="form-control" rows="3" placeholder="Brief description of this leave type…"></textarea>
                 </div>
-            </div>
 
-            <div class="lt-form-group">
-                <label>Category</label>
-                <div class="lt-switch-group">
-                    <label class="lt-switch">
-                        <input type="checkbox" id="ltIsMain" checked>
-                        <span class="lt-switch-slider"></span>
-                    </label>
-                    <span class="lt-switch-label" id="ltMainLabel">Main Leave Type</span>
-                    <span class="lt-helper" style="margin-left:8px;">Uncheck for "Others" (e.g. Terminal, Wellness)</span>
+                <div class="lt-row">
+                    <div class="form-group">
+                        <label>Max Allowable Days / Year</label>
+                        <input type="number" id="ltMaxDays" class="form-control" placeholder="e.g. 15" min="0" step="0.5">
+                        <div class="lt-helper">Leave blank for unlimited.</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Default Credits to Seed</label>
+                        <input type="number" id="ltDefaultCredits" class="form-control" placeholder="e.g. 15.000" min="0" step="0.001">
+                        <div class="lt-helper">Used by "Init All Defaults". Blank = 0.</div>
+                    </div>
+                </div>
+
+                <div class="lt-row">
+                    <div class="form-group mb-0">
+                        <label>Status</label>
+                        <div class="lt-switch-group">
+                            <label class="lt-switch">
+                                <input type="checkbox" id="ltIsActive" checked>
+                                <span class="lt-switch-slider"></span>
+                            </label>
+                            <span class="lt-switch-label" id="ltStatusLabel">Active</span>
+                        </div>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label>Category</label>
+                        <div class="lt-switch-group">
+                            <label class="lt-switch">
+                                <input type="checkbox" id="ltIsMain" checked>
+                                <span class="lt-switch-slider"></span>
+                            </label>
+                            <span class="lt-switch-label" id="ltMainLabel">Main Leave Type</span>
+                        </div>
+                        <div class="lt-helper">Turn off for "Others" (e.g. Terminal, Wellness).</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="lt-modal-footer">
-            <button class="btn-lt btn-lt-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn-lt btn-lt-primary" id="btnSave" onclick="saveLeaveType()">
-                <i class="fas fa-save"></i> Save
-            </button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnSave" onclick="saveLeaveType()">
+                    <i class="fas fa-save mr-1"></i>Save
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Toast -->
-<div id="ltToast"></div>
-
 <!-- Scripts -->
-<script src="../plugins/jquery/jquery.min.js"></script>
 <script src="../plugins/sweetalert2/sweetalert2.min.js"></script>
 <script src="../dist/js/adminlte.min.js"></script>
 
@@ -958,8 +652,12 @@ while ($row = $res->fetch_assoc()) {
 // ══════════════════════════════════════
 // Modal helpers
 // ══════════════════════════════════════
+var SAVE_HTML = '<i class="fas fa-save mr-1"></i>Save';
+var UPDATE_HTML = '<i class="fas fa-save mr-1"></i>Update';
+
 function openCreateModal() {
     document.getElementById('modalTitle').textContent = 'Add Leave Type';
+    document.getElementById('btnSave').innerHTML = SAVE_HTML;
     document.getElementById('editId').value = '';
     document.getElementById('ltName').value = '';
     document.getElementById('ltDesc').value = '';
@@ -975,7 +673,7 @@ function openCreateModal() {
 
 function openEditModal(id) {
     document.getElementById('modalTitle').textContent = 'Edit Leave Type';
-    document.getElementById('btnSave').innerHTML = '<i class="fas fa-save"></i> Update';
+    document.getElementById('btnSave').innerHTML = UPDATE_HTML;
 
     $.post('types_leaves.php', {action:'get', leave_type_id: id}, function(res) {
         if (!res.success) { showToast(res.message || 'Could not load data.', 'error'); return; }
@@ -995,11 +693,11 @@ function openEditModal(id) {
 
 function closeModal() {
     document.getElementById('ltModal').classList.remove('open');
-    document.getElementById('btnSave').innerHTML = '<i class="fas fa-save"></i> Save';
+    document.getElementById('btnSave').innerHTML = SAVE_HTML;
 }
 
 // Close on backdrop click
-document.getElementById('ltModal').addEventListener('click', function(e) {
+document.getElementById('ltModal').addEventListener('mousedown', function(e) {
     if (e.target === this) closeModal();
 });
 
@@ -1033,7 +731,7 @@ function saveLeaveType() {
     const action = id ? 'update' : 'create';
     const btn = document.getElementById('btnSave');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Saving…';
 
     $.post('types_leaves.php', {
         action: action,
@@ -1046,7 +744,7 @@ function saveLeaveType() {
         is_main:         isMain
     }, function(res) {
         btn.disabled = false;
-        btn.innerHTML = id ? '<i class="fas fa-save"></i> Update' : '<i class="fas fa-save"></i> Save';
+        btn.innerHTML = id ? UPDATE_HTML : SAVE_HTML;
         if (res.success) {
             closeModal();
             showToast(res.message, 'success');
@@ -1056,7 +754,7 @@ function saveLeaveType() {
         }
     }, 'json').fail(function() {
         btn.disabled = false;
-        btn.innerHTML = id ? '<i class="fas fa-save"></i> Update' : '<i class="fas fa-save"></i> Save';
+        btn.innerHTML = id ? UPDATE_HTML : SAVE_HTML;
         showToast('Network error.', 'error');
     });
 }
@@ -1094,7 +792,7 @@ function toggleActive(id, btn) {
 function deleteType(id, name) {
     Swal.fire({
         title: 'Delete "' + name + '"?',
-        html: '<p style="font-size:.88rem;color:#495057;">This will <strong>permanently remove</strong> this leave type.<br>If it has existing leave requests or balances, deletion will be blocked — deactivate it instead.</p>',
+        html: '<p style="font-size:.88rem;">This will <strong>permanently remove</strong> this leave type.<br>If it has existing leave requests or balances, deletion will be blocked — deactivate it instead.</p>',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#c92a2a',
@@ -1155,8 +853,10 @@ var currentFilter = 'all';
 
 document.getElementById('ltSearch').addEventListener('input', applyFilters);
 
-function filterStatus(status) {
+function filterStatus(status, el) {
     currentFilter = status;
+    document.querySelectorAll('.mod-chip').forEach(function(c) { c.classList.remove('active'); });
+    if (el) el.classList.add('active');
     applyFilters();
 }
 
@@ -1180,22 +880,22 @@ function applyFilters() {
 }
 
 // ══════════════════════════════════════
-// TOAST
+// TOAST (SweetAlert toast, same as the other admin pages)
 // ══════════════════════════════════════
 function showToast(msg, type) {
-    const t = document.getElementById('ltToast');
-    t.textContent = msg;
-    t.className = 'lt-toast show ' + (type || 'success');
-    clearTimeout(window._ltToastTimer);
-    window._ltToastTimer = setTimeout(function() {
-        t.className = 'lt-toast';
-    }, 3200);
+    Swal.fire({
+        toast: true, position: 'bottom-end', icon: type || 'success', title: msg,
+        showConfirmButton: false, timer: 3000, timerProgressBar: true
+    });
 }
 
 // Keyboard: Escape closes modal
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
-    if (e.key === 'Enter' && document.getElementById('ltModal').classList.contains('open')) {
+    if (e.key === 'Enter'
+        && document.getElementById('ltModal').classList.contains('open')
+        && e.target.tagName !== 'TEXTAREA'
+        && !document.querySelector('.swal2-container')) {
         saveLeaveType();
     }
 });

@@ -38,16 +38,6 @@ $stmt = $db->prepare("SELECT e.*, p.position_name, o.office_name FROM employee e
 $stmt->execute();
 $manager = $stmt->get_result()->fetch_assoc();
 
-// Manager staff
-$stmt = $db->prepare("SELECT mos.*, CONCAT(e.first_name,' ',e.last_name) as employee_name, e.picture as employee_picture, e.email as employee_email, e.phone_number as employee_phone, p.position_name as employee_position, o.office_name as employee_office FROM managers_office_staff mos JOIN employee e ON mos.emp_id=e.emp_id LEFT JOIN position p ON e.position_id=p.position_id LEFT JOIN office o ON e.office_id=o.office_id ORDER BY mos.position LIMIT 6");
-$stmt->execute();
-$manager_staff = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// Manager's office staff total count (for the filter button badge)
-$stmt = $db->prepare("SELECT COUNT(*) as cnt FROM managers_office_staff");
-$stmt->execute();
-$manager_staff_count = $stmt->get_result()->fetch_assoc()['cnt'];
-
 // Offices (main + branch/sub offices), with employee counts, for the office filter buttons
 $stmt = $db->prepare("SELECT o.office_id, o.office_name, o.is_main_office, o.parent_office_id, COUNT(e.emp_id) as employee_count FROM office o LEFT JOIN employee e ON e.office_id=o.office_id GROUP BY o.office_id, o.office_name, o.is_main_office, o.parent_office_id ORDER BY o.is_main_office DESC, o.office_name");
 $stmt->execute();
@@ -58,13 +48,12 @@ $stmt = $db->prepare("SELECT a.status_name, a.color, COUNT(e.emp_id) as count FR
 $stmt->execute();
 $appointment_data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Full employment status list (for filter dropdown)
-$stmt = $db->prepare("SELECT status_id, status_name, color FROM employment_status ORDER BY status_id");
+// Filter dropdown lists
+$stmt = $db->prepare("SELECT status_id, status_name FROM employment_status ORDER BY status_id");
 $stmt->execute();
 $employment_statuses = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Full appointment status list (for filter dropdown)
-$stmt = $db->prepare("SELECT appointment_id, status_name, color FROM appointment_status ORDER BY status_name");
+$stmt = $db->prepare("SELECT appointment_id, status_name FROM appointment_status ORDER BY status_name");
 $stmt->execute();
 $appointment_statuses = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -102,628 +91,135 @@ $uploads_url = '../dist/img/employees/';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Organization Dashboard</title>
     <?php include '../includes/header.php'; ?>
-    <link rel="stylesheet" href="../css/dashboard.css">
-    <style>
-        /* ═══════════════════════════════════════════════════════
-           DESIGN TOKENS — aligned with login.php green/forest theme
-        ═══════════════════════════════════════════════════════ */
-        :root {
-            /* Brand greens (from login.php) */
-            --brand:       #2a9863;
-            --brand-dk:    #1c4d38;
-            --brand-lt:    rgba(36, 231, 143, 0.10);
-            --green:       #2a9863;
-            --green-bright:#24e78f;
-            --amber:       #d97706;
-            --purple:      #7c3aed;
-            --teal:        #0891b2;
-
-            /* Light mode surfaces */
-            --bg:          #eef7f2;
-            --surface:     #ffffff;
-            --surface2:    #f0faf5;
-            --border:      rgba(42,152,99,0.18);
-            --text:        #0f2d1e;
-            --text2:       #2d6a47;
-            --text3:       #6aad8a;
-
-            --radius:      16px;
-            --radius-sm:   10px;
-            --shadow:      0 1px 8px rgba(42,152,99,.08), 0 4px 20px rgba(42,152,99,.06);
-            --shadow-md:   0 4px 16px rgba(42,152,99,.12), 0 10px 40px rgba(42,152,99,.10);
-            --trans:       all .22s cubic-bezier(.4,0,.2,1);
-        }
-
-        body {
-            background: var(--bg);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            color: var(--text);
-        }
-
-        /* ── Page title area ── */
-        .dash-topbar {
-            padding: 22px 0 6px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 24px;
-            background: var(--surface);
-        }
-        .dash-topbar h1 {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--text);
-            margin: 0;
-            letter-spacing: -.02em;
-        }
-        .dash-topbar .sub { font-size: .85rem; color: var(--text3); margin-top: 2px; }
-        .dash-topbar .breadcrumb { background: transparent; padding: 0; margin: 0; font-size: .8rem; }
-        .dash-topbar .breadcrumb-item.active { color: var(--text3); }
-        .dash-topbar .breadcrumb-item a { color: var(--brand); }
-
-        /* ═══════════════════════════════════════════════════════
-           STAT CARDS
-        ═══════════════════════════════════════════════════════ */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        @media(max-width:900px){ .stat-grid { grid-template-columns: repeat(2,1fr); } }
-        @media(max-width:520px){ .stat-grid { grid-template-columns: 1fr; } }
-
-        .stat-card {
-            background: var(--surface);
-            border-radius: var(--radius);
-            padding: 22px 20px 18px;
-            box-shadow: var(--shadow);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            position: relative;
-            overflow: hidden;
-            transition: var(--trans);
-            border: 1px solid var(--border);
-        }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-        }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-
-        .stat-card.c-brand::before  { background: linear-gradient(90deg,var(--brand),var(--brand-dk)); }
-        .stat-card.c-blue::before   { background: linear-gradient(90deg,#2563eb,#1d4ed8); }
-        .stat-card.c-green::before  { background: linear-gradient(90deg,#16a34a,#15803d); }
-        .stat-card.c-amber::before  { background: linear-gradient(90deg,#d97706,#b45309); }
-
-        .stat-header { display: flex; align-items: flex-start; justify-content: space-between; }
-        .stat-icon {
-            width: 46px; height: 46px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem; flex-shrink: 0;
-        }
-        .si-brand { background: var(--brand-lt); color: var(--brand); }
-        .si-blue  { background: #dbeafe; color: var(--blue); }
-        .si-green { background: #dcfce7; color: var(--green); }
-        .si-amber { background: #fef3c7; color: var(--amber); }
-
-        .stat-pill {
-            font-size: .68rem; font-weight: 700; padding: 3px 9px;
-            border-radius: 20px; white-space: nowrap;
-        }
-        .pill-up   { background:#dcfce7; color:#16a34a; }
-        .pill-info { background:#dbeafe; color:#1d4ed8; }
-        .pill-warn { background:#fef3c7; color:#b45309; }
-
-        .stat-value { font-size: 2.4rem; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -.03em; }
-        .stat-label { font-size: .82rem; color: var(--text2); font-weight: 500; }
-        .stat-bar-bg   { height: 4px; border-radius: 99px; background: var(--border); margin-top: 4px; }
-        .stat-bar-fill { height: 100%; border-radius: 99px; }
-
-        /* ═══════════════════════════════════════════════════════
-           MANAGER HERO CARD — login mesh pattern
-        ═══════════════════════════════════════════════════════ */
-        @keyframes mhMeshDrift {
-            0%   { transform:translate(0,0)   rotate(0deg); }
-            100% { transform:translate(3%,2%) rotate(2deg); }
-        }
-        @keyframes mhOrbFloat {
-            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
-            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
-            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
-        }
-
-        .manager-hero {
-            background: #0b1f17;
-            border-radius: var(--radius);
-            padding: 28px 30px;
-            color: white;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 24px;
-            position: relative;
-            overflow: hidden;
-        }
-        .manager-hero::before { display:none; }
-        .manager-hero::after  { display:none; }
-        .mh-mesh {
-            position:absolute; inset:-50%; width:200%; height:200%;
-            background:
-                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.15) 0%, transparent 58%),
-                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.12) 0%, transparent 58%),
-                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
-                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
-            animation:mhMeshDrift 22s ease-in-out infinite alternate;
-            z-index:0; pointer-events:none;
-        }
-        .mh-dots {
-            position:absolute; inset:0; z-index:0; pointer-events:none;
-            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
-            background-size:36px 36px;
-        }
-        .mh-hex {
-            position:absolute; inset:0; pointer-events:none; opacity:.04; z-index:0;
-            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
-            background-size:56px 100px;
-        }
-        .mh-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-        .mh-orb  { position:absolute; border-radius:50%; filter:blur(60px); animation:mhOrbFloat 18s ease-in-out infinite; }
-        .mh-orb-1 { width:260px; height:260px; background:rgba(36,231,143,.10); top:-70px;   left:-50px;  animation-duration:21s; }
-        .mh-orb-2 { width:200px; height:200px; background:rgba(42,152,99,.09);  bottom:-40px;right:-30px; animation-delay:-7s; animation-duration:17s; }
-        .mh-orb-3 { width:140px; height:140px; background:rgba(212,175,55,.05); top:40%;     right:18%;   animation-delay:-13s; animation-duration:24s; }
-        .mh-logo-watermark {
-            position:absolute; top:50%; right:3%;
-            transform:translateY(-50%);
-            width:150px; height:auto; pointer-events:none; z-index:0;
-            opacity:0.50;
-        }
-        .mh-arc {
-            position:absolute; top:-40px; right:-40px;
-            width:180px; height:180px; border-radius:50%;
-            background:radial-gradient(circle,rgba(36,231,143,.16) 0%,transparent 70%);
-            pointer-events:none; z-index:0;
-        }
-        .mh-content { position:relative; z-index:2; }
-        .mh-inner { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
-        .mh-avatar {
-            width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
-            border: 3px solid rgba(255,255,255,.35);
-            object-fit: cover;
-            background: rgba(255,255,255,.15);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2.2rem; color: rgba(255,255,255,.8);
-            overflow: hidden;
-        }
-        .mh-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .mh-info { flex: 1; min-width: 0; }
-        .mh-tag { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 6px; }
-        .mh-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 4px; }
-        .mh-title { font-size: .95rem; color: rgba(255,255,255,.8); margin-bottom: 8px; }
-        .mh-meta { display: flex; gap: 16px; flex-wrap: wrap; }
-        .mh-meta-item { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: rgba(255,255,255,.7); }
-        .mh-staff-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 16px; }
-        .mh-staff-pill {
-            display: flex; align-items: center; gap: 8px;
-            background: rgba(255,255,255,.12); border-radius: 40px;
-            padding: 5px 12px 5px 5px; font-size: .78rem; color: rgba(255,255,255,.9);
-            backdrop-filter: blur(4px);
-        }
-        .mh-sp-av {
-            width: 26px; height: 26px; border-radius: 50%;
-            background: rgba(255,255,255,.25); overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
-            font-size: .7rem; font-weight: 700; flex-shrink: 0;
-        }
-        .mh-sp-av img { width: 100%; height: 100%; object-fit: cover; }
-
-        /* ═══════════════════════════════════════════════════════
-           DIRECTORY PANEL
-        ═══════════════════════════════════════════════════════ */
-        .dir-card {
-            background: var(--surface);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            overflow: hidden;
-            margin-bottom: 24px;
-        }
-        .dir-card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .dir-card-header h5 {
-            font-size: .95rem; font-weight: 700; color: var(--text); margin: 0;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .dir-card-header .icon-circle {
-            width: 30px; height: 30px; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: .85rem;
-        }
-        .ic-brand { background: var(--brand-lt); color: var(--brand); }
-        .ic-green { background: #dcfce7; color: var(--green); }
-        .ic-blue  { background: #dbeafe; color: var(--blue); }
-
-        /* Section list */
-        .sec-list { list-style: none; padding: 8px; margin: 0; max-height: 420px; overflow-y: auto; }
-        .sec-list::-webkit-scrollbar { width: 4px; }
-        .sec-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-        .sec-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px; border-radius: 10px; cursor: pointer;
-            transition: var(--trans); margin-bottom: 2px;
-            border: 1px solid transparent;
-        }
-        .sec-item:hover { background: var(--surface2); border-color: var(--border); }
-        .sec-item.active { background: var(--brand-lt); border-color: rgba(128, 0, 32, 0); }
-        .sec-item.active .sec-item-name { color: var(--brand); font-weight: 700; }
-        .sec-item.active .sec-item-count { background: var(--brand); color: white; }
-
-        .sec-item-av {
-            width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
-            overflow: hidden; background: var(--brand-lt);
-            display: flex; align-items: center; justify-content: center;
-            color: var(--brand); font-weight: 700; font-size: .8rem;
-        }
-        .sec-item-av img { width: 100%; height: 100%; object-fit: cover; }
-        .sec-item-body { flex: 1; min-width: 0; }
-        .sec-item-name { font-size: .84rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .sec-item-sub  { font-size: .72rem; color: var(--text3); margin-top: 1px; }
-        .sec-item-count {
-            font-size: .68rem; font-weight: 700; padding: 2px 7px;
-            border-radius: 20px; background: var(--surface2); color: var(--text2);
-            white-space: nowrap;
-        }
-
-        /* Unit list - same style, green accent */
-        .unit-item.active { background: #dcfce7; border-color: rgba(22,163,74,.2); }
-        .unit-item.active .sec-item-name { color: var(--green); }
-        .unit-item.active .sec-item-count { background: var(--green); color: white; }
-        .unit-item .sec-item-av { background: #dcfce7; color: var(--green); }
-
-        /* Employee grid */
-        .emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 14px; }
-
-        .emp-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 16px;
-            display: flex; align-items: center; gap: 14px;
-            transition: var(--trans);
-        }
-        .emp-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
-
-        .emp-av {
-            width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0;
-            overflow: hidden; background: var(--brand-lt);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; font-weight: 700; color: var(--brand);
-            border: 2px solid var(--border);
-        }
-        .emp-av img { width: 100%; height: 100%; object-fit: cover; }
-
-        .emp-body { flex: 1; min-width: 0; }
-        .emp-name { font-size: .88rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .emp-pos  { font-size: .76rem; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .emp-meta { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: .72rem; color: var(--text3); }
-
-        .status-dot {
-            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-        }
-        .sd-active  { background: var(--green); box-shadow: 0 0 0 2px #dcfce7; }
-        .sd-leave   { background: var(--amber); box-shadow: 0 0 0 2px #fef3c7; }
-        .sd-inactive{ background: #9ca3af;  box-shadow: 0 0 0 2px #f3f4f6; }
-
-        .status-label { font-size: .7rem; font-weight: 600; }
-        .sl-active   { color: var(--green); }
-        .sl-leave    { color: var(--amber); }
-        .sl-inactive { color: var(--text3); }
-
-        /* Directory controls */
-        .dir-controls {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-            background: var(--surface2);
-        }
-        .dir-search {
-            flex: 1; min-width: 160px;
-            position: relative;
-        }
-        .dir-search input {
-            width: 100%; padding: 8px 12px 8px 34px;
-            border: 1px solid var(--border); border-radius: 8px;
-            font-size: .82rem; background: var(--surface); color: var(--text);
-            transition: var(--trans);
-        }
-        .dir-search input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-lt); }
-        .dir-search i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: .8rem; }
-
-        .dir-select {
-            padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
-            font-size: .8rem; color: var(--text); background: var(--surface); cursor: pointer;
-        }
-        .dir-select:focus { outline: none; border-color: var(--brand); }
-
-        .emp-count-badge {
-            font-size: .78rem; font-weight: 700; padding: 4px 11px;
-            border-radius: 20px; background: var(--brand-lt); color: var(--brand);
-        }
-
-        /* Loading state */
-        .dir-loading {
-            display: none; text-align: center; padding: 48px 20px;
-        }
-        .dir-spin {
-            width: 36px; height: 36px; border-radius: 50%;
-            border: 3px solid var(--border);
-            border-top-color: var(--brand);
-            animation: dspin .7s linear infinite;
-            margin: 0 auto 12px;
-        }
-        @keyframes dspin { to { transform: rotate(360deg); } }
-
-        .dir-empty {
-            display: none; text-align: center; padding: 48px 20px; color: var(--text3);
-        }
-        .dir-empty i { font-size: 3rem; margin-bottom: 14px; display: block; opacity: .4; }
-        .dir-empty p { font-size: .88rem; }
-
-        /* ═══════════════════════════════════════════════════════
-           CHART CARDS
-        ═══════════════════════════════════════════════════════ */
-        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-        @media(max-width:900px) { .chart-row { grid-template-columns: 1fr; } }
-
-        /* ═══════════════════════════════════════════════════════
-           DARK MODE
-        ═══════════════════════════════════════════════════════ */
-        body.dark-mode {
-            --bg: var(--body-bg, #0f172a);
-            --surface: var(--card-bg, #1e293b);
-            --surface2: rgba(255,255,255,.04);
-            --border: var(--card-border, #334155);
-            --text: var(--text-primary, #f1f5f9);
-            --text2: var(--text-secondary, #cbd5e1);
-            --text3: var(--text-muted, #64748b);
-        }
-        body.dark-mode .stat-bar-bg { background: rgba(255,255,255,.1); }
-        body.dark-mode .dir-search input,
-        body.dark-mode .dir-select { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
-        body.dark-mode .emp-card { background: var(--surface); border-color: var(--border); }
-        body.dark-mode .dash-topbar { background: var(--surface); border-color: var(--border); }
-        body.dark-mode .si-blue  { background: rgba(37,99,235,.2); }
-        body.dark-mode .si-green { background: rgba(22,163,74,.2); }
-        body.dark-mode .si-amber { background: rgba(217,119,6,.2); }
-        body.dark-mode .ic-green { background: rgba(22,163,74,.2); }
-        body.dark-mode .ic-blue  { background: rgba(37,99,235,.2); }
-        body.dark-mode .sec-item-av { background: rgba(128,0,32,.2); }
-        body.dark-mode .unit-item .sec-item-av { background: rgba(22,163,74,.2); }
-        body.dark-mode .sec-item:hover { background: rgba(255,255,255,.04); }
-        body.dark-mode .unit-item.active { background: rgba(22,163,74,.15); }
-        body.dark-mode .sec-item-count { background: rgba(255,255,255,.08); color: var(--text2); }
-        body.dark-mode .mh-staff-pills .mh-staff-pill { background: rgba(255,255,255,.1); }
-
-        /* ── Misc helpers ── */
-        .card-collapse-btn {
-            background: var(--surface2); border: 1px solid var(--border);
-            color: var(--text2); border-radius: 8px; padding: 4px 10px;
-            font-size: .78rem; cursor: pointer; transition: var(--trans);
-        }
-        .card-collapse-btn:hover { background: var(--border); }
-        .section-chip {
-            display: inline-block; font-size: .7rem; font-weight: 700;
-            padding: 2px 9px; border-radius: 20px;
-            background: var(--brand-lt); color: var(--brand);
-        }
-    </style>
+    <link rel="stylesheet" href="../css/dashboard.css?v=4">
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
     <?php include '../includes/mainheader.php'; ?>
     <?php include '../includes/sidebar.php'; ?>
 
-    <div class="content-wrapper" style="background:var(--bg,#f0f2f7);">
+    <div class="content-wrapper">
 
         <div class="content" style="padding:20px 0 0;">
             <div class="container-fluid">
 
 
-                <!-- ══════════════════════════════════════════════
-                     MANAGER HERO
-                ══════════════════════════════════════════════ -->
-                <?php if ($manager): ?>
-                <div class="manager-hero mb-4">
-                    <!-- Login-style background layers -->
-                    <div class="mh-mesh"></div>
-                    <div class="mh-dots"></div>
-                    <div class="mh-hex"></div>
-                    <div class="mh-orbs">
-                        <div class="mh-orb mh-orb-1"></div>
-                        <div class="mh-orb mh-orb-2"></div>
-                        <div class="mh-orb mh-orb-3"></div>
+                
+                <!-- ORGANIZATION CHART -->
+                <?php
+                $units_by_section = [];
+                foreach ($unit_sections as $u) { $units_by_section[$u['section_id']][] = $u; }
+                $staff_by_section = [];
+                foreach ($gender_data as $g) { $staff_by_section[$g['section_name']] = (int)$g['total_count']; }
+                function orgAvatar($pic, $name, $base) {
+                    $ini = htmlspecialchars(mb_strtoupper(mb_substr(trim((string)$name) ?: '?', 0, 1)));
+                    $img = !empty($pic) ? '<img src="' . $base . htmlspecialchars($pic) . '" alt="" onerror="this.remove()">' : '';
+                    return '<span class="org-av">' . $ini . $img . '</span>';
+                }
+                ?>
+                <div class="dir-card org-card">
+                    <div class="dir-card-header">
+                        <h5><div class="icon-circle ic-brand"><i class="fas fa-sitemap"></i></div>Organization structure</h5>
+                        <span class="emp-count-badge"><?= count($sections) ?> sections &middot; <?= count($unit_sections) ?> units</span>
                     </div>
-                    <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
-                    <div class="mh-arc"></div>
-                    <div class="mh-content">
-                    <div class="mh-inner">
-                        <div class="mh-avatar">
-                            <?php if (!empty($manager['picture'])): ?>
-                                <img src="<?= $uploads_url . htmlspecialchars($manager['picture']) ?>" alt="Manager"
-                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                <span style="display:none"><i class="fas fa-user-tie"></i></span>
+                    <div class="org-scroll">
+                        <div class="org-tree">
+                            <?php if ($manager): ?>
+                            <div class="org-node org-root org-click" role="button" tabindex="0" data-kind="manager" data-title="Manager's Office Staff" title="View manager's office staff">
+                                <?= orgAvatar($manager['picture'] ?? '', $manager['first_name'] ?? '', $uploads_url) ?>
+                                <div class="org-text">
+                                    <div class="org-name"><?= htmlspecialchars($manager['first_name'] . ' ' . $manager['last_name']) ?></div>
+                                    <div class="org-sub"><?= htmlspecialchars($manager['position_name'] ?? 'Manager') ?><?= !empty($manager['office_name']) ? ' &middot; ' . htmlspecialchars($manager['office_name']) : '' ?></div>
+                                    <div class="org-chips"><span class="org-hint"><i class="fas fa-users"></i> Office staff</span></div>
+                                </div>
+                            </div>
+                            <div class="org-stem"></div>
+                            <?php endif; ?>
+
+                            <?php if (empty($sections)): ?>
+                            <div class="dir-empty" style="display:block"><i class="fas fa-sitemap"></i><p>No sections have been set up yet.</p></div>
                             <?php else: ?>
-                                <i class="fas fa-user-tie"></i>
+                            <div class="org-branches">
+                                <?php foreach ($sections as $sec):
+                                    $units = $units_by_section[$sec['section_id']] ?? [];
+                                    $staff = $staff_by_section[$sec['section_name']] ?? 0; ?>
+                                <div class="org-branch">
+                                    <div class="org-node org-section org-click" role="button" tabindex="0" data-kind="section" data-id="<?= (int)$sec['section_id'] ?>" data-title="<?= htmlspecialchars($sec['section_name']) ?>">
+                                        <?= orgAvatar($sec['head_picture'] ?? '', $sec['head_name'] ?: $sec['section_name'], $uploads_url) ?>
+                                        <div class="org-text">
+                                            <div class="org-name" title="<?= htmlspecialchars($sec['section_name']) ?>"><?= htmlspecialchars($sec['section_name']) ?></div>
+                                            <div class="org-sub"><?= htmlspecialchars($sec['head_name'] ?: 'No head assigned') ?></div>
+                                            <div class="org-chips">
+                                                <span class="section-chip"><?= $staff ?> staff</span>
+                                                <?php if ($units): ?><span class="section-chip"><?= count($units) ?> unit<?= count($units) !== 1 ? 's' : '' ?></span><?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php if ($units): ?>
+                                    <ul class="org-units">
+                                        <?php foreach ($units as $unit): ?>
+                                        <li class="org-node org-unit org-click" role="button" tabindex="0" data-kind="unit" data-id="<?= (int)$unit['unit_id'] ?>" data-title="<?= htmlspecialchars($unit['unit_name']) ?>" data-sub="<?= htmlspecialchars($sec['section_name']) ?>">
+                                            <?= orgAvatar($unit['head_picture'] ?? '', $unit['head_name'] ?: $unit['unit_name'], $uploads_url) ?>
+                                            <div class="org-text">
+                                                <div class="org-name" title="<?= htmlspecialchars($unit['unit_name']) ?>"><?= htmlspecialchars($unit['unit_name']) ?></div>
+                                                <div class="org-sub"><?= htmlspecialchars($unit['head_name'] ?: 'No head assigned') ?></div>
+                                            </div>
+                                        </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
                             <?php endif; ?>
                         </div>
-                        <div class="mh-info">
-                            <div class="mh-tag"><i class="fas fa-star mr-1"></i>IMO Manager</div>
-                            <div class="mh-name"><?= htmlspecialchars($manager['first_name'] . ' ' . $manager['last_name']) ?></div>
-                            <div class="mh-title"><?= htmlspecialchars($manager['position_name'] ?? 'Manager') ?></div>
-                            <div class="mh-meta">
-                                <?php if (!empty($manager['office_name'])): ?>
-                                <span class="mh-meta-item"><i class="fas fa-building"></i><?= htmlspecialchars($manager['office_name']) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($manager['email'])): ?>
-                                <span class="mh-meta-item"><i class="fas fa-envelope"></i><?= htmlspecialchars($manager['email']) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($manager['phone_number'])): ?>
-                                <span class="mh-meta-item"><i class="fas fa-phone"></i><?= htmlspecialchars($manager['phone_number']) ?></span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
                     </div>
-
-                    
-                    </div><!-- /.mh-content -->
                 </div>
-                <?php endif; ?>
 
-                <!-- ══════════════════════════════════════════════
-                     EMPLOYEE DIRECTORY
-                ══════════════════════════════════════════════ -->
-                <div class="dir-card mb-4">
+                <!-- EMPLOYEE PANEL -->
+                <div class="dir-card emp-panel" id="empPanel" style="display:none;">
                     <div class="dir-card-header">
-                        <h5><div class="icon-circle ic-brand"><i class="fas fa-address-book"></i></div>Employee Directory</h5>
-                        <button class="card-collapse-btn" onclick="toggleDirectory(this)"><i class="fas fa-minus"></i> Collapse</button>
-                    </div>
-
-                    <div id="directoryBody">
-                        <div class="row m-0" style="min-height:520px;">
-
-                            <!-- ── Left: Sections ── -->
-                            <div class="col-md-3 p-0" style="border-right:1px solid var(--border);">
-                                <div class="dir-card-header" style="border-radius:0;background:var(--surface2);">
-                                    <h5 style="font-size:.82rem;"><div class="icon-circle ic-brand" style="width:24px;height:24px;font-size:.7rem;"><i class="fas fa-building"></i></div>Sections</h5>
-                                    <span class="emp-count-badge"><?= count($sections) ?></span>
-                                </div>
-                                <ul class="sec-list" id="sectionsList">
-                                    <li class="sec-item active" id="allEmployeesItem" onclick="showAllEmployees(this)" style="font-weight:600;">
-                                        <div class="sec-item-av" style="background:var(--brand-lt);color:var(--brand);"><i class="fas fa-users" style="font-size:.8rem;"></i></div>
-                                        <div class="sec-item-body">
-                                            <div class="sec-item-name">All Employees</div>
-                                            <div class="sec-item-sub">Every section &amp; unit</div>
-                                        </div>
-                                    </li>
-                                    <li class="sec-item" id="managerStaffItem" onclick="selectManagerStaff(this)" style="font-weight:600;">
-                                        <div class="sec-item-av" style="background:#fef3c7;color:var(--amber);"><i class="fas fa-user-tie" style="font-size:.8rem;"></i></div>
-                                        <div class="sec-item-body">
-                                            <div class="sec-item-name">Manager's Office Staff</div>
-                                            <div class="sec-item-sub">Direct office support staff</div>
-                                        </div>
-                                        <div class="sec-item-count"><?= (int)$manager_staff_count ?></div>
-                                    </li>
-                                    <?php foreach ($sections as $idx => $sec): ?>
-                                    <li class="sec-item"
-                                        data-section-id="<?= $sec['section_id'] ?>"
-                                        data-section-name="<?= htmlspecialchars($sec['section_name']) ?>"
-                                        data-head-name="<?= htmlspecialchars($sec['head_name']??'') ?>"
-                                        data-head-picture="<?= htmlspecialchars($sec['head_picture']??'') ?>"
-                                        data-unit-count="<?= $sec['unit_count'] ?>"
-                                        onclick="selectSection(this, <?= $sec['section_id'] ?>)">
-                                        <div class="sec-item-av">
-                                            <?php if (!empty($sec['head_picture'])): ?>
-                                                <img src="<?= $uploads_url . htmlspecialchars($sec['head_picture']) ?>" alt="">
-                                            <?php else: ?>
-                                                <?= strtoupper(substr($sec['section_name'],0,1)) ?>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="sec-item-body">
-                                            <div class="sec-item-name"><?= htmlspecialchars($sec['section_name']) ?></div>
-                                            <div class="sec-item-sub"><?= htmlspecialchars($sec['head_name']??'No head assigned') ?></div>
-                                        </div>
-                                    </li>
-                                    <?php endforeach; ?>
-                                </ul>
-
-                                <!-- Units sub-panel -->
-                                <div id="unitsPanel" style="display:none; border-top:1px solid var(--border);">
-                                    <div class="dir-card-header" style="border-radius:0;background:var(--surface2);padding:10px 16px;">
-                                        <h5 style="font-size:.78rem;"><div class="icon-circle ic-green" style="width:22px;height:22px;font-size:.68rem;"><i class="fas fa-code-branch"></i></div>Units — <span id="selectedSectionName" style="color:var(--green)"></span></h5>
-                                    </div>
-                                    <ul class="sec-list" id="unitsList" style="max-height:220px;">
-                                        <li class="sec-item unit-item" onclick="showAllEmployeesInSection()" style="font-size:.8rem;font-weight:600;color:var(--green);">
-                                            <div class="sec-item-av" style="background:#dcfce7;color:var(--green);"><i class="fas fa-users" style="font-size:.7rem;"></i></div>
-                                            <div class="sec-item-body"><div class="sec-item-name">All in Section</div></div>
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <!-- Offices panel -->
-                                <?php if (count($offices) > 1): ?>
-                                <div style="border-top:1px solid var(--border);">
-                                    <div class="dir-card-header" style="border-radius:0;background:var(--surface2);">
-                                        <h5 style="font-size:.82rem;"><div class="icon-circle ic-brand" style="width:24px;height:24px;font-size:.7rem;"><i class="fas fa-map-marker-alt"></i></div>Offices</h5>
-                                        <span class="emp-count-badge"><?= count($offices) ?></span>
-                                    </div>
-                                    <ul class="sec-list" id="officesList">
-                                        <?php foreach ($offices as $off): ?>
-                                        <li class="sec-item" data-office-id="<?= $off['office_id'] ?>" onclick="selectOffice(this, <?= $off['office_id'] ?>)">
-                                            <div class="sec-item-av" style="background:#e0f2fe;color:#0369a1;"><i class="fas fa-<?= $off['is_main_office'] ? 'building' : 'map-pin' ?>" style="font-size:.75rem;"></i></div>
-                                            <div class="sec-item-body">
-                                                <div class="sec-item-name"><?= htmlspecialchars($off['office_name']) ?></div>
-                                                <div class="sec-item-sub"><?= $off['is_main_office'] ? 'Main office' : 'Sub-office' ?></div>
-                                            </div>
-                                            <div class="sec-item-count"><?= (int)$off['employee_count'] ?></div>
-                                        </li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- ── Right: Employees ── -->
-                            <div class="col-md-9 p-0" style="display:flex;flex-direction:column;">
-                                <!-- Controls bar -->
-                                <div class="dir-controls">
-                                    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                                        <span style="font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;" id="selectedDepartment">All Employees</span>
-                                        <small style="color:var(--text3);" id="selectedUnitInfo"></small>
-                                        <span class="emp-count-badge" id="employeeCount">0 employees</span>
-                                    </div>
-                                    <div class="dir-search">
-                                        <i class="fas fa-search"></i>
-                                        <input type="text" id="searchInput" onkeyup="searchEmployees()" placeholder="Search name, ID, position…">
-                                    </div>
-                                    <select class="dir-select" id="employmentStatusFilter" onchange="filterEmployees()">
-                                        <option value="">All Employment Status</option>
-                                        <?php foreach ($employment_statuses as $es): ?>
-                                        <option value="<?= $es['status_id'] ?>" <?= $es['status_id'] == 1 ? 'selected' : '' ?>><?= htmlspecialchars($es['status_name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <select class="dir-select" id="appointmentStatusFilter" onchange="filterEmployees()">
-                                        <option value="">All Appointment Status</option>
-                                        <?php foreach ($appointment_statuses as $as): ?>
-                                        <option value="<?= $as['appointment_id'] ?>"><?= htmlspecialchars($as['status_name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <div style="flex:1;padding:16px;overflow-y:auto;">
-                                    <!-- Loading -->
-                                    <div class="dir-loading" id="loadingIndicator">
-                                        <div class="dir-spin"></div>
-                                        <p style="font-size:.85rem;color:var(--text3);">Loading employees…</p>
-                                    </div>
-
-                                    <!-- Grid -->
-                                    <div id="employeesGrid" style="display:none;">
-                                        <div class="emp-grid" id="employeesContainer"></div>
-                                    </div>
-
-                                    <!-- Empty -->
-                                    <div class="dir-empty" id="noEmployees">
-                                        <i class="fas fa-users"></i>
-                                        <p id="noEmployeesMessage">No employees found</p>
-                                    </div>
-                                </div>
-                            </div>
-
+                        <h5><div class="icon-circle ic-brand"><i class="fas fa-address-book"></i></div>
+                            <span id="selectedDepartment"></span> <small id="selectedUnitInfo"></small></h5>
+                        <div class="panel-actions">
+                            <span class="emp-count-badge" id="employeeCount">0 employees</span>
+                            <button type="button" class="panel-close" onclick="closePanel()" aria-label="Close employee list"><i class="fas fa-times"></i></button>
                         </div>
-                    </div><!-- /directoryBody -->
+                    </div>
+                    <div class="dir-controls">
+                        <div class="dir-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" oninput="searchEmployees()" placeholder="Search name, ID, position…" aria-label="Search employees">
+                        </div>
+                        <select class="dir-select" id="employmentStatusFilter" onchange="filterEmployees()" aria-label="Employment status">
+                            <option value="">All employment status</option>
+                            <?php foreach ($employment_statuses as $es): ?>
+                            <option value="<?= $es['status_id'] ?>" <?= $es['status_id'] == 1 ? 'selected' : '' ?>><?= htmlspecialchars($es['status_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select class="dir-select" id="appointmentStatusFilter" onchange="filterEmployees()" aria-label="Appointment status">
+                            <option value="">All appointment status</option>
+                            <?php foreach ($appointment_statuses as $as): ?>
+                            <option value="<?= $as['appointment_id'] ?>"><?= htmlspecialchars($as['status_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="dir-main">
+                        <div class="dir-loading" id="loadingIndicator"><div class="dir-spin"></div><p>Loading employees…</p></div>
+                        <div id="employeesGrid" style="display:none;"><div class="emp-grid" id="employeesContainer"></div></div>
+                        <div class="dir-empty" id="noEmployees" style="display:none;"><i class="fas fa-users"></i><p id="noEmployeesMessage">No employees found</p></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="dir-card">
+                        <div class="dir-card-header"><h5><div class="icon-circle ic-blue"><i class="fas fa-chart-pie"></i></div>Appointment status</h5></div>
+                        <div class="chart-body"><canvas id="appointmentChart"></canvas></div>
+                    </div>
+                    <div class="dir-card">
+                        <div class="dir-card-header"><h5><div class="icon-circle ic-brand"><i class="fas fa-venus-mars"></i></div>Gender by section</h5></div>
+                        <div class="chart-body"><canvas id="genderChart"></canvas></div>
+                    </div>
                 </div>
 
             </div>
@@ -733,333 +229,176 @@ $uploads_url = '../dist/img/employees/';
     <?php include '../includes/mainfooter.php'; ?>
 </div>
 <?php include '../includes/footer.php'; ?>
+<script>if (typeof Chart === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');</script>
 
 <script>
-// ── Global state ──────────────────────────────────────────────
-let sections      = <?= json_encode($sections) ?>;
-let unitSections  = <?= json_encode($unit_sections) ?>;
-let currentSectionId = null;
-let currentUnitId    = null;
-let allEmployees     = [];
-let filteredEmployees= [];
-let searchQuery      = '';
-let employmentStatusFilter = '1'; // default: Active, per initial "All Employees" view
-let appointmentStatusFilter = '';
-let managerStaffOnly = false;
-let officeFilter = null;
-const uploadsUrl     = '<?= $uploads_url ?>';
+const uploadsUrl = '<?= $uploads_url ?>';
+let allEmployees = [], filteredEmployees = [], searchQuery = '';
+let employmentStatusFilter = '1', appointmentStatusFilter = '', managerStaffOnly = false, reqId = 0;
+const $id = x => document.getElementById(x);
 
-// ── Init ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-    // On open, show every employee across all sections/units, defaulted to Active employment status
-    document.getElementById('selectedDepartment').textContent = 'All Employees';
-    document.getElementById('unitsPanel').style.display = 'none';
-    loadEmployees(null, null);
+document.addEventListener('DOMContentLoaded', () => {
     initCharts();
+    document.querySelectorAll('.org-click').forEach(n => n.addEventListener('click', () => selectNode(n)));
+    document.addEventListener('keydown', e => {
+        const n = e.target.closest && e.target.closest('.org-click');
+        if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectNode(n); }
+    });
 });
 
-// ── Charts ────────────────────────────────────────────────────
-function initCharts() {
-    // Appointment pie
-    const apptEl = document.getElementById('appointmentChart');
-    if (apptEl) {
-        const apptData = <?= json_encode($appointment_data) ?>;
-        if (apptData.length > 0) {
-            new Chart(apptEl, {
-                type: 'doughnut',
-                data: {
-                    labels: apptData.map(d => d.status_name),
-                    datasets: [{
-                        data: apptData.map(d => parseInt(d.count)),
-                        backgroundColor: apptData.map(d => d.color || '#800020'),
-                        borderWidth: 2,
-                        borderColor: 'var(--surface, #fff)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }
-                    },
-                    cutout: '65%'
-                }
-            });
-        }
-    }
-
-    // Gender bar chart
-    const genderEl = document.getElementById('genderChart');
-    if (genderEl) {
-        const gd = <?= json_encode($gender_data) ?>;
-        if (gd.length > 0) {
-            new Chart(genderEl, {
-                type: 'bar',
-                data: {
-                    labels: gd.map(d => d.section_name),
-                    datasets: [
-                        { label:'Male',   data: gd.map(d=>parseInt(d.male_count)),   backgroundColor:'#2563eb', borderRadius:4 },
-                        { label:'Female', data: gd.map(d=>parseInt(d.female_count)), backgroundColor:'#db2777', borderRadius:4 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position:'top', labels:{ font:{size:11} } } },
-                    scales: {
-                        x: { grid:{display:false}, ticks:{font:{size:10}} },
-                        y: { beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}, ticks:{font:{size:10}} }
-                    }
-                }
-            });
-        }
-    }
+function selectNode(el) {
+    document.querySelectorAll('.org-click.is-selected').forEach(n => n.classList.remove('is-selected'));
+    el.classList.add('is-selected');
+    const kind = el.dataset.kind;
+    managerStaffOnly = kind === 'manager';
+    $id('selectedDepartment').textContent = el.dataset.title;
+    $id('selectedUnitInfo').textContent = el.dataset.sub ? '(' + el.dataset.sub + ')' : '';
+    const panel = $id('empPanel');
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    loadEmployees(kind === 'section' ? el.dataset.id : null, kind === 'unit' ? el.dataset.id : null);
 }
 
-// ── Directory toggle ──────────────────────────────────────────
-function toggleDirectory(btn) {
-    const body = document.getElementById('directoryBody');
-    if (body.style.display === 'none') {
-        body.style.display = '';
-        btn.innerHTML = '<i class="fas fa-minus"></i> Collapse';
-    } else {
-        body.style.display = 'none';
-        btn.innerHTML = '<i class="fas fa-plus"></i> Expand';
-    }
+function closePanel() {
+    $id('empPanel').style.display = 'none';
+    document.querySelectorAll('.org-click.is-selected').forEach(n => n.classList.remove('is-selected'));
 }
 
-// ── Clear active state across sections + offices lists ─────────
-function clearMainListActive() {
-    document.querySelectorAll('#sectionsList .sec-item, #officesList .sec-item').forEach(i => i.classList.remove('active'));
-}
-
-// ── Show all employees (every section & unit) ───────────────────
-function showAllEmployees(el) {
-    clearMainListActive();
-    if (el) el.classList.add('active');
-    currentSectionId = null; currentUnitId = null;
-    managerStaffOnly = false;
-    officeFilter = null;
-    document.getElementById('selectedDepartment').textContent = 'All Employees';
-    document.getElementById('selectedUnitInfo').textContent = '';
-    document.getElementById('unitsPanel').style.display = 'none';
-    loadEmployees(null, null);
-}
-
-// ── Show manager's office staff only ────────────────────────────
-function selectManagerStaff(el) {
-    clearMainListActive();
-    if (el) el.classList.add('active');
-    currentSectionId = null; currentUnitId = null;
-    managerStaffOnly = true;
-    officeFilter = null;
-    document.getElementById('selectedDepartment').textContent = "Manager's Office Staff";
-    document.getElementById('selectedUnitInfo').textContent = '';
-    document.getElementById('unitsPanel').style.display = 'none';
-    loadEmployees(null, null);
-}
-
-// ── Show employees of a specific office (e.g. a branch office) ──
-function selectOffice(el, officeId) {
-    clearMainListActive();
-    if (el) el.classList.add('active');
-    currentSectionId = null; currentUnitId = null;
-    managerStaffOnly = false;
-    officeFilter = officeId;
-    document.getElementById('selectedDepartment').textContent = el.querySelector('.sec-item-name').textContent;
-    document.getElementById('selectedUnitInfo').textContent = '';
-    document.getElementById('unitsPanel').style.display = 'none';
-    loadEmployees(null, null);
-}
-
-// ── Select section ────────────────────────────────────────────
-function selectSection(el, sectionId) {
-    clearMainListActive();
-    el.classList.add('active');
-    const section = sections.find(s => s.section_id == sectionId);
-    if (!section) return;
-    currentSectionId = sectionId; currentUnitId = null;
-    managerStaffOnly = false;
-    officeFilter = null;
-    document.getElementById('selectedDepartment').textContent = section.section_name;
-    document.getElementById('selectedUnitInfo').textContent = '';
-    updateUnitsPanel(sectionId);
-    if ((section.unit_count || 0) === 0) {
-        loadEmployees(sectionId, null);
-    } else {
-        document.getElementById('employeesGrid').style.display = 'none';
-        document.getElementById('noEmployees').style.display = 'block';
-        document.getElementById('noEmployeesMessage').textContent = 'Please select a unit to view employees';
-        document.getElementById('employeeCount').textContent = '0 employees';
-        allEmployees = []; filteredEmployees = [];
-    }
-}
-
-// ── Update units panel ────────────────────────────────────────
-function updateUnitsPanel(sectionId) {
-    const section = sections.find(s => s.section_id == sectionId);
-    if (!section) return;
-    const panel = document.getElementById('unitsPanel');
-    const list  = document.getElementById('unitsList');
-    const nameEl= document.getElementById('selectedSectionName');
-    if ((section.unit_count || 0) > 0) {
-        const units = unitSections.filter(u => u.section_id == sectionId);
-        while (list.children.length > 1) list.removeChild(list.lastChild);
-        units.forEach(unit => {
-            const li = document.createElement('li');
-            li.className = 'sec-item unit-item';
-            li.setAttribute('data-unit-id', unit.unit_id);
-            li.setAttribute('onclick', `selectUnit(this, ${unit.unit_id})`);
-            li.innerHTML = `
-                <div class="sec-item-av" style="background:#dcfce7;color:var(--green);">
-                    ${unit.head_picture
-                        ? `<img src="${uploadsUrl}${escapeHtml(unit.head_picture)}" alt="" onerror="this.parentElement.textContent='${unit.head_name ? unit.head_name.charAt(0) : '?'}';">`
-                        : (unit.head_name ? unit.head_name.charAt(0).toUpperCase() : '?')}
-                </div>
-                <div class="sec-item-body">
-                    <div class="sec-item-name">${escapeHtml(unit.unit_name)}</div>
-                    <div class="sec-item-sub">${escapeHtml(unit.head_name || 'No head assigned')}</div>
-                </div>`;
-            list.appendChild(li);
-        });
-        nameEl.textContent = section.section_name;
-        panel.style.display = 'block';
-    } else {
-        panel.style.display = 'none';
-    }
-}
-
-// ── Select unit ───────────────────────────────────────────────
-function selectUnit(el, unitId) {
-    document.querySelectorAll('#unitsList .sec-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
-    const unit = unitSections.find(u => u.unit_id == unitId);
-    if (!unit) return;
-    currentUnitId = unitId;
-    managerStaffOnly = false;
-    officeFilter = null;
-    document.getElementById('selectedDepartment').textContent = unit.unit_name;
-    document.getElementById('selectedUnitInfo').textContent = `(${unit.section_name})`;
-    loadEmployees(null, unitId);
-}
-
-// ── Show all in section ───────────────────────────────────────
-function showAllEmployeesInSection() {
-    document.querySelectorAll('#unitsList .sec-item').forEach(i => i.classList.remove('active'));
-    currentUnitId = null;
-    const sec = sections.find(s => s.section_id == currentSectionId);
-    if (sec) document.getElementById('selectedDepartment').textContent = sec.section_name;
-    document.getElementById('selectedUnitInfo').textContent = '';
-    loadEmployees(currentSectionId, null);
-}
-
-// ── Load employees ────────────────────────────────────────────
 async function loadEmployees(sectionId, unitId) {
-    document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('employeesGrid').style.display = 'none';
-    document.getElementById('noEmployees').style.display = 'none';
+    const my = ++reqId;
+    $id('loadingIndicator').style.display = 'block';
+    $id('employeesGrid').style.display = 'none';
+    $id('noEmployees').style.display = 'none';
     try {
         const fd = new FormData();
         if (sectionId) fd.append('section_id', sectionId);
         if (unitId)    fd.append('unit_id', unitId);
-        const res  = await fetch('get_employees.php', { method:'POST', body:fd });
+        const res  = await fetch('get_employees.php', { method: 'POST', body: fd });
         const data = await res.json();
-        if (data.success) {
-            allEmployees = data.employees || [];
-            filteredEmployees = [...allEmployees];
-            displayEmployees();
-        } else {
-            allEmployees = []; filteredEmployees = [];
-            displayEmployees();
-            if (typeof toastr !== 'undefined') toastr.error(data.message || 'Failed to load employees');
-        }
-    } catch(e) {
-        allEmployees = []; filteredEmployees = [];
-        displayEmployees();
+        if (my !== reqId) return;               // a newer click superseded this one
+        allEmployees = data.success ? (data.employees || []) : [];
+        if (!data.success && typeof toastr !== 'undefined') toastr.error(data.message || 'Failed to load employees');
+    } catch (e) {
+        if (my !== reqId) return;
+        allEmployees = [];
         if (typeof toastr !== 'undefined') toastr.error('Failed to connect to server');
-    } finally {
-        document.getElementById('loadingIndicator').style.display = 'none';
     }
+    $id('loadingIndicator').style.display = 'none';
+    displayEmployees();
 }
 
-// ── Display employees ─────────────────────────────────────────
-function displayEmployees() {
-    applySearchAndFilter();
-    const container = document.getElementById('employeesContainer');
-    const grid      = document.getElementById('employeesGrid');
-    const none      = document.getElementById('noEmployees');
-    const countEl   = document.getElementById('employeeCount');
-
-    if (filteredEmployees.length > 0) {
-        container.innerHTML = '';
-        filteredEmployees.forEach(emp => {
-            const initials = ((emp.first_name||'').charAt(0) + (emp.last_name||'').charAt(0)).toUpperCase();
-            let sdClass = 'sd-inactive', slClass = 'sl-inactive', statusTxt = emp.status_name || 'Unknown';
-            if (emp.employment_status_id == 1) { sdClass='sd-active';   slClass='sl-active'; }
-            if (emp.employment_status_id == 2) { sdClass='sd-leave';    slClass='sl-leave'; }
-
-            const card = document.createElement('div');
-            card.className = 'emp-card';
-            card.innerHTML = `
-                <div class="emp-av">
-                    ${emp.picture
-                        ? `<img src="${uploadsUrl}${escapeHtml(emp.picture)}" alt="${escapeHtml(emp.first_name+' '+emp.last_name)}"
-                                onerror="this.style.display='none';this.parentElement.textContent='${initials}'">`
-                        : initials}
-                </div>
-                <div class="emp-body">
-                    <div class="emp-name">${escapeHtml(emp.first_name+' '+emp.last_name)}</div>
-                    <div class="emp-pos">${escapeHtml(emp.position_name||'No Position')}</div>
-                    <div class="emp-meta">
-                        <span class="status-dot ${sdClass}"></span>
-                        <span class="status-label ${slClass}">${escapeHtml(statusTxt)}</span>
-                        <span style="margin-left:4px;">&middot; ID: ${escapeHtml(emp.id_number||'—')}</span>
-                    </div>
-                    ${emp.appointment_status_name ? `<div class="section-chip" style="margin-top:6px;background:${escapeHtml(emp.appointment_status_color||'#800020')}22;color:${escapeHtml(emp.appointment_status_color||'#800020')};">${escapeHtml(emp.appointment_status_name)}</div>` : ''}
-                </div>`;
-            container.appendChild(card);
-        });
-        grid.style.display = 'block';
-        none.style.display = 'none';
-        countEl.textContent = `${filteredEmployees.length} employee${filteredEmployees.length!==1?'s':''}`;
-    } else {
-        grid.style.display = 'none';
-        none.style.display = 'block';
-        document.getElementById('noEmployeesMessage').textContent =
-            (searchQuery || employmentStatusFilter || appointmentStatusFilter)
-                ? 'No employees match your current filters'
-                : 'No employees found in this department';
-        countEl.textContent = '0 employees';
-    }
-}
-
-// ── Search / Filter ───────────────────────────────────────────
 function applySearchAndFilter() {
+    const q = searchQuery.toLowerCase();
     filteredEmployees = allEmployees.filter(emp => {
-        if (searchQuery) {
-            const full = (emp.first_name+' '+emp.last_name).toLowerCase();
-            const id   = (emp.id_number||'').toLowerCase();
-            const pos  = (emp.position_name||'').toLowerCase();
-            const q    = searchQuery.toLowerCase();
-            if (!full.includes(q) && !id.includes(q) && !pos.includes(q)) return false;
-        }
+        if (q && !((emp.first_name + ' ' + emp.last_name).toLowerCase().includes(q)
+                || (emp.id_number || '').toLowerCase().includes(q)
+                || (emp.position_name || '').toLowerCase().includes(q))) return false;
         if (employmentStatusFilter && emp.employment_status_id != employmentStatusFilter) return false;
         if (appointmentStatusFilter && emp.appointment_status_id != appointmentStatusFilter) return false;
         if (managerStaffOnly && emp.is_manager_office_staff != 1) return false;
-        if (officeFilter && emp.office_id != officeFilter) return false;
         return true;
     });
 }
-function searchEmployees() { searchQuery = document.getElementById('searchInput').value; displayEmployees(); }
+
+function displayEmployees() {
+    applySearchAndFilter();
+    const box = $id('employeesContainer'), n = filteredEmployees.length;
+    $id('employeeCount').textContent = n + ' employee' + (n !== 1 ? 's' : '');
+    if (!n) {
+        $id('employeesGrid').style.display = 'none';
+        $id('noEmployees').style.display = 'block';
+        $id('noEmployeesMessage').textContent = (searchQuery || employmentStatusFilter || appointmentStatusFilter)
+            ? 'No employees match your current filters' : 'No employees found here';
+        return;
+    }
+    box.innerHTML = filteredEmployees.map(emp => {
+        const name = escapeHtml(emp.first_name + ' ' + emp.last_name);
+        const ini  = escapeHtml(((emp.first_name || '').charAt(0) + (emp.last_name || '').charAt(0)).toUpperCase());
+        const st = emp.employment_status_id == 1 ? 'active' : emp.employment_status_id == 2 ? 'leave' : 'inactive';
+        const col = escapeHtml(emp.appointment_status_color || '#2a9863');
+        return `<div class="org-node emp-card">
+            <div class="org-av">${ini}${emp.picture ? `<img src="${uploadsUrl}${escapeHtml(emp.picture)}" alt="" onerror="this.remove()">` : ''}</div>
+            <div class="org-text">
+                <div class="org-name" title="${name}">${name}</div>
+                <div class="org-sub">${escapeHtml(emp.position_name || 'No position')} &middot; ID ${escapeHtml(emp.id_number || '—')}</div>
+                <div class="org-chips">
+                    <span class="section-chip chip-${st}"><span class="status-dot sd-${st}"></span>${escapeHtml(emp.status_name || 'Unknown')}</span>
+                    ${emp.appointment_status_name ? `<span class="section-chip" style="background:${col}22;color:${col};">${escapeHtml(emp.appointment_status_name)}</span>` : ''}
+                </div>
+            </div></div>`;
+    }).join('');
+    $id('employeesGrid').style.display = 'block';
+    $id('noEmployees').style.display = 'none';
+}
+
+function searchEmployees() { searchQuery = $id('searchInput').value; displayEmployees(); }
 function filterEmployees() {
-    employmentStatusFilter  = document.getElementById('employmentStatusFilter').value;
-    appointmentStatusFilter = document.getElementById('appointmentStatusFilter').value;
+    employmentStatusFilter  = $id('employmentStatusFilter').value;
+    appointmentStatusFilter = $id('appointmentStatusFilter').value;
     displayEmployees();
 }
-function escapeHtml(t) { if (!t) return ''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+function escapeHtml(t) { if (t === null || t === undefined) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+function initCharts() {
+    if (typeof Chart === 'undefined') { const r = document.querySelector('.chart-row'); if (r) r.style.display = 'none'; return; }
+    // AdminLTE ships Chart.js v2; v3+ has a different config shape. Support both.
+    const v2 = !!(Chart.defaults && Chart.defaults.global);
+    const css = n => getComputedStyle(document.body).getPropertyValue(n).trim();
+    const font = "Inter, 'Segoe UI', system-ui, sans-serif";
+    const textColor = css('--text2') || '#46604f';
+    if (v2) { Chart.defaults.global.defaultFontFamily = font; Chart.defaults.global.defaultFontColor = textColor; }
+    else    { Chart.defaults.font.family = font; Chart.defaults.color = textColor; }
+
+    const make = (id, config) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        try { new Chart(el.getContext('2d'), config); }
+        catch (e) { console.error('Chart "' + id + '" failed:', e); }
+    };
+
+    const apptData = <?= json_encode($appointment_data) ?>;
+    if (apptData.length > 0) {
+        const legend = { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 14 } };
+        make('appointmentChart', {
+            type: 'doughnut',
+            data: {
+                labels: apptData.map(d => d.status_name),
+                datasets: [{ data: apptData.map(d => parseInt(d.count)), backgroundColor: apptData.map(d => d.color || '#2a9863'), borderWidth: 2, borderColor: css('--surface') || '#fff' }]
+            },
+            options: v2
+                ? { responsive: true, maintainAspectRatio: false, cutoutPercentage: 68, legend: legend }
+                : { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: legend } }
+        });
+    }
+
+    const gd = <?= json_encode($gender_data) ?>;
+    if (gd.length > 0) {
+        const legend = { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8 } };
+        const grid = css('--border') || '#e3ebe6';
+        make('genderChart', {
+            type: 'bar',
+            data: {
+                labels: gd.map(d => d.section_name),
+                datasets: [
+                    { label: 'Male',   data: gd.map(d => parseInt(d.male_count)),   backgroundColor: '#2563eb', borderRadius: 6, maxBarThickness: 28 },
+                    { label: 'Female', data: gd.map(d => parseInt(d.female_count)), backgroundColor: '#db2777', borderRadius: 6, maxBarThickness: 28 }
+                ]
+            },
+            options: v2
+                ? { responsive: true, maintainAspectRatio: false, legend: legend,
+                    scales: { xAxes: [{ gridLines: { display: false }, ticks: { fontSize: 10 } }],
+                              yAxes: [{ gridLines: { color: grid }, ticks: { beginAtZero: true, fontSize: 10, precision: 0 } }] } }
+                : { responsive: true, maintainAspectRatio: false, plugins: { legend: legend },
+                    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                              y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { font: { size: 10 }, precision: 0 } } } }
+        });
+    }
+}
 
 // ── Session toasts ────────────────────────────────────────────
 <?php if (isset($_SESSION['toast'])): ?>
 $(document).ready(function() {
-    toastr.<?= $_SESSION['toast']['type'] ?>('<?= addslashes($_SESSION['toast']['message']) ?>');
+    toastr[<?= json_encode($_SESSION['toast']['type']) ?>](<?= json_encode($_SESSION['toast']['message']) ?>);
 });
 <?php unset($_SESSION['toast']); endif; ?>
 </script>

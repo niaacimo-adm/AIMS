@@ -43,6 +43,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_status'])) {
     }
 }
 
+// Delete a request permanently (its items are removed too)
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_request'])) {
+    $request_id = (int)($_POST['request_id'] ?? 0);
+
+    if ($request_id > 0) {
+        $db->begin_transaction();
+        try {
+            $stmt = $db->prepare("DELETE FROM supply_request_items WHERE request_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $stmt->close();
+
+            $stmt = $db->prepare("DELETE FROM supply_requests WHERE id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $deleted = $stmt->affected_rows;
+            $stmt->close();
+
+            $db->commit();
+
+            if ($deleted > 0) {
+                $success = "Request SR-" . str_pad($request_id, 4, '0', STR_PAD_LEFT) . " was deleted.";
+            } else {
+                $error = "That request no longer exists.";
+            }
+        } catch (Throwable $e) {
+            $db->rollback();
+            $error = "Could not delete the request. Please try again.";
+        }
+    } else {
+        $error = "Invalid request.";
+    }
+}
+
 // Filters
 $filter_status = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
@@ -287,6 +321,10 @@ if ($count_res) {
                                                         <input type="hidden" name="new_status" value="">
                                                     </form>
                                                 <?php endif; ?>
+                                                <form method="POST" class="m-0" onsubmit="return confirm('Permanently delete SR-<?= str_pad($rid, 4, '0', STR_PAD_LEFT) ?> and all of its items? This cannot be undone.');">
+                                                    <input type="hidden" name="request_id" value="<?= $rid ?>">
+                                                    <button type="submit" name="delete_request" value="1" class="rs-btn rs-btn-danger rs-btn-sm"><i class="fas fa-trash"></i> Delete</button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>

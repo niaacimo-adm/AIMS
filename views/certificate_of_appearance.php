@@ -46,6 +46,9 @@ $CA_TEMPLATES = [
     'type'      => 'sym',
     'detailed'  => true,
     'signatory' => ['MYRA M. ETCOBANEZ', 'Acting Administrative Unit Head'],
+    // print-preview page (pt): 8.5 x 6.5 in landscape. 'a5' = overrides for A5 landscape (text 10/11, tab stops unchanged)
+    'page'      => ['w' => 612, 'h' => 468, 'left' => 72, 'top' => 78.2, 'bw' => 468, 'colw' => 288, 'c1' => 90, 'maxy' => 392,
+                    'a5' => ['w' => 595.28, 'h' => 419.53, 'left' => 63.65, 'top' => 77.2, 'u' => 10 / 11, 't' => 1, 'maxy' => 345]],
   ],
   'imo_manager' => [
     'label'     => 'Central Office (CA Format)',
@@ -53,9 +56,76 @@ $CA_TEMPLATES = [
     'type'      => 'numbering',
     'detailed'  => true,
     'signatory' => ['MYRA M. ETCOBANEZ', 'Acting Administrative Unit Head'],
+    // print-preview page (pt): A4 portrait. A5 = the whole page scaled down to A5 portrait (no 'a5' override)
+    'page'      => ['w' => 595, 'h' => 841.89, 'left' => 72, 'top' => 120, 'bw' => 451, 'colw' => 225, 'c1' => 82, 'maxy' => 690],
   ],
 ];
 const CA_DEFAULT_TEMPLATE = 'standard';
+
+/* ───────────────────── print sizes ─────────────────────
+   'original' = the template exactly as it is.
+   'a5'       = A5 landscape (210 x 148 mm): the page is resized and the text is scaled down so the
+                certificate (letterhead + body + footer) still fits on one page. */
+$CA_SIZES = [
+  'original' => 'Original size',
+  'a5'       => 'A5 (148 x 210 mm)',
+];
+const CA_DEFAULT_SIZE = 'original';
+const CA_A5_W = 11906;   // 210 mm in twips (landscape width)
+const CA_A5_H = 8392;    // 148 mm in twips (landscape height)
+
+function ca_resolve_size($size) {
+  global $CA_SIZES;
+  return ($size !== null && isset($CA_SIZES[$size])) ? $size : CA_DEFAULT_SIZE;
+}
+
+/* Page setup: swaps the page to A5 landscape. The text area keeps the template's original width
+   (the side margins just get re-balanced), so the header/footer letterhead stays where it was. */
+/* A5 is only applied to landscape templates; a portrait (A4) template such as Central Office stays as it is
+   (print it on A5 with the printer's "fit to page", or use the print preview which scales it properly). */
+function ca_size_ok($xml, $size) {
+  if ($size !== 'a5') return $size;
+  return preg_match('/<w:pgSz [^>]*w:w="(\d+)"[^>]*w:h="(\d+)"/', $xml, $m) && (int)$m[1] > (int)$m[2] ? 'a5' : 'original';
+}
+
+function ca_size_page($xml, $size) {
+  if ($size !== 'a5') return $xml;
+  $xml = preg_replace_callback('/<w:pgSz [^>]*w:w="(\d+)"[^>]*\/>/', function ($m) use (&$orig_w) {
+    $orig_w = (int)$m[1];
+    return '<w:pgSz w:w="' . CA_A5_W . '" w:h="' . CA_A5_H . '" w:orient="landscape"/>';
+  }, $xml);
+  if ($orig_w) {
+    $xml = preg_replace_callback('/<w:pgMar ([^>]*)\/>/', function ($m) use ($orig_w) {
+      $a = $m[1];
+      if (!preg_match('/w:left="(\d+)"/', $a, $l) || !preg_match('/w:right="(\d+)"/', $a, $r)) return $m[0];
+      $text_w = $orig_w - (int)$l[1] - (int)$r[1];
+      $side   = max(360, (int)round((CA_A5_W - $text_w) / 2));
+      $a = preg_replace('/w:left="\d+"/',  'w:left="'  . $side . '"', $a);
+      $a = preg_replace('/w:right="\d+"/', 'w:right="' . $side . '"', $a);
+      return '<w:pgMar ' . $a . '/>';
+    }, $xml);
+  }
+  return $xml;
+}
+
+/* Body text: font sizes scaled to ~90% so everything fits the shorter A5 page, and the tab stop that
+   lines up the colons of "Date of Arrival / Date of Departure" is made explicit (the shorter text
+   would otherwise snap to a different default tab stop and misalign). */
+function ca_size_body($xml, $size) {
+  if ($size !== 'a5') return $xml;
+  $xml = preg_replace_callback('/<w:(sz|szCs) w:val="(\d+)"\/>/', function ($m) {
+    return '<w:' . $m[1] . ' w:val="' . max(2, (int)round($m[2] * 10 / 11)) . '"/>';
+  }, $xml);
+  $xml = preg_replace_callback('/<w:p[ >].*?<\/w:p>/s', function ($m) {
+    $p = $m[0];
+    if ((strpos($p, 'Date of Arrival') === false && strpos($p, 'Date of Departure') === false) || strpos($p, '<w:tabs>') !== false) return $p;
+    $tabs = '<w:tabs><w:tab w:val="left" w:pos="2160"/></w:tabs>';
+    if (strpos($p, '<w:pStyle ') !== false) return preg_replace('/(<w:pStyle [^>]*\/>)/', '$1' . $tabs, $p, 1);
+    if (strpos($p, '<w:pPr>') !== false)    return preg_replace('/<w:pPr>/', '<w:pPr>' . $tabs, $p, 1);
+    return $p;
+  }, $xml);
+  return $xml;
+}
 
 /* ───────────────────────── helpers ───────────────────────── */
 function ca_bool($key) { return isset($_POST[$key]) && $_POST[$key] ? 1 : 0; }
@@ -210,7 +280,8 @@ function ca_fill_xml($xml, $row, $tpl) {
 }
 
 /* Fills the chosen template (a .docx with {{placeholders}}) into a temp file. Returns [temp path, download filename]. */
-function ca_build_docx($row, $tpl_key = null) {
+function ca_build_docx($row, $tpl_key = null, $size = null) {
+  $size = ca_resolve_size($size);
   [$tpl_key, $tpl, $template] = ca_resolve_template($row, $tpl_key);
 
   $tmp = tempnam(sys_get_temp_dir(), 'ca_');
@@ -218,12 +289,14 @@ function ca_build_docx($row, $tpl_key = null) {
   $zip = new ZipArchive();
   if ($zip->open($tmp) !== true) { http_response_code(500); exit('Unable to open template.'); }
   $xml = ca_fill_xml($zip->getFromName('word/document.xml'), $row, $tpl);
+  $size = ca_size_ok($xml, $size);
+  $xml = ca_size_page(ca_size_body($xml, $size), $size);
 
   $zip->addFromString('word/document.xml', $xml);
   $zip->close();
 
   $safe = preg_replace('/[^A-Za-z0-9_-]+/', '_', $row['person_name']);
-  $filename = 'Certificate_of_Appearance_' . $safe . '_' . date('Ymd', strtotime($row['date_arrival'])) . '.docx';
+  $filename = 'Certificate_of_Appearance_' . $safe . '_' . date('Ymd', strtotime($row['date_arrival'])) . ($size === 'a5' ? '_A5' : '') . '.docx';
   return [$tmp, $filename];
 }
 
@@ -249,7 +322,8 @@ function ca_end_section($part, $sect) {
 
 /* Builds ONE .docx holding every certificate (one per page) from the same template.
    Returns [temp path, download filename]. */
-function ca_build_merged_docx($rows, $tpl_key = null) {
+function ca_build_merged_docx($rows, $tpl_key = null, $size = null) {
+  $size = ca_resolve_size($size);
   [$tpl_key, $tpl, $template] = ca_resolve_template($rows[0], $tpl_key);
 
   $tmp = tempnam(sys_get_temp_dir(), 'ca_');
@@ -257,6 +331,7 @@ function ca_build_merged_docx($rows, $tpl_key = null) {
   $zip = new ZipArchive();
   if ($zip->open($tmp) !== true) { http_response_code(500); exit('Unable to open template.'); }
   $xml = $zip->getFromName('word/document.xml');
+  $size = ca_size_ok($xml, $size);
 
   $bs = strpos($xml, '<w:body>');
   $ss = strrpos($xml, '<w:sectPr');
@@ -267,12 +342,12 @@ function ca_build_merged_docx($rows, $tpl_key = null) {
 
   $head = substr($xml, 0, $bs);              // ... up to and including <w:body>
   $body = substr($xml, $bs, $ss - $bs);      // the certificate itself
-  $sect = substr($xml, $ss, $se - $ss);      // page setup of the template
+  $sect = ca_size_page(substr($xml, $ss, $se - $ss), $size);   // page setup of the template (resized for A5)
   $tail = substr($xml, $se);                 // </w:body></w:document>
 
   $out = ''; $img_id = 1000; $last = count($rows) - 1;
   foreach ($rows as $i => $row) {
-    $part = ca_fill_xml($body, $row, $tpl);
+    $part = ca_size_body(ca_fill_xml($body, $row, $tpl), $size);
     // keep ids unique across the repeated copies
     $part = preg_replace('/ (?:w14:(?:paraId|textId)|wp14:(?:anchorId|editId))="[^"]*"/', '', $part);
     $part = preg_replace_callback('/<wp:docPr id="\d+"/', function () use (&$img_id) {
@@ -284,13 +359,13 @@ function ca_build_merged_docx($rows, $tpl_key = null) {
   $zip->addFromString('word/document.xml', $head . $out . $sect . $tail);
   $zip->close();
 
-  $filename = 'Certificates_of_Appearance_' . date('Ymd', strtotime($rows[0]['date_arrival'])) . '_' . count($rows) . 'pax.docx';
+  $filename = 'Certificates_of_Appearance_' . date('Ymd', strtotime($rows[0]['date_arrival'])) . '_' . count($rows) . 'pax' . ($size === 'a5' ? '_A5' : '') . '.docx';
   return [$tmp, $filename];
 }
 
 /* Streams a single filled .docx to the browser. */
-function ca_download_docx($row, $tpl_key = null) {
-  [$tmp, $filename] = ca_build_docx($row, $tpl_key);
+function ca_download_docx($row, $tpl_key = null, $size = null) {
+  [$tmp, $filename] = ca_build_docx($row, $tpl_key, $size);
   header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   header('Content-Disposition: attachment; filename="' . $filename . '"');
   header('Content-Length: ' . filesize($tmp));
@@ -300,9 +375,157 @@ function ca_download_docx($row, $tpl_key = null) {
   exit();
 }
 
+/* ───────────────────── print preview (HTML, ready to print) ─────────────────────
+   Needs nothing installed on the server. The letterhead (logos, swoosh, address footer) is a picture of the
+   template's own header/footer: public/templates/ca_letterhead_<template key>_<size>.png (original / a5).
+   The certificate text is laid out in HTML on top of it, one certificate per page, and printed by the browser.
+   A template without letterhead pictures still previews, but without the letterhead. */
+function ca_letterhead_file($tpl_key, $size) {
+  $base = __DIR__ . '/../public/templates/ca_letterhead_' . preg_replace('/[^a-z0-9_]/i', '', $tpl_key) . '_';
+  // no picture made for this size -> use the 'original' one (it is simply scaled to the page)
+  return is_file($base . $size . '.png') ? $base . $size . '.png' : $base . 'original.png';
+}
+
+/* Page geometry (pt) of the print preview for a template + size. u = font/line scale, t = tab-stop scale. */
+function ca_layout($tpl, $size) {
+  $L = $tpl['page'];
+  $L += ['u' => 1, 't' => 1];
+  if ($size !== 'a5') return $L;
+  if (!empty($L['a5'])) return array_merge($L, $L['a5']);
+  $s = 419.53 / $L['w'];                      // portrait template: the whole page is scaled to A5 portrait
+  return array_merge($L, ['w' => 419.53, 'h' => 595.28, 'left' => $L['left'] * $s, 'top' => $L['top'] * $s,
+                          'bw' => $L['bw'] * $s, 'maxy' => $L['maxy'] * $s, 'u' => $s, 't' => $s]);
+}
+
+function ca_h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+function ca_box($on) { return '<span class="cb' . ($on ? ' on' : '') . '"></span>'; }
+
+/* The HTML of ONE certificate (the text part; the letterhead picture is added by ca_preview_page). */
+function ca_preview_body($row, $tpl) {
+  global $CA_TEMPLATES;
+  $sig_name = $row['signatory_name']; $sig_title = $row['signatory_title'];
+  foreach ($CA_TEMPLATES as $t) {            // same rule as the .docx: built-in default signatory -> chosen template's signatory
+    if ($sig_name === $t['signatory'][0] && $sig_title === $t['signatory'][1]) { $sig_name = $tpl['signatory'][0]; $sig_title = $tpl['signatory'][1]; break; }
+  }
+  $lod = (int)$row['lodging_provided'] === 1;
+  $mp  = (int)$row['meal_provided'] === 1;
+  $m   = function ($k) use ($row, $mp) { return $mp && (int)$row[$k] === 1; };
+
+  return
+    '<div class="ca-title">CERTIFICATE OF APPEARANCE</div>'
+  . '<p class="b">TO WHOM IT MAY CONCERN:</p>'
+  . '<p class="sp j">This is to certify that<b>, ' . ca_h($row['person_name']) . ', ' . ca_h($row['designation']) . '</b> from <b>' . ca_h($row['office_from'])
+  .   '</b> who has been previously authorized to come to NIA Albay-Catanduanes IMO, had appeared and conducted official business under the following conditions:</p>'
+  . '<p class="sp b"><span class="lbl">Date of Arrival</span>: ' . ca_h(date('F j, Y', strtotime($row['date_arrival']))) . '<br>'
+  .   '<span class="lbl">Date of Departure</span>: ' . ca_h(date('F j, Y', strtotime($row['date_departure']))) . '</p>'
+  . '<p class="sp b purpose"><span class="lbl">Purpose</span>: ' . ca_h($row['purpose']) . '</p>'
+  . '<div class="cols">'
+  .   '<div class="col">'
+  .     '<div class="b">LODGING</div>'
+  .     '<div class="i1">' . ca_box($lod)  . 'Provided</div>'
+  .     '<div class="i1">' . ca_box(!$lod) . 'Not Provided</div>'
+  .   '</div>'
+  .   '<div class="col">'
+  .     '<div class="b">MEAL</div>'
+  .     '<div class="i1">' . ca_box($mp) . 'Provided</div>'
+  .     '<div class="i2"><span class="c1">' . ca_box($m('breakfast')) . 'Breakfast</span><span class="c2">' . ca_box($m('am_snack')) . 'AM Snack</span></div>'
+  .     '<div class="i2"><span class="c1">' . ca_box($m('lunch'))     . 'Lunch</span><span class="c2">'     . ca_box($m('pm_snack')) . 'PM Snack</span></div>'
+  .     '<div class="i2"><span class="c1">' . ca_box($m('dinner'))    . 'Dinner</span></div>'
+  .     '<div class="i1">' . ca_box(!$mp) . 'Not Provided</div>'
+  .   '</div>'
+  . '</div>'
+  . '<div class="sig"><div class="sig-n">' . ca_h($sig_name) . '</div><div class="sig-t">' . ca_h($sig_title) . '</div></div>';
+}
+
+/* Streams the whole print page (one certificate per page). */
+function ca_preview_page($rows, $tpl_key = null, $size = null) {
+  $size = ca_resolve_size($size);
+  [$tpl_key, $tpl] = ca_resolve_template($rows[0], $tpl_key);
+  $has_lh = is_file(ca_letterhead_file($tpl_key, $size));
+  $lh_url = 'certificate_of_appearance.php?action=letterhead&template=' . urlencode($tpl_key) . '&size=' . urlencode($size);
+  $G = ca_layout($tpl, $size);
+  $pw = $G['w']; $ph = $G['h']; $left = $G['left']; $top = $G['top']; $u = $G['u']; $t = $G['t'];
+  $colw = $G['colw'] * $t; $c1 = $G['c1'] * $t;
+
+  header('Content-Type: text/html; charset=utf-8');
+  header('X-Frame-Options: SAMEORIGIN');
+  header('Cache-Control: no-cache, must-revalidate');
+  ?><!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Certificate of Appearance</title>
+<style>
+  @page { size: <?= $pw ?>pt <?= $ph ?>pt; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #525659; font-family: Cambria, Caladea, 'Times New Roman', serif; color: #000; }
+  .note { background: #fff3cd; color: #664d03; font: 13px Arial, sans-serif; padding: 8px 14px; text-align: center; }
+  .page { position: relative; width: <?= $pw ?>pt; height: <?= $ph ?>pt; margin: 14px auto; background: #fff; overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0,0,0,.45); page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .body { position: absolute; left: <?= $left ?>pt; top: <?= $top ?>pt; width: <?= $G['bw'] ?>pt; font-size: <?= 11 * $u ?>pt; line-height: <?= 12.65 * $u ?>pt; }
+  .body p { margin: 0; }
+  .b, .body b { font-weight: bold; }
+  .j { text-align: justify; }
+  .sp { margin-top: <?= 12.65 * $u ?>pt !important; }                 /* one blank line */
+  .ca-title { text-align: center; font-weight: bold; font-size: <?= 12 * $u ?>pt; line-height: <?= 13.8 * $u ?>pt; margin-bottom: <?= 5.9 * $u ?>pt; }
+  .lbl { display: inline-block; width: <?= 108 * $t ?>pt; text-indent: 0; }                       /* colons line up at the 1.5 in tab stop */
+  .purpose { padding-left: <?= 72 * $t ?>pt; text-indent: -<?= 72 * $t ?>pt; }
+  .cols { display: flex; margin-top: <?= 24.2 * $u ?>pt; }
+  .col { width: <?= $colw ?>pt; flex: none; }
+  .i1 { padding-left: <?= 36 * $t ?>pt; }
+  .i2 { padding-left: <?= 60 * $t ?>pt; }
+  .c1 { display: inline-block; width: <?= $c1 ?>pt; }
+  .cb { display: inline-block; position: relative; width: .78em; height: .78em; border: 1.3px solid #000; margin-right: .4em; vertical-align: -.06em; }
+  .cb.on::after { content: ''; position: absolute; left: .2em; top: -.08em; width: .22em; height: .5em; border: solid #000; border-width: 0 .14em .14em 0; transform: rotate(45deg); }
+  .sig { margin-top: <?= 12.65 * $u ?>pt; }
+  .sig-n { padding-left: <?= $colw + 25.75 * $t ?>pt; font-weight: bold; }
+  .sig-t { padding-left: <?= $colw ?>pt; font-style: italic; }
+  @media print {
+    body { background: #fff; }
+    .note { display: none; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style></head><body>
+<?php if (!$has_lh): ?><div class="note">The letterhead picture for this template/size is not installed, so it is not shown here (and will not print). See public/templates/ca_letterhead_<?= ca_h($tpl_key) ?>_<?= ca_h($size) ?>.png</div><?php endif; ?>
+<?php foreach ($rows as $row): ?>
+<div class="page">
+  <?php if ($has_lh): ?><img class="bg" src="<?= ca_h($lh_url) ?>" alt=""><?php endif; ?>
+  <div class="body" data-bw="<?= $G['bw'] ?>" data-maxy="<?= $G['maxy'] ?>"><?= ca_preview_body($row, $tpl) ?></div>
+</div>
+<?php endforeach; ?>
+<script>
+/* Long text (e.g. a 3-line purpose) would run into the footer logos: shrink that certificate's text a little
+   (down to 70%) until it ends above the footer. Short certificates are left untouched. */
+(function () {
+  var PX = 96 / 72;
+  function fit() {
+    document.querySelectorAll('.page').forEach(function (pg) {
+      var b = pg.querySelector('.body');
+      if (!b) return;
+      var bw = parseFloat(b.dataset.bw), limit = parseFloat(b.dataset.maxy) * PX;
+      b.style.transform = ''; b.style.width = bw + 'pt';
+      var top = pg.getBoundingClientRect().top;
+      for (var k = 1; k >= 0.7; k -= 0.02) {
+        b.style.transformOrigin = '0 0';
+        b.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+        b.style.width = (bw / k) + 'pt';
+        if (b.getBoundingClientRect().bottom - top <= limit) break;
+      }
+    });
+  }
+  window.addEventListener('load', fit);
+  window.addEventListener('beforeprint', fit);
+})();
+</script>
+</body></html>
+<?php
+  exit();
+}
+
 /* Streams ONE combined .docx (a certificate per page) -- used by bulk generate. */
-function ca_download_merged($rows, $tpl_key = null) {
-  [$tmp, $filename] = ca_build_merged_docx($rows, $tpl_key);
+function ca_download_merged($rows, $tpl_key = null, $size = null) {
+  [$tmp, $filename] = ca_build_merged_docx($rows, $tpl_key, $size);
   header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   header('Content-Disposition: attachment; filename="' . $filename . '"');
   header('Content-Length: ' . filesize($tmp));
@@ -320,7 +543,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'downloa
   $stmt->execute();
   $row = $stmt->get_result()->fetch_assoc();
   if (!$row) { http_response_code(404); exit('Certificate not found.'); }
-  ca_download_docx($row, $_GET['template'] ?? null);
+  ca_download_docx($row, $_GET['template'] ?? null, $_GET['size'] ?? null);
+}
+
+/* ───────────────────── letterhead picture used by the print preview ───────────────────── */
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'letterhead') {
+  $f = ca_letterhead_file((string)($_GET['template'] ?? CA_DEFAULT_TEMPLATE), ca_resolve_size($_GET['size'] ?? null));
+  if (!is_file($f)) { http_response_code(404); exit('Letterhead not found.'); }
+  header('Content-Type: image/png');
+  header('Content-Length: ' . filesize($f));
+  header('Cache-Control: private, max-age=86400');
+  readfile($f);
+  exit();
+}
+
+/* ───────────────────── print preview (GET): one (id) or several (ids) certificates ───────────────────── */
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'preview') {
+  $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($_GET['ids'] ?? ($_GET['id'] ?? '')))))));
+  $ids = array_slice($ids, 0, 100);
+  if (!$ids) { http_response_code(400); exit('No certificates selected.'); }
+  $ph = implode(',', array_fill(0, count($ids), '?'));
+  $stmt = $db->prepare("SELECT * FROM certificate_of_appearance WHERE ca_id IN ($ph) ORDER BY ca_id ASC");
+  $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+  $stmt->execute();
+  $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+  if (!$rows) { http_response_code(404); exit('Certificates not found.'); }
+  ca_preview_page($rows, $_GET['template'] ?? null, $_GET['size'] ?? null);
 }
 
 /* ───────────────────── report (GET): print-ready yearly report ───────────────────── */
@@ -477,7 +725,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'downloa
   $stmt->execute();
   $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
   if (!$rows) { http_response_code(404); exit('Certificates not found.'); }
-  ca_download_merged($rows, $_GET['template'] ?? null);
+  ca_download_merged($rows, $_GET['template'] ?? null, $_GET['size'] ?? null);
 }
 
 /* ───────────────────── AJAX (POST) ───────────────────── */
@@ -1483,6 +1731,17 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
             <div class="card-header">
               <h3 class="card-title">Manage Certificates</h3>
               <div class="card-tools">
+                <div class="form-inline d-inline-flex align-items-center mr-2" title="Paper size used when downloading / printing the certificate">
+                  <label class="mr-1 mb-0 small" for="caSizeTop"><i class="fas fa-ruler-combined"></i> Print size:</label>
+                  <select id="caSizeTop" class="form-control form-control-sm ca-size">
+                    <?php foreach ($CA_SIZES as $key => $label): ?>
+                      <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm mr-1" id="bulkPreviewBtn" disabled title="Print preview of the selected certificates">
+                  <i class="fas fa-print"></i> Print Selected
+                </button>
                 <div class="btn-group mr-1">
                   <button type="button" class="btn btn-outline-success btn-sm dropdown-toggle" id="bulkDownloadBtn" data-toggle="dropdown" data-boundary="window" disabled>
                     <i class="fas fa-file-word"></i> Download Selected (<span id="selCount">0</span>)
@@ -1567,6 +1826,7 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
                           <?php endforeach; ?>
                         </div>
                       </div>
+                      <button class="btn btn-sm btn-primary preview-btn" data-id="<?= $c['ca_id'] ?>" title="Print preview"><i class="fas fa-print"></i></button>
                       <button class="btn btn-sm btn-info view-btn" data-id="<?= $c['ca_id'] ?>" title="View"><i class="fas fa-eye"></i></button>
                       <button class="btn btn-sm btn-warning edit-btn" data-id="<?= $c['ca_id'] ?>" title="Edit"><i class="fas fa-edit"></i></button>
                       <button class="btn btn-sm btn-danger delete-btn" data-id="<?= $c['ca_id'] ?>" title="Delete"><i class="fas fa-trash"></i></button>
@@ -1698,6 +1958,15 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
         </div>
         <div class="modal-body"><div id="viewCaContent"></div></div>
         <div class="modal-footer">
+          <div class="form-inline mr-auto align-items-center">
+            <label class="mr-1 mb-0 small" for="caSizeView"><i class="fas fa-ruler-combined"></i> Print size:</label>
+            <select id="caSizeView" class="form-control form-control-sm ca-size">
+              <?php foreach ($CA_SIZES as $key => $label): ?>
+                <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary" id="viewCaPreviewBtn"><i class="fas fa-print"></i> Print Preview</button>
           <div class="btn-group dropup">
             <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><i class="fas fa-file-word"></i> Download .docx</button>
             <div class="dropdown-menu" id="viewCaDownloadMenu">
@@ -1706,6 +1975,47 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
               <?php endforeach; ?>
             </div>
           </div>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Preview Modal -->
+  <div class="modal fade scrum-style-modal" id="previewCaModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-print"></i>Print Preview</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body p-0" style="position:relative; background:#525659;">
+          <div id="previewCaLoading" class="text-center text-white" style="position:absolute; inset:0; padding-top:30vh;">
+            <i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2">Preparing certificate&hellip;</div>
+          </div>
+          <iframe id="previewCaFrame" title="Certificate preview" style="width:100%; height:72vh; border:0; position:relative;"></iframe>
+        </div>
+        <div class="modal-footer">
+          <div class="form-inline mr-auto align-items-center">
+            <label class="mr-1 mb-0 small" for="caSizePreview"><i class="fas fa-ruler-combined"></i> Print size:</label>
+            <select id="caSizePreview" class="form-control form-control-sm ca-size">
+              <?php foreach ($CA_SIZES as $key => $label): ?>
+                <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-inline align-items-center mr-2">
+            <label class="mr-1 mb-0 small" for="caTplPreview"><i class="fas fa-file-alt"></i> Format:</label>
+            <select id="caTplPreview" class="form-control form-control-sm">
+              <option value="">Saved format</option>
+              <?php foreach ($CA_TEMPLATES as $key => $t): ?>
+                <option value="<?= $key ?>"><?= htmlspecialchars($t['label']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div id="previewCaHint" class="small text-muted mr-2" style="max-width:340px; line-height:1.3;"></div>
+          <button type="button" class="btn btn-primary" id="previewCaPrint"><i class="fas fa-print"></i> Print</button>
+          <a class="btn btn-success" id="previewCaDownload" href="#"><i class="fas fa-file-word"></i> Download .docx</a>
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
         </div>
       </div>
@@ -1722,6 +2032,66 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
       columnDefs: [{ targets: 0, orderable: false, searchable: false }]
     });
 
+    // ── Print size (Original / A5) — applied to every .docx download ──
+    const CA_SIZES = <?= json_encode(array_keys($CA_SIZES)) ?>;
+    function caSize() { return $('#caSizeTop').val() || 'original'; }
+    (function() {
+      let saved = null;
+      try { saved = localStorage.getItem('ca_print_size'); } catch (e) {}
+      if (CA_SIZES.indexOf(saved) !== -1) $('.ca-size').val(saved);
+    })();
+    $(document).on('change', '.ca-size', function() {
+      $('.ca-size').val(this.value);                       // keep the toolbar and View-modal selectors in sync
+      try { localStorage.setItem('ca_print_size', this.value); } catch (e) {}
+    });
+    // ── Print preview: the certificate laid out on its letterhead, ready to print, with Print + Download .docx ──
+    let previewIds = [];
+    function loadPreview() {
+      if (!previewIds.length) return;
+      let size = $('#caSizePreview').val() || caSize(), idsQs = previewIds.join(',');   // preview's own selector (always in sync)
+      $('#previewCaHint').html(size === 'a5'
+        ? '<i class="fas fa-info-circle"></i> In the print dialog choose <b>Paper size: A5</b>, <b>Margins: None</b>, <b>Scale: 100%</b>.'
+        : '<i class="fas fa-info-circle"></i> In the print dialog choose your custom <b>8.5 &times; 6.5 in</b> paper (Central Office: A4), <b>Margins: None</b>, <b>Scale: 100%</b>. Otherwise it prints small, in the middle of a bigger sheet.');
+      $('#previewCaLoading').show();
+      let tpl = $('#caTplPreview').val(), tplQs = tpl ? '&template=' + encodeURIComponent(tpl) : '';
+      $('#previewCaFrame').attr('src', 'certificate_of_appearance.php?action=preview&ids=' + idsQs + tplQs + '&size=' + encodeURIComponent(size));
+      $('#previewCaDownload').attr('href', previewIds.length === 1
+        ? 'certificate_of_appearance.php?action=download&id=' + idsQs + tplQs + '&size=' + encodeURIComponent(size)
+        : 'certificate_of_appearance.php?action=download_bulk&ids=' + idsQs + tplQs + '&size=' + encodeURIComponent(size));
+    }
+    function openPreview(ids) {
+      previewIds = ids;
+      $('#caTplPreview').val('');
+      $('#previewCaFrame').attr('src', 'about:blank');
+      $('#previewCaModal').modal('show');
+      loadPreview();
+    }
+    $('#previewCaFrame').on('load', function() { if (this.getAttribute('src') !== 'about:blank') $('#previewCaLoading').hide(); });
+    $('#previewCaModal').on('hidden.bs.modal', function() { $('#previewCaFrame').attr('src', 'about:blank'); });
+    $('#caSizePreview, #caTplPreview').on('change', loadPreview);            // switching size reloads the preview
+    $('#previewCaPrint').on('click', function() {
+      let f = document.getElementById('previewCaFrame');
+      try { f.contentWindow.focus(); f.contentWindow.print(); }
+      catch (e) { window.open(f.src, '_blank'); }             // fallback: open the page in a tab and print from there
+    });
+    $(document).on('click', '.preview-btn', function() { openPreview([$(this).data('id')]); });
+    $('#bulkPreviewBtn').on('click', function() {
+      let ids = Object.keys(selectedIds).map(Number).sort(function(a, b) { return a - b; });
+      if (!ids.length) return;
+      if (ids.length > 100) { Swal.fire('Too many selected', 'You can print up to 100 certificates at a time.', 'warning'); return; }
+      openPreview(ids);
+    });
+    $('#viewCaPreviewBtn').on('click', function() {
+      let id = $('#viewCaDownloadMenu a').first().attr('href').match(/[?&]id=(\d+)/);
+      if (!id) return;
+      $('#viewCaModal').one('hidden.bs.modal', function() { openPreview([parseInt(id[1], 10)]); }).modal('hide');
+    });
+
+    // single-certificate download links (table rows + View modal): add &size=
+    $(document).on('click', 'a[href*="action=download&"]', function() {
+      this.href = this.href.replace(/&size=[^&]*/, '') + '&size=' + encodeURIComponent(caSize());
+    });
+
     // ── Select certificates & download them again as ONE combined Word file ──
     let selectedIds = {};
     function refreshSelection() {
@@ -1729,6 +2099,7 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
       $('#selCount').text(ids.length);
       $('#delSelCount').text(ids.length);
       $('#delSelItem').toggleClass('disabled', ids.length === 0);
+      $('#bulkPreviewBtn').prop('disabled', ids.length === 0);
       $('#bulkDownloadBtn').prop('disabled', ids.length === 0)
         .toggleClass('btn-outline-success', ids.length === 0)
         .toggleClass('btn-success', ids.length > 0);
@@ -1759,7 +2130,7 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
       if (!ids.length) return;
       if (ids.length > 100) { Swal.fire('Too many selected', 'You can download up to 100 certificates at a time.', 'warning'); return; }
       let tpl = $(this).data('template');
-      window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + ids.join(',') + (tpl ? '&template=' + encodeURIComponent(tpl) : '');
+      window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + ids.join(',') + (tpl ? '&template=' + encodeURIComponent(tpl) : '') + '&size=' + encodeURIComponent(caSize());
     });
 
     // ── Delete several selected certificates ──
@@ -1994,7 +2365,7 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
           allowOutsideClick: false
         }).then(function(r) {
           if (r.isConfirmed) {
-            window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + res.ids.join(',') + '&template=' + encodeURIComponent(res.template);
+            window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + res.ids.join(',') + '&template=' + encodeURIComponent(res.template) + '&size=' + encodeURIComponent(caSize());
             setTimeout(function() { location.reload(); }, 1500);
           } else {
             location.reload();
