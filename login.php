@@ -1,43 +1,151 @@
 <?php
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+ini_set('session.use_strict_mode', '1');
+ini_set('session.use_only_cookies', '1');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'secure'   => $isHttps,      // becomes true automatically once you enable HTTPS
+    'httponly' => true,
+    'samesite' => 'Strict',
+]);
 session_start();
+
+header_remove('X-Powered-By');
+header('X-Frame-Options: DENY');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: same-origin');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header("Content-Security-Policy: default-src 'self'; "
+     . "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+     . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+     . "img-src 'self' data:; font-src 'self' data: https://cdn.jsdelivr.net; "
+     . "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; "
+     . "form-action 'self'; object-src 'none'");
+
 require_once 'config/database.php';
 
-$error = '';
-$success = '';
+/* ── Settings ───────────────────────────────────────────────────────── */
+const LOGIN_MAX_FAILS_USER = 5;    // failed attempts per username ...
+const LOGIN_MAX_FAILS_IP   = 20;   // ... or per IP address ...
+const LOGIN_WINDOW_MIN     = 15;   // ... within this many minutes => locked
+const DUMMY_HASH = '$2y$10$ZwMj.p2CHeLwAA1zJTy6ee2Tz9w4M22AgO4ZM.DEQ//XruDrP..7S'; // used so unknown usernames take the same time
+
+/* ── Helpers ────────────────────────────────────────────────────────── */
+function e($s) { return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+
+function client_ip() {
+    // REMOTE_ADDR only. X-Forwarded-For can be forged by the client.
+    return substr($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', 0, 45);
+}
+
+/** result: 1 = success, 0 = failed, 2 = blocked (lockout active), 3 = unlocked by administrator */
+function log_attempt(mysqli $db, $username, $result) {
+    try {
+        $ip = client_ip();
+        $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+        $u  = substr($username, 0, 100);
+        $stmt = $db->prepare("INSERT INTO login_attempts (username, ip_address, user_agent, result) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param('sssi', $u, $ip, $ua, $result);
+        $stmt->execute();
+    } catch (Throwable $ex) {
+        error_log('[AIMS login] could not write login_attempts: ' . $ex->getMessage());
+    }
+}
+
+/** @return array [failsForUsername, failsForIp] inside the lockout window.
+ *  Failures that happened before an administrator unlock (result = 3) are ignored. */
+function recent_failures(mysqli $db, $username, $ip) {
+    try {
+        $u = substr($username, 0, 100);
+        $w = LOGIN_WINDOW_MIN;
+        $stmt = $db->prepare("
+            SELECT
+              COALESCE(SUM(username = ? AND attempted_at > COALESCE(
+                  (SELECT MAX(x.attempted_at) FROM login_attempts x WHERE x.result = 3 AND x.username = ?),
+                  '1970-01-01 00:00:00')), 0) AS u,
+              COALESCE(SUM(ip_address = ? AND attempted_at > COALESCE(
+                  (SELECT MAX(y.attempted_at) FROM login_attempts y WHERE y.result = 3 AND y.ip_address = ?),
+                  '1970-01-01 00:00:00')), 0) AS i
+            FROM login_attempts
+            WHERE result = 0 AND attempted_at > (NOW() - INTERVAL ? MINUTE)
+        ");
+        $stmt->bind_param('ssssi', $u, $u, $ip, $ip, $w);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return [(int)$row['u'], (int)$row['i']];
+    } catch (Throwable $ex) {
+        error_log('[AIMS login] lockout check unavailable (is login_attempts created?): ' . $ex->getMessage());
+        return [0, 0];   // fail-open so a missing table does not lock everyone out
+    }
+}
+
+/* ── CSRF token ─────────────────────────────────────────────────────── */
+if (empty($_SESSION['csrf'])) {
+    $_SESSION['csrf'] = bin2hex(random_bytes(32));
+}
+
+$error    = '';
+$success  = '';
 $username = '';
 
 $database = new Database();
 $db = $database->getConnection();
 
-$forms_stmt = $db->prepare("SELECT * FROM company_forms WHERE is_active = TRUE ORDER BY created_at DESC");
-$forms_stmt->execute();
-$company_forms = $forms_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
+    $username = mb_substr(trim((string)($_POST['username'] ?? '')), 0, 100);
+    $password = (string)($_POST['password'] ?? '');
+    $ip       = client_ip();
+    $posted   = $_POST['csrf_token'] ?? '';
 
-    if (empty($username) || empty($password)) {
+    if (!is_string($posted) || !hash_equals($_SESSION['csrf'], $posted)) {
+        $error = 'Your session expired. Please refresh the page and try again.';
+    } elseif ($username === '' || $password === '') {
         $error = 'Please enter both username and password';
     } else {
-        $stmt = $db->prepare("
-            SELECT u.id, u.user, u.password, u.role_id, u.employee_id, ur.name as role_name 
-            FROM users u
-            JOIN user_roles ur ON u.role_id = ur.id
-            WHERE u.user = ? AND u.employee_id IS NOT NULL
-        ");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        list($failsUser, $failsIp) = recent_failures($db, $username, $ip);
 
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
-            if (password_verify($password, $user['password'])) {
-                $_SESSION['user_id']   = $user['id'];
-                $_SESSION['emp_id']    = $user['employee_id'];
-                $_SESSION['username']  = $user['user'];
-                $_SESSION['role_id']   = $user['role_id'];
-                $_SESSION['role_name'] = $user['role_name'];
+        if ($failsUser >= LOGIN_MAX_FAILS_USER || $failsIp >= LOGIN_MAX_FAILS_IP) {
+            log_attempt($db, $username, 2);
+            $error = 'Too many failed attempts. Please try again in ' . LOGIN_WINDOW_MIN
+                   . ' minutes or contact your administrator.';
+        } else {
+            $stmt = $db->prepare("
+                SELECT u.id, u.user, u.password, u.role_id, u.employee_id, ur.name as role_name
+                FROM users u
+                JOIN user_roles ur ON u.role_id = ur.id
+                WHERE u.user = ? AND u.employee_id IS NOT NULL
+            ");
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $user = ($result->num_rows === 1) ? $result->fetch_assoc() : null;
+
+            // Always run one password_verify, so response time doesn't reveal valid usernames
+            $ok = password_verify($password, $user ? $user['password'] : DUMMY_HASH) && $user;
+
+            if ($ok) {
+                // Upgrade old hashes to the current algorithm/cost transparently
+                if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
+                    try {
+                        $newHash = password_hash($password, PASSWORD_DEFAULT);
+                        $up = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
+                        $up->bind_param("si", $newHash, $user['id']);
+                        $up->execute();
+                    } catch (Throwable $ex) { error_log('[AIMS login] rehash failed: ' . $ex->getMessage()); }
+                }
+
+                session_regenerate_id(true);          // prevents session fixation
+                $_SESSION['csrf']          = bin2hex(random_bytes(32));
+                $_SESSION['user_id']       = $user['id'];
+                $_SESSION['emp_id']        = $user['employee_id'];
+                $_SESSION['username']      = $user['user'];
+                $_SESSION['role_id']       = $user['role_id'];
+                $_SESSION['role_name']     = $user['role_name'];
+                $_SESSION['login_time']    = time();
+                $_SESSION['last_activity'] = time();  // used by includes/session_guard.php
+                $_SESSION['ua_hash']       = hash('sha256', $_SERVER['HTTP_USER_AGENT'] ?? '');
 
                 $stmt = $db->prepare("
                     SELECT p.name FROM permissions p
@@ -50,12 +158,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $permissions = [];
                 while ($row = $result->fetch_assoc()) { $permissions[] = $row['name']; }
                 $_SESSION['permissions'] = $permissions;
+
+                log_attempt($db, $username, 1);
                 $success = 'Login successful!';
             } else {
+                log_attempt($db, $username, 0);
                 $error = 'Invalid username or password';
             }
-        } else {
-            $error = 'Invalid username or password';
         }
     }
 }
@@ -93,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!-- PHP bridges -->
 <?php if (!empty($error)): ?>
-<span id="phpError" data-msg="<?= htmlspecialchars($error) ?>" style="display:none"></span>
+<span id="phpError" data-msg="<?= e($error) ?>" style="display:none"></span>
 <?php endif; ?>
 <?php if (!empty($success)): ?>
 <span id="phpSuccess" data-redirect="views/dashboard.php" style="display:none"></span>
@@ -153,10 +262,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-subtitle">Sign in to your account to continue</div>
 
                 <form action="login.php" method="post" id="loginForm" autocomplete="off">
+                    <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf']) ?>">
                     <div class="field-wrap" id="wrap-username">
                         <input type="text" id="username" name="username"
                                placeholder=" "
-                               value="<?= htmlspecialchars($username) ?>" required>
+                               value="<?= e($username) ?>" required>
                         <label for="username">Username</label>
                         <span class="field-icon"><i class="fas fa-user"></i></span>
                     </div>
@@ -389,7 +499,7 @@ $(function () {
         $('#loaderLabel').text('Sending request');
         $('#loaderOverlay').addClass('active');
         $.ajax({
-            url:'ajax_forgot_password.php', type:'POST', data:{ id_number:id },
+            url:'ajax_forgot_password.php', type:'POST', data:{ id_number:id, csrf_token:$('#loginForm input[name=csrf_token]').val() },
             success: function (r) {
                 $('#loaderOverlay').removeClass('active');
                 if (r.success) {

@@ -50,47 +50,45 @@ array_unshift($sections, $manager_office);
 
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
+        /* ══════════════════════════════════════════
+           FLAT DESIGN — solid fills, no shadows,
+           no gradients, no glows, small radii
+        ══════════════════════════════════════════ */
         :root {
             /* ── NIA Brand Colors ── */
             --nia-green:        #1a8a3c;
             --nia-green-dark:   #0e5225;
-            --nia-green-mid:    #2dc95a;   /* primary card/accent green */
+            --nia-green-mid:    #2dc95a;
             --nia-green-light:  #4dd87a;
-            --nia-green-pale:   #e8f8ee;   /* pale green tint for surfaces */
-            --nia-green-tint:   #f0faf4;   /* very light card backgrounds */
+            --nia-green-pale:   #dcf5e5;
+            --nia-green-tint:   #eaf8ef;
 
-            /* Priority = Warm Orange */
+            /* Priority = Orange */
             --pri-orange:       #f97316;
             --pri-orange-dark:  #c05a0a;
             --pri-orange-light: #fed7aa;
-            --pri-orange-tint:  #fff7f0;
-            --pri-card-bg:      #fff5ec;
+            --pri-orange-tint:  #ffedd5;
 
-            /* Regular = Green */
-            --reg-card-bg:      #f0faf4;
+            /* Waiting = Amber */
+            --wait-bg:          #fef3c7;
+            --wait-text:        #92400e;
 
             /* Page */
-            --bg:               #f5f5f5;
+            --bg:               #e9efeb;
             --surface:          #ffffff;
-            --card-panel:       #ffffff;
-            --card-section:     #ffffff;
 
             /* Text */
             --text-dark:        #1a2e1a;
             --text-mid:         #2d5a3d;
-            --text-muted:       #6b9e7a;
-            --text-light:       #a8c8b4;
+            --text-muted:       #5f8a6e;
+            --text-light:       #9bb8a6;
 
-            /* Borders */
-            --divider:          #d4eedd;
-            --border-card:      #b8dfc8;
+            /* Neutrals */
+            --divider:          #e3ece6;
+            --empty-bg:         #f1f4f2;
 
-            /* Utility */
             --gold:             #d97706;
-            --amber:            #f59e0b;
-            --shadow:           rgba(26,138,60,0.10);
-            --shadow-pri:       rgba(249,115,22,0.15);
-            --shadow-reg:       rgba(26,138,60,0.15);
+            --radius:           10px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -110,27 +108,19 @@ array_unshift($sections, $manager_office);
             align-items: center;
             justify-content: space-between;
             background: var(--surface);
-            border-radius: 20px;
+            border-radius: var(--radius);
             padding: 18px 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 16px var(--shadow);
-            border: 1px solid var(--border-card);
+            margin-bottom: 16px;
             flex-wrap: wrap;
             gap: 12px;
         }
 
-        .qd-brand-group {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
+        .qd-brand-group { display: flex; align-items: center; gap: 16px; }
 
         .qd-logo {
             width: 72px;
             height: 72px;
             border-radius: 50%;
-            border: 3px solid var(--nia-green-mid);
-            box-shadow: 0 0 16px rgba(45,201,90,0.3);
             object-fit: cover;
             flex-shrink: 0;
         }
@@ -202,19 +192,17 @@ array_unshift($sections, $manager_office);
             display: grid;
             grid-template-columns: 1fr 1.4fr 1fr;
             gap: 16px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             align-items: stretch;
         }
 
         .col-panel {
             background: var(--surface);
-            border-radius: 20px;
+            border-radius: var(--radius);
             overflow: hidden;
-            border: 2px solid var(--divider);
             display: flex;
             flex-direction: column;
             min-height: 460px;
-            box-shadow: 0 2px 16px var(--shadow);
         }
 
         .col-panel-header {
@@ -230,26 +218,20 @@ array_unshift($sections, $manager_office);
             gap: 10px;
         }
 
-        .waiting-panel  { border-color: #fde68a; }
-        .serving-panel  { border-color: var(--nia-green-mid); box-shadow: 0 4px 32px var(--shadow-reg); }
-        .served-panel   { border-color: #86efac; }
-
-        .waiting-header { background: #fffbeb; color: #92400e; }
-        .serving-header { background: var(--nia-green-dark); color: #fff; }
-        .served-header  { background: #f0fdf4; color: #15803d; }
+        .waiting-header { background: #f59e0b; color: #ffffff; }
+        .serving-header { background: var(--nia-green-dark); color: #ffffff; }
+        .served-header  { background: var(--nia-green); color: #ffffff; }
 
         .col-badge {
-            background: rgba(0,0,0,.15);
-            color: inherit;
+            background: rgba(255,255,255,.25);
+            color: #ffffff;
             font-size: 13px;
             font-weight: 900;
-            border-radius: 20px;
+            border-radius: 6px;
             padding: 2px 12px;
             min-width: 32px;
             text-align: center;
         }
-        .waiting-header .col-badge { background: #fde68a; color: #92400e; }
-        .served-header  .col-badge { background: #bbf7d0; color: #15803d; }
 
         .col-panel-body {
             flex: 1;
@@ -259,20 +241,13 @@ array_unshift($sections, $manager_office);
 
         /* ── SERVING PANEL INTERNALS ── */
         .serving-block {
-            border-radius: 16px;
+            border-radius: var(--radius);
             padding: 16px 14px;
             text-align: center;
             position: relative;
         }
-        .priority-block {
-            background: var(--pri-card-bg);
-            border: 2px solid var(--pri-orange);
-            margin-bottom: 0;
-        }
-        .regular-block  {
-            background: var(--reg-card-bg);
-            border: 2px solid var(--nia-green-mid);
-        }
+        .priority-block { background: var(--pri-orange); margin-bottom: 0; }
+        .regular-block  { background: var(--nia-green); }
 
         .serving-block-label {
             font-size: 12px;
@@ -284,9 +259,8 @@ array_unshift($sections, $manager_office);
             align-items: center;
             justify-content: center;
             gap: 6px;
+            color: #ffffff;
         }
-        .priority-label-tag { color: var(--pri-orange-dark); }
-        .regular-label-tag  { color: var(--nia-green-dark); }
 
         .serving-big-number {
             font-family: 'Nunito', sans-serif;
@@ -294,28 +268,29 @@ array_unshift($sections, $manager_office);
             font-weight: 900;
             line-height: 1;
             margin: 6px 0;
+            color: #ffffff;
         }
-        .priority-block .serving-big-number { color: var(--pri-orange); }
-        .regular-block  .serving-big-number { color: var(--nia-green-dark); }
 
         .serving-dest {
             font-size: 15px;
             font-weight: 800;
-            color: var(--text-mid);
+            color: #ffffff;
             margin-bottom: 6px;
             min-height: 20px;
         }
 
         .serving-info-row {
             font-size: 13px;
-            color: var(--text-muted);
+            color: rgba(255,255,255,.9);
             margin: 2px 0;
         }
 
+        .serving-block .empty-state { padding: 10px; color: rgba(255,255,255,.75); }
+
         .serving-divider {
-            height: 1px;
-            background: var(--divider);
-            margin: 10px 0;
+            height: 12px;
+            background: transparent;
+            margin: 0;
         }
 
         .wait-times-row {
@@ -323,32 +298,29 @@ array_unshift($sections, $manager_office);
             gap: 8px;
             justify-content: center;
             flex-wrap: wrap;
-            margin-top: 10px;
+            margin-top: 12px;
         }
         .wait-chip {
             font-size: 12px;
             font-weight: 700;
-            padding: 4px 12px;
-            border-radius: 20px;
+            padding: 5px 12px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             gap: 5px;
         }
-        .priority-chip { background: var(--pri-orange-light); color: var(--pri-orange-dark); }
+        .priority-chip { background: var(--pri-orange-tint); color: var(--pri-orange-dark); }
         .regular-chip  { background: var(--nia-green-pale); color: var(--nia-green-dark); }
 
-        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; animation: pulseDot 1.2s ease-in-out infinite; }
-        .dot-priority { background: var(--pri-orange); }
-        .dot-regular  { background: var(--nia-green-mid); }
-        @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.6} }
+        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ffffff; animation: pulseDot 1.2s ease-in-out infinite; }
+        @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-        /* ── QUEUE PANEL EMPTY STATE ── */
+        /* ── EMPTY STATE ── */
         .empty-state { text-align: center; padding: 32px 10px; color: var(--text-light); }
-        .empty-icon  { font-size: 36px; margin-bottom: 10px; opacity: .5; }
+        .empty-icon  { font-size: 36px; margin-bottom: 10px; opacity: .6; }
         .empty-text  { font-size: 14px; font-weight: 700; }
 
-        /* Queue grid */
-        /* Queue grid */
+        /* ── QUEUE GRID ── */
         .queue-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -356,11 +328,10 @@ array_unshift($sections, $manager_office);
         }
 
         .queue-grid-item {
-            background: var(--nia-green-tint);
-            border-radius: 14px;
+            background: var(--empty-bg);
+            border-radius: 8px;
             padding: 14px 8px;
             text-align: center;
-            border: 2px solid var(--divider);
             min-height: 90px;
             display: flex;
             flex-direction: column;
@@ -369,11 +340,13 @@ array_unshift($sections, $manager_office);
             gap: 6px;
         }
 
-        .queue-grid-item.priority { border-color: var(--pri-orange-light); background: var(--pri-orange-tint); }
-        .queue-grid-item.regular  { border-color: var(--nia-green-mid); background: var(--nia-green-pale); }
-        .queue-grid-item.served   { border-color: #86efac; background: #f0fdf4; }
-        .queue-grid-item.waiting  { border-color: #fde68a; background: #fffbeb; }
-        .queue-grid-item.called   { border-color: var(--nia-green-mid); background: var(--nia-green-pale); }
+        .queue-grid-item.priority { background: var(--pri-orange-tint); }
+        .queue-grid-item.regular  { background: var(--nia-green-pale); }
+        .queue-grid-item.waiting  { background: var(--wait-bg); }
+        .queue-grid-item.called   { background: var(--nia-green-pale); }
+        .queue-grid-item.waiting.priority { background: var(--pri-orange-tint); }
+        .queue-grid-item.served   { background: var(--nia-green-pale); }
+        .queue-grid-item.served.priority { background: var(--pri-orange-tint); }
 
         .queue-grid-number {
             font-family: 'Nunito', sans-serif;
@@ -388,33 +361,32 @@ array_unshift($sections, $manager_office);
             letter-spacing: 1.5px;
             text-transform: uppercase;
             padding: 3px 8px;
-            border-radius: 5px;
+            border-radius: 4px;
         }
 
-        .queue-grid-badge.p-badge { background: var(--pri-orange-light); color: var(--pri-orange-dark); }
-        .queue-grid-badge.r-badge { background: var(--nia-green-pale); color: var(--nia-green-dark); }
-        .queue-grid-badge.s-badge { background: #bbf7d0; color: #15803d; }
-        .queue-grid-badge.e-badge { background: #f3f4f6; color: #9ca3af; }
+        .queue-grid-badge.p-badge { background: var(--pri-orange); color: #ffffff; }
+        .queue-grid-badge.r-badge { background: var(--nia-green); color: #ffffff; }
+        .queue-grid-badge.s-badge { background: var(--nia-green); color: #ffffff; }
+        .queue-grid-badge.e-badge { background: #dfe5e1; color: #8a9a91; }
 
         .more-count {
             grid-column: 1 / -1;
-            background: var(--nia-green-tint);
-            border-radius: 10px;
+            background: var(--empty-bg);
+            border-radius: 8px;
             padding: 12px;
             text-align: center;
             font-size: 17px;
             font-weight: 800;
             color: var(--text-muted);
-            border: 1px dashed var(--border-card);
             margin-top: 2px;
         }
 
         /* ── MARQUEE ── */
         .qd-marquee {
             background: var(--nia-green-dark);
-            border-radius: 14px;
+            border-radius: var(--radius);
             padding: 14px 20px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             overflow: hidden;
         }
 
@@ -442,16 +414,14 @@ array_unshift($sections, $manager_office);
 
         .section-card {
             background: var(--surface);
-            border: 2px solid var(--nia-green-mid);
-            border-radius: 18px;
+            border-radius: var(--radius);
             padding: 20px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-            box-shadow: 0 2px 12px var(--shadow);
+            border-top: 4px solid var(--nia-green-mid);
         }
 
-        .section-card.active.priority { border-color: var(--pri-orange); box-shadow: 0 0 20px var(--shadow-pri); }
-        .section-card.active.regular  { border-color: var(--nia-green); box-shadow: 0 0 20px var(--shadow-reg); background: var(--nia-green-tint); }
-        .section-card.active.both     { border-color: #a855f7; box-shadow: 0 0 20px rgba(168,85,247,0.15); }
+        .section-card.active.priority { border-top-color: var(--pri-orange); }
+        .section-card.active.regular  { border-top-color: var(--nia-green); background: var(--nia-green-tint); }
+        .section-card.active.both     { border-top-color: #a855f7; }
 
         .section-header {
             display: flex;
@@ -460,21 +430,16 @@ array_unshift($sections, $manager_office);
             margin-bottom: 14px;
         }
 
-        .section-name {
-            font-size: 19px;
-            font-weight: 900;
-            color: var(--text-dark);
-        }
+        .section-name { font-size: 19px; font-weight: 900; color: var(--text-dark); }
 
         .section-code {
             font-size: 12px;
             font-weight: 800;
             letter-spacing: 2px;
-            background: var(--nia-green-pale);
-            border: 1px solid var(--nia-green-mid);
-            color: var(--nia-green-dark);
+            background: var(--nia-green);
+            color: #ffffff;
             padding: 5px 12px;
-            border-radius: 8px;
+            border-radius: 6px;
             text-transform: uppercase;
         }
 
@@ -486,11 +451,10 @@ array_unshift($sections, $manager_office);
         }
 
         .stat-box {
-            background: var(--nia-green-tint);
-            border-radius: 12px;
+            background: var(--empty-bg);
+            border-radius: 8px;
             padding: 12px 6px;
             text-align: center;
-            border: 1px solid var(--divider);
         }
 
         .stat-value {
@@ -521,20 +485,19 @@ array_unshift($sections, $manager_office);
         }
 
         .unit-card {
-            background: var(--nia-green-tint);
-            border-radius: 12px;
+            background: var(--empty-bg);
+            border-radius: 8px;
             padding: 12px 16px;
             margin-top: 8px;
             border-left: 4px solid var(--nia-green-mid);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: border-left-color 0.3s, background 0.3s;
         }
 
         .unit-card.active.priority { border-left-color: var(--pri-orange); background: var(--pri-orange-tint); }
         .unit-card.active.regular  { border-left-color: var(--nia-green); background: var(--nia-green-pale); }
-        .unit-card.active.both     { border-left-color: #a855f7; background: #faf5ff; }
+        .unit-card.active.both     { border-left-color: #a855f7; background: #f3e8ff; }
 
         .unit-info { display: flex; flex-direction: column; gap: 2px; }
         .unit-name { font-size: 15px; font-weight: 800; color: var(--text-dark); }
@@ -553,8 +516,7 @@ array_unshift($sections, $manager_office);
             font-size: 12px;
             font-weight: 700;
             background: var(--nia-green-pale);
-            border: 1px solid var(--nia-green-mid);
-            border-radius: 5px;
+            border-radius: 4px;
             padding: 2px 8px;
             color: var(--text-mid);
             letter-spacing: 1px;
@@ -764,10 +726,9 @@ array_unshift($sections, $manager_office);
         min-width: 420px;
         max-width: 680px;
         background: #0e5225;
-        border-radius: 18px;
+        border-radius: 10px;
         padding: 18px 28px;
-        box-shadow: 0 8px 40px rgba(14,82,37,0.35);
-        border: 3px solid #2dc95a;
+        border: none;
         text-align: center;
         animation: slideUp 0.4s ease;
     ">
@@ -782,8 +743,8 @@ array_unshift($sections, $manager_office);
     <div style="position:fixed; top:5px; right:20px; z-index:9998;">
         <button id="ttsToggleBtn" onclick="toggleTTS()" style="
             background: #0e5225;
-            border: 2px solid #2dc95a;
-            border-radius: 50px;
+            border: none;
+            border-radius: 8px;
             padding: 10px 20px;
             color: #fff;
             font-family: 'Nunito Sans', sans-serif;
@@ -793,7 +754,6 @@ array_unshift($sections, $manager_office);
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 4px 16px rgba(14,82,37,0.25);
         ">
             <i class="fas fa-volume-up" id="ttsIcon"></i>
             <!-- <span id="ttsLabel">Announcements ON</span> -->
@@ -805,12 +765,8 @@ array_unshift($sections, $manager_office);
             from { opacity:0; transform: translateX(-50%) translateY(20px); }
             to   { opacity:1; transform: translateX(-50%) translateY(0); }
         }
-        @keyframes pulseGlow {
-            0%,100% { box-shadow: 0 8px 40px rgba(14,82,37,0.35); }
-            50%      { box-shadow: 0 8px 60px rgba(45,201,90,0.6); }
-        }
         #announcementOverlay.announcing {
-            animation: slideUp 0.4s ease, pulseGlow 1.2s ease-in-out infinite;
+            animation: slideUp 0.4s ease;
         }
     </style>
 
@@ -1504,7 +1460,7 @@ function updateActiveHighlight(prioritySectionCode, priorityUnitCode, regularSec
             if (regularSections.has(sectionCode)) {
                 // Section has both priority AND regular - use combined style
                 sectionElement.addClass('active both');
-                sectionElement.css('background', 'linear-gradient(135deg, #c0392b, #e74c3c, #1e3c72, #2a5298)');
+                sectionElement.css('background', '#f3e8ff');
             } else {
                 // Section has only priority
                 sectionElement.addClass('active priority');
@@ -1611,9 +1567,8 @@ function updateActiveHighlight(prioritySectionCode, priorityUnitCode, regularSec
     <style>
         /* Pulse animation on section/unit card when a new number is called */
         @keyframes servingPulse {
-            0%   { box-shadow: 0 0 0 0 rgba(45,201,90,0.5); }
-            50%  { box-shadow: 0 0 0 12px rgba(45,201,90,0); }
-            100% { box-shadow: 0 0 0 0 rgba(45,201,90,0); }
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.6; }
         }
         .serving-pulse {
             animation: servingPulse 0.8s ease-out 2;

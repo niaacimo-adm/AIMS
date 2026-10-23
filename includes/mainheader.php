@@ -238,6 +238,15 @@ if ($employee_id && isset($db)) {
     </ul>
 </nav>
 
+<!-- Floating Date & Time -->
+<div id="floatClock" class="float-clock" title="Drag to move · Double-click to reset">
+    <div class="fc-icon"><i class="far fa-clock"></i></div>
+    <div class="fc-text">
+        <div class="fc-time" id="fcTime">--:--:-- --</div>
+        <div class="fc-date" id="fcDate">---</div>
+    </div>
+</div>
+
 <!-- All Notifications Modal -->
 <div class="modal fade" id="notificationsModal" tabindex="-1" role="dialog" aria-labelledby="notificationsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
@@ -621,6 +630,35 @@ select.form-control option { background: var(--input-bg) !important; color: var(
 .message-input { background: var(--input-bg) !important; color: var(--input-color) !important; border-color: var(--input-border) !important; }
 .active-chat-header { background: var(--chat-bg) !important; border-bottom: 1px solid var(--dropdown-border) !important; }
 .send-btn { background: var(--sidebar-active-bg) !important; }
+
+/* FLOATING CLOCK */
+.float-clock {
+    position: fixed;
+    top: 72px;
+    right: 18px;
+    z-index: 1025;           /* below header/dropdowns/modals */
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px 10px 12px;
+    background: linear-gradient(135deg, #1c4d38, #2a9863) !important;
+    color: #ffffff !important;
+    border: 2px solid #24e78f !important;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 4px rgba(36,231,143,.25);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+.float-clock.dragging { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,.45), 0 0 0 6px rgba(36,231,143,.35); }
+.float-clock .fc-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #24e78f; color: #0f2d1e;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+}
+.float-clock .fc-time { font-size: 1.25rem; font-weight: 800; line-height: 1.1; letter-spacing: .3px; color: #ffffff !important; font-variant-numeric: tabular-nums; }
+.float-clock .fc-date { font-size: .8rem; font-weight: 500; color: #d4f5e5 !important; margin-top: 2px; }
+@media (max-width: 575px) { .float-clock .fc-date { display: none; } }
+@media print { .float-clock { display: none; } }
 
 /* MISC */
 .text-muted { color: var(--text-muted) !important; }
@@ -1205,6 +1243,70 @@ $(document).ready(function() {
         e.preventDefault();
         $('#notificationsModal').modal('show');
         loadNotificationsModal();
+    });
+});
+</script>
+<script>
+// ===== FLOATING DATE & TIME (draggable, Philippine time) =====
+$(function () {
+    var el = document.getElementById('floatClock');
+    if (!el) return;
+    var KEY = 'floatClockPos';
+
+    // ----- Clock (always Philippine time) -----
+    var tf = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+    var df = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    function tick() {
+        var now = new Date();
+        document.getElementById('fcTime').textContent = tf.format(now);
+        document.getElementById('fcDate').textContent = df.format(now);
+    }
+    tick(); setInterval(tick, 1000);
+
+    // ----- Position helpers -----
+    function clamp(x, y) {
+        var w = el.offsetWidth, h = el.offsetHeight;
+        return {
+            x: Math.min(Math.max(0, x), window.innerWidth - w),
+            y: Math.min(Math.max(0, y), window.innerHeight - h)
+        };
+    }
+    function place(x, y) {
+        var p = clamp(x, y);
+        el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+        el.style.right = 'auto';
+    }
+    try {
+        var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (saved) place(saved.x, saved.y);
+    } catch (e) {}
+
+    // ----- Drag -----
+    var drag = null;
+    el.addEventListener('pointerdown', function (e) {
+        var r = el.getBoundingClientRect();
+        drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+        el.classList.add('dragging');
+        el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', function (e) {
+        if (drag) place(e.clientX - drag.dx, e.clientY - drag.dy);
+    });
+    el.addEventListener('pointerup', function () {
+        if (!drag) return;
+        drag = null; el.classList.remove('dragging');
+        try { localStorage.setItem(KEY, JSON.stringify({ x: el.offsetLeft, y: el.offsetTop })); } catch (e) {}
+    });
+
+    // Double-click resets to default corner
+    el.addEventListener('dblclick', function () {
+        el.style.left = el.style.top = ''; el.style.right = '';
+        try { localStorage.removeItem(KEY); } catch (e) {}
+    });
+
+    // Keep on-screen when window resizes
+    $(window).on('resize', function () {
+        if (el.style.left) place(el.offsetLeft, el.offsetTop);
     });
 });
 </script>

@@ -56,8 +56,11 @@ $CA_TEMPLATES = [
     'type'      => 'numbering',
     'detailed'  => true,
     'signatory' => ['MYRA M. ETCOBANEZ', 'Acting Administrative Unit Head'],
+    // 'word' = the print preview copies the Word file's own layout (big title, Name/Position on underlined lines,
+    //          12 pt text, wide Lodging/Meal columns with the meals listed one per line).
     // print-preview page (pt): A4 portrait. A5 = the whole page scaled down to A5 portrait (no 'a5' override)
-    'page'      => ['w' => 595, 'h' => 841.89, 'left' => 72, 'top' => 120, 'bw' => 451, 'colw' => 225, 'c1' => 82, 'maxy' => 690],
+    'word'      => true,
+    'page'      => ['w' => 595, 'h' => 841.89, 'left' => 72, 'top' => 136.35, 'bw' => 451, 'colw' => 225, 'c1' => 82, 'maxy' => 690],
   ],
 ];
 const CA_DEFAULT_TEMPLATE = 'standard';
@@ -412,6 +415,40 @@ function ca_preview_body($row, $tpl) {
   $mp  = (int)$row['meal_provided'] === 1;
   $m   = function ($k) use ($row, $mp) { return $mp && (int)$row[$k] === 1; };
 
+  if (!empty($tpl['word'])) {
+    /* Same layout as CA_TEMPLATE_CO_READY.docx */
+    return
+      '<div class="ca-title">CERTIFICATE OF APPEARANCE</div>'
+    . '<p class="b w-twc">TO WHOM IT MAY CONCERN:</p>'
+    . '<p class="w-cert">This is to certify that</p>'
+    . '<div class="w-np">'
+    .   '<div class="w-n1"><div class="w-ln b">' . ca_h($row['person_name']) . '</div><div class="w-cap i">(Name)</div></div>'
+    .   '<div class="w-n2"><div class="w-ln b">' . ca_h($row['designation']) . '</div><div class="w-cap i">(Position)</div></div>'
+    . '</div>'
+    . '<p class="w-who j">who has been previously authorized to come to NIA Albay-Catanduanes IMO, has appeared and conducted official business under the following conditions:</p>'
+    . '<p class="w-f w-f1"><span class="lbl">Date of Arrival</span>: <b class="u">' . ca_h(date('F j, Y', strtotime($row['date_arrival']))) . '</b></p>'
+    . '<p class="w-f"><span class="lbl">Date of Departure</span>: <b class="u">' . ca_h(date('F j, Y', strtotime($row['date_departure']))) . '</b></p>'
+    . '<p class="w-f"><span class="lbl">Purpose of Travel</span>: <b class="u">' . ca_h($row['purpose']) . '</b></p>'
+    . '<div class="w-cols">'
+    .   '<div class="w-col w-c1">'
+    .     '<div class="w-h b">LODGING</div>'
+    .     '<div class="i1">' . ca_box($lod)  . 'Provided</div>'
+    .     '<div class="i1">' . ca_box(!$lod) . 'Not Provided</div>'
+    .   '</div>'
+    .   '<div class="w-col w-c2">'
+    .     '<div class="w-h b">MEAL</div>'
+    .     '<div class="i1">' . ca_box($mp) . 'Provided</div>'
+    .     '<div class="i2">' . ca_box($m('breakfast')) . 'Breakfast</div>'
+    .     '<div class="i2">' . ca_box($m('am_snack'))  . 'AM Snack</div>'
+    .     '<div class="i2">' . ca_box($m('lunch'))     . 'Lunch</div>'
+    .     '<div class="i2">' . ca_box($m('pm_snack'))  . 'PM Snack</div>'
+    .     '<div class="i2">' . ca_box($m('dinner'))    . 'Dinner</div>'
+    .     '<div class="i1">' . ca_box(!$mp) . 'Not Provided</div>'
+    .   '</div>'
+    . '</div>'
+    . '<div class="w-sn b">' . ca_h($sig_name) . '</div><div class="w-st i">' . ca_h($sig_title) . '</div>';
+  }
+
   return
     '<div class="ca-title">CERTIFICATE OF APPEARANCE</div>'
   . '<p class="b">TO WHOM IT MAY CONCERN:</p>'
@@ -447,6 +484,7 @@ function ca_preview_page($rows, $tpl_key = null, $size = null) {
   $G = ca_layout($tpl, $size);
   $pw = $G['w']; $ph = $G['h']; $left = $G['left']; $top = $G['top']; $u = $G['u']; $t = $G['t'];
   $colw = $G['colw'] * $t; $c1 = $G['c1'] * $t;
+  $word = !empty($tpl['word']);
 
   header('Content-Type: text/html; charset=utf-8');
   header('X-Frame-Options: SAMEORIGIN');
@@ -463,9 +501,10 @@ function ca_preview_page($rows, $tpl_key = null, $size = null) {
           box-shadow: 0 2px 10px rgba(0,0,0,.45); page-break-after: always; break-after: page; }
   .page:last-child { page-break-after: auto; break-after: auto; }
   .bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-  .body { position: absolute; left: <?= $left ?>pt; top: <?= $top ?>pt; width: <?= $G['bw'] ?>pt; font-size: <?= 11 * $u ?>pt; line-height: <?= 12.65 * $u ?>pt; }
+  .body { position: absolute; left: <?= $left ?>pt; top: <?= $top ?>pt; width: <?= $G['bw'] ?>pt; font-size: <?= ($word ? 12 : 11) * $u ?>pt; line-height: <?= ($word ? 14.06 : 12.65) * $u ?>pt; }
   .body p { margin: 0; }
   .b, .body b { font-weight: bold; }
+  .i { font-style: italic; }
   .j { text-align: justify; }
   .sp { margin-top: <?= 12.65 * $u ?>pt !important; }                 /* one blank line */
   .ca-title { text-align: center; font-weight: bold; font-size: <?= 12 * $u ?>pt; line-height: <?= 13.8 * $u ?>pt; margin-bottom: <?= 5.9 * $u ?>pt; }
@@ -481,12 +520,38 @@ function ca_preview_page($rows, $tpl_key = null, $size = null) {
   .sig { margin-top: <?= 12.65 * $u ?>pt; }
   .sig-n { padding-left: <?= $colw + 25.75 * $t ?>pt; font-weight: bold; }
   .sig-t { padding-left: <?= $colw ?>pt; font-style: italic; }
+  <?php if ($word): /* layout copied from CA_TEMPLATE_CO_READY.docx (measured in pt, scaled by $u). Horizontal positions are % of the text width so the long-text shrink below keeps them in place. */ ?>
+    .body .ca-title { font-size: <?= 20 * $u ?>pt; line-height: <?= 23.44 * $u ?>pt; margin: 0; }
+    .body .w-twc  { margin-top: <?= 21.91 * $u ?>pt; }
+    .body .w-cert { margin-top: <?= 21.44 * $u ?>pt; }
+    .w-np   { display: flex; margin-top: <?= 20.84 * $u ?>pt; padding-bottom: <?= 21.45 * $u ?>pt; line-height: <?= 15.45 * $u ?>pt; }
+    .w-n1   { width: 50.84%; margin-left: 6.286%; margin-right: 4.556%; }
+    .w-n2   { width: 38.31%; }
+    .w-ln   { min-height: <?= 21.45 * $u ?>pt; display: flex; align-items: flex-end; justify-content: center; text-align: center; padding-bottom: <?= 6 * $u ?>pt; border-bottom: .5pt solid #000; }
+    .w-cap  { text-align: center; padding-bottom: <?= 6 * $u ?>pt; }
+    .body .w-who { margin-top: <?= -0.55 * $u ?>pt; padding-right: <?= 4.3 * $u ?>pt; line-height: <?= 15.45 * $u ?>pt; }
+    .body .w-f   { margin-top: <?= 26.04 * $u ?>pt; }
+    .body .w-f1  { margin-top: <?= 22.15 * $u ?>pt; }
+    .body .w-f .u { text-decoration: underline; }
+    .w-cols { display: flex; margin-top: <?= 20.74 * $u ?>pt; line-height: <?= 14.85 * $u ?>pt; }
+    .w-col  { flex: none; padding-left: <?= 5.4 * $t ?>pt; }
+    .w-c1   { width: 46%; margin-left: 7.927%; }
+    .w-c2   { width: 45.8%; }
+    .w-h    { line-height: <?= 15.45 * $u ?>pt; margin-bottom: <?= 6 * $u ?>pt; }
+    .w-col .i1 { padding-left: <?= 18 * $t ?>pt; }
+    .w-col .i2 { padding-left: <?= 36 * $t ?>pt; }
+    .w-col .cb { margin-right: .72em; }                                   /* box at +18 pt, text at +36 pt, like the Word list */
+    .w-sn { margin-top: <?= 22.1 * $u ?>pt; margin-left: 55.88%; width: 44.12%; text-align: center; }
+    .w-st { margin-left: 43.24%; width: 67.85%; text-align: center; }
+  <?php endif; ?>
   @media print {
     body { background: #fff; }
     .note { display: none; }
     .page { margin: 0; box-shadow: none; }
   }
-</style></head><body>
+</style>
+</head>
+<body>
 <?php if (!$has_lh): ?><div class="note">The letterhead picture for this template/size is not installed, so it is not shown here (and will not print). See public/templates/ca_letterhead_<?= ca_h($tpl_key) ?>_<?= ca_h($size) ?>.png</div><?php endif; ?>
 <?php foreach ($rows as $row): ?>
 <div class="page">
@@ -518,7 +583,8 @@ function ca_preview_page($rows, $tpl_key = null, $size = null) {
   window.addEventListener('beforeprint', fit);
 })();
 </script>
-</body></html>
+</body>
+</html>
 <?php
   exit();
 }
@@ -1024,1444 +1090,1444 @@ function ca_form_fields($p, $positions, $bulk = false) { global $CA_TEMPLATES; o
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Certificate of Appearance</title>
-  <?php include '../includes/header.php'; ?>
-  <style>
-    :root {
-      --h-bg:       #eef7f2;
-      --h-card:     #ffffff;
-      --h-card-alt: #f0faf5;
-      --h-surface3: #e2f3ea;
-      --h-border:   rgba(42,152,99,0.18);
-      --h-text:     #0f2d1e;
-      --h-muted:    #4a7a5e;
-      --h-primary:  #2a9863;
-      --h-primary-dim: rgba(42,152,99,.10);
-      --h-accent:   #24e78f;
-      --h-success:  #2a9863;
-      --h-warning:  #e67700;
-      --h-danger:   #c92a2a;
-      --h-blue:     #2a9863;
-      --h-shadow:   0 4px 24px rgba(42,152,99,.12);
-      --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
-    }
-    body.dark-mode {
-      --h-bg:       #0b1f17;
-      --h-card:     #102f22;
-      --h-card-alt: #0e2619;
-      --h-surface3: #16352a;
-      --h-border:   rgba(36,231,143,0.12);
-      --h-text:     #d4f5e5;
-      --h-muted:    #6aad8a;
-      --h-primary:  #24e78f;
-      --h-primary-dim: rgba(36,231,143,.12);
-      --h-accent:   #2a9863;
-      --h-success:  #24e78f;
-      --h-warning:  #ffd43b;
-      --h-danger:   #ff6b6b;
-      --h-blue:     #24e78f;
-      --h-shadow:   0 4px 24px rgba(0,0,0,.35);
-      --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
-    }
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Certificate of Appearance</title>
+    <?php include '../includes/header.php'; ?>
+    <style>
+      :root {
+        --h-bg:       #eef7f2;
+        --h-card:     #ffffff;
+        --h-card-alt: #f0faf5;
+        --h-surface3: #e2f3ea;
+        --h-border:   rgba(42,152,99,0.18);
+        --h-text:     #0f2d1e;
+        --h-muted:    #4a7a5e;
+        --h-primary:  #2a9863;
+        --h-primary-dim: rgba(42,152,99,.10);
+        --h-accent:   #24e78f;
+        --h-success:  #2a9863;
+        --h-warning:  #e67700;
+        --h-danger:   #c92a2a;
+        --h-blue:     #2a9863;
+        --h-shadow:   0 4px 24px rgba(42,152,99,.12);
+        --h-shadow-sm:0 2px 8px rgba(42,152,99,.07);
+      }
+      body.dark-mode {
+        --h-bg:       #0b1f17;
+        --h-card:     #102f22;
+        --h-card-alt: #0e2619;
+        --h-surface3: #16352a;
+        --h-border:   rgba(36,231,143,0.12);
+        --h-text:     #d4f5e5;
+        --h-muted:    #6aad8a;
+        --h-primary:  #24e78f;
+        --h-primary-dim: rgba(36,231,143,.12);
+        --h-accent:   #2a9863;
+        --h-success:  #24e78f;
+        --h-warning:  #ffd43b;
+        --h-danger:   #ff6b6b;
+        --h-blue:     #24e78f;
+        --h-shadow:   0 4px 24px rgba(0,0,0,.35);
+        --h-shadow-sm:0 2px 8px rgba(0,0,0,.25);
+      }
 
-    .content-wrapper { background: var(--h-bg) !important; }
+      .content-wrapper { background: var(--h-bg) !important; }
 
-    /* CRITICAL Z-INDEX FIX FOR MODAL OVERLAP */
-    .main-header.navbar, .main-header, nav.main-header, header.main-header {
-        z-index: 1000 !important;
-    }
+      /* CRITICAL Z-INDEX FIX FOR MODAL OVERLAP */
+      .main-header.navbar, .main-header, nav.main-header, header.main-header {
+          z-index: 1000 !important;
+      }
 
-    .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
+      .content { padding:0 20px; margin-top:-38px; position:relative; z-index:3; }
+      
+      .main-sidebar, aside.main-sidebar {
+          z-index: 999 !important;
+      }
+      .modal-backdrop {
+          z-index: 1040 !important;
+      }
+      .modal {
+          z-index: 1050 !important;
+      }
+      .modal-dialog {
+          z-index: 1051 !important;
+      }
+      .modal-content {
+          z-index: 1052 !important;
+      }
+      .select2-container, .select2-dropdown {
+          z-index: 1055 !important;
+      }
     
-    .main-sidebar, aside.main-sidebar {
-        z-index: 999 !important;
-    }
-    .modal-backdrop {
-        z-index: 1040 !important;
-    }
-    .modal {
-        z-index: 1050 !important;
-    }
-    .modal-dialog {
-        z-index: 1051 !important;
-    }
-    .modal-content {
-        z-index: 1052 !important;
-    }
-    .select2-container, .select2-dropdown {
-        z-index: 1055 !important;
-    }
-  
-        .pg-hero-breadcrumb {
-            background:transparent; padding:0; margin:0;
-            display:flex; flex-wrap:wrap; gap:2px;
-        }
-        .pg-hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color:rgba(212,245,229,.45); }
-        .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
-        .pg-hero-bc-link:hover { color:#24e78f; }
-        .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
+          .pg-hero-breadcrumb {
+              background:transparent; padding:0; margin:0;
+              display:flex; flex-wrap:wrap; gap:2px;
+          }
+          .pg-hero-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color:rgba(212,245,229,.45); }
+          .pg-hero-bc-link   { color:rgba(212,245,229,.65); text-decoration:none; font-size:.8rem; }
+          .pg-hero-bc-link:hover { color:#24e78f; }
+          .pg-hero-bc-active { color:rgba(212,245,229,.9); font-size:.8rem; }
 
-        /* ══ HERO — login-style animated mesh + orbs + rings ══ */
-        @keyframes pgHeroMeshDrift {
-            0%   { transform:translate(0,0)   rotate(0deg); }
-            100% { transform:translate(3%,2%) rotate(2deg); }
-        }
-        @keyframes pgHeroOrbFloat {
-            0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
-            33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
-            66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
-        }
-        @keyframes pgHeroRingPulse {
-            0%,100% { opacity:.45; transform:scale(1);    }
-            50%      { opacity:.85; transform:scale(1.04); }
-        }
-        .pg-hero {
-            background:#0b1f17;
-            padding:36px 28px 66px; position:relative; overflow:hidden;
-        }
-        .pg-hero-mesh {
-            position:absolute; inset:-50%; width:200%; height:200%;
-            background:
-                radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
-                radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
-                radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
-                linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
-            animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
-            z-index:0;
-        }
-        .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-        .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
-        .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
-        .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
-        .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
-        .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
-        .pg-hero-dots {
-            position:absolute; inset:0; z-index:0; pointer-events:none;
-            background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
-            background-size:36px 36px;
-        }
-        .pg-hero-hex {
-            position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
-            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
-            background-size:56px 100px;
-        }
-        .pg-hero-rings {
-            position:absolute; top:50%; right:6%;
-            transform:translateY(-50%);
-            width:240px; height:240px; pointer-events:none; z-index:0;
-        }
-        .pg-ring {
-            position:absolute; inset:0; border-radius:50%;
-            border:1px solid rgba(36,231,143,.10);
-            animation:pgHeroRingPulse 4s ease-in-out infinite;
-        }
-        .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
-        .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
-        .pg-hero-arc {
-            position:absolute; top:-50px; right:-50px;
-            width:200px; height:200px; border-radius:50%;
-            background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
-            pointer-events:none; z-index:0;
-        }
-        .pg-hero::after {
-            content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
-            background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
-        }
-        body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
-        .pg-hero-inner { position:relative; z-index:2; }
-        .pg-hero-title {
-            color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
-            letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
-            display:flex; align-items:center; gap:10px;
-        }
-        .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
-        .pg-hero-divider {
-            width:48px; height:2px; border-radius:2px; margin:0 0 12px;
-            background:linear-gradient(90deg,transparent,#24e78f,transparent);
-        }
-        .pg-hero-actions {
-            position:relative; z-index:2;
-            display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
-        }
-        .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
-        .pg-hero-btn {
-            background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
-            border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
-            border-radius:10px; padding:8px 16px;
-            font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
-            display:inline-flex; align-items:center; gap:7px;
-            transition:background .2s, transform .18s, box-shadow .2s;
-        }
-        .pg-hero-btn:hover {
-            background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
-            transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
-            color:#d4f5e5; text-decoration:none;
-        }
-        .pg-hero-layout {
-            display:flex; align-items:flex-start; justify-content:space-between;
-            flex-wrap:wrap; gap:14px; position:relative; z-index:2;
-        }
-        .mh-logo-watermark {
-            position:absolute; top:50%; right:3%;
-            transform:translateY(-50%);
-            width:180px; height:auto; pointer-events:none; z-index:0;
-            opacity:0.50;
-        }
+          /* ══ HERO — login-style animated mesh + orbs + rings ══ */
+          @keyframes pgHeroMeshDrift {
+              0%   { transform:translate(0,0)   rotate(0deg); }
+              100% { transform:translate(3%,2%) rotate(2deg); }
+          }
+          @keyframes pgHeroOrbFloat {
+              0%,100% { opacity:.4; transform:translate(0,0)       scale(1);    }
+              33%      { opacity:.7; transform:translate(18px,-26px) scale(1.05); }
+              66%      { opacity:.5; transform:translate(-12px,16px) scale(.95);  }
+          }
+          @keyframes pgHeroRingPulse {
+              0%,100% { opacity:.45; transform:scale(1);    }
+              50%      { opacity:.85; transform:scale(1.04); }
+          }
+          .pg-hero {
+              background:#0b1f17;
+              padding:36px 28px 66px; position:relative; overflow:hidden;
+          }
+          .pg-hero-mesh {
+              position:absolute; inset:-50%; width:200%; height:200%;
+              background:
+                  radial-gradient(ellipse 60% 55% at 18% 28%, rgba(36,231,143,.16) 0%, transparent 58%),
+                  radial-gradient(ellipse 55% 60% at 82% 72%, rgba(42,152,99,.13) 0%, transparent 58%),
+                  radial-gradient(ellipse 40% 38% at 52%  8%, rgba(212,175,55,.07) 0%, transparent 50%),
+                  linear-gradient(160deg,#0f2d1e 0%,#071510 55%,#1c4d38 100%);
+              animation:pgHeroMeshDrift 22s ease-in-out infinite alternate;
+              z-index:0;
+          }
+          .pg-hero-orbs { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+          .pg-orb { position:absolute; border-radius:50%; filter:blur(60px); animation:pgHeroOrbFloat 18s ease-in-out infinite; }
+          .pg-orb-1 { width:280px; height:280px; background:rgba(36,231,143,.11); top:-80px;    left:-60px;  animation-duration:21s; }
+          .pg-orb-2 { width:220px; height:220px; background:rgba(42,152,99,.10);  bottom:-50px; right:-40px; animation-delay:-7s; animation-duration:17s; }
+          .pg-orb-3 { width:160px; height:160px; background:rgba(212,175,55,.06); top:40%;      right:20%;   animation-delay:-13s; animation-duration:24s; }
+          .pg-orb-4 { width:120px; height:120px; background:rgba(36,231,143,.07); bottom:15%;   left:15%;    animation-delay:-4s;  animation-duration:15s; }
+          .pg-hero-dots {
+              position:absolute; inset:0; z-index:0; pointer-events:none;
+              background-image:radial-gradient(circle, rgba(36,231,143,.06) 1px, transparent 1px);
+              background-size:36px 36px;
+          }
+          .pg-hero-hex {
+              position:absolute; inset:0; pointer-events:none; opacity:.045; z-index:0;
+              background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3Cpath d='M28 100L0 84V50l28-16 28 16v34z' fill='none' stroke='%2324e78f' stroke-width='1'/%3E%3C/svg%3E");
+              background-size:56px 100px;
+          }
+          .pg-hero-rings {
+              position:absolute; top:50%; right:6%;
+              transform:translateY(-50%);
+              width:240px; height:240px; pointer-events:none; z-index:0;
+          }
+          .pg-ring {
+              position:absolute; inset:0; border-radius:50%;
+              border:1px solid rgba(36,231,143,.10);
+              animation:pgHeroRingPulse 4s ease-in-out infinite;
+          }
+          .pg-ring:nth-child(2) { inset:28px; animation-delay:.8s;  opacity:.7; }
+          .pg-ring:nth-child(3) { inset:56px; animation-delay:1.6s; opacity:.5; }
+          .pg-hero-arc {
+              position:absolute; top:-50px; right:-50px;
+              width:200px; height:200px; border-radius:50%;
+              background:radial-gradient(circle,rgba(36,231,143,.18) 0%,transparent 70%);
+              pointer-events:none; z-index:0;
+          }
+          .pg-hero::after {
+              content:''; position:absolute; bottom:-32px; left:0; right:0; height:64px;
+              background:var(--body-bg, #eef7f2); clip-path:ellipse(58% 100% at 50% 100%); z-index:1;
+          }
+          body.dark-mode .pg-hero::after { background:var(--body-bg, #0b1f17); }
+          .pg-hero-inner { position:relative; z-index:2; }
+          .pg-hero-title {
+              color:#fff; font-size:1.75rem; font-weight:800; margin:0 0 6px;
+              letter-spacing:-.3px; text-shadow:0 2px 14px rgba(0,0,0,.45);
+              display:flex; align-items:center; gap:10px;
+          }
+          .pg-hero-sub  { color:rgba(212,245,229,.75); margin:0 0 14px; font-size:.9rem; }
+          .pg-hero-divider {
+              width:48px; height:2px; border-radius:2px; margin:0 0 12px;
+              background:linear-gradient(90deg,transparent,#24e78f,transparent);
+          }
+          .pg-hero-actions {
+              position:relative; z-index:2;
+              display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-top:4px;
+          }
+          .pg-hero-date { color:rgba(212,245,229,.65); font-size:.82rem; align-self:center; }
+          .pg-hero-btn {
+              background:rgba(36,231,143,.1); backdrop-filter:blur(8px);
+              border:1px solid rgba(36,231,143,.3); color:#d4f5e5;
+              border-radius:10px; padding:8px 16px;
+              font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none;
+              display:inline-flex; align-items:center; gap:7px;
+              transition:background .2s, transform .18s, box-shadow .2s;
+          }
+          .pg-hero-btn:hover {
+              background:rgba(36,231,143,.22); border-color:rgba(36,231,143,.55);
+              transform:translateY(-2px); box-shadow:0 4px 16px rgba(36,231,143,.2);
+              color:#d4f5e5; text-decoration:none;
+          }
+          .pg-hero-layout {
+              display:flex; align-items:flex-start; justify-content:space-between;
+              flex-wrap:wrap; gap:14px; position:relative; z-index:2;
+          }
+          .mh-logo-watermark {
+              position:absolute; top:50%; right:3%;
+              transform:translateY(-50%);
+              width:180px; height:auto; pointer-events:none; z-index:0;
+              opacity:0.50;
+          }
 
-        /* ── Card (mirrors the Scrum > Projects "card" look) ── */
-        .card {
-            background: var(--h-card) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 12px !important;
-            box-shadow: var(--h-shadow-sm) !important;
-        }
-        .card-header {
-            background: var(--h-card) !important;
-            border-bottom: 1px solid var(--h-border) !important;
-            padding: 14px 20px !important;
-        }
-        .card-title {
-            font-weight: 700 !important;
-            font-size: .9rem !important;
-            color: var(--h-text) !important;
-            letter-spacing: -.2px;
-        }
-        .card-body { background: var(--h-card) !important; padding: 18px !important; }
-        .card-tools .btn-primary {
-            background: var(--h-primary) !important;
-            border: none !important;
-            border-radius: 8px !important;
-            font-weight: 700 !important;
-            font-size: .8rem !important;
-            box-shadow: 0 2px 12px var(--h-primary-dim) !important;
-        }
-        .card-tools .btn-primary:hover { filter: brightness(1.1) !important; }
+          /* ── Card (mirrors the Scrum > Projects "card" look) ── */
+          .card {
+              background: var(--h-card) !important;
+              border: 1px solid var(--h-border) !important;
+              border-radius: 12px !important;
+              box-shadow: var(--h-shadow-sm) !important;
+          }
+          .card-header {
+              background: var(--h-card) !important;
+              border-bottom: 1px solid var(--h-border) !important;
+              padding: 14px 20px !important;
+          }
+          .card-title {
+              font-weight: 700 !important;
+              font-size: .9rem !important;
+              color: var(--h-text) !important;
+              letter-spacing: -.2px;
+          }
+          .card-body { background: var(--h-card) !important; padding: 18px !important; }
+          .card-tools .btn-primary {
+              background: var(--h-primary) !important;
+              border: none !important;
+              border-radius: 8px !important;
+              font-weight: 700 !important;
+              font-size: .8rem !important;
+              box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+          }
+          .card-tools .btn-primary:hover { filter: brightness(1.1) !important; }
 
-        /* ── Table ── */
-        #caTable.table { color: var(--h-text) !important; }
-        #caTable.table thead th {
-            background: var(--h-card-alt) !important;
-            border: none !important;
-            border-bottom: 1px solid var(--h-border) !important;
-            color: var(--h-muted) !important;
-            font-size: .68rem !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: .6px !important;
-            padding: 10px 14px !important;
-        }
-        #caTable.table tbody tr { transition: background .12s; }
-        #caTable.table tbody tr:hover { background: var(--h-card-alt) !important; }
-        #caTable.table tbody td {
-            border-top: 1px solid var(--h-border) !important;
-            border-left: none !important;
-            border-right: none !important;
-            padding: 12px 14px !important;
-            vertical-align: middle !important;
-            font-size: .85rem !important;
-            color: var(--h-text) !important;
-        }
-        #caTable.table-bordered { border: none !important; }
+          /* ── Table ── */
+          #caTable.table { color: var(--h-text) !important; }
+          #caTable.table thead th {
+              background: var(--h-card-alt) !important;
+              border: none !important;
+              border-bottom: 1px solid var(--h-border) !important;
+              color: var(--h-muted) !important;
+              font-size: .68rem !important;
+              font-weight: 700 !important;
+              text-transform: uppercase !important;
+              letter-spacing: .6px !important;
+              padding: 10px 14px !important;
+          }
+          #caTable.table tbody tr { transition: background .12s; }
+          #caTable.table tbody tr:hover { background: var(--h-card-alt) !important; }
+          #caTable.table tbody td {
+              border-top: 1px solid var(--h-border) !important;
+              border-left: none !important;
+              border-right: none !important;
+              padding: 12px 14px !important;
+              vertical-align: middle !important;
+              font-size: .85rem !important;
+              color: var(--h-text) !important;
+          }
+          #caTable.table-bordered { border: none !important; }
 
-        /* Status badges */
-        .badge-secondary { background: var(--h-surface3) !important; color: var(--h-muted) !important; border-radius: 5px !important; }
-        .badge-warning   { background: rgba(230,119,0,.15) !important; color: var(--h-warning) !important; border-radius: 5px !important; }
-        .badge-info      { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border-radius: 5px !important; }
-        .badge-primary   { background: rgba(167,139,250,.15) !important; color: #7c5cd6 !important; border-radius: 5px !important; }
-        .badge-success   { background: rgba(42,152,99,.15) !important; color: var(--h-success) !important; border-radius: 5px !important; }
-        .badge-danger    { background: rgba(201,34,46,.15) !important; color: var(--h-danger) !important; border-radius: 5px !important; }
+          /* Status badges */
+          .badge-secondary { background: var(--h-surface3) !important; color: var(--h-muted) !important; border-radius: 5px !important; }
+          .badge-warning   { background: rgba(230,119,0,.15) !important; color: var(--h-warning) !important; border-radius: 5px !important; }
+          .badge-info      { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border-radius: 5px !important; }
+          .badge-primary   { background: rgba(167,139,250,.15) !important; color: #7c5cd6 !important; border-radius: 5px !important; }
+          .badge-success   { background: rgba(42,152,99,.15) !important; color: var(--h-success) !important; border-radius: 5px !important; }
+          .badge-danger    { background: rgba(201,34,46,.15) !important; color: var(--h-danger) !important; border-radius: 5px !important; }
 
-        /* Row action buttons */
-        #caTable .btn-sm.btn-info    { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
-        #caTable .btn-sm.btn-warning { background: rgba(230,119,0,.12) !important; color: var(--h-warning) !important; border: 1px solid rgba(230,119,0,.25) !important; border-radius: 7px !important; }
-        #caTable .btn-sm.btn-danger  { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.25) !important; border-radius: 7px !important; }
-        #caTable .btn-sm:hover { filter: brightness(1.15); transform: translateY(-1px); }
+          /* Row action buttons */
+          #caTable .btn-sm.btn-info    { background: rgba(42,152,99,.12) !important; color: var(--h-blue) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
+          #caTable .btn-sm.btn-warning { background: rgba(230,119,0,.12) !important; color: var(--h-warning) !important; border: 1px solid rgba(230,119,0,.25) !important; border-radius: 7px !important; }
+          #caTable .btn-sm.btn-danger  { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.25) !important; border-radius: 7px !important; }
+          #caTable .btn-sm:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
-        /* ── Scrum-style modal (mirrors the "Create New Project" modal in
-           Scrum > Projects) — applied to Add/Edit/View Applicant ── */
-        .scrum-style-modal .modal-content {
-            background: var(--h-card) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 14px !important;
-            box-shadow: 0 24px 80px rgba(0,0,0,.25) !important;
-            color: var(--h-text) !important;
-        }
-        .scrum-style-modal .modal-header {
-            background: var(--h-card-alt) !important;
-            border-bottom: 1px solid var(--h-border) !important;
-            border-radius: 14px 14px 0 0 !important;
-            padding: 16px 20px !important;
-        }
-        .scrum-style-modal .modal-title {
-            font-weight: 700 !important;
-            font-size: .95rem !important;
-            color: var(--h-text) !important;
-        }
-        .scrum-style-modal .modal-title i { color: var(--h-primary) !important; margin-right: 8px; }
-        .scrum-style-modal .modal-header .close {
-            color: var(--h-muted) !important;
-            text-shadow: none !important;
-            opacity: 1 !important;
-        }
-        .scrum-style-modal .modal-header .close:hover { opacity: .7 !important; }
-        .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
-        .scrum-style-modal .modal-footer {
-            border-top: 1px solid var(--h-border) !important;
-            padding: 14px 20px !important;
-            background: var(--h-card-alt) !important;
-            border-radius: 0 0 14px 14px !important;
-        }
-        .scrum-style-modal label {
-            color: var(--h-muted) !important;
-            font-size: .72rem !important;
-            font-weight: 600 !important;
-            text-transform: uppercase !important;
-            letter-spacing: .5px !important;
-            margin-bottom: 5px !important;
-        }
-        .scrum-style-modal label .text-danger { text-transform: none !important; }
-        .scrum-style-modal .form-control,
-        .scrum-style-modal .form-control:focus {
-            background: var(--h-card-alt) !important;
-            border: 1.5px solid var(--h-border) !important;
-            color: var(--h-text) !important;
-            border-radius: 8px !important;
-            font-size: .875rem !important;
-        }
-        .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
-        .scrum-style-modal .form-control:focus {
-            border-color: var(--h-primary) !important;
-            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
-        }
-        .scrum-style-modal select.form-control option { background: var(--h-card) !important; color: var(--h-text) !important; }
-        .scrum-style-modal hr { border-color: var(--h-border) !important; }
-        .scrum-style-modal h6 {
-            color: var(--h-muted) !important;
-            font-size: .72rem !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: .5px !important;
-        }
-        .scrum-style-modal .form-text.text-muted { color: var(--h-muted) !important; }
-        .scrum-style-modal .info-box {
-            background: var(--h-card-alt) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 8px !important;
-            padding: 10px 14px !important;
-            font-size: .8rem !important;
-            color: var(--h-text) !important;
-        }
+          /* ── Scrum-style modal (mirrors the "Create New Project" modal in
+            Scrum > Projects) — applied to Add/Edit/View Applicant ── */
+          .scrum-style-modal .modal-content {
+              background: var(--h-card) !important;
+              border: 1px solid var(--h-border) !important;
+              border-radius: 14px !important;
+              box-shadow: 0 24px 80px rgba(0,0,0,.25) !important;
+              color: var(--h-text) !important;
+          }
+          .scrum-style-modal .modal-header {
+              background: var(--h-card-alt) !important;
+              border-bottom: 1px solid var(--h-border) !important;
+              border-radius: 14px 14px 0 0 !important;
+              padding: 16px 20px !important;
+          }
+          .scrum-style-modal .modal-title {
+              font-weight: 700 !important;
+              font-size: .95rem !important;
+              color: var(--h-text) !important;
+          }
+          .scrum-style-modal .modal-title i { color: var(--h-primary) !important; margin-right: 8px; }
+          .scrum-style-modal .modal-header .close {
+              color: var(--h-muted) !important;
+              text-shadow: none !important;
+              opacity: 1 !important;
+          }
+          .scrum-style-modal .modal-header .close:hover { opacity: .7 !important; }
+          .scrum-style-modal .modal-body { padding: 20px !important; background: var(--h-card) !important; }
+          .scrum-style-modal .modal-footer {
+              border-top: 1px solid var(--h-border) !important;
+              padding: 14px 20px !important;
+              background: var(--h-card-alt) !important;
+              border-radius: 0 0 14px 14px !important;
+          }
+          .scrum-style-modal label {
+              color: var(--h-muted) !important;
+              font-size: .72rem !important;
+              font-weight: 600 !important;
+              text-transform: uppercase !important;
+              letter-spacing: .5px !important;
+              margin-bottom: 5px !important;
+          }
+          .scrum-style-modal label .text-danger { text-transform: none !important; }
+          .scrum-style-modal .form-control,
+          .scrum-style-modal .form-control:focus {
+              background: var(--h-card-alt) !important;
+              border: 1.5px solid var(--h-border) !important;
+              color: var(--h-text) !important;
+              border-radius: 8px !important;
+              font-size: .875rem !important;
+          }
+          .scrum-style-modal .form-control::placeholder { color: var(--h-muted) !important; }
+          .scrum-style-modal .form-control:focus {
+              border-color: var(--h-primary) !important;
+              box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+          }
+          .scrum-style-modal select.form-control option { background: var(--h-card) !important; color: var(--h-text) !important; }
+          .scrum-style-modal hr { border-color: var(--h-border) !important; }
+          .scrum-style-modal h6 {
+              color: var(--h-muted) !important;
+              font-size: .72rem !important;
+              font-weight: 700 !important;
+              text-transform: uppercase !important;
+              letter-spacing: .5px !important;
+          }
+          .scrum-style-modal .form-text.text-muted { color: var(--h-muted) !important; }
+          .scrum-style-modal .info-box {
+              background: var(--h-card-alt) !important;
+              border: 1px solid var(--h-border) !important;
+              border-radius: 8px !important;
+              padding: 10px 14px !important;
+              font-size: .8rem !important;
+              color: var(--h-text) !important;
+          }
 
-        /* Bootstrap custom-file input */
-        .scrum-style-modal .custom-file-label {
-            background: var(--h-card-alt) !important;
-            border: 1.5px solid var(--h-border) !important;
-            color: var(--h-text) !important;
-            border-radius: 8px !important;
-        }
-        .scrum-style-modal .custom-file-label::after {
-            background: var(--h-surface3) !important;
-            color: var(--h-muted) !important;
-            border-left: 1.5px solid var(--h-border) !important;
-            border-radius: 0 8px 8px 0 !important;
-        }
-        .scrum-style-modal .custom-file-input:focus ~ .custom-file-label {
-            border-color: var(--h-primary) !important;
-            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
-        }
+          /* Bootstrap custom-file input */
+          .scrum-style-modal .custom-file-label {
+              background: var(--h-card-alt) !important;
+              border: 1.5px solid var(--h-border) !important;
+              color: var(--h-text) !important;
+              border-radius: 8px !important;
+          }
+          .scrum-style-modal .custom-file-label::after {
+              background: var(--h-surface3) !important;
+              color: var(--h-muted) !important;
+              border-left: 1.5px solid var(--h-border) !important;
+              border-radius: 0 8px 8px 0 !important;
+          }
+          .scrum-style-modal .custom-file-input:focus ~ .custom-file-label {
+              border-color: var(--h-primary) !important;
+              box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+          }
 
-        /* Select2 (default theme) — Position Applied picker */
-        .scrum-style-modal .select2-container--default .select2-selection--multiple {
-            background: var(--h-card-alt) !important;
-            border: 1.5px solid var(--h-border) !important;
-            border-radius: 8px !important;
-            min-height: 38px !important;
-        }
-        .scrum-style-modal .select2-container--default .select2-selection--multiple .select2-selection__choice {
-            background: var(--h-primary-dim) !important;
-            border: 1px solid var(--h-primary) !important;
-            color: var(--h-text) !important;
-            border-radius: 5px !important;
-        }
-        .scrum-style-modal .select2-container--default .select2-selection__choice__remove { color: var(--h-muted) !important; }
-        .scrum-style-modal .select2-container--default .select2-selection__choice__remove:hover { color: var(--h-danger) !important; }
-        .scrum-style-modal .select2-container--default.select2-container--focus .select2-selection--multiple {
-            border-color: var(--h-primary) !important;
-            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
-        }
-        .scrum-style-modal .select2-dropdown {
-            background: var(--h-card-alt) !important;
-            border: 1px solid var(--h-border) !important;
-            color: var(--h-text) !important;
-            border-radius: 8px !important;
-            box-shadow: var(--h-shadow) !important;
-        }
-        .scrum-style-modal .select2-search--dropdown .select2-search__field {
-            background: var(--h-card) !important;
-            border: 1px solid var(--h-border) !important;
-            color: var(--h-text) !important;
-            border-radius: 6px !important;
-        }
-        .scrum-style-modal .select2-results__option { color: var(--h-text) !important; background: transparent !important; }
-        .scrum-style-modal .select2-results__option--highlighted[aria-selected] {
-            background: var(--h-primary) !important;
-            color: #fff !important;
-        }
+          /* Select2 (default theme) — Position Applied picker */
+          .scrum-style-modal .select2-container--default .select2-selection--multiple {
+              background: var(--h-card-alt) !important;
+              border: 1.5px solid var(--h-border) !important;
+              border-radius: 8px !important;
+              min-height: 38px !important;
+          }
+          .scrum-style-modal .select2-container--default .select2-selection--multiple .select2-selection__choice {
+              background: var(--h-primary-dim) !important;
+              border: 1px solid var(--h-primary) !important;
+              color: var(--h-text) !important;
+              border-radius: 5px !important;
+          }
+          .scrum-style-modal .select2-container--default .select2-selection__choice__remove { color: var(--h-muted) !important; }
+          .scrum-style-modal .select2-container--default .select2-selection__choice__remove:hover { color: var(--h-danger) !important; }
+          .scrum-style-modal .select2-container--default.select2-container--focus .select2-selection--multiple {
+              border-color: var(--h-primary) !important;
+              box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+          }
+          .scrum-style-modal .select2-dropdown {
+              background: var(--h-card-alt) !important;
+              border: 1px solid var(--h-border) !important;
+              color: var(--h-text) !important;
+              border-radius: 8px !important;
+              box-shadow: var(--h-shadow) !important;
+          }
+          .scrum-style-modal .select2-search--dropdown .select2-search__field {
+              background: var(--h-card) !important;
+              border: 1px solid var(--h-border) !important;
+              color: var(--h-text) !important;
+              border-radius: 6px !important;
+          }
+          .scrum-style-modal .select2-results__option { color: var(--h-text) !important; background: transparent !important; }
+          .scrum-style-modal .select2-results__option--highlighted[aria-selected] {
+              background: var(--h-primary) !important;
+              color: #fff !important;
+          }
 
-        /* Select2 (single) — Designation picker, themed to match the form inputs */
-        .scrum-style-modal .select2-container { width: 100% !important; }
-        .scrum-style-modal .select2-container--default .select2-selection--single {
-            background: var(--h-card-alt) !important;
-            border: 1.5px solid var(--h-border) !important;
-            border-radius: 8px !important;
-            height: 38px !important;
-            display: flex; align-items: center;
-        }
-        .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__rendered {
-            color: var(--h-text) !important;
-            font-size: .875rem !important;
-            line-height: 36px !important;
-            padding-left: 12px !important;
-            padding-right: 30px !important;
-        }
-        .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__placeholder { color: var(--h-muted) !important; }
-        .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; right: 6px !important; }
-        .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__arrow b { border-color: var(--h-primary) transparent transparent transparent !important; }
-        .scrum-style-modal .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b { border-color: transparent transparent var(--h-primary) transparent !important; }
-        .scrum-style-modal .select2-container--default.select2-container--focus .select2-selection--single,
-        .scrum-style-modal .select2-container--default.select2-container--open .select2-selection--single {
-            border-color: var(--h-primary) !important;
-            box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
-        }
-        .scrum-style-modal .select2-results__options { max-height: 220px; }
-        .scrum-style-modal .select2-results__option { padding: 8px 12px !important; font-size: .875rem; }
-        .scrum-style-modal .select2-results__option[aria-selected=true] {
-            background: var(--h-primary-dim) !important;
-            color: var(--h-primary) !important;
-            font-weight: 600;
-        }
-        .scrum-style-modal .select2-results__options::-webkit-scrollbar { width: 6px; }
-        .scrum-style-modal .select2-results__options::-webkit-scrollbar-thumb { background: var(--h-primary); border-radius: 6px; }
-        .scrum-style-modal .select2-results__options::-webkit-scrollbar-track { background: transparent; }
-        .scrum-style-modal .select2-search--dropdown { padding: 8px !important; }
+          /* Select2 (single) — Designation picker, themed to match the form inputs */
+          .scrum-style-modal .select2-container { width: 100% !important; }
+          .scrum-style-modal .select2-container--default .select2-selection--single {
+              background: var(--h-card-alt) !important;
+              border: 1.5px solid var(--h-border) !important;
+              border-radius: 8px !important;
+              height: 38px !important;
+              display: flex; align-items: center;
+          }
+          .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__rendered {
+              color: var(--h-text) !important;
+              font-size: .875rem !important;
+              line-height: 36px !important;
+              padding-left: 12px !important;
+              padding-right: 30px !important;
+          }
+          .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__placeholder { color: var(--h-muted) !important; }
+          .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; right: 6px !important; }
+          .scrum-style-modal .select2-container--default .select2-selection--single .select2-selection__arrow b { border-color: var(--h-primary) transparent transparent transparent !important; }
+          .scrum-style-modal .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b { border-color: transparent transparent var(--h-primary) transparent !important; }
+          .scrum-style-modal .select2-container--default.select2-container--focus .select2-selection--single,
+          .scrum-style-modal .select2-container--default.select2-container--open .select2-selection--single {
+              border-color: var(--h-primary) !important;
+              box-shadow: 0 0 0 3px var(--h-primary-dim) !important;
+          }
+          .scrum-style-modal .select2-results__options { max-height: 220px; }
+          .scrum-style-modal .select2-results__option { padding: 8px 12px !important; font-size: .875rem; }
+          .scrum-style-modal .select2-results__option[aria-selected=true] {
+              background: var(--h-primary-dim) !important;
+              color: var(--h-primary) !important;
+              font-weight: 600;
+          }
+          .scrum-style-modal .select2-results__options::-webkit-scrollbar { width: 6px; }
+          .scrum-style-modal .select2-results__options::-webkit-scrollbar-thumb { background: var(--h-primary); border-radius: 6px; }
+          .scrum-style-modal .select2-results__options::-webkit-scrollbar-track { background: transparent; }
+          .scrum-style-modal .select2-search--dropdown { padding: 8px !important; }
 
-        /* Buttons */
-        .scrum-style-modal .btn-secondary {
-            background: var(--h-card-alt) !important;
-            color: var(--h-muted) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 8px !important;
-            font-weight: 600 !important;
-        }
-        .scrum-style-modal .btn-primary,
-        .scrum-style-modal .btn-warning {
-            background: var(--h-primary) !important;
-            color: #fff !important;
-            border: none !important;
-            border-radius: 8px !important;
-            font-weight: 700 !important;
-            box-shadow: 0 2px 12px var(--h-primary-dim) !important;
-        }
-        .scrum-style-modal .btn-primary:hover,
-        .scrum-style-modal .btn-warning:hover { filter: brightness(1.1) !important; color: #fff !important; }
+          /* Buttons */
+          .scrum-style-modal .btn-secondary {
+              background: var(--h-card-alt) !important;
+              color: var(--h-muted) !important;
+              border: 1px solid var(--h-border) !important;
+              border-radius: 8px !important;
+              font-weight: 600 !important;
+          }
+          .scrum-style-modal .btn-primary,
+          .scrum-style-modal .btn-warning {
+              background: var(--h-primary) !important;
+              color: #fff !important;
+              border: none !important;
+              border-radius: 8px !important;
+              font-weight: 700 !important;
+              box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+          }
+          .scrum-style-modal .btn-primary:hover,
+          .scrum-style-modal .btn-warning:hover { filter: brightness(1.1) !important; color: #fff !important; }
 
-        /* View Applicant detail content */
-        .scrum-style-modal #viewApplicantContent p { color: var(--h-text) !important; }
-        .scrum-style-modal #viewApplicantContent strong { color: var(--h-muted) !important; font-weight: 700 !important; }
-        .scrum-style-modal #viewApplicantContent a { color: var(--h-primary) !important; }
-        .scrum-style-modal #viewApplicantContent hr { border-color: var(--h-border) !important; }
+          /* View Applicant detail content */
+          .scrum-style-modal #viewApplicantContent p { color: var(--h-text) !important; }
+          .scrum-style-modal #viewApplicantContent strong { color: var(--h-muted) !important; font-weight: 700 !important; }
+          .scrum-style-modal #viewApplicantContent a { color: var(--h-primary) !important; }
+          .scrum-style-modal #viewApplicantContent hr { border-color: var(--h-border) !important; }
 
-        /* Applicant Details tabs */
-        .applicant-detail-tabs {
-            border-bottom: 1px solid var(--h-border) !important;
-            margin: -20px -20px 18px !important;
-            padding: 0 20px !important;
-        }
-        .applicant-detail-tabs .nav-link {
-            border: none !important;
-            border-bottom: 2px solid transparent !important;
-            color: var(--h-muted) !important;
-            font-size: .82rem !important;
-            font-weight: 700 !important;
-            padding: 12px 14px !important;
-            border-radius: 0 !important;
-            transition: color .15s, border-color .15s;
-        }
-        .applicant-detail-tabs .nav-link:hover { color: var(--h-text) !important; }
-        .applicant-detail-tabs .nav-link.active {
-            color: var(--h-primary) !important;
-            background: transparent !important;
-            border-bottom-color: var(--h-primary) !important;
-        }
-        .applicant-detail-tab-content { padding-top: 2px; }
+          /* Applicant Details tabs */
+          .applicant-detail-tabs {
+              border-bottom: 1px solid var(--h-border) !important;
+              margin: -20px -20px 18px !important;
+              padding: 0 20px !important;
+          }
+          .applicant-detail-tabs .nav-link {
+              border: none !important;
+              border-bottom: 2px solid transparent !important;
+              color: var(--h-muted) !important;
+              font-size: .82rem !important;
+              font-weight: 700 !important;
+              padding: 12px 14px !important;
+              border-radius: 0 !important;
+              transition: color .15s, border-color .15s;
+          }
+          .applicant-detail-tabs .nav-link:hover { color: var(--h-text) !important; }
+          .applicant-detail-tabs .nav-link.active {
+              color: var(--h-primary) !important;
+              background: transparent !important;
+              border-bottom-color: var(--h-primary) !important;
+          }
+          .applicant-detail-tab-content { padding-top: 2px; }
 
-        /* Uploaded documents nav list */
-        .doc-nav-list { display: flex; flex-direction: column; gap: 8px; }
-        .doc-nav-item {
-            display: flex; align-items: center; gap: 12px;
-            background: var(--h-card-alt) !important;
-            border: 1px solid var(--h-border) !important;
-            border-radius: 10px !important;
-            padding: 10px 14px !important;
-            text-decoration: none !important;
-            transition: border-color .15s, transform .15s, box-shadow .15s;
-        }
-        .doc-nav-item:not(.doc-nav-item-empty):hover {
-            border-color: var(--h-primary) !important;
-            box-shadow: 0 0 0 1px var(--h-primary-dim) !important;
-            transform: translateY(-1px);
-        }
-        .doc-nav-item-empty { opacity: .6; cursor: default; }
-        .doc-nav-icon {
-            width: 34px; height: 34px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            background: var(--h-surface3) !important;
-            border-radius: 8px !important;
-            font-size: .95rem;
-        }
-        .doc-nav-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-        .doc-nav-label {
-            font-size: .68rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: .5px; color: var(--h-muted) !important;
-        }
-        .doc-nav-file {
-            font-size: .84rem; color: var(--h-text) !important; font-weight: 500;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .doc-nav-item-empty .doc-nav-file { color: var(--h-muted) !important; font-style: italic; }
-        .doc-nav-open {
-            color: var(--h-muted) !important;
-            font-size: .8rem; flex-shrink: 0;
-        }
-        .doc-nav-item:hover .doc-nav-open { color: var(--h-primary) !important; }
-  
-    /* ── Distinct badge colors: Provided = green, Not Provided = red; templates = blue / purple ── */
-    #caTable .badge { font-size: .7rem; font-weight: 700; padding: 5px 9px; border-radius: 6px !important; letter-spacing: .2px; }
-    .badge-ca-yes { background: rgba(42,152,99,.16) !important; color: #1f7a4d !important; border: 1px solid rgba(42,152,99,.35); }
-    .badge-ca-no  { background: rgba(201,42,42,.12) !important; color: #c92a2a !important; border: 1px solid rgba(201,42,42,.30); }
-    .badge-tpl-standard    { background: rgba(37,99,235,.12) !important; color: #1d4ed8 !important; border: 1px solid rgba(37,99,235,.30); }
-    .badge-tpl-imo_manager { background: rgba(124,58,237,.12) !important; color: #6d28d9 !important; border: 1px solid rgba(124,58,237,.30); }
-    .badge-tpl { white-space: normal; }
-    body.dark-mode .badge-ca-yes { color: #24e78f !important; background: rgba(36,231,143,.14) !important; border-color: rgba(36,231,143,.35); }
-    body.dark-mode .badge-ca-no  { color: #ff8787 !important; background: rgba(255,107,107,.14) !important; border-color: rgba(255,107,107,.35); }
-    body.dark-mode .badge-tpl-standard    { color: #7cb0ff !important; background: rgba(96,150,255,.15) !important; border-color: rgba(96,150,255,.35); }
-    body.dark-mode .badge-tpl-imo_manager { color: #c4a5ff !important; background: rgba(167,139,250,.15) !important; border-color: rgba(167,139,250,.35); }
+          /* Uploaded documents nav list */
+          .doc-nav-list { display: flex; flex-direction: column; gap: 8px; }
+          .doc-nav-item {
+              display: flex; align-items: center; gap: 12px;
+              background: var(--h-card-alt) !important;
+              border: 1px solid var(--h-border) !important;
+              border-radius: 10px !important;
+              padding: 10px 14px !important;
+              text-decoration: none !important;
+              transition: border-color .15s, transform .15s, box-shadow .15s;
+          }
+          .doc-nav-item:not(.doc-nav-item-empty):hover {
+              border-color: var(--h-primary) !important;
+              box-shadow: 0 0 0 1px var(--h-primary-dim) !important;
+              transform: translateY(-1px);
+          }
+          .doc-nav-item-empty { opacity: .6; cursor: default; }
+          .doc-nav-icon {
+              width: 34px; height: 34px; flex-shrink: 0;
+              display: flex; align-items: center; justify-content: center;
+              background: var(--h-surface3) !important;
+              border-radius: 8px !important;
+              font-size: .95rem;
+          }
+          .doc-nav-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+          .doc-nav-label {
+              font-size: .68rem; font-weight: 700; text-transform: uppercase;
+              letter-spacing: .5px; color: var(--h-muted) !important;
+          }
+          .doc-nav-file {
+              font-size: .84rem; color: var(--h-text) !important; font-weight: 500;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          }
+          .doc-nav-item-empty .doc-nav-file { color: var(--h-muted) !important; font-style: italic; }
+          .doc-nav-open {
+              color: var(--h-muted) !important;
+              font-size: .8rem; flex-shrink: 0;
+          }
+          .doc-nav-item:hover .doc-nav-open { color: var(--h-primary) !important; }
+    
+      /* ── Distinct badge colors: Provided = green, Not Provided = red; templates = blue / purple ── */
+      #caTable .badge { font-size: .7rem; font-weight: 700; padding: 5px 9px; border-radius: 6px !important; letter-spacing: .2px; }
+      .badge-ca-yes { background: rgba(42,152,99,.16) !important; color: #1f7a4d !important; border: 1px solid rgba(42,152,99,.35); }
+      .badge-ca-no  { background: rgba(201,42,42,.12) !important; color: #c92a2a !important; border: 1px solid rgba(201,42,42,.30); }
+      .badge-tpl-standard    { background: rgba(37,99,235,.12) !important; color: #1d4ed8 !important; border: 1px solid rgba(37,99,235,.30); }
+      .badge-tpl-imo_manager { background: rgba(124,58,237,.12) !important; color: #6d28d9 !important; border: 1px solid rgba(124,58,237,.30); }
+      .badge-tpl { white-space: normal; }
+      body.dark-mode .badge-ca-yes { color: #24e78f !important; background: rgba(36,231,143,.14) !important; border-color: rgba(36,231,143,.35); }
+      body.dark-mode .badge-ca-no  { color: #ff8787 !important; background: rgba(255,107,107,.14) !important; border-color: rgba(255,107,107,.35); }
+      body.dark-mode .badge-tpl-standard    { color: #7cb0ff !important; background: rgba(96,150,255,.15) !important; border-color: rgba(96,150,255,.35); }
+      body.dark-mode .badge-tpl-imo_manager { color: #c4a5ff !important; background: rgba(167,139,250,.15) !important; border-color: rgba(167,139,250,.35); }
 
-    /* ── Match Applicant Databank look: header buttons, row buttons, dropdowns, checkboxes ── */
-    .card-tools .btn { border-radius: 8px !important; font-weight: 700 !important; font-size: .8rem !important; }
-    .card-tools .btn-success,
-    .card-tools .btn-outline-success {
-        background: var(--h-primary-dim) !important;
-        color: var(--h-primary) !important;
-        border: 1px solid var(--h-primary) !important;
-        box-shadow: none !important;
-    }
-    .card-tools .btn-success:hover,
-    .card-tools .btn-outline-success:hover:not(:disabled) { background: var(--h-primary) !important; color: #fff !important; }
-    .card-tools .btn-outline-success:disabled { opacity: .5; cursor: not-allowed; }
-    .card-tools .btn-outline-danger {
-        background: rgba(201,34,46,.10) !important; color: var(--h-danger) !important;
-        border: 1px solid rgba(201,34,46,.40) !important; box-shadow: none !important;
-    }
-    .card-tools .btn-outline-danger:hover:not(:disabled) { background: var(--h-danger) !important; color: #fff !important; }
-    .card-tools .btn-outline-danger:disabled { opacity: .5; cursor: not-allowed; }
-    .dropdown-menu .dropdown-item.disabled { opacity: .45; pointer-events: none; }
-    .dropdown-menu .dropdown-item.text-danger:hover { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; }
-    #caTable .btn-sm.btn-success { background: rgba(42,152,99,.12) !important; color: var(--h-success) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
-    #caTable .btn-group { white-space: nowrap; }
-    #caTable .btn-group .btn-sm { margin-right: 0; }
-    #caTable td:last-child { white-space: nowrap; }
-    #caTable td:last-child > .btn { margin-left: 2px; }
-    #caTable input[type=checkbox], .ca-select { accent-color: var(--h-primary); width: 15px; height: 15px; cursor: pointer; }
-    #caTable thead th:first-child { width: 30px; text-align: center; }
-    #caTable tbody td:first-child { text-align: center; }
-    .dropdown-menu {
-        background: var(--h-card) !important;
-        border: 1px solid var(--h-border) !important;
-        border-radius: 10px !important;
-        box-shadow: var(--h-shadow) !important;
-        padding: 6px !important;
-        z-index: 1060 !important;
-    }
-    .dropdown-menu .dropdown-header {
-        color: var(--h-muted) !important;
-        font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
-    }
-    .dropdown-menu .dropdown-item {
-        color: var(--h-text) !important;
-        font-size: .84rem; border-radius: 7px; padding: 7px 12px;
-    }
-    .dropdown-menu .dropdown-item:hover,
-    .dropdown-menu .dropdown-item:focus { background: var(--h-primary-dim) !important; color: var(--h-primary) !important; }
-    .scrum-style-modal .btn-success {
-        background: var(--h-primary) !important; color: #fff !important; border: none !important;
-        border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important;
-    }
-    .scrum-style-modal .btn-success:hover { filter: brightness(1.1) !important; color: #fff !important; }
-    .scrum-style-modal .btn-outline-primary,
-    .scrum-style-modal .btn-outline-danger { border-radius: 8px !important; font-weight: 600 !important; background: transparent !important; }
-    .scrum-style-modal .btn-outline-primary { color: var(--h-primary) !important; border: 1px solid var(--h-primary) !important; }
-    .scrum-style-modal .btn-outline-primary:hover { background: var(--h-primary-dim) !important; }
-    .scrum-style-modal .btn-outline-danger { color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.4) !important; }
-    .scrum-style-modal .btn-outline-danger:hover:not(:disabled) { background: rgba(201,34,46,.12) !important; }
-    .scrum-style-modal .custom-control-label { color: var(--h-text) !important; font-size: .85rem !important; font-weight: 500 !important; }
-    .scrum-style-modal .custom-control-input:checked ~ .custom-control-label::before {
-        background-color: var(--h-primary) !important; border-color: var(--h-primary) !important;
-    }
-    .scrum-style-modal .custom-control-label::before { background: var(--h-card-alt); border: 1.5px solid var(--h-border); }
-    .scrum-style-modal .custom-control-input:focus ~ .custom-control-label::before { box-shadow: 0 0 0 3px var(--h-primary-dim) !important; }
-    .bulk-people .form-control { background: var(--h-card) !important; }
-    .scrum-style-modal #viewCaContent .ca-detail-row:last-child { border-bottom: none; }
-    .ca-meals { display:none; padding:10px 14px; border:1.5px dashed var(--h-border); border-radius:8px; margin-top:6px; }
-    .ca-check { margin-right:18px; }
-    .no-meal-detail .ca-meals { display:none !important; }
-    .ca-template-note { color: var(--h-muted) !important; }
-    .bulk-people { position:relative; border:1.5px solid var(--h-border); border-radius:8px; padding:12px; background: var(--h-card-alt); }
-    .bulk-row { margin-bottom:8px; }
-    /* Fixed grid so name / designation columns never resize when a designation is picked */
-    .bulk-row > .d-flex {
-        display:grid !important;
-        grid-template-columns: 30px minmax(0,1fr) minmax(0,1fr) 34px;
-        gap:8px; align-items:center;
-    }
-    .bulk-row > .d-flex > .flex-fill { padding-right:0 !important; min-width:0; width:100%; }
-    .bulk-row .bulk-name { width:100%; }
-    .bulk-row .select2-container { width:100% !important; min-width:0; }
-    .bulk-row .select2-container--default .select2-selection--single {
-        display:flex !important; align-items:center; position:relative; overflow:hidden;
-    }
-    .bulk-row .select2-container--default .select2-selection--single .select2-selection__rendered {
-        flex:1 1 auto; min-width:0; display:block !important;
-        white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-        padding-left:12px !important; padding-right:46px !important;
-    }
-    .bulk-row .select2-container--default .select2-selection--single .select2-selection__clear {
-        position:absolute; right:28px; top:0; height:36px; line-height:36px;
-        margin:0; padding:0; float:none; color:var(--h-muted);
-    }
-    .bulk-row .select2-container--default .select2-selection--single .select2-selection__clear:hover { color:var(--h-danger); }
-    .bulk-row .bulk-remove { width:34px; height:34px; padding:0; display:flex; align-items:center; justify-content:center; }
-    .bulk-people .select2-dropdown { min-width:260px; }
-    .bulk-people .select2-results__option { white-space:normal; }
-    .bulk-num { width:30px; font-weight:700; color:var(--h-muted); }
-    .bulk-people .select2-container { width:100% !important; }
-    .ca-detail-row { display:flex; align-items:flex-start; padding:6px 0; border-bottom:1px solid var(--h-border); font-size:.875rem; }
-    .ca-detail-row .k { width:160px; color:var(--h-muted); font-weight:600; flex-shrink:0; }
-    /* long purposes / unbroken text wrap inside the modal instead of overflowing it */
-    .ca-detail-row .v { color:var(--h-text); flex:1 1 auto; min-width:0; overflow-wrap:anywhere; word-break:break-word; white-space:pre-line; }
-    #caTable td { overflow-wrap:anywhere; }
+      /* ── Match Applicant Databank look: header buttons, row buttons, dropdowns, checkboxes ── */
+      .card-tools .btn { border-radius: 8px !important; font-weight: 700 !important; font-size: .8rem !important; }
+      .card-tools .btn-success,
+      .card-tools .btn-outline-success {
+          background: var(--h-primary-dim) !important;
+          color: var(--h-primary) !important;
+          border: 1px solid var(--h-primary) !important;
+          box-shadow: none !important;
+      }
+      .card-tools .btn-success:hover,
+      .card-tools .btn-outline-success:hover:not(:disabled) { background: var(--h-primary) !important; color: #fff !important; }
+      .card-tools .btn-outline-success:disabled { opacity: .5; cursor: not-allowed; }
+      .card-tools .btn-outline-danger {
+          background: rgba(201,34,46,.10) !important; color: var(--h-danger) !important;
+          border: 1px solid rgba(201,34,46,.40) !important; box-shadow: none !important;
+      }
+      .card-tools .btn-outline-danger:hover:not(:disabled) { background: var(--h-danger) !important; color: #fff !important; }
+      .card-tools .btn-outline-danger:disabled { opacity: .5; cursor: not-allowed; }
+      .dropdown-menu .dropdown-item.disabled { opacity: .45; pointer-events: none; }
+      .dropdown-menu .dropdown-item.text-danger:hover { background: rgba(201,34,46,.12) !important; color: var(--h-danger) !important; }
+      #caTable .btn-sm.btn-success { background: rgba(42,152,99,.12) !important; color: var(--h-success) !important; border: 1px solid rgba(42,152,99,.25) !important; border-radius: 7px !important; }
+      #caTable .btn-group { white-space: nowrap; }
+      #caTable .btn-group .btn-sm { margin-right: 0; }
+      #caTable td:last-child { white-space: nowrap; }
+      #caTable td:last-child > .btn { margin-left: 2px; }
+      #caTable input[type=checkbox], .ca-select { accent-color: var(--h-primary); width: 15px; height: 15px; cursor: pointer; }
+      #caTable thead th:first-child { width: 30px; text-align: center; }
+      #caTable tbody td:first-child { text-align: center; }
+      .dropdown-menu {
+          background: var(--h-card) !important;
+          border: 1px solid var(--h-border) !important;
+          border-radius: 10px !important;
+          box-shadow: var(--h-shadow) !important;
+          padding: 6px !important;
+          z-index: 1060 !important;
+      }
+      .dropdown-menu .dropdown-header {
+          color: var(--h-muted) !important;
+          font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+      }
+      .dropdown-menu .dropdown-item {
+          color: var(--h-text) !important;
+          font-size: .84rem; border-radius: 7px; padding: 7px 12px;
+      }
+      .dropdown-menu .dropdown-item:hover,
+      .dropdown-menu .dropdown-item:focus { background: var(--h-primary-dim) !important; color: var(--h-primary) !important; }
+      .scrum-style-modal .btn-success {
+          background: var(--h-primary) !important; color: #fff !important; border: none !important;
+          border-radius: 8px !important; font-weight: 700 !important; box-shadow: 0 2px 12px var(--h-primary-dim) !important;
+      }
+      .scrum-style-modal .btn-success:hover { filter: brightness(1.1) !important; color: #fff !important; }
+      .scrum-style-modal .btn-outline-primary,
+      .scrum-style-modal .btn-outline-danger { border-radius: 8px !important; font-weight: 600 !important; background: transparent !important; }
+      .scrum-style-modal .btn-outline-primary { color: var(--h-primary) !important; border: 1px solid var(--h-primary) !important; }
+      .scrum-style-modal .btn-outline-primary:hover { background: var(--h-primary-dim) !important; }
+      .scrum-style-modal .btn-outline-danger { color: var(--h-danger) !important; border: 1px solid rgba(201,34,46,.4) !important; }
+      .scrum-style-modal .btn-outline-danger:hover:not(:disabled) { background: rgba(201,34,46,.12) !important; }
+      .scrum-style-modal .custom-control-label { color: var(--h-text) !important; font-size: .85rem !important; font-weight: 500 !important; }
+      .scrum-style-modal .custom-control-input:checked ~ .custom-control-label::before {
+          background-color: var(--h-primary) !important; border-color: var(--h-primary) !important;
+      }
+      .scrum-style-modal .custom-control-label::before { background: var(--h-card-alt); border: 1.5px solid var(--h-border); }
+      .scrum-style-modal .custom-control-input:focus ~ .custom-control-label::before { box-shadow: 0 0 0 3px var(--h-primary-dim) !important; }
+      .bulk-people .form-control { background: var(--h-card) !important; }
+      .scrum-style-modal #viewCaContent .ca-detail-row:last-child { border-bottom: none; }
+      .ca-meals { display:none; padding:10px 14px; border:1.5px dashed var(--h-border); border-radius:8px; margin-top:6px; }
+      .ca-check { margin-right:18px; }
+      .no-meal-detail .ca-meals { display:none !important; }
+      .ca-template-note { color: var(--h-muted) !important; }
+      .bulk-people { position:relative; border:1.5px solid var(--h-border); border-radius:8px; padding:12px; background: var(--h-card-alt); }
+      .bulk-row { margin-bottom:8px; }
+      /* Fixed grid so name / designation columns never resize when a designation is picked */
+      .bulk-row > .d-flex {
+          display:grid !important;
+          grid-template-columns: 30px minmax(0,1fr) minmax(0,1fr) 34px;
+          gap:8px; align-items:center;
+      }
+      .bulk-row > .d-flex > .flex-fill { padding-right:0 !important; min-width:0; width:100%; }
+      .bulk-row .bulk-name { width:100%; }
+      .bulk-row .select2-container { width:100% !important; min-width:0; }
+      .bulk-row .select2-container--default .select2-selection--single {
+          display:flex !important; align-items:center; position:relative; overflow:hidden;
+      }
+      .bulk-row .select2-container--default .select2-selection--single .select2-selection__rendered {
+          flex:1 1 auto; min-width:0; display:block !important;
+          white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+          padding-left:12px !important; padding-right:46px !important;
+      }
+      .bulk-row .select2-container--default .select2-selection--single .select2-selection__clear {
+          position:absolute; right:28px; top:0; height:36px; line-height:36px;
+          margin:0; padding:0; float:none; color:var(--h-muted);
+      }
+      .bulk-row .select2-container--default .select2-selection--single .select2-selection__clear:hover { color:var(--h-danger); }
+      .bulk-row .bulk-remove { width:34px; height:34px; padding:0; display:flex; align-items:center; justify-content:center; }
+      .bulk-people .select2-dropdown { min-width:260px; }
+      .bulk-people .select2-results__option { white-space:normal; }
+      .bulk-num { width:30px; font-weight:700; color:var(--h-muted); }
+      .bulk-people .select2-container { width:100% !important; }
+      .ca-detail-row { display:flex; align-items:flex-start; padding:6px 0; border-bottom:1px solid var(--h-border); font-size:.875rem; }
+      .ca-detail-row .k { width:160px; color:var(--h-muted); font-weight:600; flex-shrink:0; }
+      /* long purposes / unbroken text wrap inside the modal instead of overflowing it */
+      .ca-detail-row .v { color:var(--h-text); flex:1 1 auto; min-width:0; overflow-wrap:anywhere; word-break:break-word; white-space:pre-line; }
+      #caTable td { overflow-wrap:anywhere; }
 
-    /* ── View modal: read-only "certificate card" (looks different from the Edit form) ── */
-    .cav-top { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-radius:10px;
-               background: var(--h-primary); color:#fff; }
-    .cav-tn-label { font-size:.68rem; letter-spacing:.8px; text-transform:uppercase; opacity:.85; font-weight:700; }
-    .cav-tn { font-size:1.35rem; font-weight:800; letter-spacing:.5px; line-height:1.15; }
-    .cav-tpl { font-size:.75rem; font-weight:700; background:rgba(255,255,255,.2); padding:5px 10px; border-radius:20px; white-space:nowrap; }
-    .cav-person { display:flex; align-items:center; gap:14px; padding:16px 4px 6px; }
-    .cav-avatar { width:54px; height:54px; border-radius:50%; background:var(--h-primary-dim); color:var(--h-primary);
-                  display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
-    .cav-person-text { min-width:0; }
-    .cav-name { font-size:1.15rem; font-weight:800; color:var(--h-text); overflow-wrap:anywhere; line-height:1.2; }
-    .cav-desig { font-size:.9rem; color:var(--h-text); }
-    .cav-office { font-size:.8rem; color:var(--h-muted); overflow-wrap:anywhere; margin-top:2px; }
-    .cav-dates { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0; padding:12px 16px;
-                 border:1.5px solid var(--h-border); border-radius:10px; background:var(--h-card-alt); }
-    .cav-date { display:flex; flex-direction:column; }
-    .cav-date span { font-size:.68rem; letter-spacing:.6px; text-transform:uppercase; color:var(--h-muted); font-weight:700; }
-    .cav-date strong { font-size:.98rem; color:var(--h-text); }
-    .cav-date:last-child { text-align:right; }
-    .cav-arrow { display:flex; flex-direction:column; align-items:center; color:var(--h-primary); font-size:.95rem; }
-    .cav-arrow small { font-size:.68rem; font-weight:700; color:var(--h-muted); }
-    .cav-section { border:1.5px solid var(--h-border); border-radius:10px; padding:10px 14px; margin-bottom:12px; min-width:0; }
-    .cav-title { font-size:.7rem; letter-spacing:.7px; text-transform:uppercase; font-weight:800; color:var(--h-primary); margin-bottom:6px; }
-    .cav-title i { margin-right:5px; }
-    .cav-purpose { color:var(--h-text); font-size:.92rem; overflow-wrap:anywhere; word-break:break-word; white-space:pre-line; }
-    .cav-grid { display:grid; grid-template-columns: 1fr 2fr; gap:12px; }
-    .cav-grid .cav-section { margin-bottom:0; }
-    .cav-status { font-size:.78rem !important; padding:6px 12px !important; border-radius:20px !important; font-weight:700; }
-    .cav-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-    .cav-chip { font-size:.74rem; font-weight:700; padding:4px 10px; border-radius:20px; border:1px solid var(--h-border); }
-    .cav-chip.on  { background:var(--h-primary-dim); color:var(--h-primary); border-color:var(--h-primary); }
-    .cav-chip.off { color:var(--h-muted); opacity:.55; text-decoration:line-through; }
-    .cav-sign { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:12px; padding-top:10px; border-top:1px dashed var(--h-border); }
-    .cav-sign span { display:block; font-size:.68rem; letter-spacing:.6px; text-transform:uppercase; color:var(--h-muted); font-weight:700; }
-    .cav-sign strong { color:var(--h-text); }
-    .cav-sign small { display:block; color:var(--h-muted); }
-    .cav-created { font-size:.74rem; color:var(--h-muted); text-align:right; white-space:nowrap; }
-    @media (max-width:576px) { .cav-grid { grid-template-columns:1fr; } .cav-top { flex-direction:column; align-items:flex-start; } }
-</style>
-</head>
-<body class="hold-transition sidebar-mini">
-  <div class="wrapper">
-    <?php include '../includes/mainheader.php'; ?>
-    <?php include '../includes/sidebar.php'; ?>
+      /* ── View modal: read-only "certificate card" (looks different from the Edit form) ── */
+      .cav-top { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-radius:10px;
+                background: var(--h-primary); color:#fff; }
+      .cav-tn-label { font-size:.68rem; letter-spacing:.8px; text-transform:uppercase; opacity:.85; font-weight:700; }
+      .cav-tn { font-size:1.35rem; font-weight:800; letter-spacing:.5px; line-height:1.15; }
+      .cav-tpl { font-size:.75rem; font-weight:700; background:rgba(255,255,255,.2); padding:5px 10px; border-radius:20px; white-space:nowrap; }
+      .cav-person { display:flex; align-items:center; gap:14px; padding:16px 4px 6px; }
+      .cav-avatar { width:54px; height:54px; border-radius:50%; background:var(--h-primary-dim); color:var(--h-primary);
+                    display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
+      .cav-person-text { min-width:0; }
+      .cav-name { font-size:1.15rem; font-weight:800; color:var(--h-text); overflow-wrap:anywhere; line-height:1.2; }
+      .cav-desig { font-size:.9rem; color:var(--h-text); }
+      .cav-office { font-size:.8rem; color:var(--h-muted); overflow-wrap:anywhere; margin-top:2px; }
+      .cav-dates { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0; padding:12px 16px;
+                  border:1.5px solid var(--h-border); border-radius:10px; background:var(--h-card-alt); }
+      .cav-date { display:flex; flex-direction:column; }
+      .cav-date span { font-size:.68rem; letter-spacing:.6px; text-transform:uppercase; color:var(--h-muted); font-weight:700; }
+      .cav-date strong { font-size:.98rem; color:var(--h-text); }
+      .cav-date:last-child { text-align:right; }
+      .cav-arrow { display:flex; flex-direction:column; align-items:center; color:var(--h-primary); font-size:.95rem; }
+      .cav-arrow small { font-size:.68rem; font-weight:700; color:var(--h-muted); }
+      .cav-section { border:1.5px solid var(--h-border); border-radius:10px; padding:10px 14px; margin-bottom:12px; min-width:0; }
+      .cav-title { font-size:.7rem; letter-spacing:.7px; text-transform:uppercase; font-weight:800; color:var(--h-primary); margin-bottom:6px; }
+      .cav-title i { margin-right:5px; }
+      .cav-purpose { color:var(--h-text); font-size:.92rem; overflow-wrap:anywhere; word-break:break-word; white-space:pre-line; }
+      .cav-grid { display:grid; grid-template-columns: 1fr 2fr; gap:12px; }
+      .cav-grid .cav-section { margin-bottom:0; }
+      .cav-status { font-size:.78rem !important; padding:6px 12px !important; border-radius:20px !important; font-weight:700; }
+      .cav-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+      .cav-chip { font-size:.74rem; font-weight:700; padding:4px 10px; border-radius:20px; border:1px solid var(--h-border); }
+      .cav-chip.on  { background:var(--h-primary-dim); color:var(--h-primary); border-color:var(--h-primary); }
+      .cav-chip.off { color:var(--h-muted); opacity:.55; text-decoration:line-through; }
+      .cav-sign { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-top:12px; padding-top:10px; border-top:1px dashed var(--h-border); }
+      .cav-sign span { display:block; font-size:.68rem; letter-spacing:.6px; text-transform:uppercase; color:var(--h-muted); font-weight:700; }
+      .cav-sign strong { color:var(--h-text); }
+      .cav-sign small { display:block; color:var(--h-muted); }
+      .cav-created { font-size:.74rem; color:var(--h-muted); text-align:right; white-space:nowrap; }
+      @media (max-width:576px) { .cav-grid { grid-template-columns:1fr; } .cav-top { flex-direction:column; align-items:flex-start; } }
+    </style>
+  </head>
+  <body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+      <?php include '../includes/mainheader.php'; ?>
+      <?php include '../includes/sidebar.php'; ?>
 
-    <div class="content-wrapper">
+      <div class="content-wrapper">
 
-      <!-- Page Hero -->
-      <div class="pg-hero">
-        <div class="pg-hero-mesh"></div>
-        <div class="pg-hero-dots"></div>
-        <div class="pg-hero-hex"></div>
-        <div class="pg-hero-orbs">
-          <div class="pg-orb pg-orb-1"></div>
-          <div class="pg-orb pg-orb-2"></div>
-          <div class="pg-orb pg-orb-3"></div>
-          <div class="pg-orb pg-orb-4"></div>
-        </div>
-        <div class="pg-hero-rings">
-          <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
-        </div>
-        <div class="pg-hero-arc"></div>
-        <div class="pg-hero-layout">
-          <div class="pg-hero-inner">
-            <div class="pg-hero-title"><i class="fas fa-file-signature"></i>Certificate of Appearance</div>
-            <div class="pg-hero-divider"></div>
-            <p class="pg-hero-sub">Issue and download Certificates of Appearance for visiting personnel</p>
+        <!-- Page Hero -->
+        <div class="pg-hero">
+          <div class="pg-hero-mesh"></div>
+          <div class="pg-hero-dots"></div>
+          <div class="pg-hero-hex"></div>
+          <div class="pg-hero-orbs">
+            <div class="pg-orb pg-orb-1"></div>
+            <div class="pg-orb pg-orb-2"></div>
+            <div class="pg-orb pg-orb-3"></div>
+            <div class="pg-orb pg-orb-4"></div>
+          </div>
+          <div class="pg-hero-rings">
+            <img src="../dist/img/nialogo.png" alt="NIA" class="mh-logo-watermark">
+          </div>
+          <div class="pg-hero-arc"></div>
+          <div class="pg-hero-layout">
+            <div class="pg-hero-inner">
+              <div class="pg-hero-title"><i class="fas fa-file-signature"></i>Certificate of Appearance</div>
+              <div class="pg-hero-divider"></div>
+              <p class="pg-hero-sub">Issue and download Certificates of Appearance for visiting personnel</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="content">
-        <div class="container-fluid">
-          <div class="card">
-            <div class="card-header">
-              <h3 class="card-title">Manage Certificates</h3>
-              <div class="card-tools">
-                <div class="form-inline d-inline-flex align-items-center mr-2" title="Paper size used when downloading / printing the certificate">
-                  <label class="mr-1 mb-0 small" for="caSizeTop"><i class="fas fa-ruler-combined"></i> Print size:</label>
-                  <select id="caSizeTop" class="form-control form-control-sm ca-size">
-                    <?php foreach ($CA_SIZES as $key => $label): ?>
-                      <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-                <button type="button" class="btn btn-outline-primary btn-sm mr-1" id="bulkPreviewBtn" disabled title="Print preview of the selected certificates">
-                  <i class="fas fa-print"></i> Print Selected
-                </button>
-                <div class="btn-group mr-1">
-                  <button type="button" class="btn btn-outline-success btn-sm dropdown-toggle" id="bulkDownloadBtn" data-toggle="dropdown" data-boundary="window" disabled>
-                    <i class="fas fa-file-word"></i> Download Selected (<span id="selCount">0</span>)
-                  </button>
-                  <div class="dropdown-menu dropdown-menu-right">
-                    <h6 class="dropdown-header">Download all selected in 1 Word file</h6>
-                    <a class="dropdown-item bulk-dl-item" data-template="" href="#">Use each certificate's saved template</a>
-                    <?php foreach ($CA_TEMPLATES as $key => $t): ?>
-                      <a class="dropdown-item bulk-dl-item" data-template="<?= $key ?>" href="#"><?= htmlspecialchars($t['label']) ?></a>
-                    <?php endforeach; ?>
+        <div class="content">
+          <div class="container-fluid">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Manage Certificates</h3>
+                <div class="card-tools">
+                  <div class="form-inline d-inline-flex align-items-center mr-2" title="Paper size used when downloading / printing the certificate">
+                    <label class="mr-1 mb-0 small" for="caSizeTop"><i class="fas fa-ruler-combined"></i> Print size:</label>
+                    <select id="caSizeTop" class="form-control form-control-sm ca-size">
+                      <?php foreach ($CA_SIZES as $key => $label): ?>
+                        <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
+                      <?php endforeach; ?>
+                    </select>
                   </div>
-                </div>
-                <div class="btn-group mr-1">
-                  <button type="button" class="btn btn-outline-danger btn-sm dropdown-toggle" id="bulkDeleteBtn" data-toggle="dropdown" data-boundary="window"<?= $certs ? '' : ' disabled' ?>>
-                    <i class="fas fa-trash"></i> Delete
+                  <button type="button" class="btn btn-outline-primary btn-sm mr-1" id="bulkPreviewBtn" disabled title="Print preview of the selected certificates">
+                    <i class="fas fa-print"></i> Print Selected
                   </button>
-                  <div class="dropdown-menu dropdown-menu-right">
-                    <h6 class="dropdown-header">Delete certificates</h6>
-                    <a class="dropdown-item disabled" id="delSelItem" href="#"><i class="fas fa-check-square mr-1"></i>Delete Selected (<span id="delSelCount">0</span>)</a>
-                    <a class="dropdown-item text-danger" id="delAllItem" href="#" data-total="<?= count($certs) ?>"><i class="fas fa-exclamation-triangle mr-1"></i>Delete All (<?= count($certs) ?>)</a>
+                  <div class="btn-group mr-1">
+                    <button type="button" class="btn btn-outline-success btn-sm dropdown-toggle" id="bulkDownloadBtn" data-toggle="dropdown" data-boundary="window" disabled>
+                      <i class="fas fa-file-word"></i> Download Selected (<span id="selCount">0</span>)
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right">
+                      <h6 class="dropdown-header">Download all selected in 1 Word file</h6>
+                      <a class="dropdown-item bulk-dl-item" data-template="" href="#">Use each certificate's saved template</a>
+                      <?php foreach ($CA_TEMPLATES as $key => $t): ?>
+                        <a class="dropdown-item bulk-dl-item" data-template="<?= $key ?>" href="#"><?= htmlspecialchars($t['label']) ?></a>
+                      <?php endforeach; ?>
+                    </div>
                   </div>
+                  <div class="btn-group mr-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm dropdown-toggle" id="bulkDeleteBtn" data-toggle="dropdown" data-boundary="window"<?= $certs ? '' : ' disabled' ?>>
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right">
+                      <h6 class="dropdown-header">Delete certificates</h6>
+                      <a class="dropdown-item disabled" id="delSelItem" href="#"><i class="fas fa-check-square mr-1"></i>Delete Selected (<span id="delSelCount">0</span>)</a>
+                      <a class="dropdown-item text-danger" id="delAllItem" href="#" data-total="<?= count($certs) ?>"><i class="fas fa-exclamation-triangle mr-1"></i>Delete All (<?= count($certs) ?>)</a>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-outline-success btn-sm mr-1" data-toggle="modal" data-target="#reportCaModal">
+                    <i class="fas fa-print"></i> Report
+                  </button>
+                  <button type="button" class="btn btn-success btn-sm mr-1" data-toggle="modal" data-target="#bulkCaModal">
+                    <i class="fas fa-users"></i> Bulk Certificates
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addCaModal">
+                    <i class="fas fa-plus"></i> New Certificate
+                  </button>
                 </div>
-                <button type="button" class="btn btn-outline-success btn-sm mr-1" data-toggle="modal" data-target="#reportCaModal">
-                  <i class="fas fa-print"></i> Report
-                </button>
-                <button type="button" class="btn btn-success btn-sm mr-1" data-toggle="modal" data-target="#bulkCaModal">
-                  <i class="fas fa-users"></i> Bulk Certificates
-                </button>
-                <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addCaModal">
-                  <i class="fas fa-plus"></i> New Certificate
-                </button>
               </div>
-            </div>
-            <div class="card-body">
-              <table id="caTable" class="table table-bordered table-striped">
-                <thead>
-                  <tr>
-                    <th class="no-sort" style="width:30px;"><input type="checkbox" id="caSelectAll" title="Select all on this page"></th>
-                    <th>Tracking No.</th>
-                    <th>Name</th>
-                    <th>Designation</th>
-                    <th>From Office</th>
-                    <th>Arrival</th>
-                    <th>Departure</th>
-                    <!-- <th>Lodging</th>
-                    <th>Meals</th>
-                    <th>Template</th> -->
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php foreach ($certs as $c):
-                    $meals = [];
-                    if ($c['meal_provided']) {
-                      if ($c['breakfast']) $meals[] = 'Breakfast';
-                      if ($c['am_snack'])  $meals[] = 'AM Snack';
-                      if ($c['lunch'])     $meals[] = 'Lunch';
-                      if ($c['pm_snack'])  $meals[] = 'PM Snack';
-                      if ($c['dinner'])    $meals[] = 'Dinner';
-                    }
-                  ?>
-                  <tr>
-                    <td><input type="checkbox" class="ca-select" value="<?= (int)$c['ca_id'] ?>"></td>
-                    <td class="text-nowrap"><strong><?= htmlspecialchars($c['tracking_no'] ?? '') ?></strong></td>
-                    <td><?= htmlspecialchars($c['person_name']) ?></td>
-                    <td><?= htmlspecialchars($c['designation']) ?></td>
-                    <td><?= htmlspecialchars($c['office_from']) ?></td>
-                    <td class="text-nowrap" data-order="<?= $c['date_arrival'] ?>"><?= date('M d, Y', strtotime($c['date_arrival'])) ?></td>
-                    <td class="text-nowrap" data-order="<?= $c['date_departure'] ?>"><?= date('M d, Y', strtotime($c['date_departure'])) ?></td>
-                    <td>
-                      <div class="btn-group">
-                        <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown" data-boundary="window" title="Download Word file">
-                          <i class="fas fa-file-word"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-right">
-                          <h6 class="dropdown-header">Download using template</h6>
-                          <?php foreach ($CA_TEMPLATES as $key => $t): ?>
-                            <a class="dropdown-item" href="certificate_of_appearance.php?action=download&id=<?= $c['ca_id'] ?>&template=<?= $key ?>">
-                              <?= htmlspecialchars($t['label']) ?>
-                              <?php if (($c['template_key'] ?? CA_DEFAULT_TEMPLATE) === $key): ?><small class="text-muted">(saved)</small><?php endif; ?>
-                            </a>
-                          <?php endforeach; ?>
+              <div class="card-body">
+                <table id="caTable" class="table table-bordered table-striped">
+                  <thead>
+                    <tr>
+                      <th class="no-sort" style="width:30px;"><input type="checkbox" id="caSelectAll" title="Select all on this page"></th>
+                      <th>Tracking No.</th>
+                      <th>Name</th>
+                      <th>Designation</th>
+                      <th>From Office</th>
+                      <th>Arrival</th>
+                      <th>Departure</th>
+                      <!-- <th>Lodging</th>
+                      <th>Meals</th>
+                      <th>Template</th> -->
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($certs as $c):
+                      $meals = [];
+                      if ($c['meal_provided']) {
+                        if ($c['breakfast']) $meals[] = 'Breakfast';
+                        if ($c['am_snack'])  $meals[] = 'AM Snack';
+                        if ($c['lunch'])     $meals[] = 'Lunch';
+                        if ($c['pm_snack'])  $meals[] = 'PM Snack';
+                        if ($c['dinner'])    $meals[] = 'Dinner';
+                      }
+                    ?>
+                    <tr>
+                      <td><input type="checkbox" class="ca-select" value="<?= (int)$c['ca_id'] ?>"></td>
+                      <td class="text-nowrap"><strong><?= htmlspecialchars($c['tracking_no'] ?? '') ?></strong></td>
+                      <td><?= htmlspecialchars($c['person_name']) ?></td>
+                      <td><?= htmlspecialchars($c['designation']) ?></td>
+                      <td><?= htmlspecialchars($c['office_from']) ?></td>
+                      <td class="text-nowrap" data-order="<?= $c['date_arrival'] ?>"><?= date('M d, Y', strtotime($c['date_arrival'])) ?></td>
+                      <td class="text-nowrap" data-order="<?= $c['date_departure'] ?>"><?= date('M d, Y', strtotime($c['date_departure'])) ?></td>
+                      <td>
+                        <div class="btn-group">
+                          <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown" data-boundary="window" title="Download Word file">
+                            <i class="fas fa-file-word"></i>
+                          </button>
+                          <div class="dropdown-menu dropdown-menu-right">
+                            <h6 class="dropdown-header">Download using template</h6>
+                            <?php foreach ($CA_TEMPLATES as $key => $t): ?>
+                              <a class="dropdown-item" href="certificate_of_appearance.php?action=download&id=<?= $c['ca_id'] ?>&template=<?= $key ?>">
+                                <?= htmlspecialchars($t['label']) ?>
+                                <?php if (($c['template_key'] ?? CA_DEFAULT_TEMPLATE) === $key): ?><small class="text-muted">(saved)</small><?php endif; ?>
+                              </a>
+                            <?php endforeach; ?>
+                          </div>
                         </div>
-                      </div>
-                      <button class="btn btn-sm btn-primary preview-btn" data-id="<?= $c['ca_id'] ?>" title="Print preview"><i class="fas fa-print"></i></button>
-                      <button class="btn btn-sm btn-info view-btn" data-id="<?= $c['ca_id'] ?>" title="View"><i class="fas fa-eye"></i></button>
-                      <button class="btn btn-sm btn-warning edit-btn" data-id="<?= $c['ca_id'] ?>" title="Edit"><i class="fas fa-edit"></i></button>
-                      <button class="btn btn-sm btn-danger delete-btn" data-id="<?= $c['ca_id'] ?>" title="Delete"><i class="fas fa-trash"></i></button>
-                    </td>
-                  </tr>
-                  <?php endforeach; ?>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <?php include '../includes/mainfooter.php'; ?>
-  </div>
-
-  <!-- Add Modal -->
-  <div class="modal fade scrum-style-modal" id="addCaModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form id="addCaForm">
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="fas fa-file-signature"></i>New Certificate of Appearance</h5>
-            <button type="button" class="close" data-dismiss="modal">&times;</button>
-          </div>
-          <div class="modal-body"><?= ca_form_fields('add_', $positions) ?></div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Save Certificate</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bulk Modal -->
-  <div class="modal fade scrum-style-modal" id="bulkCaModal" tabindex="-1" data-backdrop="static">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form id="bulkCaForm">
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="fas fa-users"></i>Bulk Certificates of Appearance</h5>
-            <button type="button" class="close" data-dismiss="modal">&times;</button>
-          </div>
-          <div class="modal-body"><?= ca_form_fields('bulk_', $positions, true) ?></div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary" id="bulkSubmitBtn"><i class="fas fa-layer-group"></i> Generate Certificates</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Report Modal -->
-  <?php
-    $report_years = [(int)date('Y')];
-    foreach ($certs as $c) { $report_years[] = (int)date('Y', strtotime($c['date_arrival'])); }
-    $report_years = array_unique($report_years); rsort($report_years);
-  ?>
-  <div class="modal fade scrum-style-modal" id="reportCaModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form method="get" action="certificate_of_appearance.php" target="_blank">
-          <input type="hidden" name="action" value="report">
-          <div class="modal-header">
-            <h5 class="modal-title"><i class="fas fa-print"></i>Certificate of Appearance Report</h5>
-            <button type="button" class="close" data-dismiss="modal">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Year (by arrival date)</label>
-                  <select name="year" class="form-control">
-                    <?php foreach ($report_years as $y): ?><option value="<?= $y ?>"><?= $y ?></option><?php endforeach; ?>
-                  </select>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Month</label>
-                  <select name="month" class="form-control">
-                    <option value="0">Whole year</option>
-                    <?php for ($mo = 1; $mo <= 12; $mo++): ?><option value="<?= $mo ?>"><?= date('F', mktime(0, 0, 0, $mo, 1)) ?></option><?php endfor; ?>
-                  </select>
-                </div>
+                        <button class="btn btn-sm btn-primary preview-btn" data-id="<?= $c['ca_id'] ?>" title="Print preview"><i class="fas fa-print"></i></button>
+                        <button class="btn btn-sm btn-info view-btn" data-id="<?= $c['ca_id'] ?>" title="View"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-warning edit-btn" data-id="<?= $c['ca_id'] ?>" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="<?= $c['ca_id'] ?>" title="Delete"><i class="fas fa-trash"></i></button>
+                      </td>
+                    </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
               </div>
             </div>
-            <small class="form-text text-muted">Opens a print-ready page with Tracking No., Name, Designation, Agency/Office, Arrival, Departure, Purpose, Lodging and Meals.</small>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-print"></i> Open Report</button>
-          </div>
-        </form>
+        </div>
+      </div>
+
+      <?php include '../includes/mainfooter.php'; ?>
+    </div>
+
+    <!-- Add Modal -->
+    <div class="modal fade scrum-style-modal" id="addCaModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="addCaForm">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fas fa-file-signature"></i>New Certificate of Appearance</h5>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body"><?= ca_form_fields('add_', $positions) ?></div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Save Certificate</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Edit Modal -->
-  <div class="modal fade scrum-style-modal" id="editCaModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form id="editCaForm">
-          <input type="hidden" name="ca_id" id="edit_ca_id">
+    <!-- Bulk Modal -->
+    <div class="modal fade scrum-style-modal" id="bulkCaModal" tabindex="-1" data-backdrop="static">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="bulkCaForm">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fas fa-users"></i>Bulk Certificates of Appearance</h5>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body"><?= ca_form_fields('bulk_', $positions, true) ?></div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary" id="bulkSubmitBtn"><i class="fas fa-layer-group"></i> Generate Certificates</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Modal -->
+    <?php
+      $report_years = [(int)date('Y')];
+      foreach ($certs as $c) { $report_years[] = (int)date('Y', strtotime($c['date_arrival'])); }
+      $report_years = array_unique($report_years); rsort($report_years);
+    ?>
+    <div class="modal fade scrum-style-modal" id="reportCaModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="get" action="certificate_of_appearance.php" target="_blank">
+            <input type="hidden" name="action" value="report">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fas fa-print"></i>Certificate of Appearance Report</h5>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Year (by arrival date)</label>
+                    <select name="year" class="form-control">
+                      <?php foreach ($report_years as $y): ?><option value="<?= $y ?>"><?= $y ?></option><?php endforeach; ?>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label>Month</label>
+                    <select name="month" class="form-control">
+                      <option value="0">Whole year</option>
+                      <?php for ($mo = 1; $mo <= 12; $mo++): ?><option value="<?= $mo ?>"><?= date('F', mktime(0, 0, 0, $mo, 1)) ?></option><?php endfor; ?>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <small class="form-text text-muted">Opens a print-ready page with Tracking No., Name, Designation, Agency/Office, Arrival, Departure, Purpose, Lodging and Meals.</small>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-print"></i> Open Report</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal fade scrum-style-modal" id="editCaModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="editCaForm">
+            <input type="hidden" name="ca_id" id="edit_ca_id">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Certificate of Appearance</h5>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body"><?= ca_form_fields('edit_', $positions) ?></div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Update Certificate</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Modal -->
+    <div class="modal fade scrum-style-modal" id="viewCaModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Certificate of Appearance</h5>
+            <h5 class="modal-title"><i class="fas fa-file-alt"></i>Certificate of Appearance</h5>
             <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
-          <div class="modal-body"><?= ca_form_fields('edit_', $positions) ?></div>
+          <div class="modal-body"><div id="viewCaContent"></div></div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Update Certificate</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- View Modal -->
-  <div class="modal fade scrum-style-modal" id="viewCaModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-file-alt"></i>Certificate of Appearance</h5>
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-        </div>
-        <div class="modal-body"><div id="viewCaContent"></div></div>
-        <div class="modal-footer">
-          <div class="form-inline mr-auto align-items-center">
-            <label class="mr-1 mb-0 small" for="caSizeView"><i class="fas fa-ruler-combined"></i> Print size:</label>
-            <select id="caSizeView" class="form-control form-control-sm ca-size">
-              <?php foreach ($CA_SIZES as $key => $label): ?>
-                <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <button type="button" class="btn btn-primary" id="viewCaPreviewBtn"><i class="fas fa-print"></i> Print Preview</button>
-          <div class="btn-group dropup">
-            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><i class="fas fa-file-word"></i> Download .docx</button>
-            <div class="dropdown-menu" id="viewCaDownloadMenu">
-              <?php foreach ($CA_TEMPLATES as $key => $t): ?>
-                <a class="dropdown-item" data-template="<?= $key ?>" href="#"><?= htmlspecialchars($t['label']) ?></a>
-              <?php endforeach; ?>
+            <div class="form-inline mr-auto align-items-center">
+              <label class="mr-1 mb-0 small" for="caSizeView"><i class="fas fa-ruler-combined"></i> Print size:</label>
+              <select id="caSizeView" class="form-control form-control-sm ca-size">
+                <?php foreach ($CA_SIZES as $key => $label): ?>
+                  <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
+            <button type="button" class="btn btn-primary" id="viewCaPreviewBtn"><i class="fas fa-print"></i> Print Preview</button>
+            <div class="btn-group dropup">
+              <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown"><i class="fas fa-file-word"></i> Download .docx</button>
+              <div class="dropdown-menu" id="viewCaDownloadMenu">
+                <?php foreach ($CA_TEMPLATES as $key => $t): ?>
+                  <a class="dropdown-item" data-template="<?= $key ?>" href="#"><?= htmlspecialchars($t['label']) ?></a>
+                <?php endforeach; ?>
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
           </div>
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Print Preview Modal -->
-  <div class="modal fade scrum-style-modal" id="previewCaModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-print"></i>Print Preview</h5>
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-        </div>
-        <div class="modal-body p-0" style="position:relative; background:#525659;">
-          <div id="previewCaLoading" class="text-center text-white" style="position:absolute; inset:0; padding-top:30vh;">
-            <i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2">Preparing certificate&hellip;</div>
+    <!-- Print Preview Modal -->
+    <div class="modal fade scrum-style-modal" id="previewCaModal" tabindex="-1">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-print"></i>Print Preview</h5>
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
           </div>
-          <iframe id="previewCaFrame" title="Certificate preview" style="width:100%; height:72vh; border:0; position:relative;"></iframe>
-        </div>
-        <div class="modal-footer">
-          <div class="form-inline mr-auto align-items-center">
-            <label class="mr-1 mb-0 small" for="caSizePreview"><i class="fas fa-ruler-combined"></i> Print size:</label>
-            <select id="caSizePreview" class="form-control form-control-sm ca-size">
-              <?php foreach ($CA_SIZES as $key => $label): ?>
-                <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
-              <?php endforeach; ?>
-            </select>
+          <div class="modal-body p-0" style="position:relative; background:#525659;">
+            <div id="previewCaLoading" class="text-center text-white" style="position:absolute; inset:0; padding-top:30vh;">
+              <i class="fas fa-spinner fa-spin fa-2x"></i><div class="mt-2">Preparing certificate&hellip;</div>
+            </div>
+            <iframe id="previewCaFrame" title="Certificate preview" style="width:100%; height:72vh; border:0; position:relative;"></iframe>
           </div>
-          <div class="form-inline align-items-center mr-2">
-            <label class="mr-1 mb-0 small" for="caTplPreview"><i class="fas fa-file-alt"></i> Format:</label>
-            <select id="caTplPreview" class="form-control form-control-sm">
-              <option value="">Saved format</option>
-              <?php foreach ($CA_TEMPLATES as $key => $t): ?>
-                <option value="<?= $key ?>"><?= htmlspecialchars($t['label']) ?></option>
-              <?php endforeach; ?>
-            </select>
+          <div class="modal-footer">
+            <div class="form-inline mr-auto align-items-center">
+              <label class="mr-1 mb-0 small" for="caSizePreview"><i class="fas fa-ruler-combined"></i> Print size:</label>
+              <select id="caSizePreview" class="form-control form-control-sm ca-size">
+                <?php foreach ($CA_SIZES as $key => $label): ?>
+                  <option value="<?= $key ?>"><?= htmlspecialchars($label) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-inline align-items-center mr-2">
+              <label class="mr-1 mb-0 small" for="caTplPreview"><i class="fas fa-file-alt"></i> Format:</label>
+              <select id="caTplPreview" class="form-control form-control-sm">
+                <option value="">Saved format</option>
+                <?php foreach ($CA_TEMPLATES as $key => $t): ?>
+                  <option value="<?= $key ?>"><?= htmlspecialchars($t['label']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div id="previewCaHint" class="small text-muted mr-2" style="max-width:340px; line-height:1.3;"></div>
+            <button type="button" class="btn btn-primary" id="previewCaPrint"><i class="fas fa-print"></i> Print</button>
+            <a class="btn btn-success" id="previewCaDownload" href="#"><i class="fas fa-file-word"></i> Download .docx</a>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
           </div>
-          <div id="previewCaHint" class="small text-muted mr-2" style="max-width:340px; line-height:1.3;"></div>
-          <button type="button" class="btn btn-primary" id="previewCaPrint"><i class="fas fa-print"></i> Print</button>
-          <a class="btn btn-success" id="previewCaDownload" href="#"><i class="fas fa-file-word"></i> Download .docx</a>
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <?php include '../includes/footer.php'; ?>
+    <?php include '../includes/footer.php'; ?>
 
-  <script>
-  $(document).ready(function() {
-    const caTable = $('#caTable').DataTable({
-      responsive: true,
-      order: [[5, 'desc']],
-      columnDefs: [{ targets: 0, orderable: false, searchable: false }]
-    });
-
-    // ── Print size (Original / A5) — applied to every .docx download ──
-    const CA_SIZES = <?= json_encode(array_keys($CA_SIZES)) ?>;
-    function caSize() { return $('#caSizeTop').val() || 'original'; }
-    (function() {
-      let saved = null;
-      try { saved = localStorage.getItem('ca_print_size'); } catch (e) {}
-      if (CA_SIZES.indexOf(saved) !== -1) $('.ca-size').val(saved);
-    })();
-    $(document).on('change', '.ca-size', function() {
-      $('.ca-size').val(this.value);                       // keep the toolbar and View-modal selectors in sync
-      try { localStorage.setItem('ca_print_size', this.value); } catch (e) {}
-    });
-    // ── Print preview: the certificate laid out on its letterhead, ready to print, with Print + Download .docx ──
-    let previewIds = [];
-    function loadPreview() {
-      if (!previewIds.length) return;
-      let size = $('#caSizePreview').val() || caSize(), idsQs = previewIds.join(',');   // preview's own selector (always in sync)
-      $('#previewCaHint').html(size === 'a5'
-        ? '<i class="fas fa-info-circle"></i> In the print dialog choose <b>Paper size: A5</b>, <b>Margins: None</b>, <b>Scale: 100%</b>.'
-        : '<i class="fas fa-info-circle"></i> In the print dialog choose your custom <b>8.5 &times; 6.5 in</b> paper (Central Office: A4), <b>Margins: None</b>, <b>Scale: 100%</b>. Otherwise it prints small, in the middle of a bigger sheet.');
-      $('#previewCaLoading').show();
-      let tpl = $('#caTplPreview').val(), tplQs = tpl ? '&template=' + encodeURIComponent(tpl) : '';
-      $('#previewCaFrame').attr('src', 'certificate_of_appearance.php?action=preview&ids=' + idsQs + tplQs + '&size=' + encodeURIComponent(size));
-      $('#previewCaDownload').attr('href', previewIds.length === 1
-        ? 'certificate_of_appearance.php?action=download&id=' + idsQs + tplQs + '&size=' + encodeURIComponent(size)
-        : 'certificate_of_appearance.php?action=download_bulk&ids=' + idsQs + tplQs + '&size=' + encodeURIComponent(size));
-    }
-    function openPreview(ids) {
-      previewIds = ids;
-      $('#caTplPreview').val('');
-      $('#previewCaFrame').attr('src', 'about:blank');
-      $('#previewCaModal').modal('show');
-      loadPreview();
-    }
-    $('#previewCaFrame').on('load', function() { if (this.getAttribute('src') !== 'about:blank') $('#previewCaLoading').hide(); });
-    $('#previewCaModal').on('hidden.bs.modal', function() { $('#previewCaFrame').attr('src', 'about:blank'); });
-    $('#caSizePreview, #caTplPreview').on('change', loadPreview);            // switching size reloads the preview
-    $('#previewCaPrint').on('click', function() {
-      let f = document.getElementById('previewCaFrame');
-      try { f.contentWindow.focus(); f.contentWindow.print(); }
-      catch (e) { window.open(f.src, '_blank'); }             // fallback: open the page in a tab and print from there
-    });
-    $(document).on('click', '.preview-btn', function() { openPreview([$(this).data('id')]); });
-    $('#bulkPreviewBtn').on('click', function() {
-      let ids = Object.keys(selectedIds).map(Number).sort(function(a, b) { return a - b; });
-      if (!ids.length) return;
-      if (ids.length > 100) { Swal.fire('Too many selected', 'You can print up to 100 certificates at a time.', 'warning'); return; }
-      openPreview(ids);
-    });
-    $('#viewCaPreviewBtn').on('click', function() {
-      let id = $('#viewCaDownloadMenu a').first().attr('href').match(/[?&]id=(\d+)/);
-      if (!id) return;
-      $('#viewCaModal').one('hidden.bs.modal', function() { openPreview([parseInt(id[1], 10)]); }).modal('hide');
-    });
-
-    // single-certificate download links (table rows + View modal): add &size=
-    $(document).on('click', 'a[href*="action=download&"]', function() {
-      this.href = this.href.replace(/&size=[^&]*/, '') + '&size=' + encodeURIComponent(caSize());
-    });
-
-    // ── Select certificates & download them again as ONE combined Word file ──
-    let selectedIds = {};
-    function refreshSelection() {
-      let ids = Object.keys(selectedIds);
-      $('#selCount').text(ids.length);
-      $('#delSelCount').text(ids.length);
-      $('#delSelItem').toggleClass('disabled', ids.length === 0);
-      $('#bulkPreviewBtn').prop('disabled', ids.length === 0);
-      $('#bulkDownloadBtn').prop('disabled', ids.length === 0)
-        .toggleClass('btn-outline-success', ids.length === 0)
-        .toggleClass('btn-success', ids.length > 0);
-      let $boxes = $('#caTable tbody .ca-select');
-      $('#caSelectAll').prop('checked', $boxes.length > 0 && $boxes.filter(':checked').length === $boxes.length);
-    }
-    function syncVisibleChecks() {
-      $('#caTable tbody .ca-select').each(function() { this.checked = !!selectedIds[this.value]; });
-      refreshSelection();
-    }
-    $(document).on('change', '.ca-select', function() {
-      if (this.checked) selectedIds[this.value] = true; else delete selectedIds[this.value];
-      refreshSelection();
-    });
-    $('#caSelectAll').on('change', function() {
-      let on = this.checked;
-      $('#caTable tbody .ca-select').each(function() {
-        this.checked = on;
-        if (on) selectedIds[this.value] = true; else delete selectedIds[this.value];
+    <script>
+    $(document).ready(function() {
+      const caTable = $('#caTable').DataTable({
+        responsive: true,
+        order: [[5, 'desc']],
+        columnDefs: [{ targets: 0, orderable: false, searchable: false }]
       });
-      refreshSelection();
-    });
-    caTable.on('draw', syncVisibleChecks);
 
-    $(document).on('click', '.bulk-dl-item', function(e) {
-      e.preventDefault();
-      let ids = Object.keys(selectedIds).map(Number).sort(function(a, b) { return a - b; });
-      if (!ids.length) return;
-      if (ids.length > 100) { Swal.fire('Too many selected', 'You can download up to 100 certificates at a time.', 'warning'); return; }
-      let tpl = $(this).data('template');
-      window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + ids.join(',') + (tpl ? '&template=' + encodeURIComponent(tpl) : '') + '&size=' + encodeURIComponent(caSize());
-    });
-
-    // ── Delete several selected certificates ──
-    $('#delSelItem').on('click', function(e) {
-      e.preventDefault();
-      let ids = Object.keys(selectedIds).map(Number);
-      if (!ids.length) { Swal.fire('Nothing selected', 'Tick the certificates you want to delete first.', 'info'); return; }
-      Swal.fire({
-        title: 'Delete ' + ids.length + ' certificate' + (ids.length === 1 ? '' : 's') + '?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete them!'
-      }).then(function(r) {
-        if (!r.isConfirmed) return;
-        $.post('certificate_of_appearance.php', { action: 'bulk_delete', ids: ids }, function(res) {
-          if (res.success) Swal.fire('Deleted!', res.message, 'success').then(() => location.reload());
-          else Swal.fire('Error!', res.message, 'error');
-        }, 'json').fail(function() {
-          Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
-        });
+      // ── Print size (Original / A5) — applied to every .docx download ──
+      const CA_SIZES = <?= json_encode(array_keys($CA_SIZES)) ?>;
+      function caSize() { return $('#caSizeTop').val() || 'original'; }
+      (function() {
+        let saved = null;
+        try { saved = localStorage.getItem('ca_print_size'); } catch (e) {}
+        if (CA_SIZES.indexOf(saved) !== -1) $('.ca-size').val(saved);
+      })();
+      $(document).on('change', '.ca-size', function() {
+        $('.ca-size').val(this.value);                       // keep the toolbar and View-modal selectors in sync
+        try { localStorage.setItem('ca_print_size', this.value); } catch (e) {}
       });
-    });
-
-    // ── Delete ALL certificates (must type DELETE to confirm) ──
-    $('#delAllItem').on('click', function(e) {
-      e.preventDefault();
-      let total = $(this).data('total');
-      if (!total) { Swal.fire('Nothing to delete', 'There are no certificates.', 'info'); return; }
-      Swal.fire({
-        title: 'Delete ALL ' + total + ' certificates?',
-        html: 'This permanently removes every certificate and cannot be undone.<br>Type <b>DELETE</b> to confirm.',
-        icon: 'warning',
-        input: 'text',
-        inputPlaceholder: 'DELETE',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Delete all',
-        preConfirm: function(v) {
-          if ($.trim(v) !== 'DELETE') { Swal.showValidationMessage('Please type DELETE exactly.'); return false; }
-          return true;
-        }
-      }).then(function(r) {
-        if (!r.isConfirmed) return;
-        $.post('certificate_of_appearance.php', { action: 'delete_all', confirm: 'DELETE' }, function(res) {
-          if (res.success) Swal.fire('Deleted!', res.message, 'success').then(() => location.reload());
-          else Swal.fire('Error!', res.message, 'error');
-        }, 'json').fail(function() {
-          Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
-        });
-      });
-    });
-
-    // Themed Designation picker (type to search; new designations can be typed in)
-    $('.ca-designation').each(function() {
-      let $modal = $(this).closest('.modal');
-      $(this).select2({
-        placeholder: '-- Select or type a designation --',
-        allowClear: true,
-        tags: true,
-        dropdownParent: $modal,
-        width: '100%',
-        createTag: function(params) {
-          let term = $.trim(params.term);
-          return term === '' ? null : { id: term, text: term, newTag: true };
-        },
-        templateResult: function(d) {
-          return d.newTag ? $('<span><i class="fas fa-plus-circle mr-1"></i>Use "' + $('<div>').text(d.text).html() + '"</span>') : d.text;
-        }
-      });
-    });
-    function setDesignation($el, value) {
-      if (value && !$el.find('option').filter(function() { return this.value === value; }).length) {
-        $el.append(new Option(value, value, false, false));
+      // ── Print preview: the certificate laid out on its letterhead, ready to print, with Print + Download .docx ──
+      let previewIds = [];
+      function loadPreview() {
+        if (!previewIds.length) return;
+        let size = $('#caSizePreview').val() || caSize(), idsQs = previewIds.join(',');   // preview's own selector (always in sync)
+        $('#previewCaHint').html(size === 'a5'
+          ? '<i class="fas fa-info-circle"></i> In the print dialog choose <b>Paper size: A5</b>, <b>Margins: None</b>, <b>Scale: 100%</b>.'
+          : '<i class="fas fa-info-circle"></i> In the print dialog choose your custom <b>8.5 &times; 6.5 in</b> paper (Central Office: A4), <b>Margins: None</b>, <b>Scale: 100%</b>. Otherwise it prints small, in the middle of a bigger sheet.');
+        $('#previewCaLoading').show();
+        let tpl = $('#caTplPreview').val(), tplQs = tpl ? '&template=' + encodeURIComponent(tpl) : '';
+        $('#previewCaFrame').attr('src', 'certificate_of_appearance.php?action=preview&ids=' + idsQs + tplQs + '&size=' + encodeURIComponent(size));
+        $('#previewCaDownload').attr('href', previewIds.length === 1
+          ? 'certificate_of_appearance.php?action=download&id=' + idsQs + tplQs + '&size=' + encodeURIComponent(size)
+          : 'certificate_of_appearance.php?action=download_bulk&ids=' + idsQs + tplQs + '&size=' + encodeURIComponent(size));
       }
-      $el.val(value || null).trigger('change');
-    }
-
-    const CA_TEMPLATES = <?= json_encode($CA_TEMPLATES, JSON_UNESCAPED_UNICODE) ?>;
-    const CA_DEFAULT = <?= json_encode(CA_DEFAULT_TEMPLATE) ?>;
-    const CA_POSITIONS = <?= json_encode($positions, JSON_UNESCAPED_UNICODE) ?>;
-
-    // Template chooser: swap default signatory, hide meal breakdown for templates that don't have it
-    function applyTemplate($select, swapSignatory) {
-      let key = $select.val(), t = CA_TEMPLATES[key]; if (!t) return;
-      let $form = $select.closest('form'), p = $select.attr('id').replace('template_key', '');
-      $form.toggleClass('no-meal-detail', !t.detailed);
-      $form.find('.ca-template-note').text(t.detailed ? '' : 'This template only shows Provided / Not Provided for lodging and meals (no breakfast, snack, lunch or dinner breakdown).');
-      if (swapSignatory) {
-        let $n = $('#' + p + 'signatory_name'), $t = $('#' + p + 'signatory_title');
-        let isDefault = $.map(CA_TEMPLATES, function(x) { return x.signatory[0]; }).indexOf($.trim($n.val())) !== -1 || $.trim($n.val()) === '';
-        if (isDefault) { $n.val(t.signatory[0]); $t.val(t.signatory[1]); }
+      function openPreview(ids) {
+        previewIds = ids;
+        $('#caTplPreview').val('');
+        $('#previewCaFrame').attr('src', 'about:blank');
+        $('#previewCaModal').modal('show');
+        loadPreview();
       }
-    }
-    $(document).on('change', '.ca-template', function() { applyTemplate($(this), true); });
-
-    function esc(s) { return $('<div>').text(s == null ? '' : s).html(); }
-    function fmtDate(d) {
-      if (!d) return '';
-      return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
-    }
-
-    // Show meal options only when "Meal: Provided" is ticked
-    $(document).on('change', '.meal-toggle', function() {
-      let box = $(this).closest('.form-group').find('.ca-meals');
-      if (this.checked) { box.slideDown(120); }
-      else { box.slideUp(120).find('input').prop('checked', false); }
-    });
-
-    // Departure can't precede arrival
-    $(document).on('change', '[id$="date_arrival"]', function() {
-      let p = this.id.replace('date_arrival', '');
-      $('#' + p + 'date_departure').attr('min', this.value);
-    });
-
-    // Reset the add form each time it opens
-    $('#addCaModal').on('show.bs.modal', function() {
-      $('#addCaForm')[0].reset();
-      $('#add_designation').val(null).trigger('change');
-      $('#add_template_key').val(CA_DEFAULT);
-      $('#add_signatory_name').val(CA_TEMPLATES[CA_DEFAULT].signatory[0]);
-      $('#add_signatory_title').val(CA_TEMPLATES[CA_DEFAULT].signatory[1]);
-      applyTemplate($('#add_template_key'), false);
-      $('#add_meals').hide();
-    });
-
-    function submitForm(formSel, action) {
-      let data = $(formSel).serialize() + '&action=' + action;
-      $.post('certificate_of_appearance.php', data, function(res) {
-        if (res.success) {
-          Swal.fire('Success!', res.message, 'success').then(() => location.reload());
-        } else {
-          Swal.fire('Error!', res.message, 'error');
-        }
-      }, 'json').fail(function() {
-        Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
+      $('#previewCaFrame').on('load', function() { if (this.getAttribute('src') !== 'about:blank') $('#previewCaLoading').hide(); });
+      $('#previewCaModal').on('hidden.bs.modal', function() { $('#previewCaFrame').attr('src', 'about:blank'); });
+      $('#caSizePreview, #caTplPreview').on('change', loadPreview);            // switching size reloads the preview
+      $('#previewCaPrint').on('click', function() {
+        let f = document.getElementById('previewCaFrame');
+        try { f.contentWindow.focus(); f.contentWindow.print(); }
+        catch (e) { window.open(f.src, '_blank'); }             // fallback: open the page in a tab and print from there
       });
-    }
-
-    $('#addCaForm').on('submit', function(e) { e.preventDefault(); submitForm(this, 'create'); });
-    $('#editCaForm').on('submit', function(e) { e.preventDefault(); submitForm(this, 'update'); });
-
-    function getCert(id, cb) {
-      $.post('certificate_of_appearance.php', { action: 'get', ca_id: id }, function(res) {
-        if (res.success) cb(res.data); else Swal.fire('Error!', res.message, 'error');
-      }, 'json');
-    }
-
-    // ── Bulk certificates: shared details + a list of (name, designation) ──
-    const BULK_START_ROWS = 3;
-    function updateBulkCount() {
-      let n = $('#bulk_rows .bulk-name').filter(function() { return $.trim(this.value) !== ''; }).length;
-      $('#bulkSubmitBtn').html('<i class="fas fa-layer-group"></i> Generate ' + (n ? n + ' ' : '') + 'Certificate' + (n === 1 ? '' : 's'));
-    }
-    function renumberBulk() {
-      let $rows = $('#bulk_rows .bulk-row');
-      $rows.each(function(i) { $(this).find('.bulk-num').text((i + 1) + '.'); });
-      $rows.find('.bulk-remove').prop('disabled', $rows.length <= 1);
-      updateBulkCount();
-    }
-    function addBulkRow() {
-      let $row = $('<div class="bulk-row"><div class="d-flex align-items-center">' +
-        '<div class="bulk-num"></div>' +
-        '<div class="flex-fill pr-2"><input type="text" name="bulk_name[]" class="form-control bulk-name" placeholder="Complete name e.g. JUAN D. DELA CRUZ" autocomplete="off"></div>' +
-        '<div class="flex-fill pr-2"><select name="bulk_designation[]" class="form-control bulk-designation"><option value=""></option></select></div>' +
-        '<button type="button" class="btn btn-sm btn-outline-danger bulk-remove" title="Remove"><i class="fas fa-times"></i></button>' +
-        '</div></div>');
-      let $sel = $row.find('select');
-      CA_POSITIONS.forEach(function(pos) { $sel.append($('<option>').val(pos).text(pos)); });
-      $('#bulk_rows').append($row);
-      $sel.select2({
-        placeholder: '-- Designation --',
-        allowClear: true,
-        tags: true,
-        dropdownParent: $('#bulk_rows').closest('.bulk-people'),
-        width: '100%',
-        createTag: function(params) {
-          let term = $.trim(params.term);
-          return term === '' ? null : { id: term, text: term, newTag: true };
-        }
+      $(document).on('click', '.preview-btn', function() { openPreview([$(this).data('id')]); });
+      $('#bulkPreviewBtn').on('click', function() {
+        let ids = Object.keys(selectedIds).map(Number).sort(function(a, b) { return a - b; });
+        if (!ids.length) return;
+        if (ids.length > 100) { Swal.fire('Too many selected', 'You can print up to 100 certificates at a time.', 'warning'); return; }
+        openPreview(ids);
       });
-      renumberBulk();
-      return $row;
-    }
-    $('#bulk_add_row').on('click', function() { addBulkRow().find('.bulk-name').focus(); });
-    $(document).on('click', '.bulk-remove', function() {
-      let $row = $(this).closest('.bulk-row');
-      $row.find('select').select2('destroy');
-      $row.remove();
-      renumberBulk();
-    });
-    $(document).on('input', '.bulk-name', updateBulkCount);
-    // Enter in a name box jumps to the next row (adding one if it's the last) instead of submitting
-    $(document).on('keydown', '.bulk-name', function(e) {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      let $next = $(this).closest('.bulk-row').next('.bulk-row');
-      if (!$next.length) $next = addBulkRow();
-      $next.find('.bulk-name').focus();
-    });
+      $('#viewCaPreviewBtn').on('click', function() {
+        let id = $('#viewCaDownloadMenu a').first().attr('href').match(/[?&]id=(\d+)/);
+        if (!id) return;
+        $('#viewCaModal').one('hidden.bs.modal', function() { openPreview([parseInt(id[1], 10)]); }).modal('hide');
+      });
 
-    $('#bulkCaModal').on('show.bs.modal', function() {
-      $('#bulkCaForm')[0].reset();
-      $('#bulk_rows').find('select').select2('destroy');
-      $('#bulk_rows').empty();
-      for (let i = 0; i < BULK_START_ROWS; i++) addBulkRow();
-      $('#bulk_template_key').val(CA_DEFAULT);
-      $('#bulk_signatory_name').val(CA_TEMPLATES[CA_DEFAULT].signatory[0]);
-      $('#bulk_signatory_title').val(CA_TEMPLATES[CA_DEFAULT].signatory[1]);
-      applyTemplate($('#bulk_template_key'), false);
-      $('#bulk_meals').hide();
-      $('#bulkSubmitBtn').prop('disabled', false);
-    }).on('shown.bs.modal', function() {
-      $('#bulk_rows .bulk-name').first().focus();
-    });
+      // single-certificate download links (table rows + View modal): add &size=
+      $(document).on('click', 'a[href*="action=download&"]', function() {
+        this.href = this.href.replace(/&size=[^&]*/, '') + '&size=' + encodeURIComponent(caSize());
+      });
 
-    $('#bulkCaForm').on('submit', function(e) {
-      e.preventDefault();
-      let $btn = $('#bulkSubmitBtn').prop('disabled', true);
-      $.post('certificate_of_appearance.php', $(this).serialize() + '&action=bulk_create', function(res) {
-        if (!res.success) { $btn.prop('disabled', false); Swal.fire('Error!', res.message, 'error'); return; }
+      // ── Select certificates & download them again as ONE combined Word file ──
+      let selectedIds = {};
+      function refreshSelection() {
+        let ids = Object.keys(selectedIds);
+        $('#selCount').text(ids.length);
+        $('#delSelCount').text(ids.length);
+        $('#delSelItem').toggleClass('disabled', ids.length === 0);
+        $('#bulkPreviewBtn').prop('disabled', ids.length === 0);
+        $('#bulkDownloadBtn').prop('disabled', ids.length === 0)
+          .toggleClass('btn-outline-success', ids.length === 0)
+          .toggleClass('btn-success', ids.length > 0);
+        let $boxes = $('#caTable tbody .ca-select');
+        $('#caSelectAll').prop('checked', $boxes.length > 0 && $boxes.filter(':checked').length === $boxes.length);
+      }
+      function syncVisibleChecks() {
+        $('#caTable tbody .ca-select').each(function() { this.checked = !!selectedIds[this.value]; });
+        refreshSelection();
+      }
+      $(document).on('change', '.ca-select', function() {
+        if (this.checked) selectedIds[this.value] = true; else delete selectedIds[this.value];
+        refreshSelection();
+      });
+      $('#caSelectAll').on('change', function() {
+        let on = this.checked;
+        $('#caTable tbody .ca-select').each(function() {
+          this.checked = on;
+          if (on) selectedIds[this.value] = true; else delete selectedIds[this.value];
+        });
+        refreshSelection();
+      });
+      caTable.on('draw', syncVisibleChecks);
+
+      $(document).on('click', '.bulk-dl-item', function(e) {
+        e.preventDefault();
+        let ids = Object.keys(selectedIds).map(Number).sort(function(a, b) { return a - b; });
+        if (!ids.length) return;
+        if (ids.length > 100) { Swal.fire('Too many selected', 'You can download up to 100 certificates at a time.', 'warning'); return; }
+        let tpl = $(this).data('template');
+        window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + ids.join(',') + (tpl ? '&template=' + encodeURIComponent(tpl) : '') + '&size=' + encodeURIComponent(caSize());
+      });
+
+      // ── Delete several selected certificates ──
+      $('#delSelItem').on('click', function(e) {
+        e.preventDefault();
+        let ids = Object.keys(selectedIds).map(Number);
+        if (!ids.length) { Swal.fire('Nothing selected', 'Tick the certificates you want to delete first.', 'info'); return; }
         Swal.fire({
-          icon: 'success',
-          title: 'Saved!',
-          text: res.message,
+          title: 'Delete ' + ids.length + ' certificate' + (ids.length === 1 ? '' : 's') + '?',
+          text: "You won't be able to revert this!",
+          icon: 'warning',
           showCancelButton: true,
-          confirmButtonText: '<i class="fas fa-file-word"></i> Download 1 Word file (' + res.ids.length + ' pages)',
-          cancelButtonText: 'Close',
-          allowOutsideClick: false
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete them!'
         }).then(function(r) {
-          if (r.isConfirmed) {
-            window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + res.ids.join(',') + '&template=' + encodeURIComponent(res.template) + '&size=' + encodeURIComponent(caSize());
-            setTimeout(function() { location.reload(); }, 1500);
-          } else {
-            location.reload();
+          if (!r.isConfirmed) return;
+          $.post('certificate_of_appearance.php', { action: 'bulk_delete', ids: ids }, function(res) {
+            if (res.success) Swal.fire('Deleted!', res.message, 'success').then(() => location.reload());
+            else Swal.fire('Error!', res.message, 'error');
+          }, 'json').fail(function() {
+            Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
+          });
+        });
+      });
+
+      // ── Delete ALL certificates (must type DELETE to confirm) ──
+      $('#delAllItem').on('click', function(e) {
+        e.preventDefault();
+        let total = $(this).data('total');
+        if (!total) { Swal.fire('Nothing to delete', 'There are no certificates.', 'info'); return; }
+        Swal.fire({
+          title: 'Delete ALL ' + total + ' certificates?',
+          html: 'This permanently removes every certificate and cannot be undone.<br>Type <b>DELETE</b> to confirm.',
+          icon: 'warning',
+          input: 'text',
+          inputPlaceholder: 'DELETE',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Delete all',
+          preConfirm: function(v) {
+            if ($.trim(v) !== 'DELETE') { Swal.showValidationMessage('Please type DELETE exactly.'); return false; }
+            return true;
+          }
+        }).then(function(r) {
+          if (!r.isConfirmed) return;
+          $.post('certificate_of_appearance.php', { action: 'delete_all', confirm: 'DELETE' }, function(res) {
+            if (res.success) Swal.fire('Deleted!', res.message, 'success').then(() => location.reload());
+            else Swal.fire('Error!', res.message, 'error');
+          }, 'json').fail(function() {
+            Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
+          });
+        });
+      });
+
+      // Themed Designation picker (type to search; new designations can be typed in)
+      $('.ca-designation').each(function() {
+        let $modal = $(this).closest('.modal');
+        $(this).select2({
+          placeholder: '-- Select or type a designation --',
+          allowClear: true,
+          tags: true,
+          dropdownParent: $modal,
+          width: '100%',
+          createTag: function(params) {
+            let term = $.trim(params.term);
+            return term === '' ? null : { id: term, text: term, newTag: true };
+          },
+          templateResult: function(d) {
+            return d.newTag ? $('<span><i class="fas fa-plus-circle mr-1"></i>Use "' + $('<div>').text(d.text).html() + '"</span>') : d.text;
           }
         });
-      }, 'json').fail(function() {
-        $btn.prop('disabled', false);
-        Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
       });
-    });
-
-    // Edit
-    $(document).on('click', '.edit-btn', function() {
-      getCert($(this).data('id'), function(d) {
-        $('#edit_ca_id').val(d.ca_id);
-        ['person_name','office_from','date_arrival','date_departure','purpose','signatory_name','signatory_title']
-          .forEach(function(f) { $('#edit_' + f).val(d[f]); });
-        $('#edit_template_key').val(CA_TEMPLATES[d.template_key] ? d.template_key : CA_DEFAULT);
-        applyTemplate($('#edit_template_key'), false);
-        setDesignation($('#edit_designation'), d.designation);
-        $('#edit_date_departure').attr('min', d.date_arrival);
-        $('#edit_lodging_provided').prop('checked', d.lodging_provided == 1);
-        $('#edit_meal_provided').prop('checked', d.meal_provided == 1);
-        ['breakfast','am_snack','lunch','pm_snack','dinner'].forEach(function(m) { $('#edit_' + m).prop('checked', d[m] == 1); });
-        $('#edit_meals').toggle(d.meal_provided == 1);
-        $('#editCaModal').modal('show');
-      });
-    });
-
-    // View
-    $(document).on('click', '.view-btn', function() {
-      getCert($(this).data('id'), function(d) {
-        let meals = [];
-        if (d.meal_provided == 1) {
-          if (d.breakfast == 1) meals.push('Breakfast');
-          if (d.am_snack == 1) meals.push('AM Snack');
-          if (d.lunch == 1) meals.push('Lunch');
-          if (d.pm_snack == 1) meals.push('PM Snack');
-          if (d.dinner == 1) meals.push('Dinner');
+      function setDesignation($el, value) {
+        if (value && !$el.find('option').filter(function() { return this.value === value; }).length) {
+          $el.append(new Option(value, value, false, false));
         }
-        let tpl   = (CA_TEMPLATES[d.template_key] || CA_TEMPLATES[CA_DEFAULT]).label;
-        let days  = Math.round((new Date(d.date_departure) - new Date(d.date_arrival)) / 86400000) + 1;
-        let on    = d.meal_provided == 1;
-        let chips = [['breakfast','Breakfast'],['am_snack','AM Snack'],['lunch','Lunch'],['pm_snack','PM Snack'],['dinner','Dinner']].map(function(m) {
-          let yes = on && d[m[0]] == 1;
-          return '<span class="cav-chip ' + (yes ? 'on' : 'off') + '"><i class="fas fa-' + (yes ? 'check' : 'minus') + '"></i> ' + m[1] + '</span>';
-        }).join('');
-        let status = function(yes) {
-          return '<span class="badge cav-status ' + (yes ? 'badge-ca-yes' : 'badge-ca-no') + '"><i class="fas fa-' + (yes ? 'check' : 'times') + '"></i> ' + (yes ? 'Provided' : 'Not Provided') + '</span>';
-        };
-        let created = d.created_at ? 'Issued ' + fmtDate(String(d.created_at).substr(0, 10)) : '';
-        $('#viewCaContent').html(
-          '<div class="cav-top"><div><div class="cav-tn-label">Tracking No.</div><div class="cav-tn">' + esc(d.tracking_no || '—') + '</div></div>' +
-            '<div class="cav-tpl"><i class="fas fa-file-word"></i> ' + esc(tpl) + '</div></div>' +
-          '<div class="cav-person"><div class="cav-avatar"><i class="fas fa-user"></i></div><div class="cav-person-text">' +
-            '<div class="cav-name">' + esc(d.person_name) + '</div>' +
-            '<div class="cav-desig">' + esc(d.designation) + '</div>' +
-            '<div class="cav-office"><i class="fas fa-building"></i> ' + esc(d.office_from) + '</div></div></div>' +
-          '<div class="cav-dates"><div class="cav-date"><span>Arrival</span><strong>' + fmtDate(d.date_arrival) + '</strong></div>' +
-            '<div class="cav-arrow"><i class="fas fa-long-arrow-alt-right"></i><small>' + days + ' day' + (days === 1 ? '' : 's') + '</small></div>' +
-            '<div class="cav-date"><span>Departure</span><strong>' + fmtDate(d.date_departure) + '</strong></div></div>' +
-          '<div class="cav-section"><div class="cav-title"><i class="fas fa-bullseye"></i>Purpose of Travel</div><div class="cav-purpose">' + esc(d.purpose) + '</div></div>' +
-          '<div class="cav-grid">' +
-            '<div class="cav-section"><div class="cav-title"><i class="fas fa-bed"></i>Lodging</div>' + status(d.lodging_provided == 1) + '</div>' +
-            '<div class="cav-section"><div class="cav-title"><i class="fas fa-utensils"></i>Meals</div>' + status(on) + '<div class="cav-chips">' + chips + '</div></div>' +
-          '</div>' +
-          '<div class="cav-sign"><div><span>Signatory</span><strong>' + esc(d.signatory_name) + '</strong><small>' + esc(d.signatory_title) + '</small></div>' +
-            '<div class="cav-created">' + created + '</div></div>'
-        );
-        $('#viewCaDownloadMenu a').each(function() {
-          $(this).attr('href', 'certificate_of_appearance.php?action=download&id=' + d.ca_id + '&template=' + $(this).data('template'));
-        });
-        $('#viewCaModal').modal('show');
-      });
-    });
+        $el.val(value || null).trigger('change');
+      }
 
-    // Delete
-    $(document).on('click', '.delete-btn', function() {
-      let id = $(this).data('id');
-      Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!'
-      }).then((result) => {
-        if (!result.isConfirmed) return;
-        $.post('certificate_of_appearance.php', { action: 'delete', ca_id: id }, function(res) {
-          if (res.success) Swal.fire('Deleted!', res.message, 'success').then(() => location.reload());
-          else Swal.fire('Error!', res.message, 'error');
+      const CA_TEMPLATES = <?= json_encode($CA_TEMPLATES, JSON_UNESCAPED_UNICODE) ?>;
+      const CA_DEFAULT = <?= json_encode(CA_DEFAULT_TEMPLATE) ?>;
+      const CA_POSITIONS = <?= json_encode($positions, JSON_UNESCAPED_UNICODE) ?>;
+
+      // Template chooser: swap default signatory, hide meal breakdown for templates that don't have it
+      function applyTemplate($select, swapSignatory) {
+        let key = $select.val(), t = CA_TEMPLATES[key]; if (!t) return;
+        let $form = $select.closest('form'), p = $select.attr('id').replace('template_key', '');
+        $form.toggleClass('no-meal-detail', !t.detailed);
+        $form.find('.ca-template-note').text(t.detailed ? '' : 'This template only shows Provided / Not Provided for lodging and meals (no breakfast, snack, lunch or dinner breakdown).');
+        if (swapSignatory) {
+          let $n = $('#' + p + 'signatory_name'), $t = $('#' + p + 'signatory_title');
+          let isDefault = $.map(CA_TEMPLATES, function(x) { return x.signatory[0]; }).indexOf($.trim($n.val())) !== -1 || $.trim($n.val()) === '';
+          if (isDefault) { $n.val(t.signatory[0]); $t.val(t.signatory[1]); }
+        }
+      }
+      $(document).on('change', '.ca-template', function() { applyTemplate($(this), true); });
+
+      function esc(s) { return $('<div>').text(s == null ? '' : s).html(); }
+      function fmtDate(d) {
+        if (!d) return '';
+        return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+      }
+
+      // Show meal options only when "Meal: Provided" is ticked
+      $(document).on('change', '.meal-toggle', function() {
+        let box = $(this).closest('.form-group').find('.ca-meals');
+        if (this.checked) { box.slideDown(120); }
+        else { box.slideUp(120).find('input').prop('checked', false); }
+      });
+
+      // Departure can't precede arrival
+      $(document).on('change', '[id$="date_arrival"]', function() {
+        let p = this.id.replace('date_arrival', '');
+        $('#' + p + 'date_departure').attr('min', this.value);
+      });
+
+      // Reset the add form each time it opens
+      $('#addCaModal').on('show.bs.modal', function() {
+        $('#addCaForm')[0].reset();
+        $('#add_designation').val(null).trigger('change');
+        $('#add_template_key').val(CA_DEFAULT);
+        $('#add_signatory_name').val(CA_TEMPLATES[CA_DEFAULT].signatory[0]);
+        $('#add_signatory_title').val(CA_TEMPLATES[CA_DEFAULT].signatory[1]);
+        applyTemplate($('#add_template_key'), false);
+        $('#add_meals').hide();
+      });
+
+      function submitForm(formSel, action) {
+        let data = $(formSel).serialize() + '&action=' + action;
+        $.post('certificate_of_appearance.php', data, function(res) {
+          if (res.success) {
+            Swal.fire('Success!', res.message, 'success').then(() => location.reload());
+          } else {
+            Swal.fire('Error!', res.message, 'error');
+          }
+        }, 'json').fail(function() {
+          Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
+        });
+      }
+
+      $('#addCaForm').on('submit', function(e) { e.preventDefault(); submitForm(this, 'create'); });
+      $('#editCaForm').on('submit', function(e) { e.preventDefault(); submitForm(this, 'update'); });
+
+      function getCert(id, cb) {
+        $.post('certificate_of_appearance.php', { action: 'get', ca_id: id }, function(res) {
+          if (res.success) cb(res.data); else Swal.fire('Error!', res.message, 'error');
         }, 'json');
+      }
+
+      // ── Bulk certificates: shared details + a list of (name, designation) ──
+      const BULK_START_ROWS = 3;
+      function updateBulkCount() {
+        let n = $('#bulk_rows .bulk-name').filter(function() { return $.trim(this.value) !== ''; }).length;
+        $('#bulkSubmitBtn').html('<i class="fas fa-layer-group"></i> Generate ' + (n ? n + ' ' : '') + 'Certificate' + (n === 1 ? '' : 's'));
+      }
+      function renumberBulk() {
+        let $rows = $('#bulk_rows .bulk-row');
+        $rows.each(function(i) { $(this).find('.bulk-num').text((i + 1) + '.'); });
+        $rows.find('.bulk-remove').prop('disabled', $rows.length <= 1);
+        updateBulkCount();
+      }
+      function addBulkRow() {
+        let $row = $('<div class="bulk-row"><div class="d-flex align-items-center">' +
+          '<div class="bulk-num"></div>' +
+          '<div class="flex-fill pr-2"><input type="text" name="bulk_name[]" class="form-control bulk-name" placeholder="Complete name e.g. JUAN D. DELA CRUZ" autocomplete="off"></div>' +
+          '<div class="flex-fill pr-2"><select name="bulk_designation[]" class="form-control bulk-designation"><option value=""></option></select></div>' +
+          '<button type="button" class="btn btn-sm btn-outline-danger bulk-remove" title="Remove"><i class="fas fa-times"></i></button>' +
+          '</div></div>');
+        let $sel = $row.find('select');
+        CA_POSITIONS.forEach(function(pos) { $sel.append($('<option>').val(pos).text(pos)); });
+        $('#bulk_rows').append($row);
+        $sel.select2({
+          placeholder: '-- Designation --',
+          allowClear: true,
+          tags: true,
+          dropdownParent: $('#bulk_rows').closest('.bulk-people'),
+          width: '100%',
+          createTag: function(params) {
+            let term = $.trim(params.term);
+            return term === '' ? null : { id: term, text: term, newTag: true };
+          }
+        });
+        renumberBulk();
+        return $row;
+      }
+      $('#bulk_add_row').on('click', function() { addBulkRow().find('.bulk-name').focus(); });
+      $(document).on('click', '.bulk-remove', function() {
+        let $row = $(this).closest('.bulk-row');
+        $row.find('select').select2('destroy');
+        $row.remove();
+        renumberBulk();
+      });
+      $(document).on('input', '.bulk-name', updateBulkCount);
+      // Enter in a name box jumps to the next row (adding one if it's the last) instead of submitting
+      $(document).on('keydown', '.bulk-name', function(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        let $next = $(this).closest('.bulk-row').next('.bulk-row');
+        if (!$next.length) $next = addBulkRow();
+        $next.find('.bulk-name').focus();
+      });
+
+      $('#bulkCaModal').on('show.bs.modal', function() {
+        $('#bulkCaForm')[0].reset();
+        $('#bulk_rows').find('select').select2('destroy');
+        $('#bulk_rows').empty();
+        for (let i = 0; i < BULK_START_ROWS; i++) addBulkRow();
+        $('#bulk_template_key').val(CA_DEFAULT);
+        $('#bulk_signatory_name').val(CA_TEMPLATES[CA_DEFAULT].signatory[0]);
+        $('#bulk_signatory_title').val(CA_TEMPLATES[CA_DEFAULT].signatory[1]);
+        applyTemplate($('#bulk_template_key'), false);
+        $('#bulk_meals').hide();
+        $('#bulkSubmitBtn').prop('disabled', false);
+      }).on('shown.bs.modal', function() {
+        $('#bulk_rows .bulk-name').first().focus();
+      });
+
+      $('#bulkCaForm').on('submit', function(e) {
+        e.preventDefault();
+        let $btn = $('#bulkSubmitBtn').prop('disabled', true);
+        $.post('certificate_of_appearance.php', $(this).serialize() + '&action=bulk_create', function(res) {
+          if (!res.success) { $btn.prop('disabled', false); Swal.fire('Error!', res.message, 'error'); return; }
+          Swal.fire({
+            icon: 'success',
+            title: 'Saved!',
+            text: res.message,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-file-word"></i> Download 1 Word file (' + res.ids.length + ' pages)',
+            cancelButtonText: 'Close',
+            allowOutsideClick: false
+          }).then(function(r) {
+            if (r.isConfirmed) {
+              window.location.href = 'certificate_of_appearance.php?action=download_bulk&ids=' + res.ids.join(',') + '&template=' + encodeURIComponent(res.template) + '&size=' + encodeURIComponent(caSize());
+              setTimeout(function() { location.reload(); }, 1500);
+            } else {
+              location.reload();
+            }
+          });
+        }, 'json').fail(function() {
+          $btn.prop('disabled', false);
+          Swal.fire('Error!', 'An error occurred while processing your request.', 'error');
+        });
+      });
+
+      // Edit
+      $(document).on('click', '.edit-btn', function() {
+        getCert($(this).data('id'), function(d) {
+          $('#edit_ca_id').val(d.ca_id);
+          ['person_name','office_from','date_arrival','date_departure','purpose','signatory_name','signatory_title']
+            .forEach(function(f) { $('#edit_' + f).val(d[f]); });
+          $('#edit_template_key').val(CA_TEMPLATES[d.template_key] ? d.template_key : CA_DEFAULT);
+          applyTemplate($('#edit_template_key'), false);
+          setDesignation($('#edit_designation'), d.designation);
+          $('#edit_date_departure').attr('min', d.date_arrival);
+          $('#edit_lodging_provided').prop('checked', d.lodging_provided == 1);
+          $('#edit_meal_provided').prop('checked', d.meal_provided == 1);
+          ['breakfast','am_snack','lunch','pm_snack','dinner'].forEach(function(m) { $('#edit_' + m).prop('checked', d[m] == 1); });
+          $('#edit_meals').toggle(d.meal_provided == 1);
+          $('#editCaModal').modal('show');
+        });
+      });
+
+      // View
+      $(document).on('click', '.view-btn', function() {
+        getCert($(this).data('id'), function(d) {
+          let meals = [];
+          if (d.meal_provided == 1) {
+            if (d.breakfast == 1) meals.push('Breakfast');
+            if (d.am_snack == 1) meals.push('AM Snack');
+            if (d.lunch == 1) meals.push('Lunch');
+            if (d.pm_snack == 1) meals.push('PM Snack');
+            if (d.dinner == 1) meals.push('Dinner');
+          }
+          let tpl   = (CA_TEMPLATES[d.template_key] || CA_TEMPLATES[CA_DEFAULT]).label;
+          let days  = Math.round((new Date(d.date_departure) - new Date(d.date_arrival)) / 86400000) + 1;
+          let on    = d.meal_provided == 1;
+          let chips = [['breakfast','Breakfast'],['am_snack','AM Snack'],['lunch','Lunch'],['pm_snack','PM Snack'],['dinner','Dinner']].map(function(m) {
+            let yes = on && d[m[0]] == 1;
+            return '<span class="cav-chip ' + (yes ? 'on' : 'off') + '"><i class="fas fa-' + (yes ? 'check' : 'minus') + '"></i> ' + m[1] + '</span>';
+          }).join('');
+          let status = function(yes) {
+            return '<span class="badge cav-status ' + (yes ? 'badge-ca-yes' : 'badge-ca-no') + '"><i class="fas fa-' + (yes ? 'check' : 'times') + '"></i> ' + (yes ? 'Provided' : 'Not Provided') + '</span>';
+          };
+          let created = d.created_at ? 'Issued ' + fmtDate(String(d.created_at).substr(0, 10)) : '';
+          $('#viewCaContent').html(
+            '<div class="cav-top"><div><div class="cav-tn-label">Tracking No.</div><div class="cav-tn">' + esc(d.tracking_no || '—') + '</div></div>' +
+              '<div class="cav-tpl"><i class="fas fa-file-word"></i> ' + esc(tpl) + '</div></div>' +
+            '<div class="cav-person"><div class="cav-avatar"><i class="fas fa-user"></i></div><div class="cav-person-text">' +
+              '<div class="cav-name">' + esc(d.person_name) + '</div>' +
+              '<div class="cav-desig">' + esc(d.designation) + '</div>' +
+              '<div class="cav-office"><i class="fas fa-building"></i> ' + esc(d.office_from) + '</div></div></div>' +
+            '<div class="cav-dates"><div class="cav-date"><span>Arrival</span><strong>' + fmtDate(d.date_arrival) + '</strong></div>' +
+              '<div class="cav-arrow"><i class="fas fa-long-arrow-alt-right"></i><small>' + days + ' day' + (days === 1 ? '' : 's') + '</small></div>' +
+              '<div class="cav-date"><span>Departure</span><strong>' + fmtDate(d.date_departure) + '</strong></div></div>' +
+            '<div class="cav-section"><div class="cav-title"><i class="fas fa-bullseye"></i>Purpose of Travel</div><div class="cav-purpose">' + esc(d.purpose) + '</div></div>' +
+            '<div class="cav-grid">' +
+              '<div class="cav-section"><div class="cav-title"><i class="fas fa-bed"></i>Lodging</div>' + status(d.lodging_provided == 1) + '</div>' +
+              '<div class="cav-section"><div class="cav-title"><i class="fas fa-utensils"></i>Meals</div>' + status(on) + '<div class="cav-chips">' + chips + '</div></div>' +
+            '</div>' +
+            '<div class="cav-sign"><div><span>Signatory</span><strong>' + esc(d.signatory_name) + '</strong><small>' + esc(d.signatory_title) + '</small></div>' +
+              '<div class="cav-created">' + created + '</div></div>'
+          );
+          $('#viewCaDownloadMenu a').each(function() {
+            $(this).attr('href', 'certificate_of_appearance.php?action=download&id=' + d.ca_id + '&template=' + $(this).data('template'));
+          });
+          $('#viewCaModal').modal('show');
+        });
+      });
+
+      // Delete
+      $(document).on('click', '.delete-btn', function() {
+        let id = $(this).data('id');
+        Swal.fire({
+          title: 'Are you sure?',
+          text: "You won't be able to revert this!",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+          if (!result.isConfirmed) return;
+          $.post('certificate_of_appearance.php', { action: 'delete', ca_id: id }, function(res) {
+            if (res.success) Swal.fire('Deleted!', res.message, 'success').then(() => location.reload());
+            else Swal.fire('Error!', res.message, 'error');
+          }, 'json');
+        });
       });
     });
-  });
-  </script>
-</body>
+    </script>
+  </body>
 </html>

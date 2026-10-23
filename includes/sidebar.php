@@ -115,7 +115,13 @@ if ($employee_id) {
 
 /* Collapsible sections */
 .nav-toggle { cursor: pointer; user-select: none; padding-right: 1rem; }
-.nav-toggle:hover { color: #fff !important; }
+.sidebar-dark-primary .nav-sidebar > .nav-header.nav-toggle,
+.sidebar-dark-primary .nav-sidebar > .nav-header.nav-toggle .nav-chevron {
+    color: #e6f4ec !important;
+    opacity: 1 !important;
+}
+.sidebar-dark-primary .nav-sidebar > .nav-header.nav-toggle:hover,
+.sidebar-dark-primary .nav-sidebar > .nav-header.nav-toggle:hover .nav-chevron { color: #fff !important; }
 .nav-toggle .nav-chevron { transition: transform .2s; font-size: .7rem; margin-top: .25rem; }
 .nav-toggle.collapsed .nav-chevron { transform: rotate(-90deg); }
 .nav-sec.sec-hidden { display: none; }
@@ -209,6 +215,12 @@ if ($employee_id) {
                       <p>Employee COE Request</p>
                   </a>
               </li>
+              <li class="nav-item nav-sec nav-sec-hr">
+                <a href="../views/travel_order.php" class="nav-link <?= $current_page == 'travel_order.php' ? 'active' : 'text-white' ?>">
+                    <i class="nav-icon fas fa-plane-departure"></i>
+                    <p>Travel Order</p>
+                </a>
+            </li>
               <li class="nav-item nav-sec nav-sec-hr">
                 <a href="../views/emp.list.php" class="nav-link <?= $current_page == 'emp.list.php' ? 'active' : 'text-white' ?>">
                   <i class="fas fa-users nav-icon"></i>
@@ -324,6 +336,15 @@ if ($employee_id) {
               <a href="permissions.php" class="nav-link <?= $current_page == 'permissions.php' ? 'active' : 'text-white' ?>">
                   <i class="nav-icon fas fa-key"></i>
                   <p>Permissions</p>
+              </a>
+          </li>
+          <?php endif; ?>
+
+          <?php if (hasPermission('manage_users')): ?>
+          <li class="nav-item nav-sec nav-sec-users">
+              <a href="security.php" class="nav-link <?= $current_page == 'security.php' ? 'active' : 'text-white' ?>">
+                  <i class="nav-icon fas fa-shield-alt"></i>
+                  <p>Security</p>
               </a>
           </li>
           <?php endif; ?>
