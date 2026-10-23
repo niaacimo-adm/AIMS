@@ -89,6 +89,36 @@ function to_number_taken($db, $code, $seq, $year, $except_id) {
   return $stmt->num_rows > 0;
 }
 
+/* Saves one travel order row. $id = 0 inserts, otherwise updates. Returns the row id (0 on failure). */
+function to_save_row($db, array $d, array $people, $seq, $id, $created_by, $one_person_each) {
+  [$t_start, $t_end] = to_span($d['items']);
+  $personnel = json_encode($people, JSON_UNESCAPED_UNICODE);
+  $itinerary = json_encode($d['items'], JSON_UNESCAPED_UNICODE);
+  // "Prepared by" of a split itinerary is that row's own person
+  $prep_n = $one_person_each ? '' : $d['prepared_name'];
+  $prep_t = $one_person_each ? '' : $d['prepared_title'];
+  if ($id === 0) {
+    $stmt = $db->prepare("INSERT INTO travel_order
+      (to_code, to_seq, series_year, to_date, template_key, personnel, itinerary, travel_start, travel_end,
+       expected_output, remarks, approver_name, approver_title, recommender_name, recommender_title, prepared_name, prepared_title, created_by)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param('sii' . str_repeat('s', 14) . 'i',
+      $d['to_code'], $seq, $d['series_year'], $d['to_date'], $d['template_key'], $personnel, $itinerary, $t_start, $t_end,
+      $d['expected_output'], $d['remarks'], $d['approver_name'], $d['approver_title'], $d['recommender_name'], $d['recommender_title'],
+      $prep_n, $prep_t, $created_by);
+    return $stmt->execute() ? (int)$db->insert_id : 0;
+  }
+  $stmt = $db->prepare("UPDATE travel_order SET
+    to_code=?, to_seq=?, series_year=?, to_date=?, template_key=?, personnel=?, itinerary=?, travel_start=?, travel_end=?,
+    expected_output=?, remarks=?, approver_name=?, approver_title=?, recommender_name=?, recommender_title=?, prepared_name=?, prepared_title=?
+    WHERE to_id=?");
+  $stmt->bind_param('sii' . str_repeat('s', 14) . 'i',
+    $d['to_code'], $seq, $d['series_year'], $d['to_date'], $d['template_key'], $personnel, $itinerary, $t_start, $t_end,
+    $d['expected_output'], $d['remarks'], $d['approver_name'], $d['approver_title'], $d['recommender_name'], $d['recommender_title'],
+    $prep_n, $prep_t, $id);
+  return $stmt->execute() ? $id : 0;
+}
+
 /* ───────────────────── download (GET): one order, or all selected in ONE .docx ───────────────────── */
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && in_array($_GET['action'] ?? '', ['download', 'download_bulk'], true)) {
   $ids = to_ids_from($_GET['ids'] ?? ($_GET['id'] ?? ''));
@@ -152,42 +182,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit();
       }
       $id = $action === 'update' ? (int)($_POST['to_id'] ?? 0) : 0;
-      if (to_number_taken($db, $d['to_code'], $d['to_seq'], $d['series_year'], $id)) {
-        echo json_encode(['success' => false, 'message' => 'Travel order No. ' . $d['to_code'] . '-TO-' . $d['to_seq'] . ' s. ' . $d['series_year'] . ' already exists. Please use another number.']);
-        exit();
-      }
-      [$t_start, $t_end] = to_span($d['items']);
-      $personnel = json_encode($d['people'], JSON_UNESCAPED_UNICODE);
-      $itinerary = json_encode($d['items'],  JSON_UNESCAPED_UNICODE);
+      $created_by = (int)$_SESSION['user_id'];
+      $label = function ($seq) use ($d) { return $d['to_code'] . '-TO-' . $seq . ' s. ' . $d['series_year']; };
 
-      if ($action === 'create') {
-        $created_by = (int)$_SESSION['user_id'];
-        $stmt = $db->prepare("INSERT INTO travel_order
-          (to_code, to_seq, series_year, to_date, template_key, personnel, itinerary, travel_start, travel_end,
-           expected_output, remarks, approver_name, approver_title, recommender_name, recommender_title, prepared_name, prepared_title, created_by)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sii' . str_repeat('s', 14) . 'i',
-          $d['to_code'], $d['to_seq'], $d['series_year'], $d['to_date'], $d['template_key'], $personnel, $itinerary, $t_start, $t_end,
-          $d['expected_output'], $d['remarks'], $d['approver_name'], $d['approver_title'], $d['recommender_name'], $d['recommender_title'],
-          $d['prepared_name'], $d['prepared_title'], $created_by);
-        if ($stmt->execute()) {
-          echo json_encode(['success' => true, 'message' => 'Travel order saved! No.: ' . $d['to_code'] . '-TO-' . $d['to_seq'] . ' s. ' . $d['series_year'], 'id' => $db->insert_id]);
-        } else {
-          echo json_encode(['success' => false, 'message' => 'Failed to save travel order.']);
-        }
+      /* Itinerary = ONE person per travel order number: several people become consecutive numbers
+         (same itinerary for each).  The other formats keep one number for the whole group. */
+      $split = $d['template_key'] === 'itinerary' && count($d['people']) > 1;
+      $jobs = [];                                     // [seq, people, existing id]
+      if (!$split) {
+        $jobs[] = [$d['to_seq'], $d['people'], $id];
       } else {
-        $stmt = $db->prepare("UPDATE travel_order SET
-          to_code=?, to_seq=?, series_year=?, to_date=?, template_key=?, personnel=?, itinerary=?, travel_start=?, travel_end=?,
-          expected_output=?, remarks=?, approver_name=?, approver_title=?, recommender_name=?, recommender_title=?, prepared_name=?, prepared_title=?
-          WHERE to_id=?");
-        $stmt->bind_param('sii' . str_repeat('s', 14) . 'i',
-          $d['to_code'], $d['to_seq'], $d['series_year'], $d['to_date'], $d['template_key'], $personnel, $itinerary, $t_start, $t_end,
-          $d['expected_output'], $d['remarks'], $d['approver_name'], $d['approver_title'], $d['recommender_name'], $d['recommender_title'],
-          $d['prepared_name'], $d['prepared_title'], $id);
-        echo json_encode($stmt->execute()
-          ? ['success' => true,  'message' => 'Travel order updated successfully!']
-          : ['success' => false, 'message' => 'Failed to update travel order.']);
+        foreach ($d['people'] as $i => $p) {
+          if ($id === 0)  $jobs[] = [$d['to_seq'] + $i, [$p], 0];                        // new: entered number, +1, +2 ...
+          elseif ($i === 0) $jobs[] = [$d['to_seq'], [$p], $id];                         // edit: this record keeps the first person
+          else            $jobs[] = [null, [$p], 0];                                     // edit: the others get the next free numbers
+        }
       }
+
+      // every number must be free before anything is saved
+      foreach ($jobs as [$seq, $ppl, $jid]) {
+        if ($seq !== null && to_number_taken($db, $d['to_code'], $seq, $d['series_year'], $jid)) {
+          echo json_encode(['success' => false, 'message' => 'Travel order No. ' . $label($seq) . ' already exists.'
+            . ($split ? ' Each person on an Itinerary gets their own number (' . count($d['people']) . ' people = ' . count($d['people']) . ' consecutive numbers), so please use another starting number.' : ' Please use another number.')]);
+          exit();
+        }
+      }
+
+      $db->begin_transaction();
+      $saved = [];
+      foreach ($jobs as [$seq, $ppl, $jid]) {
+        if ($seq === null) $seq = to_next_seq($db, $d['to_code'], $d['series_year']);
+        $rid = to_save_row($db, $d, $ppl, $seq, $jid, $created_by, $split);
+        if ($rid === 0) { $db->rollback(); echo json_encode(['success' => false, 'message' => 'Failed to save travel order.']); exit(); }
+        $saved[] = $label($seq);
+      }
+      $db->commit();
+
+      if (count($saved) > 1) {
+        $msg = count($saved) . ' travel orders saved (one per person): ' . implode(', ', $saved);
+      } else {
+        $msg = $action === 'create' ? 'Travel order saved! No.: ' . $saved[0] : 'Travel order updated successfully!';
+      }
+      echo json_encode(['success' => true, 'message' => $msg]);
       exit();
     }
 
@@ -994,7 +1030,9 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
     .to-fmt-note { color: var(--h-muted) !important; }
     .to-fmt-card { border: 1.5px solid var(--h-border); border-radius: 10px; padding: 10px 14px; background: var(--h-primary-dim); font-size: .82rem; color: var(--h-text); margin-top: 6px; }
     /* show / hide parts of the form by chosen format */
-    #toForm .only-ca, #toForm .only-itin, #toForm .not-std { display: none; }
+    #toForm .only-ca, #toForm .only-itin, #toForm .not-std, #toForm .itin-inline { display: none; }
+    #toForm.fmt-itinerary .itin-inline { display: inline-block; }
+    #toForm.fmt-itinerary .hide-itin { display: none; }
     #toForm.fmt-with_ca .only-ca { display: block; }
     #toForm.fmt-itinerary .only-itin { display: block; }
     #toForm.fmt-with_ca .not-std, #toForm.fmt-itinerary .not-std { display: block; }
@@ -1197,13 +1235,13 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
             </div>
             <small class="form-text text-muted mb-3" style="margin-top:-6px;">Prints as <b id="toNoPreview"></b></small>
 
-            <div class="to-sec"><span><i class="fas fa-users mr-1"></i>Personnel to travel</span><small>pick an employee &mdash; the position fills in by itself. Not on the list? Just type the name.</small></div>
+            <div class="to-sec"><span><i class="fas fa-users mr-1"></i>Personnel to travel</span><small>pick an employee &mdash; the position fills in by itself. Not on the list? Just type the name.<span class="only-itin"> Itinerary: each person gets their own travel order number.</span></small></div>
             <div class="to-box">
               <div id="ppl_rows"></div>
               <button type="button" class="btn btn-sm btn-outline-primary" id="addPersonBtn"><i class="fas fa-user-plus"></i> Add person</button>
             </div>
 
-            <div class="to-sec"><span><i class="fas fa-route mr-1"></i>Destinations</span><small class="only-ca">The CA format fits about 3 destinations on one page.</small><small class="only-itin">The form has room for 5 dates; more continue on a 2nd page.</small></div>
+            <div class="to-sec"><span><i class="fas fa-route mr-1"></i>Destinations</span><small class="only-ca">The CA format fits about 3 destinations on one page.</small><small class="only-itin">Itinerary: one entry per day. Use <b>Next day</b> to copy a day forward, then change what differs. Room for 5 days; more continue on a 2nd page.</small></div>
             <div id="itin_rows"></div>
             <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="addItemBtn"><i class="fas fa-plus"></i> Add destination</button>
 
@@ -1252,7 +1290,7 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>Prepared by <small class="text-muted" style="text-transform:none;">(blank = first person above)</small></label>
+                  <label>Prepared by <small class="text-muted" style="text-transform:none;">(blank = the traveling person)</small></label>
                   <input type="text" name="prepared_name" id="f_prepared_name" class="form-control">
                 </div>
               </div>
@@ -1537,7 +1575,19 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
 
     function toNoText() {
       let code = ($('#f_to_code').val() || TO_CODE).toUpperCase().replace(/[^A-Z0-9]/g, '') || TO_CODE;
-      $('#toNoPreview').text(code + '-TO-' + ($('#f_to_seq').val() || '___') + ' s. ' + ($('#f_series_year').val() || TO_YEAR));
+      let seq = parseInt($('#f_to_seq').val(), 10), yr = $('#f_series_year').val() || TO_YEAR;
+      let n = $('#ppl_rows .p-name').filter(function() { return $.trim($(this).val()) !== ''; }).length;
+      let one = code + '-TO-' + (seq > 0 ? seq : '___') + ' s. ' + yr, txt = one;
+      // Itinerary = one travel order number per person
+      if ($('#f_template_key').val() === 'itinerary' && n > 1 && seq > 0) {
+        if ($('#f_to_id').val()) {
+          txt = one + ' for the first person; the other ' + (n - 1) + ' get new numbers';
+        } else {
+          let list = []; for (let i = 0; i < n; i++) list.push(code + '-TO-' + (seq + i));
+          txt = list.join(', ') + ' s. ' + yr + ' &mdash; one travel order per person';
+        }
+      }
+      $('#toNoPreview').html(txt.indexOf('&mdash;') > -1 ? txt : esc(txt));
     }
     $('#f_to_code, #f_to_seq, #f_series_year').on('input change', toNoText);
 
@@ -1554,6 +1604,7 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
     function applyTemplate(swapSignatory) {
       let key = $('#f_template_key').val(), t = TO_T[key]; if (!t) return;
       $form.removeClass('fmt-standard fmt-with_ca fmt-itinerary').addClass('fmt-' + key);
+      toNoText();
       $('#fmtDesc').html('<b>' + esc(t.label) + '</b> &mdash; ' + esc(t.desc) + ' <span class="text-muted">(' + esc(t.paper) + ')</span>');
       if (swapSignatory) {
         let $n = $('#f_approver_name'), $t = $('#f_approver_title');
@@ -1561,13 +1612,14 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
         if ($.trim($n.val()) === '' || defaults.indexOf($.trim($n.val())) !== -1) { $n.val(t.approver[0]); $t.val(t.approver[1]); }
       }
     }
-    $('#f_template_key').on('change', function() { applyTemplate(true); });
+    $('#f_template_key').on('change', function() { applyTemplate(true); if ($(this).val() === 'itinerary') expandRanges(); });
 
     // — personnel rows: pick an employee (searchable) or type a name; position follows the employee —
     function renumberPeople() {
       let $rows = $('#ppl_rows .to-ppl-row');
       $rows.each(function(i) { $(this).find('.num').text((i + 1) + '.'); });
       $rows.find('.to-rm').prop('disabled', $rows.length <= 1);
+      toNoText();
     }
     function ensureOption($sel, val) {
       if (val && !$sel.find('option').filter(function() { return this.value === val; }).length) $sel.append($('<option>').val(val).text(val));
@@ -1634,10 +1686,11 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
     // an employee was chosen -> remember who, and fill in the position
     $(document).on('select2:select', '#ppl_rows .p-name', function(e) {
       let $row = $(this).closest('.to-ppl-row'), $opt = $(e.params.data.element), emp = $opt.attr('data-emp') || '';
+      toNoText();
       $row.find('.p-empid').val(emp);                 // typed name (not an employee record) -> no id, position stays as typed
       if (emp) setPosition($row.find('.p-pos'), $opt.attr('data-pos') || '');
     });
-    $(document).on('select2:clear', '#ppl_rows .p-name', function() { $(this).closest('.to-ppl-row').find('.p-empid').val(''); });
+    $(document).on('select2:clear', '#ppl_rows .p-name', function() { $(this).closest('.to-ppl-row').find('.p-empid').val(''); setTimeout(toNoText, 0); });
     $('#addPersonBtn').on('click', function() { addPerson().find('.p-name').select2('open'); });
     $(document).on('click', '#ppl_rows .to-rm', function() {
       let $row = $(this).closest('.to-ppl-row');
@@ -1650,13 +1703,13 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
       $items.each(function(i) { $(this).find('.n').text(i + 1); });
       $items.find('.to-item-rm').prop('disabled', $items.length <= 1);
     }
-    function addItem(it) {
+    function addItem(it, $after) {
       it = it || {};
       let $it = $('<div class="to-item">' +
-        '<div class="to-item-head"><span><span class="badge-n n"></span>Destination</span><button type="button" class="btn btn-sm btn-outline-danger to-item-rm" title="Remove"><i class="fas fa-times"></i></button></div>' +
+        '<div class="to-item-head"><span><span class="badge-n n"></span><span class="lbl">Destination</span></span><span><button type="button" class="btn btn-sm btn-outline-primary to-item-next itin-inline mr-1" title="Copy this day to the next date"><i class="fas fa-calendar-plus"></i> Next day</button><button type="button" class="btn btn-sm btn-outline-danger to-item-rm" title="Remove"><i class="fas fa-times"></i></button></span></div>' +
         '<div class="row">' +
           '<div class="col-md-3"><div class="form-group"><label>Date of travel <span class="text-danger">*</span></label><input type="date" name="i_date_from[]" class="form-control i-from"></div></div>' +
-          '<div class="col-md-3"><div class="form-group"><label>Until <small style="text-transform:none">(optional)</small></label><input type="date" name="i_date_to[]" class="form-control i-to"></div></div>' +
+          '<div class="col-md-3 hide-itin"><div class="form-group"><label>Until <small style="text-transform:none">(optional)</small></label><input type="date" name="i_date_to[]" class="form-control i-to"></div></div>' +
           '<div class="col-md-3 not-std"><div class="form-group"><label>Travel time</label><input type="text" name="i_travel_time[]" class="form-control" placeholder="e.g. 2 hrs"></div></div>' +
           '<div class="col-md-3 not-std"><div class="form-group"><label>Duration of purpose</label><input type="text" name="i_duration[]" class="form-control" placeholder="e.g. 1 day"></div></div>' +
         '</div>' +
@@ -1671,12 +1724,43 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
           '<div class="col-md-2"><div class="form-group"><label>Duration</label><input type="text" name="i_rev_duration[]" class="form-control"></div></div>' +
         '</div></div></div>');
       ITEM_FIELDS.forEach(function(f) { $it.find('[name="i_' + f + '[]"]').val(it[f] || ''); });
-      $('#itin_rows').append($it);
+      if ($after && $after.length) $after.after($it); else $('#itin_rows').append($it);
       renumberItems();
       return $it;
     }
     $('#addItemBtn').on('click', function() { addItem().find('.i-from').focus(); });
     $(document).on('click', '#itin_rows .to-item-rm', function() { $(this).closest('.to-item').remove(); renumberItems(); });
+    // — Itinerary: one entry per day —
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function addDays(iso, n) {
+      let d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+    function readItem($it) {
+      let o = {};
+      ITEM_FIELDS.forEach(function(f) { o[f] = $it.find('[name="i_' + f + '[]"]').val() || ''; });
+      return o;
+    }
+    // "Oct 23 - Oct 27" -> five cards (same text, copied), each editable on its own
+    function expandRanges() {
+      let changed = false;
+      $('#itin_rows .to-item').each(function() {
+        let it = readItem($(this));
+        if (!it.date_from || !it.date_to || it.date_to <= it.date_from) { $(this).find('.i-to').val(''); return; }
+        let n = Math.min(62, Math.round((new Date(it.date_to) - new Date(it.date_from)) / 86400000)), $a = $(this);
+        for (let k = 1; k <= n; k++) $a = addItem($.extend({}, it, { date_from: addDays(it.date_from, k), date_to: '' }), $a);
+        $(this).find('.i-to').val('');
+        changed = true;
+      });
+      if (changed) Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Date range split into one entry per day. Edit each day as needed.', showConfirmButton: false, timer: 3500 });
+      renumberItems();
+    }
+    $(document).on('click', '#itin_rows .to-item-next', function() {
+      let $it = $(this).closest('.to-item'), o = readItem($it);
+      let c = $.extend({}, o, { date_to: '', rev_location: '', rev_purpose: '', rev_travel_time: '', rev_duration: '' });
+      c.date_from = o.date_from ? addDays(o.date_from, 1) : '';
+      addItem(c, $it).find('[name="i_location[]"]').focus();
+    });
     $(document).on('change', '#itin_rows .i-from', function() { $(this).closest('.to-item').find('.i-to').attr('min', this.value); });
 
     function resetForm() {
@@ -1722,6 +1806,7 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
         applyTemplate(false);
         (d.people.length ? d.people : [{}]).forEach(addPerson);
         (d.items.length ? d.items : [{}]).forEach(function(it) { addItem(it).find('.i-from').trigger('change'); });
+        if ($('#f_template_key').val() === 'itinerary') expandRanges();
         toNoText();
         $('#toModal').modal('show');
       });
@@ -1729,6 +1814,7 @@ $next_seq = to_next_seq($db, TO_DEFAULT_CODE, $cur_year);
 
     $form.on('submit', function(e) {
       e.preventDefault();
+      if ($('#f_template_key').val() === 'itinerary') expandRanges();     // what you see is what gets saved
       let creating = !$('#f_to_id').val(), $btn = $('#toSaveBtn').prop('disabled', true);
       $.post('travel_order.php', $form.serialize() + '&action=' + (creating ? 'create' : 'update'), function(res) {
         if (res.success) Swal.fire('Success!', res.message, 'success').then(() => location.reload());

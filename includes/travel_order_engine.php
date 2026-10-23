@@ -233,6 +233,34 @@ function to_prepared(array $m) {
   return [$p['name'], $p['position']];
 }
 
+/* The Itinerary form holds ONE date per row group, so a range (Oct 22 - 23) becomes one item per day, each with the same
+   location / purpose / times (and the same revised line, if any).  Used by the Itinerary format only. */
+function to_expand_days(array $items) {
+  $out = [];
+  foreach ($items as $it) {
+    $a = $it['date_from']; $b = $it['date_to'];
+    if (!to_valid_date($a) || !to_valid_date($b) || $b <= $a) { $it['date_to'] = ''; $out[] = $it; continue; }
+    $d = new DateTime($a); $end = new DateTime($b);
+    for ($n = 0; $d <= $end && $n < 62; $n++, $d->modify('+1 day')) {     // 62 = safety cap
+      $day = $it; $day['date_from'] = $d->format('Y-m-d'); $day['date_to'] = '';
+      $out[] = $day;
+    }
+  }
+  return $out;
+}
+
+/* An Itinerary belongs to ONE person (Prepared by).  An order with several people becomes one itinerary page per person
+   (same itinerary, own name).  Orders saved in the Itinerary format are already one person per travel order number;
+   this only matters when a multi-person Standard / CA order is printed as an Itinerary. */
+function to_split_people(array $models) {
+  $out = [];
+  foreach ($models as $m) {
+    if (count($m['people']) <= 1) { $out[] = $m; continue; }
+    foreach ($m['people'] as $p) { $c = $m; $c['people'] = [$p]; $c['prepared_name'] = ''; $c['prepared_title'] = ''; $out[] = $c; }
+  }
+  return $out;
+}
+
 /* What the Standard sentence says when an order holds several destinations. */
 function to_standard_text(array $m) {
   $loc = []; $dates = []; $pur = [];
@@ -308,7 +336,7 @@ function to_fill_body($xml, array $m, $key) {
 
   } else { // itinerary
     $groups = [];
-    foreach ($m['items'] as $it) {
+    foreach (to_expand_days($m['items']) as $it) {
       $groups[] = ['{{I_DATE}}' => to_fmt_range($it['date_from'], $it['date_to']), '{{I_LOCATION}}' => $it['location'],
                    '{{I_PURPOSE}}' => $it['purpose'], '{{I_TRAVEL}}' => $it['travel_time'], '{{I_DURATION}}' => $it['duration'],
                    '{{R_LOCATION}}' => $it['rev_location'], '{{R_PURPOSE}}' => $it['rev_purpose'],
@@ -384,6 +412,8 @@ function to_fresh_lists($body, &$numbering) {
    Returns [temp path, download filename]. */
 function to_build_docx(array $models, $key = null) {
   [$key, $tpl, $template] = to_resolve_template($models[0], $key);
+  $orders_count = count($models);
+  if ($key === 'itinerary') $models = to_split_people($models);
 
   $tmp = tempnam(sys_get_temp_dir(), 'to_');
   copy($template, $tmp);
@@ -426,7 +456,7 @@ function to_build_docx(array $models, $key = null) {
   $zip->close();
 
   $suffix = ['standard' => '', 'with_ca' => '_CA', 'itinerary' => '_Itinerary'][$key];
-  if (count($models) === 1) {
+  if ($orders_count === 1 && count($models) === 1) {
     $m = $models[0];
     $filename = 'Travel_Order_' . preg_replace('/[^A-Za-z0-9_-]+/', '_', to_number($m)) . '_s' . $m['series_year'] . $suffix . '.docx';
   } else {
@@ -520,7 +550,7 @@ function to_prev_ca(array $m, array $tpl) {
 function to_prev_itinerary(array $m, array $tpl) {
   [$ap, $apt] = to_approver($m, $tpl);
   [$pb, $pp] = to_prepared($m);
-  $items = $m['items'];
+  $items = to_expand_days($m['items']);
   while (count($items) < 5) $items[] = array_fill_keys(TO_ITEM_FIELDS, '');
   $rows = '';
   foreach ($items as $it) {
@@ -634,8 +664,12 @@ function to_preview_page(array $models, $key, callable $lh_url) {
   $T = to_templates(); $G = to_preview_geom();
   $force = ($key && isset($T[$key])) ? $key : null;
   $pages = ''; $used = []; $missing = [];
+  $expanded = [];
   foreach ($models as $m) {
     $k = $force ?: $m['template_key'];
+    foreach ($k === 'itinerary' ? to_split_people([$m]) : [$m] as $one) $expanded[] = [$one, $k];
+  }
+  foreach ($expanded as [$m, $k]) {
     $tpl = $T[$k]; $g = $G[$k]; $used[$k] = true;
     $has_lh = is_file(to_letterhead_file($k));
     if (!$has_lh) $missing[$k] = true;
